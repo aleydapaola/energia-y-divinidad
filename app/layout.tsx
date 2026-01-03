@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Open_Sans, Roboto_Slab } from "next/font/google";
 import "./globals.css";
+import { SessionProvider } from "@/components/auth/SessionProvider";
 
 const openSans = Open_Sans({
   variable: "--font-open-sans",
@@ -28,7 +29,9 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${openSans.variable} ${robotoSlab.variable}`}>
       <body className="font-sans antialiased">
-        {children}
+        <SessionProvider>
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );
