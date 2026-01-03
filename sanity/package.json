@@ -1,0 +1,31 @@
+{
+  "name": "energia-y-divinidad-sanity",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Sanity Studio for Energía y Divinidad",
+  "main": "package.json",
+  "scripts": {
+    "dev": "sanity dev",
+    "start": "sanity dev",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "deploy-graphql": "sanity graphql deploy"
+  },
+  "keywords": [
+    "sanity"
+  ],
+  "dependencies": {
+    "sanity": "^3.62.3",
+    "@sanity/vision": "^3.62.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "styled-components": "^6.1.15"
+  },
+  "devDependencies": {
+    "@sanity/eslint-config-studio": "^4.0.0",
+    "@types/react": "^19.0.2",
+    "eslint": "^8.6.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  }
+}

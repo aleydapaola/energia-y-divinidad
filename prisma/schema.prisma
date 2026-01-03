@@ -1,0 +1,386 @@
+// Prisma Schema para Energía y Divinidad
+// Arquitectura: Bounded Contexts + Entitlements para acceso a contenido
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// BOUNDED CONTEXT: User Management
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // Para autenticación con email/password
+
+  // Relaciones
+  accounts      Account[]
+  sessions      Session[]
+  orders        Order[]
+  subscriptions Subscription[]
+  entitlements  Entitlement[]
+  bookings      Booking[]
+
+  // Metadata
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("users")
+}
+
+// NextAuth - Account (para OAuth providers)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+// NextAuth - Session
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// NextAuth - Verification Token
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================
+// BOUNDED CONTEXT: Payments & Orders
+// ============================================
+
+enum PaymentMethod {
+  STRIPE
+  MANUAL_NEQUI
+  MANUAL_DAVIPLATA
+  MANUAL_BANCOLOMBIA
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum OrderType {
+  PRODUCT
+  SESSION
+  EVENT
+  MEMBERSHIP
+  PREMIUM_CONTENT
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  userId          String
+  orderNumber     String        @unique // Generado: ORD-YYYYMMDD-XXXX
+
+  // Tipo y referencia
+  orderType       OrderType
+  itemId          String        // ID del producto/sesión/evento en Sanity o ID de membership tier
+  itemName        String
+
+  // Montos
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("COP") // COP o USD
+
+  // Pago
+  paymentMethod   PaymentMethod
+  paymentStatus   PaymentStatus @default(PENDING)
+
+  // Relaciones
+  user            User          @relation(fields: [userId], references: [id])
+  manualPayment   ManualPayment?
+  stripePayment   StripePayment?
+  entitlements    Entitlement[]
+
+  // Metadata
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("orders")
+}
+
+// Pagos manuales (Nequi, Daviplata, Bancolombia)
+model ManualPayment {
+  id              String        @id @default(cuid())
+  orderId         String        @unique
+
+  // Detalles del pago
+  paymentMethod   PaymentMethod
+  referenceNumber String?       // Número de transacción proporcionado por el usuario
+  screenshot      String?       // URL del screenshot de comprobante
+
+  // Aprobación manual
+  approved        Boolean       @default(false)
+  approvedAt      DateTime?
+  approvedBy      String?       // Admin user ID
+  rejectedReason  String?
+
+  // Relaciones
+  order           Order         @relation(fields: [orderId], references: [id])
+
+  // Metadata
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("manual_payments")
+}
+
+// Pagos con Stripe
+model StripePayment {
+  id                    String        @id @default(cuid())
+  orderId               String        @unique
+
+  // IDs de Stripe
+  stripePaymentIntentId String        @unique
+  stripeCustomerId      String?
+
+  // Detalles
+  amount                Decimal       @db.Decimal(10, 2)
+  currency              String
+  status                String        // Stripe payment intent status
+
+  // Webhook idempotency
+  webhookProcessed      Boolean       @default(false)
+  webhookId             String?       @unique
+
+  // Relaciones
+  order                 Order         @relation(fields: [orderId], references: [id])
+
+  // Metadata
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@map("stripe_payments")
+}
+
+// ============================================
+// BOUNDED CONTEXT: Memberships
+// ============================================
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+  TRIAL
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+model Subscription {
+  id                String             @id @default(cuid())
+  userId            String
+
+  // Membership tier (referencia a Sanity)
+  membershipTierId  String             // ID del documento en Sanity
+  membershipTierName String
+
+  // Billing
+  status            SubscriptionStatus
+  billingInterval   BillingInterval
+  amount            Decimal            @db.Decimal(10, 2)
+  currency          String             @default("COP")
+
+  // Stripe (si aplica)
+  stripeSubscriptionId String?         @unique
+  stripeCustomerId     String?
+
+  // Fechas
+  startDate         DateTime
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  trialEnd          DateTime?
+  cancelledAt       DateTime?
+
+  // Relaciones
+  user              User               @relation(fields: [userId], references: [id])
+  entitlements      Entitlement[]
+
+  // Metadata
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@map("subscriptions")
+}
+
+// ============================================
+// BOUNDED CONTEXT: Entitlements (Access Control)
+// ============================================
+
+enum EntitlementType {
+  MEMBERSHIP          // Acceso a membresía
+  PREMIUM_CONTENT     // Acceso a contenido premium específico
+  EVENT               // Acceso a evento
+  SESSION_BUNDLE      // Paquete de sesiones
+  PRODUCT             // Producto digital comprado
+}
+
+model Entitlement {
+  id              String          @id @default(cuid())
+  userId          String
+
+  // Tipo y referencia
+  type            EntitlementType
+  resourceId      String          // ID en Sanity del recurso
+  resourceName    String
+
+  // Orden relacionada
+  orderId         String?
+  subscriptionId  String?
+
+  // Validez
+  expiresAt       DateTime?       // null = permanente
+  revoked         Boolean         @default(false)
+  revokedAt       DateTime?
+  revokedReason   String?
+
+  // Para session bundles
+  sessionsTotal   Int?            // Total de sesiones en el paquete
+  sessionsUsed    Int?            @default(0)
+
+  // Relaciones
+  user            User            @relation(fields: [userId], references: [id])
+  order           Order?          @relation(fields: [orderId], references: [id])
+  subscription    Subscription?   @relation(fields: [subscriptionId], references: [id])
+
+  // Metadata
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId, type])
+  @@index([userId, resourceId])
+  @@map("entitlements")
+}
+
+// ============================================
+// BOUNDED CONTEXT: Bookings (Sesiones y Eventos)
+// ============================================
+
+enum BookingType {
+  SESSION_1_ON_1
+  EVENT
+}
+
+enum BookingStatus {
+  PENDING         // Esperando confirmación
+  CONFIRMED       // Confirmada
+  CANCELLED       // Cancelada por usuario
+  COMPLETED       // Completada
+  NO_SHOW         // Usuario no apareció
+}
+
+model Booking {
+  id                String        @id @default(cuid())
+  userId            String
+
+  // Tipo y referencia
+  bookingType       BookingType
+  resourceId        String        // ID en Sanity (session o event)
+  resourceName      String
+
+  // Fecha y hora
+  scheduledAt       DateTime
+  duration          Int?          // Duración en minutos
+
+  // Status
+  status            BookingStatus @default(PENDING)
+
+  // Entitlement (si fue pagado)
+  entitlementId     String?
+
+  // Formulario de ingreso (para sesiones 1:1)
+  intakeFormData    Json?         // Respuestas del formulario
+
+  // Notas
+  userNotes         String?       @db.Text
+  adminNotes        String?       @db.Text
+
+  // Cancelación
+  cancelledAt       DateTime?
+  cancellationReason String?
+
+  // Relaciones
+  user              User          @relation(fields: [userId], references: [id])
+
+  // Metadata
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([scheduledAt])
+  @@map("bookings")
+}
+
+// ============================================
+// BOUNDED CONTEXT: Webhooks (Idempotency)
+// ============================================
+
+model WebhookEvent {
+  id              String   @id @default(cuid())
+
+  // Proveedor
+  provider        String   // "stripe", "other"
+  eventId         String   @unique // ID del webhook del proveedor
+  eventType       String   // Tipo de evento
+
+  // Procesamiento
+  processed       Boolean  @default(false)
+  processedAt     DateTime?
+
+  // Payload
+  payload         Json
+
+  // Error handling
+  failed          Boolean  @default(false)
+  errorMessage    String?  @db.Text
+  retryCount      Int      @default(0)
+
+  // Metadata
+  createdAt       DateTime @default(now())
+
+  @@index([provider, eventId])
+  @@map("webhook_events")
+}
