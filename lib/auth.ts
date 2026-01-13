@@ -1,6 +1,6 @@
 import NextAuth from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
-import Google from "next-auth/providers/google"
+// import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
 import { prisma } from "./prisma"
 import bcrypt from "bcrypt"
@@ -9,11 +9,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
 
   providers: [
-    // Google OAuth
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    }),
+    // Google OAuth - Deshabilitado temporalmente (credenciales no configuradas)
+    // Google({
+    //   clientId: process.env.GOOGLE_CLIENT_ID,
+    //   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    // }),
 
     // Email/Password
     Credentials({
@@ -43,6 +43,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!isPasswordValid) {
           return null
+        }
+
+        // Verificar si el email está verificado
+        if (!user.emailVerified) {
+          throw new Error("EMAIL_NOT_VERIFIED")
         }
 
         return {

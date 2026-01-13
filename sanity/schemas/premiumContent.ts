@@ -192,7 +192,7 @@ export default defineType({
           validation: (Rule) =>
             Rule.custom((tiers, context) => {
               const parent = context.parent as { requiresMembership?: boolean }
-              if (parent?.requiresMembership && (!tiers || tiers.length === 0)) {
+              if (parent?.requiresMembership && (!tiers || (Array.isArray(tiers) && tiers.length === 0))) {
                 return 'Debes seleccionar al menos un nivel de membresía'
               }
               return true

@@ -170,6 +170,7 @@ export default defineType({
           type: 'object',
           name: 'callout',
           title: 'Llamado de Atención',
+          icon: () => '💡',
           fields: [
             {
               name: 'type',
@@ -190,6 +191,133 @@ export default defineType({
               type: 'text',
             },
           ],
+          preview: {
+            select: {
+              type: 'type',
+              text: 'text',
+            },
+            prepare({ type, text }) {
+              const icons: Record<string, string> = {
+                info: 'ℹ️',
+                warning: '⚠️',
+                tip: '💡',
+                important: '❗',
+              }
+              return {
+                title: `${icons[type] || '💡'} ${type?.charAt(0).toUpperCase()}${type?.slice(1) || 'Callout'}`,
+                subtitle: text?.substring(0, 50) + (text?.length > 50 ? '...' : ''),
+              }
+            },
+          },
+        },
+        // Video embebido (YouTube, Vimeo, etc.)
+        {
+          type: 'object',
+          name: 'videoEmbed',
+          title: 'Video Embebido',
+          icon: () => '🎬',
+          fields: [
+            {
+              name: 'url',
+              title: 'URL del Video',
+              type: 'url',
+              description: 'URL de YouTube, Vimeo u otra plataforma',
+              validation: (Rule) => Rule.required(),
+            },
+            {
+              name: 'title',
+              title: 'Título del Video',
+              type: 'string',
+              description: 'Título descriptivo para accesibilidad',
+            },
+            {
+              name: 'caption',
+              title: 'Pie de Video',
+              type: 'string',
+              description: 'Texto opcional debajo del video',
+            },
+          ],
+          preview: {
+            select: {
+              url: 'url',
+              title: 'title',
+            },
+            prepare({ url, title }) {
+              return {
+                title: title || 'Video embebido',
+                subtitle: url,
+              }
+            },
+          },
+        },
+        // Audio embebido (Spotify, SoundCloud, archivo directo, etc.)
+        {
+          type: 'object',
+          name: 'audioEmbed',
+          title: 'Audio Embebido',
+          icon: () => '🎧',
+          fields: [
+            {
+              name: 'audioType',
+              title: 'Tipo de Audio',
+              type: 'string',
+              options: {
+                list: [
+                  { title: 'URL Externa (Spotify, SoundCloud, etc.)', value: 'external' },
+                  { title: 'Archivo Subido', value: 'file' },
+                ],
+                layout: 'radio',
+              },
+              initialValue: 'external',
+            },
+            {
+              name: 'externalUrl',
+              title: 'URL del Audio',
+              type: 'url',
+              description: 'URL de Spotify, SoundCloud, u otra plataforma',
+              hidden: ({ parent }) => parent?.audioType !== 'external',
+            },
+            {
+              name: 'audioFile',
+              title: 'Archivo de Audio',
+              type: 'file',
+              options: {
+                accept: 'audio/*',
+              },
+              hidden: ({ parent }) => parent?.audioType !== 'file',
+            },
+            {
+              name: 'title',
+              title: 'Título del Audio',
+              type: 'string',
+              description: 'Título descriptivo para accesibilidad',
+            },
+            {
+              name: 'caption',
+              title: 'Descripción',
+              type: 'string',
+              description: 'Texto opcional debajo del reproductor',
+            },
+            {
+              name: 'duration',
+              title: 'Duración',
+              type: 'string',
+              description: 'Ej: 5:30, 1h 20min',
+            },
+          ],
+          preview: {
+            select: {
+              title: 'title',
+              audioType: 'audioType',
+              externalUrl: 'externalUrl',
+            },
+            prepare({ title, audioType, externalUrl }) {
+              return {
+                title: title || 'Audio embebido',
+                subtitle: audioType === 'external' ? externalUrl : 'Archivo subido',
+              }
+            },
+          },
         },
       ],
       validation: (Rule) => Rule.required(),

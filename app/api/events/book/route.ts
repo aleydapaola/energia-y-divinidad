@@ -1,0 +1,453 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
+import { getEventById } from '@/lib/sanity/queries/events'
+import { auth } from '@/lib/auth'
+import { sendEventBookingConfirmation } from '@/lib/email'
+
+// Helper to generate order number: EVT-YYYYMMDD-XXXX
+function generateOrderNumber(): string {
+  const date = new Date()
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+
+  return `EVT-${year}${month}${day}-${random}`
+}
+
+// Rate limiting simple (en producción usar Redis)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const windowMs = 60 * 1000 // 1 minuto
+  const maxRequests = 5
+
+  const record = rateLimitMap.get(ip)
+
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs })
+    return true
+  }
+
+  if (record.count >= maxRequests) {
+    return false
+  }
+
+  record.count++
+  return true
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Rate limiting
+    const ip = request.headers.get('x-forwarded-for') || 'unknown'
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json(
+        { error: 'Demasiadas solicitudes. Intenta de nuevo en un minuto.' },
+        { status: 429 }
+      )
+    }
+
+    const body = await request.json()
+
+    const {
+      eventId,
+      seats = 1,
+      customerName,
+      customerEmail,
+      customerPhone,
+      country = 'colombia',
+      paymentMethod,
+      notes,
+    } = body
+
+    // Validación de campos requeridos
+    if (!eventId || !customerName || !customerEmail || !customerPhone || !paymentMethod) {
+      return NextResponse.json(
+        { error: 'Faltan campos requeridos' },
+        { status: 400 }
+      )
+    }
+
+    // Validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(customerEmail)) {
+      return NextResponse.json(
+        { error: 'Email inválido' },
+        { status: 400 }
+      )
+    }
+
+    // Validar teléfono (mínimo 7 dígitos)
+    const phoneDigits = customerPhone.replace(/\D/g, '')
+    if (phoneDigits.length < 7) {
+      return NextResponse.json(
+        { error: 'Número de teléfono inválido' },
+        { status: 400 }
+      )
+    }
+
+    // Obtener evento de Sanity
+    const event = await getEventById(eventId)
+
+    if (!event) {
+      return NextResponse.json(
+        { error: 'Evento no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    // Validar que el evento esté disponible para reservas
+    if (event.status !== 'upcoming') {
+      const statusMessages: Record<string, string> = {
+        sold_out: 'Este evento tiene los cupos agotados',
+        cancelled: 'Este evento ha sido cancelado',
+        completed: 'Este evento ya finalizó',
+      }
+      return NextResponse.json(
+        { error: statusMessages[event.status] || 'Este evento no está disponible' },
+        { status: 400 }
+      )
+    }
+
+    // Validar que el evento no haya pasado
+    const eventDate = new Date(event.eventDate)
+    const now = new Date()
+    const hoursUntilEvent = (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60)
+
+    if (hoursUntilEvent < 2) {
+      return NextResponse.json(
+        { error: 'Las reservas cierran 2 horas antes del evento' },
+        { status: 400 }
+      )
+    }
+
+    // Validar cantidad de cupos
+    if (seats < 1 || seats > (event.maxPerBooking || 1)) {
+      return NextResponse.json(
+        { error: `Puedes reservar entre 1 y ${event.maxPerBooking || 1} cupos` },
+        { status: 400 }
+      )
+    }
+
+    // Validar disponibilidad de cupos
+    if (event.capacity && event.availableSpots !== undefined) {
+      if (seats > event.availableSpots) {
+        return NextResponse.json(
+          { error: `Solo quedan ${event.availableSpots} cupos disponibles` },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Verificar si requiere membresía
+    if (event.requiresMembership) {
+      const session = await auth()
+      if (!session?.user?.email) {
+        return NextResponse.json(
+          { error: 'Este evento requiere membresía activa. Por favor inicia sesión.' },
+          { status: 401 }
+        )
+      }
+
+      // Verificar membresía activa
+      const userWithSubscription = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        include: {
+          subscriptions: {
+            where: { status: 'ACTIVE' },
+          },
+        },
+      })
+
+      if (!userWithSubscription?.subscriptions?.length) {
+        return NextResponse.json(
+          { error: 'Este evento requiere membresía activa' },
+          { status: 403 }
+        )
+      }
+    }
+
+    // Determinar método de pago
+    let paymentMethodEnum: 'STRIPE' | 'MANUAL_NEQUI'
+    if (paymentMethod === 'nequi') {
+      paymentMethodEnum = 'MANUAL_NEQUI'
+    } else if (paymentMethod === 'stripe') {
+      paymentMethodEnum = 'STRIPE'
+    } else {
+      return NextResponse.json(
+        { error: 'Método de pago no soportado' },
+        { status: 400 }
+      )
+    }
+
+    // Calcular precio
+    const isEarlyBird = event.earlyBirdPrice && event.earlyBirdDeadline &&
+      new Date() <= new Date(event.earlyBirdDeadline)
+
+    let unitPrice: number
+    let currency: string
+
+    if (country === 'colombia') {
+      unitPrice = isEarlyBird ? event.earlyBirdPrice! : (event.price || 0)
+      currency = 'COP'
+    } else {
+      unitPrice = event.priceUSD || 0
+      currency = 'USD'
+    }
+
+    // Si está incluido en membresía y el usuario es miembro, precio = 0
+    let isFreeForMember = false
+    if (event.includedInMembership) {
+      const session = await auth()
+      if (session?.user?.email) {
+        const userWithSubscription = await prisma.user.findUnique({
+          where: { email: session.user.email },
+          include: {
+            subscriptions: {
+              where: { status: 'ACTIVE' },
+            },
+          },
+        })
+
+        if (userWithSubscription?.subscriptions?.length) {
+          isFreeForMember = true
+          unitPrice = 0
+        }
+      }
+    }
+
+    // Aplicar descuento de membresía si aplica
+    if (!isFreeForMember && event.memberDiscount) {
+      const session = await auth()
+      if (session?.user?.email) {
+        const userWithSubscription = await prisma.user.findUnique({
+          where: { email: session.user.email },
+          include: {
+            subscriptions: {
+              where: { status: 'ACTIVE' },
+            },
+          },
+        })
+
+        if (userWithSubscription?.subscriptions?.length) {
+          unitPrice = unitPrice * (1 - event.memberDiscount / 100)
+        }
+      }
+    }
+
+    const totalAmount = unitPrice * seats
+
+    // Encontrar o crear usuario
+    let user = await prisma.user.findUnique({
+      where: { email: customerEmail },
+    })
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: customerEmail,
+          name: customerName,
+        },
+      })
+    }
+
+    // Generar número de orden
+    const orderNumber = generateOrderNumber()
+
+    // Crear orden y booking en transacción
+    const result = await prisma.$transaction(async (tx) => {
+      // Crear orden
+      const order = await tx.order.create({
+        data: {
+          userId: user.id,
+          orderNumber,
+          orderType: 'EVENT',
+          itemId: eventId,
+          itemName: `${event.title} (${seats} cupo${seats > 1 ? 's' : ''})`,
+          amount: new Prisma.Decimal(totalAmount),
+          currency,
+          paymentMethod: paymentMethodEnum,
+          paymentStatus: isFreeForMember ? 'COMPLETED' : 'PENDING',
+        },
+      })
+
+      // Crear booking
+      const booking = await tx.booking.create({
+        data: {
+          userId: user.id,
+          bookingType: 'EVENT',
+          resourceId: eventId,
+          resourceName: event.title,
+          scheduledAt: new Date(event.eventDate),
+          duration: event.endDate
+            ? Math.round((new Date(event.endDate).getTime() - new Date(event.eventDate).getTime()) / 60000)
+            : 120, // 2 horas por defecto
+          status: isFreeForMember ? 'CONFIRMED' : 'PENDING_PAYMENT',
+          amount: new Prisma.Decimal(totalAmount),
+          currency,
+          paymentMethod: paymentMethodEnum,
+          paymentStatus: isFreeForMember ? 'COMPLETED' : 'PENDING',
+          userNotes: notes || null,
+        },
+      })
+
+      // Si es pago manual (Nequi), crear registro de pago manual
+      if (paymentMethodEnum === 'MANUAL_NEQUI' && !isFreeForMember) {
+        await tx.manualPayment.create({
+          data: {
+            orderId: order.id,
+            paymentMethod: 'MANUAL_NEQUI',
+            approved: false,
+          },
+        })
+      }
+
+      // Crear entitlement para el evento
+      await tx.entitlement.create({
+        data: {
+          userId: user.id,
+          type: 'EVENT',
+          resourceId: eventId,
+          resourceName: event.title,
+          orderId: order.id,
+          expiresAt: event.endDate ? new Date(event.endDate) : new Date(event.eventDate),
+          revoked: false,
+        },
+      })
+
+      return { order, booking }
+    })
+
+    // Enviar email de confirmación
+    try {
+      await sendEventBookingConfirmation({
+        email: customerEmail,
+        name: customerName,
+        eventTitle: event.title,
+        eventDate: event.eventDate,
+        eventType: event.locationType,
+        orderNumber,
+        seats,
+        amount: totalAmount,
+        currency,
+        paymentStatus: isFreeForMember ? 'COMPLETED' : 'PENDING',
+        // Zoom info solo si está confirmado
+        ...(isFreeForMember && event.locationType === 'online' && event.zoom && {
+          zoomUrl: event.zoom.meetingUrl,
+          zoomId: event.zoom.meetingId,
+          zoomPassword: event.zoom.password,
+        }),
+        // Venue info para presenciales
+        ...(event.locationType === 'in_person' && event.venue && {
+          venueName: event.venue.name,
+          venueAddress: event.venue.address,
+          venueCity: event.venue.city,
+        }),
+      })
+    } catch (emailError) {
+      console.error('Error sending booking confirmation email:', emailError)
+      // No falla la reserva si el email falla
+    }
+
+    return NextResponse.json({
+      success: true,
+      bookingId: result.booking.id,
+      orderId: result.order.id,
+      orderNumber: result.order.orderNumber,
+      eventTitle: event.title,
+      eventDate: event.eventDate,
+      locationType: event.locationType,
+      seats,
+      amount: totalAmount,
+      currency,
+      paymentMethod: paymentMethodEnum,
+      paymentStatus: isFreeForMember ? 'COMPLETED' : 'PENDING',
+      isFreeForMember,
+      customerEmail,
+      customerName,
+      // Info de Zoom para eventos online (solo si está confirmado)
+      ...(isFreeForMember && event.locationType === 'online' && event.zoom?.meetingUrl && {
+        zoomUrl: event.zoom.meetingUrl,
+        zoomId: event.zoom.meetingId,
+        zoomPassword: event.zoom.password,
+      }),
+    }, { status: 201 })
+
+  } catch (error) {
+    console.error('Error creating event booking:', error)
+
+    return NextResponse.json(
+      {
+        error: 'Error al crear la reserva',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      },
+      { status: 500 }
+    )
+  }
+}
+
+// GET: Obtener reservas de eventos de un usuario
+export async function GET() {
+  try {
+    const session = await auth()
+
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      )
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    })
+
+    if (!user) {
+      return NextResponse.json({ bookings: [] })
+    }
+
+    const bookings = await prisma.booking.findMany({
+      where: {
+        userId: user.id,
+        bookingType: 'EVENT',
+      },
+      orderBy: {
+        scheduledAt: 'desc',
+      },
+    })
+
+    // Enriquecer con información del evento de Sanity
+    const enrichedBookings = await Promise.all(
+      bookings.map(async (booking) => {
+        const event = await getEventById(booking.resourceId)
+        return {
+          ...booking,
+          event: event ? {
+            title: event.title,
+            slug: event.slug.current,
+            eventDate: event.eventDate,
+            endDate: event.endDate,
+            locationType: event.locationType,
+            venue: event.venue,
+            zoom: booking.status === 'CONFIRMED' ? event.zoom : undefined,
+            recording: event.recording,
+            mainImage: event.mainImage,
+          } : null,
+        }
+      })
+    )
+
+    return NextResponse.json({ bookings: enrichedBookings })
+
+  } catch (error) {
+    console.error('Error fetching event bookings:', error)
+
+    return NextResponse.json(
+      { error: 'Error al obtener las reservas' },
+      { status: 500 }
+    )
+  }
+}

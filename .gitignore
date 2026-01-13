@@ -50,6 +50,7 @@ yarn-error.log*
 # sanity
 /sanity/dist
 /sanity/.sanity
+/sanity/node_modules
 
 # IDE
 .vscode/
@@ -59,3 +60,22 @@ yarn-error.log*
 *~
 
 /lib/generated/prisma
+
+# Temporary docs (not needed in repo)
+ANALISIS_*.md
+AUDITORIA_*.md
+COHERENCIA_*.md
+COMO_*.md
+CORRECCIONES_*.md
+GUIA_*.md
+HOMEPAGE_*.md
+HOME_*.md
+IMPLEMENTACION_*.md
+JERARQUIA_*.md
+LAYOUT_*.md
+PLAN_*.md
+PROXIMOS_*.md
+RESUMEN_*.md
+TODO_*.md
+*.docx
+*.pdf

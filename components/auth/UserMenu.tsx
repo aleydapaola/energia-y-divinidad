@@ -65,21 +65,21 @@ export function UserMenu() {
               Mi Cuenta
             </Link>
             <Link
-              href="/mis-sesiones"
+              href="/mi-cuenta/sesiones"
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               onClick={() => setIsOpen(false)}
             >
               Mis Sesiones
             </Link>
             <Link
-              href="/mis-eventos"
+              href="/mi-cuenta/compras"
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               onClick={() => setIsOpen(false)}
             >
-              Mis Eventos
+              Mis Compras
             </Link>
             <Link
-              href="/mi-membresia"
+              href="/dashboard/membresia/publicaciones"
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               onClick={() => setIsOpen(false)}
             >
