@@ -361,6 +361,11 @@ model Booking {
   // Stripe payment (if applicable)
   stripeSessionId String? @unique
 
+  // Nequi payment (if applicable)
+  nequiTransactionCode String? // Código único de transacción
+  nequiQrCode          String? @db.Text // QR code para pago (modo gateway)
+  nequiPaymentId       String? // ID de pago de Nequi API
+
   // Entitlement (si fue pagado)
   entitlementId String?
 

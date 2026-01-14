@@ -118,7 +118,7 @@ export function PostCard({ post, onLike, isNew = false }: PostCardProps) {
 
         {/* Duración para audio/video */}
         {post.duration && ['audio', 'video'].includes(post.postType) && (
-          <div className="text-xs text-[#8A4BAF] font-dm-sans mb-3 flex items-center gap-1">
+          <div className="text-sm text-[#8A4BAF] font-dm-sans mb-3 flex items-center gap-1">
             <span>⏱</span>
             <span>{post.duration} min</span>
           </div>

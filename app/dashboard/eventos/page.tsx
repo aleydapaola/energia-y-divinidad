@@ -145,16 +145,20 @@ export default async function DashboardEventosPage() {
                     >
                       <div className="flex flex-col md:flex-row">
                         {/* Image */}
-                        {booking.event?.mainImage && (
-                          <div className="relative w-full md:w-48 h-32 md:h-auto flex-shrink-0">
+                        <div className="relative w-full md:w-48 h-32 md:h-auto flex-shrink-0 bg-gradient-to-br from-[#8A4BAF]/20 to-[#2D4CC7]/20">
+                          {booking.event?.mainImage?.asset?.url ? (
                             <Image
                               src={booking.event.mainImage.asset.url}
                               alt={booking.event.title}
                               fill
                               className="object-cover"
                             />
-                          </div>
-                        )}
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-4xl">📅</span>
+                            </div>
+                          )}
+                        </div>
 
                         {/* Content */}
                         <div className="p-6 flex-1">
@@ -247,16 +251,20 @@ export default async function DashboardEventosPage() {
                     >
                       <div className="flex flex-col md:flex-row">
                         {/* Image */}
-                        {booking.event?.mainImage && (
-                          <div className="relative w-full md:w-48 h-32 md:h-auto flex-shrink-0">
+                        <div className="relative w-full md:w-48 h-32 md:h-auto flex-shrink-0 bg-gradient-to-br from-[#8A4BAF]/20 to-[#2D4CC7]/20">
+                          {booking.event?.mainImage?.asset?.url ? (
                             <Image
                               src={booking.event.mainImage.asset.url}
                               alt={booking.event.title}
                               fill
                               className="object-cover grayscale"
                             />
-                          </div>
-                        )}
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-4xl grayscale">📅</span>
+                            </div>
+                          )}
+                        </div>
 
                         {/* Content */}
                         <div className="p-6 flex-1">

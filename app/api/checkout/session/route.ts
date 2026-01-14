@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { stripe, getOrCreateStripeCustomer } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
+import { getSessionConfig } from '@/lib/sanity/queries/sessionConfig'
+import { getNequiMode, generateTransactionCode } from '@/lib/nequi'
 
 interface CheckoutBody {
   sessionType: 'single' | 'pack'
@@ -11,18 +13,8 @@ interface CheckoutBody {
   region: 'colombia' | 'international'
 }
 
-// Session prices
-const PRICES = {
-  single: {
-    COP: 150000, // $150,000 COP
-    USD: 40, // $40 USD
-  },
-  pack: {
-    COP: 1850000, // $1,850,000 COP (8 sesiones: precio de 7, 1 gratis)
-    USD: 500, // $500 USD
-    EUR: 450, // €450 EUR
-  },
-}
+// Default pack prices (7 sesiones, 1 gratis)
+const PACK_MULTIPLIER = 7
 
 /**
  * POST /api/checkout/session
@@ -69,12 +61,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Get session config from Sanity (prices, duration, etc.)
+    const sessionConfig = await getSessionConfig()
+
+    if (!sessionConfig) {
+      return NextResponse.json(
+        { error: 'Configuración de sesión no encontrada' },
+        { status: 500 }
+      )
+    }
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const prices = sessionType === 'single' ? PRICES.single : PRICES.pack
-    const productName =
+
+    // Get prices from Sanity
+    const singlePriceCOP = sessionConfig.price || 303198
+    const singlePriceUSD = sessionConfig.priceUSD || 70
+    const packPriceCOP = singlePriceCOP * PACK_MULTIPLIER
+    const packPriceUSD = singlePriceUSD * PACK_MULTIPLIER
+
+    const prices = sessionType === 'single'
+      ? { COP: singlePriceCOP, USD: singlePriceUSD }
+      : { COP: packPriceCOP, USD: packPriceUSD }
+
+    const productName = sessionConfig.title || (
       sessionType === 'single'
-        ? 'Sesión de Acompañamiento Individual'
+        ? 'Sesión de Canalización'
         : 'Pack de 8 Sesiones (7+1 Gratis)'
+    )
 
     // Handle different payment methods
     if (paymentMethod === 'stripe') {
@@ -133,7 +146,7 @@ export async function POST(request: NextRequest) {
           resourceId: 'session-flexible',
           resourceName: productName,
           scheduledAt: date ? new Date(`${date}T${time}:00`) : null,
-          duration: 60,
+          duration: sessionConfig.duration || 90,
           status: 'PENDING_PAYMENT',
           amount: prices.USD,
           currency: 'USD',
@@ -154,6 +167,9 @@ export async function POST(request: NextRequest) {
 
     if (paymentMethod === 'nequi') {
       // Nequi payment for Colombia
+      const nequiMode = getNequiMode()
+      const transactionCode = generateTransactionCode()
+
       // Create pending booking in database
       const booking = await prisma.booking.create({
         data: {
@@ -162,7 +178,7 @@ export async function POST(request: NextRequest) {
           resourceId: 'session-flexible',
           resourceName: productName,
           scheduledAt: date ? new Date(`${date}T${time}:00`) : null,
-          duration: 60,
+          duration: sessionConfig.duration || 90,
           status: 'PENDING_PAYMENT',
           amount: prices.COP,
           currency: 'COP',
@@ -170,15 +186,29 @@ export async function POST(request: NextRequest) {
           paymentStatus: 'PENDING',
           sessionsTotal: sessionType === 'pack' ? 8 : 1,
           sessionsRemaining: sessionType === 'pack' ? 8 : 1,
+          nequiTransactionCode: transactionCode,
         },
       })
 
-      // For Nequi single payments, we redirect to a payment page
-      // where the user can complete the payment via QR or push notification
+      // Mode "app": Manual payment - redirect to instructions page
+      if (nequiMode === 'app') {
+        return NextResponse.json({
+          url: `${appUrl}/pago/nequi?booking_id=${booking.id}&amount=${prices.COP}&type=${sessionType}`,
+          bookingId: booking.id,
+          paymentMethod: 'nequi',
+          nequiMode: 'app',
+        })
+      }
+
+      // Mode "push": Automatic payment via Nequi Push Notification
+      // Redirect to page where user enters their Nequi phone number
+      // Then we send a push notification to their Nequi app
       return NextResponse.json({
-        url: `${appUrl}/pago/nequi?booking_id=${booking.id}&amount=${prices.COP}&type=${sessionType}`,
+        url: `${appUrl}/pago/nequi/push?booking_id=${booking.id}&amount=${prices.COP}&type=${sessionType}`,
         bookingId: booking.id,
         paymentMethod: 'nequi',
+        nequiMode: 'push',
+        transactionCode,
       })
     }
 

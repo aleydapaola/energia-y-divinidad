@@ -10,9 +10,11 @@ import {
   type Holiday,
   type BlockedDateRange,
   type Timezone,
+  type WeeklySchedule,
   isHoliday,
   isInBlockedRange,
   convertTimeFromColombia,
+  isDayAvailable,
 } from '@/lib/sanity/queries/bookingSettings';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -54,6 +56,8 @@ interface BookingCalendarProps {
   timezones?: Timezone[];
   timezoneNote?: string;
   showTimezoneSelector?: boolean;
+  // Horarios semanales globales (desde Configuración de Reservas)
+  weeklySchedule?: WeeklySchedule;
 }
 
 // Zonas horarias por defecto
@@ -65,24 +69,29 @@ const DEFAULT_TIMEZONES: Timezone[] = [
 ];
 
 // Helper para verificar si un dia tiene disponibilidad configurada
-function hasDayAvailability(date: Date, session: Session): boolean {
-  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
-  const dayName = dayNames[date.getDay()];
+function hasDayAvailability(date: Date, session: Session, weeklySchedule?: WeeklySchedule): boolean {
+  const dayOfWeek = date.getDay();
 
-  // Si hay availabilitySchedule de Sanity, usar eso
+  // PRIORIDAD 1: Usar horarios globales de Configuración de Reservas
+  if (weeklySchedule) {
+    return isDayAvailable(weeklySchedule, dayOfWeek);
+  }
+
+  // FALLBACK: Si no hay horarios globales, usar horarios de la sesión (compatibilidad)
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+  const dayName = dayNames[dayOfWeek];
+
   if (session.availabilitySchedule) {
     const daySlots = session.availabilitySchedule[dayName];
     return Array.isArray(daySlots) && daySlots.length > 0;
   }
 
-  // Si hay availableDays (formato antiguo), usar eso
   if (session.availableDays) {
-    return session.availableDays.some(d => d.dayOfWeek === date.getDay());
+    return session.availableDays.some(d => d.dayOfWeek === dayOfWeek);
   }
 
   // Por defecto, solo lunes a viernes
-  const day = date.getDay();
-  return day >= 1 && day <= 5;
+  return dayOfWeek >= 1 && dayOfWeek <= 5;
 }
 
 export function BookingCalendar({
@@ -96,6 +105,7 @@ export function BookingCalendar({
   timezones = [],
   timezoneNote = 'La sesion sera en hora de Colombia (GMT-5)',
   showTimezoneSelector = true,
+  weeklySchedule,
 }: BookingCalendarProps) {
   const [date, setDate] = useState<Date | undefined>(selectedDate || undefined);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
@@ -179,8 +189,8 @@ export function BookingCalendar({
       return false;
     }
 
-    // Verificar si el dia tiene horarios configurados
-    if (!hasDayAvailability(checkDate, session)) {
+    // Verificar si el dia tiene horarios configurados (usa horarios globales si están disponibles)
+    if (!hasDayAvailability(checkDate, session, weeklySchedule)) {
       return false;
     }
 

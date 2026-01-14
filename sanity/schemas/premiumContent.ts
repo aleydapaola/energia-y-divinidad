@@ -260,8 +260,8 @@ export default defineType({
       name: 'relatedSessions',
       title: 'Sesiones Relacionadas',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'session' }] }],
-      description: 'Sesiones 1:1 que complementan este contenido',
+      of: [{ type: 'reference', to: [{ type: 'sessionConfig' }] }],
+      description: 'Sesiones que complementan este contenido',
     }),
     defineField({
       name: 'tags',

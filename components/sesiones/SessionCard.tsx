@@ -22,13 +22,19 @@ export default function SessionCard({ session }: SessionCardProps) {
       className="group block bg-white rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300"
     >
       {/* Image */}
-      <div className="relative aspect-[4/3] overflow-hidden">
-        <Image
-          src={session.mainImage.asset.url}
-          alt={session.mainImage.alt || session.title}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
-        />
+      <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#8A4BAF]/20 to-[#2D4CC7]/20">
+        {session.mainImage?.asset?.url ? (
+          <Image
+            src={session.mainImage.asset.url}
+            alt={session.mainImage.alt || session.title}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-6xl">🔮</span>
+          </div>
+        )}
         {session.featured && (
           <span className="absolute top-4 right-4 bg-brand text-white px-3 py-1 rounded-full text-xs font-semibold">
             ⭐ Destacado
@@ -79,7 +85,7 @@ export default function SessionCard({ session }: SessionCardProps) {
               </p>
             )}
             {hasDiscount && (
-              <p className="text-xs text-brand mt-1">
+              <p className="text-sm text-brand mt-1">
                 {session.memberDiscount}% descuento para miembros
               </p>
             )}

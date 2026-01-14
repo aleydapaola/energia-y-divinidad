@@ -128,14 +128,14 @@ export function TimezoneSelector({
           <p className="font-dm-sans text-sm text-[#2D4CC7]">
             <span className="font-medium">Tu hora local:</span> {convertedTimeDisplay}
           </p>
-          <p className="font-dm-sans text-xs text-gray-500 mt-1">
+          <p className="font-dm-sans text-sm text-gray-500 mt-1">
             Hora Colombia: {selectedTimeColombia}
           </p>
         </div>
       )}
 
       {/* Note */}
-      <p className="font-dm-sans text-xs text-gray-500 text-center">
+      <p className="font-dm-sans text-sm text-gray-500 text-center">
         {timezoneNote}
       </p>
     </div>

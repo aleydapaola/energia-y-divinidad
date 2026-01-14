@@ -9,6 +9,8 @@ import {
   formatDuration,
 } from '@/lib/sanity/queries/sessions'
 import { CheckoutForm } from '@/components/sesiones/CheckoutForm'
+import { Header } from '@/components/layout/Header'
+import { Footer } from '@/components/layout/Footer'
 
 interface ReservarPageProps {
   params: Promise<{ slug: string }>
@@ -56,9 +58,11 @@ export default async function ReservarPage({ params, searchParams }: ReservarPag
   scheduledDateTime.setHours(hours, minutes, 0, 0)
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Back Button */}
-      <div className="container mx-auto px-4 py-6">
+    <>
+      <Header session={null} />
+      <div className="min-h-screen bg-background">
+        {/* Back Button */}
+        <div className="container mx-auto px-4 py-6">
         <Link
           href={`/sesiones/${slug}`}
           className="inline-flex items-center gap-2 text-brand hover:text-brand/80 transition-colors"
@@ -73,10 +77,10 @@ export default async function ReservarPage({ params, searchParams }: ReservarPag
         <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="font-serif text-4xl sm:text-5xl text-brand mb-4">
+            <h1 className="font-gazeta text-4xl sm:text-5xl text-[#654177] mb-4">
               Completa tu Reserva
             </h1>
-            <p className="text-primary/70 text-lg">
+            <p className="text-primary/70 text-lg font-dm-sans">
               Estás a un paso de reservar tu sesión
             </p>
           </div>
@@ -85,18 +89,24 @@ export default async function ReservarPage({ params, searchParams }: ReservarPag
             {/* Left Column - Session Summary */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-md p-6 sticky top-6">
-                <h2 className="font-serif text-xl text-brand mb-4">
+                <h2 className="font-gazeta text-xl text-[#8A4BAF] mb-4">
                   Resumen de tu Reserva
                 </h2>
 
                 {/* Session Image */}
-                <div className="relative aspect-square rounded-lg overflow-hidden mb-4">
-                  <Image
-                    src={session.mainImage.asset.url}
-                    alt={session.mainImage.alt || session.title}
-                    fill
-                    className="object-cover"
-                  />
+                <div className="relative aspect-square rounded-lg overflow-hidden mb-4 bg-gradient-to-br from-[#8A4BAF]/20 to-[#2D4CC7]/20">
+                  {session.mainImage?.asset?.url ? (
+                    <Image
+                      src={session.mainImage.asset.url}
+                      alt={session.mainImage.alt || session.title}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-6xl">🔮</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Session Details */}
@@ -190,6 +200,8 @@ export default async function ReservarPage({ params, searchParams }: ReservarPag
           </div>
         </div>
       </div>
-    </div>
+      </div>
+      <Footer />
+    </>
   )
 }

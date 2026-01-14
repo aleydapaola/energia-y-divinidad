@@ -66,13 +66,19 @@ export default function EventCard({ event }: EventCardProps) {
       }`}
     >
       {/* Image */}
-      <div className="relative aspect-[16/9] overflow-hidden">
-        <Image
-          src={event.mainImage.asset.url}
-          alt={event.mainImage.alt || event.title}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
-        />
+      <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-[#8A4BAF]/20 to-[#2D4CC7]/20">
+        {event.mainImage?.asset?.url ? (
+          <Image
+            src={event.mainImage.asset.url}
+            alt={event.mainImage.alt || event.title}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-6xl">📅</span>
+          </div>
+        )}
         {badge}
         {featuredBadge}
       </div>

@@ -277,13 +277,19 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Event Summary */}
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="relative aspect-video">
-              <Image
-                src={event.mainImage.asset.url}
-                alt={event.mainImage.alt || event.title}
-                fill
-                className="object-cover"
-              />
+            <div className="relative aspect-video bg-gradient-to-br from-[#8A4BAF]/20 to-[#2D4CC7]/20">
+              {event.mainImage?.asset?.url ? (
+                <Image
+                  src={event.mainImage.asset.url}
+                  alt={event.mainImage.alt || event.title}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-8xl">📅</span>
+                </div>
+              )}
             </div>
             <div className="p-6">
               <h1 className="font-gazeta text-2xl text-[#654177] mb-4">{event.title}</h1>

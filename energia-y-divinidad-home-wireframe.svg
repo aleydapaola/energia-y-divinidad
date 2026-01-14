@@ -1,0 +1,234 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="8000" viewBox="0 0 1440 8000">
+  <defs>
+    <style>
+      .t-title { font-family: sans-serif; font-size: 32px; fill: #333333; text-anchor: middle; dominant-baseline: middle; }
+      .t-subtitle { font-family: sans-serif; font-size: 20px; fill: #333333; text-anchor: middle; dominant-baseline: middle; }
+      .t-body { font-family: sans-serif; font-size: 16px; fill: #333333; text-anchor: middle; dominant-baseline: middle; }
+      .box { fill: #f2f2f2; stroke: #cccccc; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1440" height="8000" fill="#ffffff"/>
+
+  <g id="header">
+    <rect class="box" x="60" y="40" width="1320" height="80"/>
+    <text class="t-title" x="720" y="80">Header</text>
+    <text class="t-body" x="720" y="105">Logo + Navegación + CTA</text>
+  </g>
+
+  <g id="hero">
+    <rect class="box" x="60" y="180" width="1320" height="600"/>
+    <text class="t-title" x="720" y="220">Hero</text>
+    <text class="t-subtitle" x="720" y="255">Título + Subtítulo + CTA + Visual</text>
+
+    <rect class="box" x="110" y="290" width="620" height="440"/>
+    <text class="t-body" x="420" y="510">Copy / Beneficio / CTA(s)</text>
+
+    <rect class="box" x="760" y="290" width="570" height="440"/>
+    <text class="t-body" x="1045" y="510">Imagen / Ilustración / Video</text>
+
+    <rect class="box" x="150" y="330" width="540" height="90"/>
+    <text class="t-body" x="420" y="375">Título (H1)</text>
+
+    <rect class="box" x="150" y="440" width="540" height="70"/>
+    <text class="t-body" x="420" y="475">Subtítulo / Promesa</text>
+
+    <rect class="box" x="150" y="530" width="250" height="60"/>
+    <text class="t-body" x="275" y="560">Botón CTA</text>
+
+    <rect class="box" x="440" y="530" width="250" height="60"/>
+    <text class="t-body" x="565" y="560">CTA Secundario</text>
+  </g>
+
+  <g id="para-quien-es">
+    <rect class="box" x="60" y="840" width="1320" height="400"/>
+    <text class="t-title" x="720" y="880">Para quien es</text>
+    <text class="t-subtitle" x="720" y="915">Segmentos / Necesidades</text>
+
+    <rect class="box" x="110" y="960" width="380" height="240"/>
+    <text class="t-body" x="300" y="1080">Tarjeta 1</text>
+
+    <rect class="box" x="530" y="960" width="380" height="240"/>
+    <text class="t-body" x="720" y="1080">Tarjeta 2</text>
+
+    <rect class="box" x="950" y="960" width="380" height="240"/>
+    <text class="t-body" x="1140" y="1080">Tarjeta 3</text>
+  </g>
+
+  <g id="sobre-aleyda">
+    <rect class="box" x="60" y="1300" width="1320" height="400"/>
+    <text class="t-title" x="720" y="1340">Sobre Aleyda</text>
+    <text class="t-subtitle" x="720" y="1375">Bio breve + Credenciales + Foto</text>
+
+    <rect class="box" x="110" y="1440" width="420" height="220"/>
+    <text class="t-body" x="320" y="1550">Foto / Retrato</text>
+
+    <rect class="box" x="570" y="1440" width="760" height="220"/>
+    <text class="t-body" x="950" y="1550">Texto bio + puntos clave</text>
+
+    <rect class="box" x="570" y="1675" width="280" height="50"/>
+    <text class="t-body" x="710" y="1700">Botón / Enlace</text>
+
+    <rect class="box" x="870" y="1675" width="460" height="50"/>
+    <text class="t-body" x="1100" y="1700">Sello / prueba social breve</text>
+  </g>
+
+  <g id="servicios-principales">
+    <rect class="box" x="60" y="1760" width="1320" height="400"/>
+    <text class="t-title" x="720" y="1800">Servicios principales</text>
+    <text class="t-subtitle" x="720" y="1835">Cuadrícula 2x2</text>
+
+    <rect class="box" x="110" y="1900" width="590" height="110"/>
+    <text class="t-body" x="405" y="1955">Servicio 1</text>
+
+    <rect class="box" x="740" y="1900" width="590" height="110"/>
+    <text class="t-body" x="1035" y="1955">Servicio 2</text>
+
+    <rect class="box" x="110" y="2050" width="590" height="110"/>
+    <text class="t-body" x="405" y="2105">Servicio 3</text>
+
+    <rect class="box" x="740" y="2050" width="590" height="110"/>
+    <text class="t-body" x="1035" y="2105">Servicio 4</text>
+  </g>
+
+  <g id="testimonios">
+    <rect class="box" x="60" y="2220" width="1320" height="400"/>
+    <text class="t-title" x="720" y="2260">Testimonios</text>
+    <text class="t-subtitle" x="720" y="2295">Reseñas / Casos</text>
+
+    <rect class="box" x="110" y="2360" width="380" height="220"/>
+    <text class="t-body" x="300" y="2470">Testimonio 1</text>
+
+    <rect class="box" x="530" y="2360" width="380" height="220"/>
+    <text class="t-body" x="720" y="2470">Testimonio 2</text>
+
+    <rect class="box" x="950" y="2360" width="380" height="220"/>
+    <text class="t-body" x="1140" y="2470">Testimonio 3</text>
+
+    <rect class="box" x="560" y="2595" width="320" height="50"/>
+    <text class="t-body" x="720" y="2620">Ver más</text>
+  </g>
+
+  <g id="membresia">
+    <rect class="box" x="60" y="2680" width="1320" height="400"/>
+    <text class="t-title" x="720" y="2720">Membresía</text>
+    <text class="t-subtitle" x="720" y="2755">Plan + Beneficios</text>
+
+    <rect class="box" x="110" y="2820" width="520" height="220"/>
+    <text class="t-body" x="370" y="2930">Tarjeta Plan (precio + CTA)</text>
+
+    <rect class="box" x="660" y="2820" width="670" height="220"/>
+    <text class="t-body" x="995" y="2930">Lista de beneficios / contenido</text>
+
+    <rect class="box" x="260" y="3045" width="220" height="50"/>
+    <text class="t-body" x="370" y="3070">Unirme</text>
+
+    <rect class="box" x="510" y="3045" width="220" height="50"/>
+    <text class="t-body" x="620" y="3070">Detalles</text>
+  </g>
+
+  <g id="proximos-eventos">
+    <rect class="box" x="60" y="3140" width="1320" height="400"/>
+    <text class="t-title" x="720" y="3180">Próximos Eventos</text>
+    <text class="t-subtitle" x="720" y="3215">Listado / Calendario</text>
+
+    <rect class="box" x="110" y="3280" width="1220" height="70"/>
+    <text class="t-body" x="720" y="3315">Evento 1 (fecha + título + CTA)</text>
+
+    <rect class="box" x="110" y="3365" width="1220" height="70"/>
+    <text class="t-body" x="720" y="3400">Evento 2 (fecha + título + CTA)</text>
+
+    <rect class="box" x="110" y="3450" width="1220" height="70"/>
+    <text class="t-body" x="720" y="3485">Evento 3 (fecha + título + CTA)</text>
+
+    <rect class="box" x="560" y="3528" width="320" height="50"/>
+    <text class="t-body" x="720" y="3553">Ver agenda completa</text>
+  </g>
+
+  <g id="newsletter">
+    <rect class="box" x="60" y="3600" width="1320" height="400"/>
+    <text class="t-title" x="720" y="3640">Newsletter</text>
+    <text class="t-subtitle" x="720" y="3675">Captación de email</text>
+
+    <rect class="box" x="260" y="3750" width="600" height="60"/>
+    <text class="t-body" x="560" y="3780">Campo Email</text>
+
+    <rect class="box" x="880" y="3750" width="300" height="60"/>
+    <text class="t-body" x="1030" y="3780">Suscribirme</text>
+
+    <rect class="box" x="260" y="3830" width="920" height="120"/>
+    <text class="t-body" x="720" y="3890">Texto de valor + frecuencia + privacidad</text>
+  </g>
+
+  <g id="cursos-formacion">
+    <rect class="box" x="60" y="4060" width="1320" height="400"/>
+    <text class="t-title" x="720" y="4100">Cursos / Formación</text>
+    <text class="t-subtitle" x="720" y="4135">Ofertas destacadas</text>
+
+    <rect class="box" x="110" y="4200" width="380" height="220"/>
+    <text class="t-body" x="300" y="4310">Curso 1</text>
+
+    <rect class="box" x="530" y="4200" width="380" height="220"/>
+    <text class="t-body" x="720" y="4310">Curso 2</text>
+
+    <rect class="box" x="950" y="4200" width="380" height="220"/>
+    <text class="t-body" x="1140" y="4310">Curso 3</text>
+
+    <rect class="box" x="560" y="4428" width="320" height="50"/>
+    <text class="t-body" x="720" y="4453">Ver catálogo</text>
+  </g>
+
+  <g id="blog-contenido-gratuito">
+    <rect class="box" x="60" y="4520" width="1320" height="400"/>
+    <text class="t-title" x="720" y="4560">Blog / Contenido gratuito</text>
+    <text class="t-subtitle" x="720" y="4595">Artículos / Recursos</text>
+
+    <rect class="box" x="110" y="4660" width="380" height="220"/>
+    <text class="t-body" x="300" y="4770">Post 1</text>
+
+    <rect class="box" x="530" y="4660" width="380" height="220"/>
+    <text class="t-body" x="720" y="4770">Post 2</text>
+
+    <rect class="box" x="950" y="4660" width="380" height="220"/>
+    <text class="t-body" x="1140" y="4770">Post 3</text>
+
+    <rect class="box" x="560" y="4888" width="320" height="50"/>
+    <text class="t-body" x="720" y="4913">Ir al blog</text>
+  </g>
+
+  <g id="cta-final">
+    <rect class="box" x="60" y="4980" width="1320" height="400"/>
+    <text class="t-title" x="720" y="5020">CTA final</text>
+    <text class="t-subtitle" x="720" y="5055">Cierre + Acción principal</text>
+
+    <rect class="box" x="260" y="5140" width="920" height="100"/>
+    <text class="t-body" x="720" y="5190">Titular final (refuerzo de promesa)</text>
+
+    <rect class="box" x="260" y="5260" width="600" height="60"/>
+    <text class="t-body" x="560" y="5290">Mensaje breve / beneficios</text>
+
+    <rect class="box" x="880" y="5260" width="300" height="60"/>
+    <text class="t-body" x="1030" y="5290">Acción (CTA)</text>
+  </g>
+
+  <g id="footer">
+    <rect class="box" x="60" y="5440" width="1320" height="240"/>
+    <text class="t-title" x="720" y="5480">Footer</text>
+    <text class="t-subtitle" x="720" y="5515">Enlaces + Legal + RRSS</text>
+
+    <rect class="box" x="110" y="5560" width="290" height="100"/>
+    <text class="t-body" x="255" y="5610">Columna 1</text>
+
+    <rect class="box" x="430" y="5560" width="290" height="100"/>
+    <text class="t-body" x="575" y="5610">Columna 2</text>
+
+    <rect class="box" x="750" y="5560" width="290" height="100"/>
+    <text class="t-body" x="895" y="5610">Columna 3</text>
+
+    <rect class="box" x="1070" y="5560" width="260" height="100"/>
+    <text class="t-body" x="1200" y="5610">Columna 4</text>
+
+    <rect class="box" x="110" y="5670" width="1220" height="40"/>
+    <text class="t-body" x="720" y="5690">Copyright / Nota legal</text>
+  </g>
+</svg>

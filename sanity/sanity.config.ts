@@ -4,7 +4,7 @@ import { visionTool } from '@sanity/vision'
 import { schemaTypes } from './schemas'
 
 // Hardcoded values for deployed Studio (env vars not available in static build)
-const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || 'sds3d4z3jm05xypoyzukhdj6'
+const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '81jpalr2'
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production'
 
 export default defineConfig({

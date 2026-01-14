@@ -59,7 +59,7 @@ export default async function NequiPaymentPage({
             <div className="w-16 h-16 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <CreditCard className="w-8 h-8 text-brand" />
             </div>
-            <h1 className="font-serif text-3xl sm:text-4xl text-brand mb-3">
+            <h1 className="font-gazeta text-3xl sm:text-4xl text-[#8A4BAF] mb-3">
               Instrucciones de Pago
             </h1>
             <p className="text-primary/70">
@@ -89,7 +89,7 @@ export default async function NequiPaymentPage({
 
           {/* Payment Instructions */}
           <div className="bg-brand/5 rounded-lg p-6 mb-6">
-            <h2 className="font-serif text-xl text-brand mb-4 flex items-center gap-2">
+            <h2 className="font-gazeta text-xl text-[#8A4BAF] mb-4 flex items-center gap-2">
               <AlertCircle className="w-5 h-5" />
               Pasos para Pagar con Nequi
             </h2>
@@ -199,7 +199,7 @@ export default async function NequiPaymentPage({
 
           {/* What Happens Next */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="font-serif text-xl text-brand mb-4 flex items-center gap-2">
+            <h2 className="font-gazeta text-xl text-[#8A4BAF] mb-4 flex items-center gap-2">
               <Calendar className="w-5 h-5" />
               ¿Qué Sigue Ahora?
             </h2>

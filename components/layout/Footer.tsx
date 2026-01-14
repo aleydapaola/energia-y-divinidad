@@ -179,20 +179,20 @@ export function Footer() {
             <div className="space-y-2.5 border-t border-[#8A4BAF]/10 pt-4">
               <a
                 href="mailto:contacto@energiaydivinidad.com"
-                className="flex items-center gap-2 text-[#654177] hover:text-[#8A4BAF] transition-colors text-xs group"
+                className="flex items-center gap-2 text-[#654177] hover:text-[#8A4BAF] transition-colors text-sm group"
               >
-                <Mail className="w-3.5 h-3.5 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                <Mail className="w-4 h-4 flex-shrink-0 group-hover:scale-110 transition-transform" />
                 <span>contacto@energiaydivinidad.com</span>
               </a>
               <a
                 href="tel:+573151165921"
-                className="flex items-center gap-2 text-[#654177] hover:text-[#8A4BAF] transition-colors text-xs group"
+                className="flex items-center gap-2 text-[#654177] hover:text-[#8A4BAF] transition-colors text-sm group"
               >
-                <Phone className="w-3.5 h-3.5 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                <Phone className="w-4 h-4 flex-shrink-0 group-hover:scale-110 transition-transform" />
                 <span>+57 315 116 5921</span>
               </a>
-              <div className="flex items-start gap-2 text-[#654177] text-xs">
-                <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2 text-[#654177] text-sm">
+                <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <span>Bogotá, Colombia</span>
               </div>
             </div>

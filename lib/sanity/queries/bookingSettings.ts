@@ -20,18 +20,34 @@ export interface Timezone {
   isDefault: boolean
 }
 
+export interface TimeSlotRange {
+  start: string // "08:00"
+  end: string // "12:00"
+}
+
+export interface WeeklySchedule {
+  monday?: TimeSlotRange[]
+  tuesday?: TimeSlotRange[]
+  wednesday?: TimeSlotRange[]
+  thursday?: TimeSlotRange[]
+  friday?: TimeSlotRange[]
+  saturday?: TimeSlotRange[]
+  sunday?: TimeSlotRange[]
+}
+
 export interface BookingSettings {
   _id: string
-  _type: 'bookingSettings'
+  _type: 'bookingSettings' | 'sessionConfig'
   holidays?: Holiday[]
   blockedDates?: BlockedDateRange[]
   availableTimezones?: Timezone[]
-  defaultLeadTime: number
-  defaultMaxAdvance: number
+  weeklySchedule?: WeeklySchedule
+  defaultLeadTime?: number
+  defaultMaxAdvance?: number
   timezoneNote?: string
 }
 
-// Query fields
+// Query fields - now queries from sessionConfig
 const bookingSettingsFields = `
   _id,
   _type,
@@ -51,26 +67,45 @@ const bookingSettingsFields = `
     offsetHours,
     isDefault
   },
-  defaultLeadTime,
-  defaultMaxAdvance,
+  weeklySchedule {
+    monday[] { start, end },
+    tuesday[] { start, end },
+    wednesday[] { start, end },
+    thursday[] { start, end },
+    friday[] { start, end },
+    saturday[] { start, end },
+    sunday[] { start, end }
+  },
+  bookingLeadTime,
+  maxAdvanceBooking,
   timezoneNote
 `
 
 /**
- * Obtiene la configuracion de reservas (singleton)
+ * Obtiene la configuracion de reservas desde sessionConfig (schema unificado)
  */
 export async function getBookingSettings(): Promise<BookingSettings | null> {
-  const query = `*[_type == "bookingSettings"][0] {
+  // Query from the new unified sessionConfig schema
+  const query = `*[_type == "sessionConfig"][0] {
     ${bookingSettingsFields}
   }`
-  return client.fetch(query)
+  const result = await client.fetch(query)
+
+  if (!result) return null
+
+  // Map to BookingSettings interface for compatibility
+  return {
+    ...result,
+    defaultLeadTime: result.bookingLeadTime,
+    defaultMaxAdvance: result.maxAdvanceBooking,
+  }
 }
 
 /**
  * Obtiene solo los dias festivos
  */
 export async function getHolidays(): Promise<Holiday[]> {
-  const query = `*[_type == "bookingSettings"][0].holidays[] {
+  const query = `*[_type == "sessionConfig"][0].holidays[] {
     date,
     name,
     recurring
@@ -83,7 +118,7 @@ export async function getHolidays(): Promise<Holiday[]> {
  * Obtiene solo las fechas bloqueadas
  */
 export async function getBlockedDates(): Promise<BlockedDateRange[]> {
-  const query = `*[_type == "bookingSettings"][0].blockedDates[] {
+  const query = `*[_type == "sessionConfig"][0].blockedDates[] {
     startDate,
     endDate,
     reason
@@ -96,7 +131,7 @@ export async function getBlockedDates(): Promise<BlockedDateRange[]> {
  * Obtiene solo los husos horarios disponibles
  */
 export async function getAvailableTimezones(): Promise<Timezone[]> {
-  const query = `*[_type == "bookingSettings"][0].availableTimezones[] {
+  const query = `*[_type == "sessionConfig"][0].availableTimezones[] {
     label,
     value,
     offsetHours,
@@ -116,7 +151,7 @@ export async function getAvailableTimezones(): Promise<Timezone[]> {
  * @param holidays - Lista de festivos
  */
 export function isHoliday(date: string, holidays: Holiday[]): boolean {
-  const [year, month, day] = date.split('-')
+  const [, month, day] = date.split('-')
 
   for (const holiday of holidays) {
     if (holiday.recurring) {
@@ -184,7 +219,7 @@ export function getDefaultTimezone(timezones: Timezone[]): Timezone | null {
 
 /**
  * Convierte una hora de Colombia a otra zona horaria
- * @param timeCololombia - Hora en formato HH:mm (hora Colombia)
+ * @param timeColombia - Hora en formato HH:mm (hora Colombia)
  * @param offsetHours - Diferencia en horas respecto a Colombia
  * @returns Hora convertida en formato HH:mm
  */
@@ -221,4 +256,68 @@ export function isNextDay(timeColombia: string, offsetHours: number): boolean {
 export function isPreviousDay(timeColombia: string, offsetHours: number): boolean {
   const [hours] = timeColombia.split(':').map(Number)
   return hours + offsetHours < 0
+}
+
+// ==========================================
+// HORARIOS SEMANALES
+// ==========================================
+
+type DayOfWeek = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday'
+
+const dayOfWeekMap: Record<number, DayOfWeek> = {
+  0: 'sunday',
+  1: 'monday',
+  2: 'tuesday',
+  3: 'wednesday',
+  4: 'thursday',
+  5: 'friday',
+  6: 'saturday',
+}
+
+/**
+ * Obtiene las franjas horarias para un día específico de la semana
+ * @param weeklySchedule - Configuración semanal de horarios
+ * @param dayOfWeek - Número del día (0 = domingo, 1 = lunes, ..., 6 = sábado)
+ * @returns Array de franjas horarias para ese día
+ */
+export function getTimeSlotsForDayOfWeek(
+  weeklySchedule: WeeklySchedule | undefined,
+  dayOfWeek: number
+): TimeSlotRange[] {
+  if (!weeklySchedule) return []
+
+  const dayName = dayOfWeekMap[dayOfWeek]
+  if (!dayName) return []
+
+  return weeklySchedule[dayName] || []
+}
+
+/**
+ * Obtiene los días de la semana que tienen horarios configurados
+ * @param weeklySchedule - Configuración semanal de horarios
+ * @returns Array de números de días (0 = domingo, 1 = lunes, ..., 6 = sábado)
+ */
+export function getAvailableDaysOfWeek(weeklySchedule: WeeklySchedule | undefined): number[] {
+  if (!weeklySchedule) return []
+
+  const availableDays: number[] = []
+
+  Object.entries(dayOfWeekMap).forEach(([dayNum, dayName]) => {
+    const slots = weeklySchedule[dayName]
+    if (slots && slots.length > 0) {
+      availableDays.push(Number(dayNum))
+    }
+  })
+
+  return availableDays.sort((a, b) => a - b)
+}
+
+/**
+ * Verifica si un día de la semana tiene disponibilidad
+ * @param weeklySchedule - Configuración semanal de horarios
+ * @param dayOfWeek - Número del día (0 = domingo, 1 = lunes, ..., 6 = sábado)
+ */
+export function isDayAvailable(weeklySchedule: WeeklySchedule | undefined, dayOfWeek: number): boolean {
+  const slots = getTimeSlotsForDayOfWeek(weeklySchedule, dayOfWeek)
+  return slots.length > 0
 }

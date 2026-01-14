@@ -45,7 +45,7 @@ export default async function MeditacionesPage() {
             </div>
 
             {/* Title */}
-            <h1 className="font-sans text-3xl sm:text-4xl md:text-5xl lg:text-5xl text-brand mb-5 sm:mb-6 font-semibold leading-tight">
+            <h1 className="font-gazeta text-4xl sm:text-5xl lg:text-6xl text-[#4b316c] mb-5 sm:mb-6 leading-tight">
               Meditaciones Gratis
             </h1>
 
@@ -89,7 +89,7 @@ export default async function MeditacionesPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="font-sans text-xl md:text-2xl font-semibold text-gray-700 mb-3">
+                <h3 className="font-gazeta text-xl md:text-2xl text-[#654177] mb-3">
                   Próximamente
                 </h3>
                 <p className="font-sans text-base text-gray-600 max-w-md mx-auto">
@@ -112,7 +112,7 @@ export default async function MeditacionesPage() {
       <section className="bg-gradient-to-b from-white to-[#FFF8F0] py-12 sm:py-16">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="font-sans text-2xl md:text-3xl font-semibold text-brand mb-4 leading-snug">
+            <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF] mb-4 leading-snug">
               ¿Quieres ir más profundo?
             </h2>
             <p className="font-sans text-base md:text-lg text-gray-700 leading-relaxed font-normal mb-6">

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSessionBySlug, getTimeSlotsForDay } from '@/lib/sanity/queries/sessions'
-import { getBookingSettings, isHoliday, isInBlockedRange } from '@/lib/sanity/queries/bookingSettings'
+import { getSessionBySlug } from '@/lib/sanity/queries/sessions'
+import {
+  getBookingSettings,
+  isHoliday,
+  isInBlockedRange,
+  getTimeSlotsForDayOfWeek
+} from '@/lib/sanity/queries/bookingSettings'
 import { prisma } from '@/lib/prisma'
 
 export const runtime = 'nodejs'
@@ -105,9 +110,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Get available time slots for this day of week
+    // Get available time slots for this day of week from global settings
     const dayOfWeek = selectedDate.getDay()
-    const daySlots = getTimeSlotsForDay(session, dayOfWeek)
+    const daySlots = getTimeSlotsForDayOfWeek(bookingSettings?.weeklySchedule, dayOfWeek)
 
     if (!daySlots || daySlots.length === 0) {
       return NextResponse.json({

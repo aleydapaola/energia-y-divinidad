@@ -115,7 +115,7 @@ export function PricingCard({
         )}
 
         {billingInterval === 'yearly' && price && (
-          <p className="text-xs text-neutral-500 mt-1">
+          <p className="text-sm text-neutral-500 mt-1">
             {formatPrice(price)} facturado anualmente
           </p>
         )}

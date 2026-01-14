@@ -51,7 +51,7 @@ export default async function StripePaymentPage({
             <div className="w-16 h-16 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <CreditCard className="w-8 h-8 text-brand" />
             </div>
-            <h1 className="font-serif text-3xl sm:text-4xl text-brand mb-3">
+            <h1 className="font-gazeta text-3xl sm:text-4xl text-[#8A4BAF] mb-3">
               Pago con Tarjeta
             </h1>
             <p className="text-primary/70">
@@ -78,7 +78,7 @@ export default async function StripePaymentPage({
 
           {/* Coming Soon */}
           <div className="bg-brand/5 rounded-lg p-8 text-center">
-            <h2 className="font-serif text-2xl text-brand mb-4">
+            <h2 className="font-gazeta text-2xl text-[#8A4BAF] mb-4">
               Próximamente
             </h2>
             <p className="text-primary/70 mb-6">

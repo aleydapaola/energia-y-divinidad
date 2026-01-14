@@ -44,12 +44,14 @@ export async function generateMetadata({ params }: EventPageProps): Promise<Meta
       title: metaTitle,
       description: metaDescription,
       type: 'website',
-      images: [
-        {
-          url: event.mainImage.asset.url,
-          alt: event.mainImage.alt || event.title,
-        },
-      ],
+      ...(event.mainImage?.asset?.url && {
+        images: [
+          {
+            url: event.mainImage.asset.url,
+            alt: event.mainImage.alt || event.title,
+          },
+        ],
+      }),
     },
   }
 }
@@ -94,14 +96,20 @@ export default async function EventDetailPage({ params }: EventPageProps) {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
             {/* Image */}
-            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-xl">
-              <Image
-                src={event.mainImage.asset.url}
-                alt={event.mainImage.alt || event.title}
-                fill
-                className="object-cover"
-                priority
-              />
+            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-xl bg-gradient-to-br from-[#8A4BAF]/20 to-[#2D4CC7]/20">
+              {event.mainImage?.asset?.url ? (
+                <Image
+                  src={event.mainImage.asset.url}
+                  alt={event.mainImage.alt || event.title}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-9xl">📅</span>
+                </div>
+              )}
               {isCancelled && (
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                   <span className="bg-red-500 text-white px-6 py-3 rounded-lg text-xl font-semibold">

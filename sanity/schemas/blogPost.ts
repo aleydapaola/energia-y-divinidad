@@ -353,8 +353,8 @@ export default defineType({
       name: 'relatedSessions',
       title: 'Sesiones Relacionadas',
       type: 'array',
-      of: [{ type: 'reference', to: [{ type: 'session' }] }],
-      description: 'Sesiones 1:1 mencionadas en el artículo',
+      of: [{ type: 'reference', to: [{ type: 'sessionConfig' }] }],
+      description: 'Sesiones mencionadas en el artículo',
       validation: (Rule) => Rule.max(3),
     }),
     defineField({

@@ -186,7 +186,7 @@ function CheckoutContent() {
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 py-12 px-4">
       <div className="max-w-4xl mx-auto">
-        <h1 className="font-serif text-3xl sm:text-4xl text-brand text-center mb-8">
+        <h1 className="font-gazeta text-3xl sm:text-4xl text-[#8A4BAF] text-center mb-8">
           Finalizar Suscripción
         </h1>
 

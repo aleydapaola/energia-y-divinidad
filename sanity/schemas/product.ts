@@ -225,7 +225,7 @@ export default defineType({
           name: 'sessionType',
           title: 'Tipo de Sesión',
           type: 'reference',
-          to: [{ type: 'session' }],
+          to: [{ type: 'sessionConfig' }],
         },
         {
           name: 'validityPeriod',

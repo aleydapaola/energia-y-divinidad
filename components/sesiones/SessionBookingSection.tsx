@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { BookingCalendar } from '@/components/booking/booking-calendar'
 import type { Session } from '@/lib/sanity/queries/sessions'
-import type { Holiday, BlockedDateRange, Timezone } from '@/lib/sanity/queries/bookingSettings'
+import type { Holiday, BlockedDateRange, Timezone, WeeklySchedule } from '@/lib/sanity/queries/bookingSettings'
 import { Calendar, Clock } from 'lucide-react'
 
 interface SessionBookingSectionProps {
@@ -12,6 +12,7 @@ interface SessionBookingSectionProps {
   blockedDates?: BlockedDateRange[]
   timezones?: Timezone[]
   timezoneNote?: string
+  weeklySchedule?: WeeklySchedule
 }
 
 export function SessionBookingSection({
@@ -20,6 +21,7 @@ export function SessionBookingSection({
   blockedDates = [],
   timezones = [],
   timezoneNote,
+  weeklySchedule,
 }: SessionBookingSectionProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
@@ -84,6 +86,7 @@ export function SessionBookingSection({
         timezones={timezones}
         timezoneNote={timezoneNote}
         showTimezoneSelector={true}
+        weeklySchedule={weeklySchedule}
       />
 
       {/* Summary and CTA */}
@@ -137,7 +140,7 @@ export function SessionBookingSection({
             Continuar con la Reserva
           </button>
 
-          <p className="text-xs text-primary/60 text-center mt-4">
+          <p className="text-sm text-primary/60 text-center mt-4">
             Serás redirigido a la página de pago para completar tu reserva
           </p>
         </div>

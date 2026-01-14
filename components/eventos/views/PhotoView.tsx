@@ -28,13 +28,19 @@ export default function PhotoView({ events }: PhotoViewProps) {
             `}
           >
             {/* Imagen */}
-            <div className="relative aspect-square">
-              <Image
-                src={event.mainImage.asset.url}
-                alt={event.mainImage.alt || event.title}
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-              />
+            <div className="relative aspect-square bg-gradient-to-br from-[#8A4BAF]/30 to-[#2D4CC7]/30">
+              {event.mainImage?.asset?.url ? (
+                <Image
+                  src={event.mainImage.asset.url}
+                  alt={event.mainImage.alt || event.title}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-8xl">📅</span>
+                </div>
+              )}
 
               {/* Overlay con gradiente */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />

@@ -104,7 +104,7 @@ export default async function MeditationPage({ params }: MeditationPageProps) {
             </div>
 
             {/* Title */}
-            <h1 className="font-sans text-3xl sm:text-4xl md:text-5xl text-brand mb-4 font-semibold leading-tight">
+            <h1 className="font-gazeta text-4xl sm:text-5xl lg:text-6xl text-[#4b316c] mb-4 leading-tight">
               {meditation.title}
             </h1>
 
@@ -239,7 +239,7 @@ export default async function MeditationPage({ params }: MeditationPageProps) {
         <section className="py-8 sm:py-12 bg-white">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto">
-              <h2 className="font-sans text-2xl md:text-3xl font-semibold text-brand mb-6 leading-snug">
+              <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF] mb-6 leading-snug">
                 Beneficios de esta meditación
               </h2>
               <ul className="space-y-3">
@@ -262,7 +262,7 @@ export default async function MeditationPage({ params }: MeditationPageProps) {
         <section className="py-8 sm:py-12 bg-gradient-to-b from-white to-[#FFF8F0]">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto">
-              <h2 className="font-sans text-2xl md:text-3xl font-semibold text-brand mb-6 leading-snug">
+              <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF] mb-6 leading-snug">
                 Transcripción
               </h2>
               <div className="bg-white rounded-lg p-6 shadow-lg border border-[#d4a574]/20">
@@ -280,7 +280,7 @@ export default async function MeditationPage({ params }: MeditationPageProps) {
         <section className="py-12 sm:py-16 bg-white">
           <div className="container mx-auto px-4">
             <div className="max-w-7xl mx-auto">
-              <h2 className="font-sans text-2xl md:text-3xl font-semibold text-brand mb-8 text-center leading-snug">
+              <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF] mb-8 text-center leading-snug">
                 Meditaciones relacionadas
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">

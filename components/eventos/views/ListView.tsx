@@ -47,13 +47,19 @@ export default function ListView({ events, showPastEvents = false }: ListViewPro
         }`}
       >
         {/* Imagen */}
-        <div className="relative w-full sm:w-64 h-48 sm:h-40 flex-shrink-0">
-          <Image
-            src={event.mainImage.asset.url}
-            alt={event.mainImage.alt || event.title}
-            fill
-            className="object-cover"
-          />
+        <div className="relative w-full sm:w-64 h-48 sm:h-40 flex-shrink-0 bg-gradient-to-br from-[#8A4BAF]/20 to-[#2D4CC7]/20">
+          {event.mainImage?.asset?.url ? (
+            <Image
+              src={event.mainImage.asset.url}
+              alt={event.mainImage.alt || event.title}
+              fill
+              className="object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-4xl">📅</span>
+            </div>
+          )}
           {/* Badges de estado */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
             {isPast && (

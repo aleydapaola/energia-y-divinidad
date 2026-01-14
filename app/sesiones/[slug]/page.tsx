@@ -42,12 +42,14 @@ export async function generateMetadata({ params }: SessionPageProps): Promise<Me
       title: metaTitle,
       description: metaDescription,
       type: 'website',
-      images: [
-        {
-          url: session.mainImage.asset.url,
-          alt: session.mainImage.alt || session.title,
-        },
-      ],
+      ...(session.mainImage?.asset?.url && {
+        images: [
+          {
+            url: session.mainImage.asset.url,
+            alt: session.mainImage.alt || session.title,
+          },
+        ],
+      }),
     },
   }
 }
@@ -85,14 +87,20 @@ export default async function SessionDetailPage({ params }: SessionPageProps) {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
             {/* Image */}
-            <div className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-xl">
-              <Image
-                src={session.mainImage.asset.url}
-                alt={session.mainImage.alt || session.title}
-                fill
-                className="object-cover"
-                priority
-              />
+            <div className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-xl bg-gradient-to-br from-[#8A4BAF]/20 to-[#2D4CC7]/20">
+              {session.mainImage?.asset?.url ? (
+                <Image
+                  src={session.mainImage.asset.url}
+                  alt={session.mainImage.alt || session.title}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-9xl">🔮</span>
+                </div>
+              )}
               {session.featured && (
                 <div className="absolute top-4 right-4 bg-brand text-white px-4 py-2 rounded-full text-sm font-semibold">
                   ⭐ Destacado
@@ -110,7 +118,7 @@ export default async function SessionDetailPage({ params }: SessionPageProps) {
               </div>
 
               {/* Title */}
-              <h1 className="font-serif text-4xl sm:text-5xl text-brand mb-6">
+              <h1 className="font-gazeta text-4xl sm:text-5xl text-[#654177] mb-6">
                 {session.title}
               </h1>
 
@@ -178,7 +186,7 @@ export default async function SessionDetailPage({ params }: SessionPageProps) {
       <section className="py-12 border-t border-primary/10">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
-            <h2 className="font-serif text-3xl text-brand mb-6">
+            <h2 className="font-gazeta text-3xl text-[#8A4BAF] mb-6">
               Sobre esta sesión
             </h2>
             <div className="prose prose-lg max-w-none text-primary/80 leading-relaxed">
@@ -193,7 +201,7 @@ export default async function SessionDetailPage({ params }: SessionPageProps) {
         <section className="py-12 bg-brand/5">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto">
-              <h2 className="font-serif text-3xl text-brand mb-6">
+              <h2 className="font-gazeta text-3xl text-[#8A4BAF] mb-6">
                 Beneficios
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -214,7 +222,7 @@ export default async function SessionDetailPage({ params }: SessionPageProps) {
         <section className="py-12">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto">
-              <h2 className="font-serif text-3xl text-brand mb-6">
+              <h2 className="font-gazeta text-3xl text-[#8A4BAF] mb-6">
                 Qué esperar
               </h2>
               <div className="prose prose-lg max-w-none text-primary/80 leading-relaxed">
@@ -230,7 +238,7 @@ export default async function SessionDetailPage({ params }: SessionPageProps) {
         <section className="py-12 bg-brand/5">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto">
-              <h2 className="font-serif text-3xl text-brand mb-6">
+              <h2 className="font-gazeta text-3xl text-[#8A4BAF] mb-6">
                 Preparación recomendada
               </h2>
               <div className="prose prose-lg max-w-none text-primary/80 leading-relaxed">
@@ -245,7 +253,7 @@ export default async function SessionDetailPage({ params }: SessionPageProps) {
       <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <h2 className="font-serif text-3xl sm:text-4xl text-brand mb-8 text-center">
+            <h2 className="font-gazeta text-3xl sm:text-4xl text-[#8A4BAF] mb-8 text-center">
               Reserva tu Sesión
             </h2>
             <SessionBookingSection
@@ -254,6 +262,7 @@ export default async function SessionDetailPage({ params }: SessionPageProps) {
               blockedDates={bookingSettings?.blockedDates || []}
               timezones={bookingSettings?.availableTimezones || []}
               timezoneNote={bookingSettings?.timezoneNote}
+              weeklySchedule={bookingSettings?.weeklySchedule}
             />
           </div>
         </div>

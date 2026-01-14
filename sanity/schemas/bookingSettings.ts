@@ -163,6 +163,250 @@ export default defineType({
     }),
 
     // ==========================================
+    // HORARIOS SEMANALES DE DISPONIBILIDAD
+    // ==========================================
+    defineField({
+      name: 'weeklySchedule',
+      title: 'Horarios Semanales de Disponibilidad',
+      description: 'Configura las franjas horarias disponibles para cada día de la semana. Puedes añadir múltiples franjas por día (ej: mañana y tarde).',
+      type: 'object',
+      fields: [
+        {
+          name: 'monday',
+          title: '🟢 Lunes',
+          type: 'array',
+          of: [
+            {
+              type: 'object',
+              title: 'Franja horaria',
+              fields: [
+                {
+                  name: 'start',
+                  title: 'Hora de inicio',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 08:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+                {
+                  name: 'end',
+                  title: 'Hora de fin',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 12:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+              ],
+              preview: {
+                select: { start: 'start', end: 'end' },
+                prepare({ start, end }) {
+                  return { title: `${start || '??:??'} - ${end || '??:??'}` }
+                },
+              },
+            },
+          ],
+        },
+        {
+          name: 'tuesday',
+          title: '🟢 Martes',
+          type: 'array',
+          of: [
+            {
+              type: 'object',
+              title: 'Franja horaria',
+              fields: [
+                {
+                  name: 'start',
+                  title: 'Hora de inicio',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 08:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+                {
+                  name: 'end',
+                  title: 'Hora de fin',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 12:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+              ],
+              preview: {
+                select: { start: 'start', end: 'end' },
+                prepare({ start, end }) {
+                  return { title: `${start || '??:??'} - ${end || '??:??'}` }
+                },
+              },
+            },
+          ],
+        },
+        {
+          name: 'wednesday',
+          title: '🟢 Miércoles',
+          type: 'array',
+          of: [
+            {
+              type: 'object',
+              title: 'Franja horaria',
+              fields: [
+                {
+                  name: 'start',
+                  title: 'Hora de inicio',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 08:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+                {
+                  name: 'end',
+                  title: 'Hora de fin',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 12:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+              ],
+              preview: {
+                select: { start: 'start', end: 'end' },
+                prepare({ start, end }) {
+                  return { title: `${start || '??:??'} - ${end || '??:??'}` }
+                },
+              },
+            },
+          ],
+        },
+        {
+          name: 'thursday',
+          title: '🟢 Jueves',
+          type: 'array',
+          of: [
+            {
+              type: 'object',
+              title: 'Franja horaria',
+              fields: [
+                {
+                  name: 'start',
+                  title: 'Hora de inicio',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 08:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+                {
+                  name: 'end',
+                  title: 'Hora de fin',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 12:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+              ],
+              preview: {
+                select: { start: 'start', end: 'end' },
+                prepare({ start, end }) {
+                  return { title: `${start || '??:??'} - ${end || '??:??'}` }
+                },
+              },
+            },
+          ],
+        },
+        {
+          name: 'friday',
+          title: '🟢 Viernes',
+          type: 'array',
+          of: [
+            {
+              type: 'object',
+              title: 'Franja horaria',
+              fields: [
+                {
+                  name: 'start',
+                  title: 'Hora de inicio',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 08:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+                {
+                  name: 'end',
+                  title: 'Hora de fin',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 12:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+              ],
+              preview: {
+                select: { start: 'start', end: 'end' },
+                prepare({ start, end }) {
+                  return { title: `${start || '??:??'} - ${end || '??:??'}` }
+                },
+              },
+            },
+          ],
+        },
+        {
+          name: 'saturday',
+          title: '🟡 Sábado',
+          type: 'array',
+          of: [
+            {
+              type: 'object',
+              title: 'Franja horaria',
+              fields: [
+                {
+                  name: 'start',
+                  title: 'Hora de inicio',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 08:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+                {
+                  name: 'end',
+                  title: 'Hora de fin',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 12:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+              ],
+              preview: {
+                select: { start: 'start', end: 'end' },
+                prepare({ start, end }) {
+                  return { title: `${start || '??:??'} - ${end || '??:??'}` }
+                },
+              },
+            },
+          ],
+        },
+        {
+          name: 'sunday',
+          title: '🔴 Domingo',
+          type: 'array',
+          description: 'Dejar vacío si no hay disponibilidad los domingos',
+          of: [
+            {
+              type: 'object',
+              title: 'Franja horaria',
+              fields: [
+                {
+                  name: 'start',
+                  title: 'Hora de inicio',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 08:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+                {
+                  name: 'end',
+                  title: 'Hora de fin',
+                  type: 'string',
+                  description: 'Formato 24h (ej: 12:00)',
+                  validation: (Rule) => Rule.required().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { name: 'hora', invert: false }),
+                },
+              ],
+              preview: {
+                select: { start: 'start', end: 'end' },
+                prepare({ start, end }) {
+                  return { title: `${start || '??:??'} - ${end || '??:??'}` }
+                },
+              },
+            },
+          ],
+        },
+      ],
+    }),
+
+    // ==========================================
     // CONFIGURACION POR DEFECTO
     // ==========================================
     defineField({
