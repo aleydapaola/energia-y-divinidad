@@ -70,10 +70,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export async function generateStaticParams() {
-  const posts = await getBlogPosts()
-  return posts.map((post) => ({
-    slug: post.slug.current,
-  }))
+  // Skip static generation if Sanity is not configured
+  if (!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID) {
+    return []
+  }
+  try {
+    const posts = await getBlogPosts()
+    return posts.map((post) => ({
+      slug: post.slug.current,
+    }))
+  } catch {
+    return []
+  }
 }
 
 export default async function BlogPostPage({ params }: PageProps) {
