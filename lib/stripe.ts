@@ -1,12 +1,21 @@
 import Stripe from 'stripe'
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY no está configurado')
-}
+// Lazy initialization to avoid build-time errors when env vars are not set
+let stripeInstance: Stripe | null = null
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-02-24.acacia',
-  typescript: true,
+export const stripe = new Proxy({} as Stripe, {
+  get(_, prop) {
+    if (!stripeInstance) {
+      if (!process.env.STRIPE_SECRET_KEY) {
+        throw new Error('STRIPE_SECRET_KEY no está configurado')
+      }
+      stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
+        apiVersion: '2025-02-24.acacia',
+        typescript: true,
+      })
+    }
+    return (stripeInstance as unknown as Record<string | symbol, unknown>)[prop]
+  },
 })
 
 /**
