@@ -21,9 +21,13 @@ export default async function HomePage() {
       {/* Hero Section with New Design */}
       <section className="relative min-h-[85vh] sm:min-h-[80vh] lg:min-h-[85vh] w-full overflow-hidden">
         {/* Background Image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: 'url(/images/ethereal-background.jpg)' }}
+        <Image
+          src="/images/ethereal-background.jpg"
+          alt="Fondo etéreo espiritual"
+          fill
+          priority
+          className="object-cover object-center"
+          sizes="100vw"
         />
 
         {/* Overlay gradient for better text readability */}
@@ -33,10 +37,13 @@ export default async function HomePage() {
         <div className="relative container mx-auto px-4 sm:px-6 lg:px-12 h-full min-h-[85vh] sm:min-h-[80vh] lg:min-h-[85vh]">
           {/* Image positioned absolutely at bottom right */}
           <div className="hidden lg:block absolute bottom-0 right-0 w-1/2 h-full pointer-events-none overflow-visible">
-            <img
+            <Image
               src="/images/chica-removebg-preview.png"
               alt="Guía espiritual"
+              width={500}
+              height={800}
               className="absolute bottom-0 right-4 h-[calc(100%-2rem)] w-auto object-contain object-bottom"
+              priority
             />
           </div>
 
