@@ -1082,6 +1082,175 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
   }
 }
 
+// ============================================
+// EMAILS DE CONTACTO
+// ============================================
+
+interface SendContactEmailParams {
+  name: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+}
+
+export async function sendContactEmail(params: SendContactEmailParams) {
+  const { name, email, phone, subject, message } = params;
+
+  // Email del destinatario (Aleyda)
+  const CONTACT_EMAIL = 'contacto@energiaydivinidad.com';
+
+  if (DEV_MODE) {
+    console.log('\n========================================');
+    console.log('📧 EMAIL DE CONTACTO (Modo Desarrollo)');
+    console.log('========================================');
+    console.log(`De: ${name} <${email}>`);
+    console.log(`Teléfono: ${phone || 'No proporcionado'}`);
+    console.log(`Asunto: ${subject}`);
+    console.log(`Mensaje: ${message}`);
+    console.log('========================================\n');
+
+    if (DEV_AUTO_VERIFY) {
+      return { success: true, data: { id: 'dev-mode-simulated' } };
+    }
+  }
+
+  try {
+    const { data, error } = await getResendClient().emails.send({
+      from: FROM_EMAIL,
+      to: CONTACT_EMAIL,
+      replyTo: email,
+      subject: `[Contacto Web] ${subject} - ${name}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Nuevo mensaje de contacto</title>
+          </head>
+          <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f0f5;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td align="center" style="padding: 40px 20px;">
+                  <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
+                    <!-- Header -->
+                    <tr>
+                      <td align="center" style="padding: 30px 0;">
+                        <h1 style="margin: 0; font-size: 32px; color: #8A4BAF; font-weight: 400;">
+                          Energía y Divinidad
+                        </h1>
+                        <p style="margin: 10px 0 0; font-size: 14px; color: #666;">
+                          Nuevo mensaje desde el formulario de contacto
+                        </p>
+                      </td>
+                    </tr>
+
+                    <!-- Main Content -->
+                    <tr>
+                      <td style="background-color: #ffffff; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px rgba(138, 75, 175, 0.1);">
+                        <!-- Subject Badge -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td align="center" style="padding-bottom: 20px;">
+                              <span style="display: inline-block; padding: 8px 20px; background-color: #f8f0f5; color: #8A4BAF; border-radius: 20px; font-size: 14px; font-weight: 600;">
+                                📩 ${subject}
+                              </span>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <!-- Contact Info -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f8f0f5; border-radius: 12px; margin-bottom: 25px;">
+                          <tr>
+                            <td style="padding: 20px;">
+                              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(138, 75, 175, 0.1);">
+                                    <span style="font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 1px;">Nombre</span>
+                                    <p style="margin: 5px 0 0; font-size: 16px; color: #654177; font-weight: 600;">
+                                      ${name}
+                                    </p>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(138, 75, 175, 0.1);">
+                                    <span style="font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 1px;">Email</span>
+                                    <p style="margin: 5px 0 0; font-size: 16px; color: #654177;">
+                                      <a href="mailto:${email}" style="color: #8A4BAF; text-decoration: none;">${email}</a>
+                                    </p>
+                                  </td>
+                                </tr>
+                                ${phone ? `
+                                <tr>
+                                  <td style="padding: 8px 0;">
+                                    <span style="font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 1px;">Teléfono/WhatsApp</span>
+                                    <p style="margin: 5px 0 0; font-size: 16px; color: #654177;">
+                                      <a href="https://wa.me/${phone.replace(/[^0-9]/g, '')}" style="color: #25D366; text-decoration: none;">${phone}</a>
+                                    </p>
+                                  </td>
+                                </tr>
+                                ` : ''}
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <!-- Message -->
+                        <h3 style="margin: 0 0 15px; font-size: 16px; color: #654177;">
+                          Mensaje:
+                        </h3>
+                        <div style="padding: 20px; background-color: #fafafa; border-radius: 8px; border-left: 4px solid #8A4BAF;">
+                          <p style="margin: 0; font-size: 15px; color: #4A4A4A; line-height: 1.7; white-space: pre-wrap;">
+${message}
+                          </p>
+                        </div>
+
+                        <!-- Reply Button -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td align="center" style="padding: 30px 0 0;">
+                              <a href="mailto:${email}?subject=Re: ${encodeURIComponent(subject)}" style="display: inline-block; padding: 14px 35px; background-color: #4944a4; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600;">
+                                Responder a ${name.split(' ')[0]}
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                      <td align="center" style="padding: 30px 0;">
+                        <p style="margin: 0; font-size: 12px; color: #999999;">
+                          Este mensaje fue enviado desde el formulario de contacto de energiaydivinidad.com
+                        </p>
+                        <p style="margin: 10px 0 0; font-size: 12px; color: #999999;">
+                          ${new Date().toLocaleString('es-CO', { dateStyle: 'full', timeStyle: 'short' })}
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('Error sending contact email:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error sending contact email:', error);
+    return { success: false, error };
+  }
+}
+
 interface SendCancellationEmailParams {
   email: string;
   name: string;

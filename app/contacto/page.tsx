@@ -1,8 +1,9 @@
 import { Header } from "@/components/layout/Header"
 import { Footer } from "@/components/layout/Footer"
 import { auth } from "@/lib/auth"
-import { Mail, Phone, MapPin, Clock, Send } from "lucide-react"
+import { Mail, MapPin, Clock } from "lucide-react"
 import Link from "next/link"
+import { ContactForm } from "@/components/contact/ContactForm"
 
 export const metadata = {
   title: "Contacto | Energía y Divinidad",
@@ -184,113 +185,7 @@ export default async function ContactoPage() {
 
               {/* Contact Form */}
               <div>
-                <div className="bg-gradient-to-br from-[#f8f0f5] via-white to-[#eef1fa] rounded-3xl p-6 sm:p-8 lg:p-10 shadow-xl border border-[#8A4BAF]/10">
-                  <h2 className="font-gazeta text-3xl sm:text-4xl text-[#8A4BAF] mb-2">
-                    Envíame un mensaje
-                  </h2>
-                  <p className="font-dm-sans text-[#674c6a] mb-8">
-                    Completa el formulario y te responderé lo antes posible.
-                  </p>
-
-                  <form className="space-y-5">
-                    {/* Name */}
-                    <div>
-                      <label htmlFor="name" className="block font-dm-sans text-[#4A4A4A] text-sm font-medium mb-2">
-                        Nombre completo *
-                      </label>
-                      <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        required
-                        className="w-full px-4 py-3 bg-white border border-[#8A4BAF]/20 rounded-xl text-[#4A4A4A] placeholder-[#9a9a9a] focus:outline-none focus:border-[#8A4BAF] focus:ring-2 focus:ring-[#8A4BAF]/20 transition-all font-dm-sans"
-                        placeholder="Tu nombre"
-                      />
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                      <label htmlFor="email" className="block font-dm-sans text-[#4A4A4A] text-sm font-medium mb-2">
-                        Correo electrónico *
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        required
-                        className="w-full px-4 py-3 bg-white border border-[#8A4BAF]/20 rounded-xl text-[#4A4A4A] placeholder-[#9a9a9a] focus:outline-none focus:border-[#8A4BAF] focus:ring-2 focus:ring-[#8A4BAF]/20 transition-all font-dm-sans"
-                        placeholder="tu@email.com"
-                      />
-                    </div>
-
-                    {/* Phone */}
-                    <div>
-                      <label htmlFor="phone" className="block font-dm-sans text-[#4A4A4A] text-sm font-medium mb-2">
-                        Teléfono / WhatsApp
-                      </label>
-                      <input
-                        type="tel"
-                        id="phone"
-                        name="phone"
-                        className="w-full px-4 py-3 bg-white border border-[#8A4BAF]/20 rounded-xl text-[#4A4A4A] placeholder-[#9a9a9a] focus:outline-none focus:border-[#8A4BAF] focus:ring-2 focus:ring-[#8A4BAF]/20 transition-all font-dm-sans"
-                        placeholder="+57 300 123 4567"
-                      />
-                    </div>
-
-                    {/* Subject */}
-                    <div>
-                      <label htmlFor="subject" className="block font-dm-sans text-[#4A4A4A] text-sm font-medium mb-2">
-                        Asunto *
-                      </label>
-                      <select
-                        id="subject"
-                        name="subject"
-                        required
-                        className="w-full px-4 py-3 bg-white border border-[#8A4BAF]/20 rounded-xl text-[#4A4A4A] focus:outline-none focus:border-[#8A4BAF] focus:ring-2 focus:ring-[#8A4BAF]/20 transition-all font-dm-sans"
-                      >
-                        <option value="">Selecciona un tema</option>
-                        <option value="sesiones">Sesiones de canalización</option>
-                        <option value="membresia">Membresía</option>
-                        <option value="academia">Academia / Cursos</option>
-                        <option value="eventos">Eventos y talleres</option>
-                        <option value="colaboracion">Colaboración / Prensa</option>
-                        <option value="otro">Otro</option>
-                      </select>
-                    </div>
-
-                    {/* Message */}
-                    <div>
-                      <label htmlFor="message" className="block font-dm-sans text-[#4A4A4A] text-sm font-medium mb-2">
-                        Mensaje *
-                      </label>
-                      <textarea
-                        id="message"
-                        name="message"
-                        required
-                        rows={5}
-                        className="w-full px-4 py-3 bg-white border border-[#8A4BAF]/20 rounded-xl text-[#4A4A4A] placeholder-[#9a9a9a] focus:outline-none focus:border-[#8A4BAF] focus:ring-2 focus:ring-[#8A4BAF]/20 transition-all font-dm-sans resize-none"
-                        placeholder="Cuéntame en qué puedo ayudarte..."
-                      ></textarea>
-                    </div>
-
-                    {/* Submit Button */}
-                    <button
-                      type="submit"
-                      className="w-full inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#4944a4] text-white rounded-full hover:bg-[#3d3890] transition-all transform hover:scale-[1.02] font-dm-sans text-base font-semibold shadow-xl"
-                    >
-                      <Send className="w-5 h-5" />
-                      Enviar mensaje
-                    </button>
-
-                    <p className="font-dm-sans text-xs text-[#9a9a9a] text-center">
-                      Al enviar este formulario, aceptas nuestra{" "}
-                      <Link href="/politica-de-privacidad" className="text-[#8A4BAF] hover:underline">
-                        política de privacidad
-                      </Link>
-                      .
-                    </p>
-                  </form>
-                </div>
+                <ContactForm />
               </div>
 
             </div>
