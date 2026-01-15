@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, MapPin, Video, Users, Minus, Plus, Loader2, Check } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, Video, Users, Minus, Plus, Loader2, CreditCard, Smartphone } from 'lucide-react'
+import type { PaymentMethodType } from '@/lib/membership-access'
 import { useSession } from 'next-auth/react'
 
 interface Event {
@@ -38,7 +39,6 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Form state
@@ -47,12 +47,10 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
   const [customerEmail, setCustomerEmail] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [country, setCountry] = useState<'colombia' | 'international'>('colombia')
-  const [paymentMethod, setPaymentMethod] = useState<'nequi' | 'stripe'>('nequi')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('wompi_nequi')
   const [notes, setNotes] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
 
-  // Order result
-  const [orderResult, setOrderResult] = useState<any>(null)
 
   // Cargar evento
   useEffect(() => {
@@ -118,34 +116,64 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
     setError(null)
 
     try {
-      const response = await fetch('/api/events/book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId: event._id,
-          seats,
+      const currency = country === 'colombia' ? 'COP' : 'USD'
+      const amount = totalPrice
+
+      // Determinar endpoint según método de pago
+      let endpoint: string
+      let body: Record<string, unknown>
+
+      if (paymentMethod === 'wompi_nequi' || paymentMethod === 'wompi_card') {
+        // Pago via Wompi (Colombia)
+        endpoint = '/api/checkout/wompi'
+        body = {
+          productType: 'event',
+          productId: event._id,
+          productName: `${event.title} (${seats} cupo${seats > 1 ? 's' : ''})`,
+          amount,
+          paymentMethod: paymentMethod === 'wompi_nequi' ? 'nequi' : 'card',
           customerName,
           customerEmail,
           customerPhone,
-          country,
-          paymentMethod,
+          seats,
           notes,
-        }),
+        }
+      } else {
+        // Pago via ePayco (Internacional)
+        endpoint = '/api/checkout/epayco'
+        body = {
+          productType: 'event',
+          productId: event._id,
+          productName: `${event.title} (${seats} cupo${seats > 1 ? 's' : ''})`,
+          amount,
+          currency,
+          paymentMethod: paymentMethod === 'epayco_paypal' ? 'paypal' : 'card',
+          customerName: customerName.split(' ')[0],
+          customerLastName: customerName.split(' ').slice(1).join(' ') || 'Cliente',
+          customerEmail,
+          customerPhone,
+          seats,
+          notes,
+        }
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al procesar la reserva')
+        throw new Error(data.error || 'Error al procesar el pago')
       }
 
-      setOrderResult(data)
-      setSuccess(true)
-
-      // Si es pago con Stripe, redirigir a checkout de Stripe
-      if (paymentMethod === 'stripe' && !data.isFreeForMember) {
-        // TODO: Implementar redirección a Stripe Checkout
-        // router.push(`/checkout/stripe?orderId=${data.orderId}`)
+      // Redirect según respuesta
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl
+      } else if (data.redirectUrl) {
+        router.push(data.redirectUrl)
       }
 
     } catch (err) {
@@ -170,87 +198,6 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
         <Link href="/eventos" className="text-[#4944a4] hover:underline">
           Volver a eventos
         </Link>
-      </div>
-    )
-  }
-
-  if (success && orderResult) {
-    return (
-      <div className="min-h-screen bg-[#f8f0f5] py-12">
-        <div className="container mx-auto px-4 max-w-2xl">
-          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-8 h-8 text-green-600" />
-            </div>
-
-            <h1 className="font-gazeta text-3xl text-[#654177] mb-4">
-              {orderResult.isFreeForMember ? '¡Reserva Confirmada!' : '¡Reserva Recibida!'}
-            </h1>
-
-            <p className="text-gray-600 mb-6">
-              {orderResult.isFreeForMember
-                ? 'Tu cupo está confirmado. Te hemos enviado los detalles por email.'
-                : paymentMethod === 'nequi'
-                  ? 'Hemos recibido tu solicitud. Completa el pago por Nequi para confirmar tu cupo.'
-                  : 'Serás redirigido a la pasarela de pago.'}
-            </p>
-
-            <div className="bg-[#f8f0f5] rounded-lg p-6 mb-6 text-left">
-              <h3 className="font-semibold text-[#654177] mb-3">Detalles de tu reserva</h3>
-              <div className="space-y-2 text-sm">
-                <p><span className="text-gray-500">Evento:</span> {orderResult.eventTitle}</p>
-                <p><span className="text-gray-500">Fecha:</span> {formatDate(orderResult.eventDate)}</p>
-                <p><span className="text-gray-500">Cupos:</span> {orderResult.seats}</p>
-                <p><span className="text-gray-500">Total:</span> {formatPrice(orderResult.amount, orderResult.currency)}</p>
-                <p><span className="text-gray-500">N° de orden:</span> {orderResult.orderNumber}</p>
-              </div>
-            </div>
-
-            {paymentMethod === 'nequi' && !orderResult.isFreeForMember && (
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 mb-6 text-left">
-                <h3 className="font-semibold text-purple-800 mb-3">Instrucciones de Pago - Nequi</h3>
-                <ol className="list-decimal list-inside space-y-2 text-sm text-purple-700">
-                  <li>Abre tu app de Nequi</li>
-                  <li>Selecciona "Enviar dinero"</li>
-                  <li>Envía <strong>{formatPrice(orderResult.amount, 'COP')}</strong> al número <strong>XXX XXX XXXX</strong></li>
-                  <li>En la descripción escribe: <strong>{orderResult.orderNumber}</strong></li>
-                  <li>Guarda el comprobante</li>
-                </ol>
-                <p className="mt-4 text-xs text-purple-600">
-                  Tu reserva será confirmada una vez verifiquemos el pago (máximo 24 horas hábiles).
-                </p>
-              </div>
-            )}
-
-            {orderResult.zoomUrl && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-left">
-                <h3 className="font-semibold text-blue-800 mb-3">Información de Zoom</h3>
-                <div className="space-y-2 text-sm text-blue-700">
-                  <p><span className="font-medium">Link:</span> <a href={orderResult.zoomUrl} target="_blank" rel="noopener noreferrer" className="underline">{orderResult.zoomUrl}</a></p>
-                  {orderResult.zoomId && <p><span className="font-medium">ID:</span> {orderResult.zoomId}</p>}
-                  {orderResult.zoomPassword && <p><span className="font-medium">Contraseña:</span> {orderResult.zoomPassword}</p>}
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/eventos"
-                className="px-6 py-3 border border-[#4944a4] text-[#4944a4] rounded-lg hover:bg-[#4944a4] hover:text-white transition-colors"
-              >
-                Ver más eventos
-              </Link>
-              {session && (
-                <Link
-                  href="/dashboard/eventos"
-                  className="px-6 py-3 bg-[#4944a4] text-white rounded-lg hover:bg-[#3d3a8a] transition-colors"
-                >
-                  Mis reservas
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
     )
   }
@@ -437,11 +384,11 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                       checked={country === 'colombia'}
                       onChange={() => {
                         setCountry('colombia')
-                        setPaymentMethod('nequi')
+                        setPaymentMethod('wompi_nequi')
                       }}
                       className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
                     />
-                    <span>Colombia</span>
+                    <span>🇨🇴 Colombia</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -451,11 +398,11 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                       checked={country === 'international'}
                       onChange={() => {
                         setCountry('international')
-                        setPaymentMethod('stripe')
+                        setPaymentMethod('epayco_card')
                       }}
                       className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
                     />
-                    <span>Internacional</span>
+                    <span>🌍 Internacional</span>
                   </label>
                 </div>
               </div>
@@ -466,37 +413,112 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                   Método de pago
                 </label>
                 <div className="space-y-3">
-                  {country === 'colombia' && (
-                    <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-[#8A4BAF] transition-colors">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="nequi"
-                        checked={paymentMethod === 'nequi'}
-                        onChange={() => setPaymentMethod('nequi')}
-                        className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
-                      />
-                      <div>
-                        <span className="font-medium">Nequi</span>
-                        <p className="text-xs text-gray-500">Transferencia desde tu app Nequi</p>
-                      </div>
-                    </label>
+                  {country === 'colombia' ? (
+                    <>
+                      {/* Nequi */}
+                      <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                        paymentMethod === 'wompi_nequi' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="wompi_nequi"
+                          checked={paymentMethod === 'wompi_nequi'}
+                          onChange={() => setPaymentMethod('wompi_nequi')}
+                          className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
+                        />
+                        <Smartphone className="w-5 h-5 text-[#8A4BAF]" />
+                        <div>
+                          <span className="font-medium">Nequi</span>
+                          <p className="text-xs text-gray-500">Serás redirigido al botón Nequi</p>
+                        </div>
+                      </label>
+
+                      {/* Card Colombia */}
+                      <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                        paymentMethod === 'wompi_card' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="wompi_card"
+                          checked={paymentMethod === 'wompi_card'}
+                          onChange={() => setPaymentMethod('wompi_card')}
+                          className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
+                        />
+                        <CreditCard className="w-5 h-5 text-[#8A4BAF]" />
+                        <div>
+                          <span className="font-medium">Tarjeta de crédito/débito</span>
+                          <p className="text-xs text-gray-500">Visa, Mastercard, American Express</p>
+                        </div>
+                      </label>
+
+                      {/* PayPal Colombia */}
+                      <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                        paymentMethod === 'epayco_paypal' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="epayco_paypal"
+                          checked={paymentMethod === 'epayco_paypal'}
+                          onChange={() => setPaymentMethod('epayco_paypal')}
+                          className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
+                        />
+                        <PayPalIcon />
+                        <div>
+                          <span className="font-medium">PayPal</span>
+                          <p className="text-xs text-gray-500">Paga con tu cuenta PayPal</p>
+                        </div>
+                      </label>
+                    </>
+                  ) : (
+                    <>
+                      {/* Card International */}
+                      <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                        paymentMethod === 'epayco_card' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="epayco_card"
+                          checked={paymentMethod === 'epayco_card'}
+                          onChange={() => setPaymentMethod('epayco_card')}
+                          className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
+                        />
+                        <CreditCard className="w-5 h-5 text-[#8A4BAF]" />
+                        <div>
+                          <span className="font-medium">Credit/Debit Card</span>
+                          <p className="text-xs text-gray-500">Visa, Mastercard, American Express</p>
+                        </div>
+                      </label>
+
+                      {/* PayPal International */}
+                      <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                        paymentMethod === 'epayco_paypal' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="epayco_paypal"
+                          checked={paymentMethod === 'epayco_paypal'}
+                          onChange={() => setPaymentMethod('epayco_paypal')}
+                          className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
+                        />
+                        <PayPalIcon />
+                        <div>
+                          <span className="font-medium">PayPal</span>
+                          <p className="text-xs text-gray-500">Pay with your PayPal account</p>
+                        </div>
+                      </label>
+                    </>
                   )}
-                  <label className="flex items-center gap-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-[#8A4BAF] transition-colors">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="stripe"
-                      checked={paymentMethod === 'stripe'}
-                      onChange={() => setPaymentMethod('stripe')}
-                      className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
-                    />
-                    <div>
-                      <span className="font-medium">Tarjeta de crédito/débito</span>
-                      <p className="text-xs text-gray-500">Pago seguro con Stripe</p>
-                    </div>
-                  </label>
                 </div>
+                <p className="mt-3 text-xs text-gray-500 text-center">
+                  {paymentMethod?.startsWith('wompi')
+                    ? 'Pago procesado de forma segura por Wompi (Bancolombia)'
+                    : 'Pago procesado de forma segura por ePayco'}
+                </p>
               </div>
 
               {/* Notes */}
@@ -563,5 +585,13 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
         </div>
       </div>
     </div>
+  )
+}
+
+function PayPalIcon() {
+  return (
+    <svg className="w-5 h-5 text-[#8A4BAF]" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z" />
+    </svg>
   )
 }

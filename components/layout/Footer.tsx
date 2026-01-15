@@ -71,17 +71,17 @@ export function Footer() {
     <footer className="bg-gradient-to-b from-[#f8f0f5] to-[#efe8f2] border-t border-[#8A4BAF]/10">
       <div className="container mx-auto px-4 py-12 sm:py-16">
         {/* Main Footer Content - Optimized layout following 2025 best practices */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
 
           {/* Column 1 (LEFT): Brand + Social - Most visible (F-pattern start) */}
-          <div>
+          <div className="sm:col-span-2 lg:col-span-1 text-center sm:text-left">
             <Link href="/" className="inline-block group mb-4">
               <Image
                 src="/images/energia-divinidad-Logo-NoBackground.png"
                 alt="Energía y Divinidad"
-                width={220}
-                height={100}
-                className="group-hover:scale-105 transition-transform"
+                width={180}
+                height={82}
+                className="group-hover:scale-105 transition-transform mx-auto sm:mx-0"
               />
             </Link>
 
@@ -92,7 +92,7 @@ export function Footer() {
             {/* Social Media - High visibility position */}
             <div className="mb-6">
               <p className="text-[#654177] text-sm font-medium mb-3">Síguenos</p>
-              <div className="flex gap-3">
+              <div className="flex gap-3 justify-center sm:justify-start">
                 {socialLinks.map((social) => (
                   <a
                     key={social.name}
@@ -148,7 +148,7 @@ export function Footer() {
           </div>
 
           {/* Column 4 (RIGHT): Newsletter + Contact - CTA position */}
-          <div>
+          <div className="sm:col-span-2 lg:col-span-1">
             <h3 className="font-sans text-[#8A4BAF] font-semibold text-sm uppercase tracking-wider mb-4">
               Mantente Conectada
             </h3>

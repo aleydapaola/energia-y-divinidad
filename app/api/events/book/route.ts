@@ -171,16 +171,34 @@ export async function POST(request: NextRequest) {
     }
 
     // Determinar método de pago
-    let paymentMethodEnum: 'STRIPE' | 'MANUAL_NEQUI'
-    if (paymentMethod === 'nequi') {
-      paymentMethodEnum = 'MANUAL_NEQUI'
-    } else if (paymentMethod === 'stripe') {
-      paymentMethodEnum = 'STRIPE'
-    } else {
-      return NextResponse.json(
-        { error: 'Método de pago no soportado' },
-        { status: 400 }
-      )
+    type PaymentMethodEnum = 'WOMPI_NEQUI' | 'WOMPI_CARD' | 'EPAYCO_CARD' | 'EPAYCO_PAYPAL' | 'STRIPE' | 'MANUAL_NEQUI'
+    let paymentMethodEnum: PaymentMethodEnum
+
+    switch (paymentMethod) {
+      case 'wompi_nequi':
+        paymentMethodEnum = 'WOMPI_NEQUI'
+        break
+      case 'wompi_card':
+        paymentMethodEnum = 'WOMPI_CARD'
+        break
+      case 'epayco_card':
+        paymentMethodEnum = 'EPAYCO_CARD'
+        break
+      case 'epayco_paypal':
+        paymentMethodEnum = 'EPAYCO_PAYPAL'
+        break
+      // Legacy methods for backwards compatibility
+      case 'nequi':
+        paymentMethodEnum = 'WOMPI_NEQUI'
+        break
+      case 'stripe':
+        paymentMethodEnum = 'EPAYCO_CARD'
+        break
+      default:
+        return NextResponse.json(
+          { error: 'Método de pago no soportado' },
+          { status: 400 }
+        )
     }
 
     // Calcular precio
@@ -294,16 +312,8 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      // Si es pago manual (Nequi), crear registro de pago manual
-      if (paymentMethodEnum === 'MANUAL_NEQUI' && !isFreeForMember) {
-        await tx.manualPayment.create({
-          data: {
-            orderId: order.id,
-            paymentMethod: 'MANUAL_NEQUI',
-            approved: false,
-          },
-        })
-      }
+      // Manual payment records are no longer needed for Wompi/ePayco
+      // Payments are handled via webhooks from the payment gateways
 
       // Crear entitlement para el evento
       await tx.entitlement.create({

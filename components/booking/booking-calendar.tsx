@@ -249,12 +249,18 @@ export function BookingCalendar({
       {/* Layout vertical: Calendario arriba, horarios abajo */}
       <div className="space-y-0">
         {/* Calendario - Ocupa todo el ancho */}
-        <div className="p-4 md:p-6 border-b border-gray-200 min-h-[400px] md:min-h-[500px]">
+        <div className="p-3 sm:p-4 md:p-6 border-b border-gray-200 min-h-[320px] sm:min-h-[380px] md:min-h-[500px]">
           <style dangerouslySetInnerHTML={{__html: `
             .booking-calendar {
               width: 100%;
               height: 100%;
-              min-height: 350px;
+              min-height: 280px;
+            }
+
+            @media (min-width: 640px) {
+              .booking-calendar {
+                min-height: 340px;
+              }
             }
 
             @media (min-width: 768px) {
@@ -323,17 +329,31 @@ export function BookingCalendar({
             .booking-calendar .rdp-day > button {
               width: 100%;
               height: 100%;
-              min-height: 3.5rem;
+              min-height: 2.5rem;
               display: flex;
               align-items: center;
               justify-content: center;
-              font-size: 1.0625rem;
+              font-size: 0.875rem;
               font-weight: 500;
               border-radius: 0.3rem;
               transition: all 0.2s;
               background-color: #f7f7f7;
               color: #8A4BAF;
               border: 1px solid #8A4BAF;
+            }
+
+            @media (min-width: 640px) {
+              .booking-calendar .rdp-day > button {
+                min-height: 3rem;
+                font-size: 1rem;
+              }
+            }
+
+            @media (min-width: 768px) {
+              .booking-calendar .rdp-day > button {
+                min-height: 3.5rem;
+                font-size: 1.0625rem;
+              }
             }
 
             /* Días disponibles - estado normal */

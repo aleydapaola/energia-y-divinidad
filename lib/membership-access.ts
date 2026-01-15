@@ -193,52 +193,119 @@ export function getPaymentRegion(countryCode?: string): 'colombia' | 'internatio
 }
 
 /**
- * Obtiene los métodos de pago disponibles para un usuario según su región
+ * Tipos de métodos de pago disponibles
  */
-export function getAvailablePaymentMethods(region: 'colombia' | 'international') {
+export type PaymentMethodType =
+  | 'wompi_nequi' // Nequi via Wompi (Colombia)
+  | 'wompi_card' // Tarjeta colombiana via Wompi (Colombia)
+  | 'epayco_paypal' // PayPal via ePayco (Colombia + Internacional)
+  | 'epayco_card' // Tarjeta internacional via ePayco (Internacional)
+
+export interface PaymentMethod {
+  type: PaymentMethodType
+  label: string
+  description: string
+  available: boolean
+  icon: string
+  gateway: 'wompi' | 'epayco'
+  currency: 'COP' | 'USD'
+  isRecurring: boolean
+  recommended: boolean
+}
+
+/**
+ * Obtiene los métodos de pago disponibles para un usuario según su región
+ *
+ * ESTRATEGIA DE PAGOS:
+ * - Colombia: Nequi (Wompi), Tarjeta (Wompi), PayPal (ePayco)
+ * - Internacional: Tarjeta (ePayco), PayPal (ePayco)
+ *
+ * Wompi solo opera en COP
+ * ePayco puede operar en COP y USD
+ */
+export function getAvailablePaymentMethods(region: 'colombia' | 'international'): PaymentMethod[] {
   if (region === 'colombia') {
     return [
       {
-        type: 'nequi_recurring' as const,
-        label: 'Nequi Débito Automático',
-        description: 'Cobro automático recurrente desde tu cuenta Nequi. Apruébalo en tu app.',
+        type: 'wompi_nequi',
+        label: 'Nequi',
+        description: 'Paga directamente desde tu cuenta Nequi. Apruébalo en tu app.',
         available: true,
-        icon: '💰',
+        icon: '💜',
+        gateway: 'wompi',
+        currency: 'COP',
         isRecurring: true,
         recommended: true,
       },
       {
-        type: 'nequi_manual' as const,
-        label: 'Nequi Manual',
-        description: 'Pago manual cada mes (requiere aprobación administrativa)',
+        type: 'wompi_card',
+        label: 'Tarjeta de crédito/débito',
+        description: 'Paga con tu tarjeta Visa, Mastercard o American Express.',
         available: true,
-        icon: '💸',
-        isRecurring: false,
+        icon: '💳',
+        gateway: 'wompi',
+        currency: 'COP',
+        isRecurring: true,
+        recommended: false,
+      },
+      {
+        type: 'epayco_paypal',
+        label: 'PayPal',
+        description: 'Paga con tu cuenta PayPal de forma segura.',
+        available: true,
+        icon: '🅿️',
+        gateway: 'epayco',
+        currency: 'COP',
+        isRecurring: false, // PayPal recurrente requiere configuración especial
         recommended: false,
       },
     ]
   }
 
+  // Internacional (USD)
   return [
     {
-      type: 'stripe' as const,
-      label: 'Tarjeta de crédito/débito',
-      description: 'Cobro automático recurrente con tarjeta mediante Stripe',
+      type: 'epayco_card',
+      label: 'Credit/Debit Card',
+      description: 'Pay with Visa, Mastercard, or American Express.',
       available: true,
       icon: '💳',
+      gateway: 'epayco',
+      currency: 'USD',
       isRecurring: true,
       recommended: true,
     },
     {
-      type: 'paypal' as const,
+      type: 'epayco_paypal',
       label: 'PayPal',
-      description: 'Pago mediante PayPal',
-      available: false, // TODO: Implementar PayPal
+      description: 'Pay securely with your PayPal account.',
+      available: true,
       icon: '🅿️',
-      isRecurring: true,
+      gateway: 'epayco',
+      currency: 'USD',
+      isRecurring: false,
       recommended: false,
     },
   ]
+}
+
+/**
+ * Obtiene la pasarela de pago según el método seleccionado
+ */
+export function getPaymentGateway(
+  methodType: PaymentMethodType
+): 'wompi' | 'epayco' {
+  if (methodType.startsWith('wompi_')) {
+    return 'wompi'
+  }
+  return 'epayco'
+}
+
+/**
+ * Obtiene la moneda según la región
+ */
+export function getCurrencyForRegion(region: 'colombia' | 'international'): 'COP' | 'USD' {
+  return region === 'colombia' ? 'COP' : 'USD'
 }
 
 /**

@@ -2,8 +2,9 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { Calendar, ShoppingBag, Crown, Settings, ArrowRight } from "lucide-react"
+import { Calendar, ShoppingBag, Crown, ArrowRight, GraduationCap, CalendarCheck } from "lucide-react"
 import { hasActiveMembership } from "@/lib/membership-access"
+import { getUserCourses } from "@/lib/course-access"
 
 export default async function MiCuentaPage() {
   const session = await auth()
@@ -37,16 +38,35 @@ export default async function MiCuentaPage() {
   // Verificar membresía
   const hasMembership = await hasActiveMembership(session.user.id)
 
-  // Obtener próximas sesiones
+  // Obtener próximas sesiones (solo de canalización, no eventos)
   const upcomingBookings = await prisma.booking.findMany({
     where: {
       userId: session.user.id,
+      bookingType: "SESSION_1_ON_1",
       status: { in: ["PENDING", "CONFIRMED"] },
       scheduledAt: { gte: new Date() },
     },
     orderBy: { scheduledAt: "asc" },
     take: 3,
   })
+
+  // Obtener próximos eventos
+  const upcomingEvents = await prisma.booking.findMany({
+    where: {
+      userId: session.user.id,
+      bookingType: "EVENT",
+      status: { in: ["PENDING", "CONFIRMED"] },
+      scheduledAt: { gte: new Date() },
+    },
+    orderBy: { scheduledAt: "asc" },
+    take: 3,
+  })
+
+  // Obtener cursos del usuario
+  const userCourses = await getUserCourses(session.user.id)
+  const coursesInProgress = userCourses.filter(
+    (c) => Number(c.completionPercentage) > 0 && Number(c.completionPercentage) < 100
+  )
 
   // Obtener últimas compras
   const recentOrders = await prisma.order.findMany({
@@ -84,53 +104,67 @@ export default async function MiCuentaPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#8A4BAF]/10 rounded-full flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-[#8A4BAF]" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#8A4BAF]/10 rounded-full flex items-center justify-center">
+              <Calendar className="w-5 h-5 text-[#8A4BAF]" />
             </div>
             <div>
-              <p className="text-2xl font-semibold text-[#654177] font-dm-sans">
-                {user._count.bookings}
+              <p className="text-xl font-semibold text-[#654177] font-dm-sans">
+                {upcomingBookings.length}
               </p>
-              <p className="text-sm text-gray-500 font-dm-sans">Sesiones</p>
+              <p className="text-xs text-gray-500 font-dm-sans">Sesiones</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#8A4BAF]/10 rounded-full flex items-center justify-center">
-              <ShoppingBag className="w-6 h-6 text-[#8A4BAF]" />
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#8A4BAF]/10 rounded-full flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-[#8A4BAF]" />
             </div>
             <div>
-              <p className="text-2xl font-semibold text-[#654177] font-dm-sans">
-                {user._count.orders}
+              <p className="text-xl font-semibold text-[#654177] font-dm-sans">
+                {userCourses.length}
               </p>
-              <p className="text-sm text-gray-500 font-dm-sans">Compras</p>
+              <p className="text-xs text-gray-500 font-dm-sans">Cursos</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#8A4BAF]/10 rounded-full flex items-center justify-center">
+              <CalendarCheck className="w-5 h-5 text-[#8A4BAF]" />
+            </div>
+            <div>
+              <p className="text-xl font-semibold text-[#654177] font-dm-sans">
+                {upcomingEvents.length}
+              </p>
+              <p className="text-xs text-gray-500 font-dm-sans">Eventos</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
             <div
-              className={`w-12 h-12 rounded-full flex items-center justify-center ${
+              className={`w-10 h-10 rounded-full flex items-center justify-center ${
                 hasMembership ? "bg-gradient-to-r from-[#8A4BAF] to-[#654177]" : "bg-gray-100"
               }`}
             >
-              <Crown className={`w-6 h-6 ${hasMembership ? "text-white" : "text-gray-400"}`} />
+              <Crown className={`w-5 h-5 ${hasMembership ? "text-white" : "text-gray-400"}`} />
             </div>
             <div>
               <p
-                className={`text-lg font-semibold font-dm-sans ${
+                className={`text-sm font-semibold font-dm-sans ${
                   hasMembership ? "text-[#8A4BAF]" : "text-gray-500"
                 }`}
               >
-                {hasMembership ? "Activa" : "Sin membresía"}
+                {hasMembership ? "Activa" : "Sin"}
               </p>
-              <p className="text-sm text-gray-500 font-dm-sans">Membresía</p>
+              <p className="text-xs text-gray-500 font-dm-sans">Membresía</p>
             </div>
           </div>
         </div>
@@ -186,6 +220,120 @@ export default async function MiCuentaPage() {
               className="inline-flex items-center gap-2 px-4 py-2 bg-[#4944a4] text-white rounded-lg font-dm-sans text-sm hover:bg-[#3d3a8a] transition-colors"
             >
               Explorar Sesiones
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Mis Cursos */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-gazeta text-xl text-[#654177]">Mis Cursos</h2>
+          <Link
+            href="/mi-cuenta/cursos"
+            className="text-sm text-[#8A4BAF] hover:text-[#654177] font-dm-sans flex items-center gap-1"
+          >
+            Ver todos <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        {userCourses.length > 0 ? (
+          <div className="space-y-3">
+            {/* Show courses in progress first, then others */}
+            {[...coursesInProgress, ...userCourses.filter(c => !coursesInProgress.includes(c))].slice(0, 3).map((course) => (
+              <div
+                key={course.courseId}
+                className="flex items-center justify-between p-4 bg-[#eef1fa] rounded-lg"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-[#654177] font-dm-sans truncate">
+                    {course.courseTitle}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex-1 max-w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#4944a4] rounded-full transition-all"
+                        style={{ width: `${Number(course.completionPercentage)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500 font-dm-sans">
+                      {Number(course.completionPercentage).toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+                <Link
+                  href={`/academia/${course.courseSlug}/reproducir`}
+                  className="ml-4 px-3 py-1.5 bg-[#4944a4] text-white text-sm rounded-lg hover:bg-[#3d3a8a] transition-colors font-dm-sans"
+                >
+                  Continuar
+                </Link>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <GraduationCap className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500 font-dm-sans mb-4">Aún no tienes cursos</p>
+            <Link
+              href="/academia"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#4944a4] text-white rounded-lg font-dm-sans text-sm hover:bg-[#3d3a8a] transition-colors"
+            >
+              Explorar Academia
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Próximos Eventos */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-gazeta text-xl text-[#654177]">Próximos Eventos</h2>
+          <Link
+            href="/mi-cuenta/eventos"
+            className="text-sm text-[#8A4BAF] hover:text-[#654177] font-dm-sans flex items-center gap-1"
+          >
+            Ver todos <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        {upcomingEvents.length > 0 ? (
+          <div className="space-y-3">
+            {upcomingEvents.map((booking) => (
+              <div
+                key={booking.id}
+                className="flex items-center justify-between p-4 bg-[#f8f0f5] rounded-lg"
+              >
+                <div>
+                  <p className="font-medium text-[#654177] font-dm-sans">
+                    {booking.resourceName}
+                  </p>
+                  {booking.scheduledAt && (
+                    <p className="text-sm text-gray-500 font-dm-sans">
+                      {formatDate(booking.scheduledAt)} - {formatTime(booking.scheduledAt)}
+                    </p>
+                  )}
+                </div>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-medium font-dm-sans ${
+                    booking.status === "CONFIRMED"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}
+                >
+                  {booking.status === "CONFIRMED" ? "Confirmado" : "Pendiente"}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <CalendarCheck className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500 font-dm-sans mb-4">No tienes eventos próximos</p>
+            <Link
+              href="/eventos"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#4944a4] text-white rounded-lg font-dm-sans text-sm hover:bg-[#3d3a8a] transition-colors"
+            >
+              Explorar Eventos
             </Link>
           </div>
         )}

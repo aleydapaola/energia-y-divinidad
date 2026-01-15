@@ -44,11 +44,11 @@ export default async function HomePage() {
             {/* Left Side - Text Content */}
             <div className="text-white max-w-2xl py-12 lg:py-20 relative z-10">
               <div className="space-y-1">
-                <h1 className="font-gazeta text-[2.3rem] sm:text-[2.85rem] md:text-[3.35rem] lg:text-[3.6rem] leading-[1.1] text-[#654177] drop-shadow-lg text-left whitespace-nowrap max-w-[520px] -ml-1">
+                <h1 className="font-gazeta text-[1.75rem] sm:text-[2.3rem] md:text-[3rem] lg:text-[3.6rem] leading-[1.1] text-[#654177] drop-shadow-lg text-left sm:whitespace-nowrap max-w-full sm:max-w-[520px] -ml-1">
                   Canalización personal
                 </h1>
 
-                <p className="font-gazeta text-[1.5rem] sm:text-[1.85rem] md:text-[2.2rem] lg:text-[2.35rem] text-[#674c6a] leading-[1.1] drop-shadow-md text-left whitespace-nowrap max-w-[520px] tracking-normal">
+                <p className="font-gazeta text-[1.2rem] sm:text-[1.5rem] md:text-[2rem] lg:text-[2.35rem] text-[#674c6a] leading-[1.1] drop-shadow-md text-left sm:whitespace-nowrap max-w-full sm:max-w-[520px] tracking-normal">
                   para recibir guía clara y amorosa
                 </p>
               </div>
@@ -94,7 +94,7 @@ export default async function HomePage() {
               <div className="flex flex-col gap-4 pt-6">
                 <Link
                   href="/sesiones"
-                  className="inline-flex items-center justify-center gap-2 py-3 sm:py-4 bg-[#4944a4] hover:bg-[#3d3890] text-white rounded-full transition-all transform hover:scale-105 font-dm-sans text-base font-semibold shadow-2xl w-[270px]"
+                  className="inline-flex items-center justify-center gap-2 py-3 sm:py-4 bg-[#4944a4] hover:bg-[#3d3890] text-white rounded-full transition-all transform hover:scale-105 font-dm-sans text-sm sm:text-base font-semibold shadow-2xl w-full sm:w-[270px]"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -104,14 +104,14 @@ export default async function HomePage() {
 
                 <Link
                   href="/membresia"
-                  className="inline-flex items-center justify-center gap-2 py-3 sm:py-4 bg-[#f0e2e8] hover:bg-[#e5d6dc] text-[#7b6277] rounded-full transition-all transform hover:scale-105 font-dm-sans text-base font-semibold shadow-2xl w-[270px]"
+                  className="inline-flex items-center justify-center gap-2 py-3 sm:py-4 bg-[#f0e2e8] hover:bg-[#e5d6dc] text-[#7b6277] rounded-full transition-all transform hover:scale-105 font-dm-sans text-sm sm:text-base font-semibold shadow-2xl w-full sm:w-[270px]"
                 >
                   Ver membresía
                 </Link>
               </div>
 
               {/* Small text below buttons */}
-              <p className="font-dm-sans text-base sm:text-lg text-[#674c6a] pt-6 drop-shadow-md whitespace-nowrap">
+              <p className="font-dm-sans text-sm sm:text-base lg:text-lg text-[#674c6a] pt-6 drop-shadow-md">
                 Empieza con una sesión. Si quieres continuidad, la membresía te acompaña.
               </p>
             </div>

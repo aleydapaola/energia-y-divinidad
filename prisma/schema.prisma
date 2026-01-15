@@ -41,6 +41,7 @@ model User {
   commentLikes     CommentLike[]
   pollVotes        PollVote[]
   postViews        MembershipPostView[]
+  courseProgress   CourseProgress[]
 
   // Metadata
   createdAt DateTime @default(now())
@@ -97,6 +98,20 @@ model VerificationToken {
 // ============================================
 
 enum PaymentMethod {
+  // Wompi (Colombia - COP)
+  WOMPI_NEQUI
+  WOMPI_CARD
+  WOMPI_PSE
+
+  // ePayco (Internacional - USD y COP)
+  EPAYCO_CARD
+  EPAYCO_PAYPAL
+  EPAYCO_PSE
+
+  // Gratis (descuento 100%)
+  FREE
+
+  // Legacy (mantener para migraciones)
   STRIPE
   NEQUI
   MANUAL_NEQUI
@@ -119,6 +134,7 @@ enum OrderType {
   EVENT
   MEMBERSHIP
   PREMIUM_CONTENT
+  COURSE
 }
 
 model Order {
@@ -135,9 +151,18 @@ model Order {
   amount   Decimal @db.Decimal(10, 2)
   currency String  @default("COP") // COP o USD
 
+  // Descuentos (opcional)
+  discountCodeId String?  // Sanity _id del código de descuento
+  discountCode   String?  // Código usado (para histórico)
+  discountAmount Decimal? @db.Decimal(10, 2) // Monto descontado
+  originalAmount Decimal? @db.Decimal(10, 2) // Monto original antes del descuento
+
   // Pago
   paymentMethod PaymentMethod
   paymentStatus PaymentStatus @default(PENDING)
+
+  // Metadata adicional (JSON para datos específicos de pasarela)
+  metadata Json?
 
   // Relaciones
   user          User           @relation(fields: [userId], references: [id])
@@ -145,7 +170,7 @@ model Order {
   stripePayment StripePayment?
   entitlements  Entitlement[]
 
-  // Metadata
+  // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -275,6 +300,7 @@ enum EntitlementType {
   EVENT // Acceso a evento
   SESSION_BUNDLE // Paquete de sesiones
   PRODUCT // Producto digital comprado
+  COURSE // Curso de la academia
 }
 
 model Entitlement {
@@ -390,7 +416,10 @@ model Booking {
   // Relaciones
   user User @relation(fields: [userId], references: [id])
 
-  // Metadata
+  // Metadata adicional
+  metadata Json?
+
+  // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -600,4 +629,71 @@ model WebhookEvent {
 
   @@index([provider, eventId])
   @@map("webhook_events")
+}
+
+// ============================================
+// BOUNDED CONTEXT: Academia (Courses)
+// ============================================
+
+// Tracking de uso de códigos de descuento (el código está en Sanity)
+model DiscountUsage {
+  id             String   @id @default(cuid())
+  discountCodeId String   // Sanity _id del código
+  discountCode   String   // Código usado (para histórico)
+  userId         String
+  orderId        String
+  discountAmount Decimal  @db.Decimal(10, 2)
+  currency       String
+  usedAt         DateTime @default(now())
+
+  @@unique([discountCodeId, orderId])
+  @@index([userId])
+  @@index([discountCodeId])
+  @@map("discount_usages")
+}
+
+// Progreso del usuario en un curso
+model CourseProgress {
+  id                   String           @id @default(cuid())
+  userId               String
+  courseId             String           // Sanity course _id
+  startedAt            DateTime         @default(now())
+  completedAt          DateTime?
+  lastAccessedAt       DateTime         @default(now())
+  completionPercentage Decimal          @db.Decimal(5, 2) @default(0)
+
+  // Relaciones
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonProgress LessonProgress[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@map("course_progress")
+}
+
+// Progreso del usuario en una lección específica
+model LessonProgress {
+  id               String  @id @default(cuid())
+  courseProgressId String
+  lessonId         String  // Sanity lesson _id
+  completed        Boolean @default(false)
+  completedAt      DateTime?
+  watchedSeconds   Int     @default(0) // Segundos de video vistos
+  lastPosition     Int     @default(0) // Posición de reproducción para continuar
+
+  // Relaciones
+  courseProgress CourseProgress @relation(fields: [courseProgressId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseProgressId, lessonId])
+  @@index([courseProgressId])
+  @@map("lesson_progress")
 }

@@ -64,30 +64,81 @@ El violeta (`#8A4BAF`) se reserva para:
 - `/checkout/*` - Proceso de pago
 - `/pago/*` - Confirmación de pago
 
-## Métodos de Pago por Región
+## Estrategia de Pagos
 
-**IMPORTANTE**: Los métodos de pago se determinan por la ubicación del usuario:
+**IMPORTANTE**: Sistema de checkout inteligente con selección automática de pasarela según país.
 
-### Colombia (COP)
-- **Nequi** - Método principal y obligatorio para usuarios colombianos
-- Nequi soporta pagos únicos y recurrentes (débito automático para membresías)
-- API: Nequi API Conecta
+### Pasarelas de Pago
 
-### Internacional (USD)
-- **Stripe** - Método principal para pagos internacionales
-- **PayPal** - Alternativa para usuarios internacionales
-- Soporta tarjetas de crédito/débito internacionales
+| Pasarela | Monedas | Métodos |
+|----------|---------|---------|
+| **Wompi** | Solo COP | Nequi, Tarjetas colombianas |
+| **ePayco** | COP, USD | PayPal, Tarjetas internacionales |
+
+### Métodos por Región
+
+#### Colombia (COP)
+- **Nequi** → Wompi
+- **Tarjeta de crédito** → Wompi
+- **PayPal** → ePayco
+
+#### Internacional (USD)
+- **Tarjeta de crédito** → ePayco
+- **PayPal** → ePayco
+
+### Restricciones Técnicas
+
+- Wompi **solo opera en COP**
+- ePayco puede operar en **COP y USD**
+- Next.js **no procesa pagos**, solo orquesta, redirige y valida vía webhooks
+- **NO exponer API keys** en el cliente
+- **NO confiar solo en redirecciones**, usar webhooks para validar pagos
 
 ### Aplicación
-Esta regla aplica a TODOS los productos de pago:
+
+Esta estrategia aplica a TODOS los productos de pago:
 - Sesiones de canalización (individuales y packs)
 - Membresía (pagos recurrentes)
 - Eventos (entradas)
 - Productos digitales (cursos, meditaciones premium, etc.)
 - Cualquier otro producto de pago
 
-### Implementación
-- Detectar país del usuario (por IP o selección manual)
-- Mostrar solo los métodos de pago disponibles para su región
-- Los precios se muestran en COP para Colombia, USD para internacional
-- La moneda determina qué pasarela de pago usar
+### Flujo de Checkout
+
+1. Detectar país del usuario (por IP o selección manual)
+2. Mostrar solo los métodos de pago disponibles para su región
+3. Según método seleccionado, orquestar hacia Wompi o ePayco
+4. Validar pago mediante webhook antes de confirmar
+5. Redirigir a página de confirmación
+
+### Archivos Clave del Sistema de Pagos
+
+| Archivo | Descripción |
+|---------|-------------|
+| `lib/wompi.ts` | Integración con Wompi (Colombia) |
+| `lib/epayco.ts` | Integración con ePayco (Internacional) |
+| `lib/membership-access.ts` | Detección de región y métodos disponibles |
+| `components/pago/PaymentMethodSelector.tsx` | Modal de selección de método de pago |
+| `app/api/checkout/wompi/route.ts` | API para crear pagos Wompi |
+| `app/api/checkout/epayco/route.ts` | API para crear pagos ePayco |
+| `app/api/webhooks/wompi/route.ts` | Webhook de Wompi |
+| `app/api/webhooks/epayco/route.ts` | Webhook de ePayco |
+| `app/pago/confirmacion/page.tsx` | Página de confirmación de pago |
+| `app/pago/nequi-pending/page.tsx` | Página de espera para Nequi |
+
+### Variables de Entorno Requeridas
+
+```bash
+# Wompi (Colombia)
+NEXT_PUBLIC_WOMPI_PUBLIC_KEY=
+WOMPI_PRIVATE_KEY=
+WOMPI_EVENTS_SECRET=
+WOMPI_INTEGRITY_SECRET=
+WOMPI_ENVIRONMENT=sandbox
+
+# ePayco (Internacional)
+NEXT_PUBLIC_EPAYCO_PUBLIC_KEY=
+EPAYCO_PRIVATE_KEY=
+EPAYCO_P_KEY=
+EPAYCO_TEST_MODE=true
+```

@@ -8,6 +8,13 @@ import membershipTier from './membershipTier'
 import membershipPost from './membershipPost'
 import page from './page'
 
+// Academia
+import course from './course'
+import courseModule from './courseModule'
+import courseLesson from './courseLesson'
+import courseResource from './courseResource'
+import discountCode from './discountCode'
+
 export const schemaTypes = [
   // Sesiones (configuración unificada)
   sessionConfig,
@@ -24,6 +31,13 @@ export const schemaTypes = [
   // Membresías
   membershipTier,
   membershipPost,
+
+  // Academia
+  course,
+  courseModule,
+  courseLesson,
+  courseResource,
+  discountCode,
 
   // Páginas Estáticas
   page,

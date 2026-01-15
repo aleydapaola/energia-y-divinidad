@@ -4,6 +4,8 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Loader2, CreditCard, Smartphone, AlertCircle } from 'lucide-react'
+import { PaymentMethodSelector, type PaymentRegion } from '@/components/pago/PaymentMethodSelector'
+import type { PaymentMethodType } from '@/lib/membership-access'
 
 function CheckoutContent() {
   const router = useRouter()
@@ -12,23 +14,24 @@ function CheckoutContent() {
 
   const tierId = searchParams?.get('tier')
   const interval = searchParams?.get('interval') as 'monthly' | 'yearly' | null
-  const currency = searchParams?.get('currency') as 'COP' | 'USD' | null
 
   const [tierData, setTierData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showPaymentSelector, setShowPaymentSelector] = useState(false)
 
   // Form data
-  const [phoneNumber, setPhoneNumber] = useState('')
   const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   // Redirect if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push(`/auth/signin?callbackUrl=/membresia/checkout?tier=${tierId}&interval=${interval}&currency=${currency}`)
+      router.push(
+        `/auth/signin?callbackUrl=/membresia/checkout?tier=${tierId}&interval=${interval}`
+      )
     }
-  }, [status, router, tierId, interval, currency])
+  }, [status, router, tierId, interval])
 
   // Fetch tier data from Sanity
   useEffect(() => {
@@ -57,26 +60,22 @@ function CheckoutContent() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900">
-        <Loader2 className="w-8 h-8 animate-spin text-brand" />
+      <div className="min-h-screen flex items-center justify-center bg-[#f8f0f5]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#8A4BAF]" />
       </div>
     )
   }
 
-  if (error || !tierId || !interval || !currency) {
+  if (error || !tierId || !interval) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-[#f8f0f5] px-4">
         <div className="max-w-md w-full text-center">
           <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-4">
-            Error en el Checkout
-          </h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mb-6">
-            {error || 'Parámetros inválidos'}
-          </p>
+          <h1 className="font-gazeta text-2xl text-[#654177] mb-4">Error en el Checkout</h1>
+          <p className="font-dm-sans text-gray-600 mb-6">{error || 'Parámetros inválidos'}</p>
           <button
             onClick={() => router.push('/membresia')}
-            className="bg-brand hover:bg-brand-dark text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            className="bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors"
           >
             Volver a Membresías
           </button>
@@ -85,19 +84,13 @@ function CheckoutContent() {
     )
   }
 
-  const price =
-    interval === 'monthly'
-      ? currency === 'COP'
-        ? tierData?.pricing?.monthlyPrice
-        : tierData?.pricing?.monthlyPriceUSD
-      : currency === 'COP'
-      ? tierData?.pricing?.yearlyPrice
-      : tierData?.pricing?.yearlyPriceUSD
+  // Precios según intervalo
+  const priceCOP =
+    interval === 'monthly' ? tierData?.pricing?.monthlyPrice : tierData?.pricing?.yearlyPrice
+  const priceUSD =
+    interval === 'monthly' ? tierData?.pricing?.monthlyPriceUSD : tierData?.pricing?.yearlyPriceUSD
 
-  const monthlyPrice =
-    interval === 'yearly' && price ? Math.round(price / 12) : price
-
-  const formatPrice = (amount: number) => {
+  const formatPrice = (amount: number, currency: 'COP' | 'USD') => {
     if (currency === 'COP') {
       return new Intl.NumberFormat('es-CO', {
         style: 'currency',
@@ -113,78 +106,89 @@ function CheckoutContent() {
     }).format(amount)
   }
 
-  const paymentMethod = currency === 'COP' ? 'nequi' : 'stripe'
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handlePaymentMethodSelect = async (
+    method: PaymentMethodType,
+    region: PaymentRegion,
+    phoneNumber?: string
+  ) => {
     setError(null)
     setSubmitting(true)
 
-    if (!acceptedTerms) {
-      setError('Debes aceptar los términos y condiciones')
-      setSubmitting(false)
-      return
-    }
-
-    if (paymentMethod === 'nequi' && !phoneNumber) {
-      setError('Ingresa tu número de celular')
-      setSubmitting(false)
-      return
-    }
+    const currency = region === 'colombia' ? 'COP' : 'USD'
+    const amount = region === 'colombia' ? priceCOP : priceUSD
 
     try {
-      if (paymentMethod === 'stripe') {
-        // Crear sesión de checkout de Stripe
-        const response = await fetch('/api/checkout/stripe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            membershipTierId: tierId,
-            membershipTierName: tierData.name,
-            billingInterval: interval,
-            amount: price,
-            currency: 'USD',
-          }),
-        })
+      // Determinar endpoint según método de pago
+      let endpoint: string
+      let body: any
 
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Error al crear sesión de pago')
+      if (method === 'wompi_nequi' || method === 'wompi_card') {
+        // Pago via Wompi (Colombia - COP)
+        endpoint = '/api/checkout/wompi'
+        body = {
+          productType: 'membership',
+          productId: tierId,
+          productName: tierData.name,
+          amount,
+          paymentMethod: method === 'wompi_nequi' ? 'nequi' : 'card',
+          billingInterval: interval,
+          phoneNumber,
         }
-
-        const { url } = await response.json()
-        window.location.href = url
       } else {
-        // Crear suscripción de Nequi
-        const response = await fetch('/api/checkout/nequi-recurring', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            membershipTierId: tierId,
-            membershipTierName: tierData.name,
-            billingInterval: interval,
-            amount: price,
-            currency: 'COP',
-            phoneNumber,
-          }),
-        })
-
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || 'Error al crear suscripción')
+        // Pago via ePayco (Internacional o PayPal)
+        endpoint = '/api/checkout/epayco'
+        body = {
+          productType: 'membership',
+          productId: tierId,
+          productName: tierData.name,
+          amount,
+          currency,
+          paymentMethod: method === 'epayco_paypal' ? 'paypal' : 'card',
+          billingInterval: interval,
         }
+      }
 
-        const { subscriptionId } = await response.json()
-        router.push(`/membresia/checkout/nequi-pending?subscription_id=${subscriptionId}`)
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Error al procesar el pago')
+      }
+
+      const result = await response.json()
+
+      // Redirigir según respuesta
+      if (result.checkoutUrl) {
+        // ePayco o Wompi card - redirigir a checkout externo
+        window.location.href = result.checkoutUrl
+      } else if (result.redirectUrl) {
+        // Nequi push - redirigir a página de espera
+        router.push(result.redirectUrl)
+      } else {
+        throw new Error('Respuesta inesperada del servidor')
       }
     } catch (err: any) {
       setError(err.message)
       setSubmitting(false)
+      setShowPaymentSelector(false)
     }
   }
 
+  const handleContinue = () => {
+    if (!acceptedTerms) {
+      setError('Debes aceptar los términos y condiciones')
+      return
+    }
+    setError(null)
+    setShowPaymentSelector(true)
+  }
+
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-900 py-12 px-4">
+    <div className="min-h-screen bg-[#f8f0f5] py-12 px-4">
       <div className="max-w-4xl mx-auto">
         <h1 className="font-gazeta text-3xl sm:text-4xl text-[#8A4BAF] text-center mb-8">
           Finalizar Suscripción
@@ -192,71 +196,47 @@ function CheckoutContent() {
 
         <div className="grid md:grid-cols-5 gap-8">
           {/* Formulario de checkout */}
-          <div className="md:col-span-3 bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-6 sm:p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Método de pago */}
+          <div className="md:col-span-3 bg-white rounded-xl shadow-lg p-6 sm:p-8">
+            <div className="space-y-6">
+              {/* Info del plan */}
               <div>
-                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
-                  Método de Pago
-                </h2>
-
-                <div className="bg-neutral-50 dark:bg-neutral-900 rounded-lg p-4 flex items-start gap-3">
-                  {paymentMethod === 'nequi' ? (
-                    <>
-                      <Smartphone className="w-6 h-6 text-brand flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-neutral-900 dark:text-white">
-                          Nequi Débito Automático
-                        </p>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                          Cobros recurrentes automáticos desde tu cuenta Nequi
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-6 h-6 text-brand flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-neutral-900 dark:text-white">
-                          Tarjeta de Crédito/Débito
-                        </p>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
-                          Procesado de forma segura por Stripe
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-3">
-                  Los cobros son recurrentes y automáticos cada{' '}
-                  {interval === 'monthly' ? 'mes' : 'año'}. Puedes cancelar cuando quieras.
-                </p>
-              </div>
-
-              {/* Número de celular (solo para Nequi) */}
-              {paymentMethod === 'nequi' && (
-                <div>
-                  <label
-                    htmlFor="phoneNumber"
-                    className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-2"
-                  >
-                    Número de Celular
-                  </label>
-                  <input
-                    type="tel"
-                    id="phoneNumber"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="3001234567"
-                    className="w-full px-4 py-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:ring-2 focus:ring-brand focus:border-transparent"
-                    required
-                  />
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
-                    Tu número de celular registrado en Nequi
+                <h2 className="font-gazeta text-xl text-[#654177] mb-4">Plan Seleccionado</h2>
+                <div className="bg-[#eef1fa] rounded-lg p-4">
+                  <p className="font-dm-sans font-semibold text-[#4b316c]">{tierData?.name}</p>
+                  <p className="font-dm-sans text-sm text-gray-600 mt-1">
+                    Facturación {interval === 'monthly' ? 'mensual' : 'anual'}
                   </p>
                 </div>
-              )}
+              </div>
+
+              {/* Métodos de pago disponibles */}
+              <div>
+                <h2 className="font-gazeta text-xl text-[#654177] mb-4">Métodos de Pago</h2>
+                <div className="space-y-3">
+                  <div className="bg-gray-50 rounded-lg p-4 flex items-start gap-3">
+                    <span className="text-2xl">🇨🇴</span>
+                    <div>
+                      <p className="font-dm-sans font-medium text-gray-900">Colombia</p>
+                      <p className="font-dm-sans text-sm text-gray-600">
+                        Nequi, Tarjeta de crédito/débito, PayPal
+                      </p>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4 flex items-start gap-3">
+                    <CreditCard className="w-6 h-6 text-gray-600 mt-0.5" />
+                    <div>
+                      <p className="font-dm-sans font-medium text-gray-900">Internacional</p>
+                      <p className="font-dm-sans text-sm text-gray-600">
+                        Tarjeta de crédito/débito, PayPal
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <p className="font-dm-sans text-xs text-gray-500 mt-3">
+                  Los cobros son recurrentes cada {interval === 'monthly' ? 'mes' : 'año'}. Puedes
+                  cancelar cuando quieras.
+                </p>
+              </div>
 
               {/* Términos y condiciones */}
               <div>
@@ -265,11 +245,11 @@ function CheckoutContent() {
                     type="checkbox"
                     checked={acceptedTerms}
                     onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    className="mt-1 w-4 h-4 text-brand border-neutral-300 rounded focus:ring-brand"
+                    className="mt-1 w-4 h-4 text-[#8A4BAF] border-gray-300 rounded focus:ring-[#8A4BAF]"
                   />
-                  <span className="text-sm text-neutral-700 dark:text-neutral-300">
+                  <span className="font-dm-sans text-sm text-gray-700">
                     Acepto que se realicen cobros automáticos recurrentes y he leído los{' '}
-                    <a href="/terminos" className="text-brand hover:underline">
+                    <a href="/terminos" className="text-[#8A4BAF] hover:underline">
                       términos y condiciones
                     </a>
                   </span>
@@ -278,17 +258,18 @@ function CheckoutContent() {
 
               {/* Error message */}
               {error && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <p className="font-dm-sans text-sm text-red-600">{error}</p>
                 </div>
               )}
 
               {/* Submit button */}
               <button
-                type="submit"
+                type="button"
+                onClick={handleContinue}
                 disabled={submitting}
-                className="w-full bg-brand hover:bg-brand-dark text-white font-semibold py-4 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-4 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <>
@@ -296,54 +277,55 @@ function CheckoutContent() {
                     <span>Procesando...</span>
                   </>
                 ) : (
-                  <span>
-                    {paymentMethod === 'nequi' ? 'Crear Suscripción' : 'Ir a Pago Seguro'}
-                  </span>
+                  <span>Continuar al Pago</span>
                 )}
               </button>
-            </form>
+            </div>
           </div>
 
           {/* Resumen del pedido */}
           <div className="md:col-span-2">
-            <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-lg p-6 sticky top-4">
-              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
-                Resumen
-              </h2>
+            <div className="bg-white rounded-xl shadow-lg p-6 sticky top-4">
+              <h2 className="font-gazeta text-xl text-[#654177] mb-4">Resumen</h2>
 
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">Plan</p>
-                  <p className="font-semibold text-neutral-900 dark:text-white">
-                    {tierData?.name}
-                  </p>
+                  <p className="font-dm-sans text-sm text-gray-600">Plan</p>
+                  <p className="font-dm-sans font-semibold text-gray-900">{tierData?.name}</p>
                 </div>
 
                 <div>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                    Facturación
-                  </p>
-                  <p className="font-semibold text-neutral-900 dark:text-white">
+                  <p className="font-dm-sans text-sm text-gray-600">Facturación</p>
+                  <p className="font-dm-sans font-semibold text-gray-900">
                     {interval === 'monthly' ? 'Mensual' : 'Anual'}
                   </p>
                 </div>
 
-                <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">
-                    Total {interval === 'monthly' ? 'mensual' : 'anual'}
-                  </p>
-                  <p className="text-3xl font-bold text-brand">
-                    {formatPrice(price || 0)}
-                  </p>
+                <div className="pt-4 border-t border-gray-200">
+                  <p className="font-dm-sans text-sm text-gray-600 mb-2">Precio</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-dm-sans text-sm text-gray-600">🇨🇴 Colombia</span>
+                      <span className="font-dm-sans font-bold text-[#8A4BAF]">
+                        {formatPrice(priceCOP || 0, 'COP')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-dm-sans text-sm text-gray-600">🌍 Internacional</span>
+                      <span className="font-dm-sans font-bold text-[#8A4BAF]">
+                        {formatPrice(priceUSD || 0, 'USD')}
+                      </span>
+                    </div>
+                  </div>
                   {interval === 'yearly' && (
-                    <p className="text-sm text-green-600 dark:text-green-400 mt-2">
-                      Equivale a {formatPrice(monthlyPrice || 0)}/mes
+                    <p className="font-dm-sans text-sm text-green-600 mt-3">
+                      Ahorra pagando anualmente
                     </p>
                   )}
                 </div>
 
-                <div className="pt-4 border-t border-neutral-200 dark:border-neutral-700">
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                <div className="pt-4 border-t border-gray-200">
+                  <p className="font-dm-sans text-xs text-gray-500">
                     Próximo cobro:{' '}
                     {new Date(
                       new Date().setMonth(
@@ -361,6 +343,18 @@ function CheckoutContent() {
           </div>
         </div>
       </div>
+
+      {/* Modal de selección de método de pago */}
+      {showPaymentSelector && (
+        <PaymentMethodSelector
+          onMethodSelect={handlePaymentMethodSelect}
+          onCancel={() => setShowPaymentSelector(false)}
+          isLoading={submitting}
+          pricesCOP={priceCOP || 0}
+          pricesUSD={priceUSD || 0}
+          productName={`Membresía ${tierData?.name} - ${interval === 'monthly' ? 'Mensual' : 'Anual'}`}
+        />
+      )}
     </div>
   )
 }
@@ -369,8 +363,8 @@ export default function CheckoutPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900">
-          <Loader2 className="w-8 h-8 animate-spin text-brand" />
+        <div className="min-h-screen flex items-center justify-center bg-[#f8f0f5]">
+          <Loader2 className="w-8 h-8 animate-spin text-[#8A4BAF]" />
         </div>
       }
     >

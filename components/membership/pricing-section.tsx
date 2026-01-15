@@ -67,12 +67,12 @@ export function PricingSection({ tiers, isAuthenticated }: PricingSectionProps) 
   return (
     <div>
       {/* Controles de selección */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 mb-12">
+      <div className="flex flex-col items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-12">
         {/* Toggle de intervalo de facturación */}
-        <div className="inline-flex items-center bg-white dark:bg-neutral-800 rounded-lg p-1.5 border border-neutral-200 dark:border-neutral-700">
+        <div className="inline-flex items-center bg-white dark:bg-neutral-800 rounded-lg p-1 sm:p-1.5 border border-neutral-200 dark:border-neutral-700">
           <button
             onClick={() => setBillingInterval('monthly')}
-            className={`px-6 py-2.5 rounded-md font-medium text-sm transition-all ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-medium text-xs sm:text-sm transition-all ${
               billingInterval === 'monthly'
                 ? 'bg-brand text-white shadow-sm'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-brand'
@@ -82,24 +82,24 @@ export function PricingSection({ tiers, isAuthenticated }: PricingSectionProps) 
           </button>
           <button
             onClick={() => setBillingInterval('yearly')}
-            className={`px-6 py-2.5 rounded-md font-medium text-sm transition-all relative ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-medium text-xs sm:text-sm transition-all relative ${
               billingInterval === 'yearly'
                 ? 'bg-brand text-white shadow-sm'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-brand'
             }`}
           >
             Anual
-            <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+            <span className="absolute -top-2 -right-2 bg-green-500 text-white text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full">
               Ahorra
             </span>
           </button>
         </div>
 
         {/* Toggle de moneda */}
-        <div className="inline-flex items-center bg-white dark:bg-neutral-800 rounded-lg p-1.5 border border-neutral-200 dark:border-neutral-700">
+        <div className="inline-flex items-center bg-white dark:bg-neutral-800 rounded-lg p-1 sm:p-1.5 border border-neutral-200 dark:border-neutral-700">
           <button
             onClick={() => setCurrency('COP')}
-            className={`px-6 py-2.5 rounded-md font-medium text-sm transition-all ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-medium text-xs sm:text-sm transition-all ${
               currency === 'COP'
                 ? 'bg-brand text-white shadow-sm'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-brand'
@@ -109,7 +109,7 @@ export function PricingSection({ tiers, isAuthenticated }: PricingSectionProps) 
           </button>
           <button
             onClick={() => setCurrency('USD')}
-            className={`px-6 py-2.5 rounded-md font-medium text-sm transition-all ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-medium text-xs sm:text-sm transition-all ${
               currency === 'USD'
                 ? 'bg-brand text-white shadow-sm'
                 : 'text-neutral-600 dark:text-neutral-400 hover:text-brand'
@@ -121,7 +121,7 @@ export function PricingSection({ tiers, isAuthenticated }: PricingSectionProps) 
       </div>
 
       {/* Grid de pricing cards */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto" id="pricing">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto px-2 sm:px-0" id="pricing">
         {sortedTiers.map((tier) => (
           <PricingCard
             key={tier._id}

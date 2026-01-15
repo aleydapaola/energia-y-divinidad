@@ -10,6 +10,7 @@ interface MonthViewProps {
 }
 
 const DAYS_ES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+const DAYS_ES_SHORT = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 const MONTHS_ES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
@@ -118,12 +119,13 @@ export default function MonthView({ events }: MonthViewProps) {
 
       {/* Días de la semana */}
       <div className="grid grid-cols-7 border-b border-gray-200">
-        {DAYS_ES.map((day) => (
+        {DAYS_ES.map((day, index) => (
           <div
             key={day}
-            className="py-2 text-center text-sm font-medium text-gray-500"
+            className="py-2 text-center text-xs sm:text-sm font-medium text-gray-500"
           >
-            {day}
+            <span className="hidden sm:inline">{day}</span>
+            <span className="sm:hidden">{DAYS_ES_SHORT[index]}</span>
           </div>
         ))}
       </div>
@@ -134,29 +136,29 @@ export default function MonthView({ events }: MonthViewProps) {
           <div
             key={index}
             className={`
-              min-h-[100px] p-2 border-b border-r border-gray-100
+              min-h-[60px] sm:min-h-[80px] md:min-h-[100px] p-1 sm:p-2 border-b border-r border-gray-100
               ${!day.isCurrentMonth ? 'bg-gray-50' : ''}
               ${index % 7 === 6 ? 'border-r-0' : ''}
             `}
           >
             <div
               className={`
-                text-sm font-medium mb-1
+                text-xs sm:text-sm font-medium mb-0.5 sm:mb-1
                 ${!day.isCurrentMonth ? 'text-gray-400' : 'text-gray-700'}
-                ${isToday(day.date) ? 'w-7 h-7 flex items-center justify-center bg-[#4944a4] text-white rounded-full' : ''}
+                ${isToday(day.date) ? 'w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center bg-[#4944a4] text-white rounded-full text-[10px] sm:text-sm' : ''}
               `}
             >
               {day.date.getDate()}
             </div>
 
             {/* Eventos del día */}
-            <div className="space-y-1">
-              {day.events.slice(0, 3).map((event) => (
+            <div className="space-y-0.5 sm:space-y-1">
+              {day.events.slice(0, 2).map((event) => (
                 <Link
                   key={event._id}
                   href={`/eventos/${event.slug.current}`}
                   className={`
-                    block text-xs p-1 rounded truncate
+                    block text-[10px] sm:text-xs p-0.5 sm:p-1 rounded truncate
                     ${event.locationType === 'online'
                       ? 'bg-[#eef1fa] text-[#4944a4]'
                       : 'bg-[#f8f0f5] text-[#8A4BAF]'
@@ -165,12 +167,13 @@ export default function MonthView({ events }: MonthViewProps) {
                   `}
                   title={event.title}
                 >
-                  {event.title}
+                  <span className="hidden sm:inline">{event.title}</span>
+                  <span className="sm:hidden">•</span>
                 </Link>
               ))}
-              {day.events.length > 3 && (
-                <span className="block text-xs text-gray-500 pl-1">
-                  +{day.events.length - 3} más
+              {day.events.length > 2 && (
+                <span className="block text-[10px] sm:text-xs text-gray-500 pl-0.5 sm:pl-1">
+                  +{day.events.length - 2}
                 </span>
               )}
             </div>

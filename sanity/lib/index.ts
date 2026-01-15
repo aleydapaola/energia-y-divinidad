@@ -1,3 +1,4 @@
 export { client } from './client'
-export { urlForImage } from './image'
+export { urlForImage, urlFor } from './image'
+export { sanityFetch } from './fetch'
 export * from './queries'

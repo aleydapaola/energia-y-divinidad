@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Calendar, Clock, Video, Heart, Sparkles, MessageCircle, Ticket, CheckCircle, Loader2 } from 'lucide-react'
 import { BookingCalendar } from '@/components/booking/booking-calendar'
-import { PaymentMethodSelector, type PaymentMethod, type PaymentRegion } from '@/components/pago/PaymentMethodSelector'
+import { PaymentMethodSelector, type PaymentRegion } from '@/components/pago/PaymentMethodSelector'
+import type { PaymentMethodType } from '@/lib/membership-access'
 import type { Holiday, BlockedDateRange, Timezone } from '@/lib/sanity/queries/bookingSettings'
 
 interface SessionForCalendar {
@@ -89,21 +90,46 @@ export function SesionesPageClient({
     setError(null)
   }
 
-  const handlePaymentMethodSelect = async (method: PaymentMethod, region: PaymentRegion) => {
+  const handlePaymentMethodSelect = async (method: PaymentMethodType, region: PaymentRegion, phoneNumber?: string) => {
     setIsProcessing(true)
     setError(null)
 
     try {
-      const response = await fetch('/api/checkout/session', {
+      const currency = region === 'colombia' ? 'COP' : 'USD'
+
+      // Determinar endpoint según método de pago
+      let endpoint: string
+      let body: any
+
+      if (method === 'wompi_nequi' || method === 'wompi_card') {
+        // Pago via Wompi (Colombia)
+        endpoint = '/api/checkout/wompi'
+        body = {
+          productType: paymentType === 'pack' ? 'pack' : 'session',
+          productId: 'session-canalizacion',
+          productName: paymentType === 'pack' ? 'Pack de 8 Sesiones' : 'Sesión de Canalización',
+          amount: region === 'colombia' ? sessionDetails.price : sessionDetails.priceUSD,
+          paymentMethod: method === 'wompi_nequi' ? 'nequi' : 'card',
+          phoneNumber,
+          sessionSlug: paymentType === 'single' ? selectedDate?.toISOString().split('T')[0] : undefined,
+        }
+      } else {
+        // Pago via ePayco (Internacional)
+        endpoint = '/api/checkout/epayco'
+        body = {
+          productType: paymentType === 'pack' ? 'pack' : 'session',
+          productId: 'session-canalizacion',
+          productName: paymentType === 'pack' ? 'Pack de 8 Sesiones' : 'Sesión de Canalización',
+          amount: region === 'colombia' ? sessionDetails.price : sessionDetails.priceUSD,
+          currency,
+          paymentMethod: method === 'epayco_paypal' ? 'paypal' : 'card',
+        }
+      }
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionType: paymentType,
-          date: paymentType === 'single' && selectedDate ? selectedDate.toISOString().split('T')[0] : undefined,
-          time: paymentType === 'single' ? selectedTime : undefined,
-          paymentMethod: method,
-          region,
-        }),
+        body: JSON.stringify(body),
       })
 
       const data = await response.json()
@@ -112,9 +138,11 @@ export function SesionesPageClient({
         throw new Error(data.error || 'Error al procesar el pago')
       }
 
-      // Redirect to payment URL
-      if (data.url) {
-        router.push(data.url)
+      // Redirect según respuesta
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl
+      } else if (data.redirectUrl) {
+        router.push(data.redirectUrl)
       }
     } catch (err: any) {
       setError(err.message || 'Error al procesar el pago')
@@ -235,10 +263,10 @@ export function SesionesPageClient({
         {/* Main Content - Calendar and Info */}
         <section className="pb-16 sm:pb-20">
           <div className="container mx-auto px-4">
-            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 max-w-6xl mx-auto">
 
               {/* Left Column - Session Info */}
-              <div className="space-y-8">
+              <div className="space-y-6 sm:space-y-8">
                 {/* What to Expect */}
                 <div className="bg-white rounded-2xl p-6 md:p-8 shadow-lg border border-[#8A4BAF]/10">
                   <h2 className="font-gazeta text-2xl text-[#8A4BAF] mb-6">
@@ -377,9 +405,9 @@ export function SesionesPageClient({
               </div>
 
               {/* Right Column - Calendar */}
-              <div className="lg:sticky lg:top-8 lg:self-start">
-                <div className="mb-6">
-                  <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF] mb-3">
+              <div className="lg:sticky lg:top-8 lg:self-start order-first lg:order-last">
+                <div className="mb-4 sm:mb-6">
+                  <h2 className="font-gazeta text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-[#8A4BAF] mb-2 sm:mb-3">
                     Agenda tu Sesion
                   </h2>
                   <p className="font-dm-sans text-gray-600">

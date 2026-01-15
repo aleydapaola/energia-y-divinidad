@@ -101,3 +101,182 @@ export const FOOTER_PAGES_QUERY = groq`*[
   published == true &&
   showInFooter == true
 ] | order(footerColumn asc)`
+
+// ============================================
+// Academia - Cursos
+// ============================================
+
+// Lista de cursos publicados para el catálogo
+export const COURSES_QUERY = groq`*[
+  _type == "course" &&
+  published == true &&
+  status == "active"
+] | order(displayOrder asc) {
+  _id,
+  title,
+  slug,
+  shortDescription,
+  coverImage,
+  courseType,
+  price,
+  priceUSD,
+  compareAtPrice,
+  compareAtPriceUSD,
+  difficulty,
+  totalDuration,
+  topics,
+  instructor,
+  featured
+}`
+
+// Curso completo con módulos y lecciones
+export const COURSE_BY_SLUG_QUERY = groq`*[_type == "course" && slug.current == $slug][0] {
+  ...,
+  "modules": modules[]-> {
+    _id,
+    title,
+    description,
+    order,
+    unlockDate,
+    "lessons": lessons[]-> {
+      _id,
+      title,
+      slug,
+      description,
+      order,
+      lessonType,
+      videoDuration,
+      isFreePreview,
+      published,
+      "liveSession": liveSession {
+        scheduledAt,
+        estimatedDuration,
+        recordingUrl
+      }
+    }
+  } | order(order asc),
+  "simpleLesson": simpleLesson-> {
+    _id,
+    title,
+    slug,
+    description,
+    lessonType,
+    videoDuration,
+    isFreePreview,
+    published,
+    "liveSession": liveSession {
+      scheduledAt,
+      estimatedDuration,
+      recordingUrl
+    }
+  },
+  "membershipTiers": membershipTiers[]-> {
+    _id,
+    name,
+    tierLevel
+  }
+}`
+
+// Cursos por IDs (para el carrito)
+export const COURSES_BY_IDS_QUERY = groq`*[_type == "course" && _id in $ids] {
+  _id,
+  title,
+  slug,
+  coverImage,
+  price,
+  priceUSD,
+  status,
+  published
+}`
+
+// Cursos destacados
+export const FEATURED_COURSES_QUERY = groq`*[
+  _type == "course" &&
+  published == true &&
+  status == "active" &&
+  featured == true
+] | order(displayOrder asc)[0...4] {
+  _id,
+  title,
+  slug,
+  shortDescription,
+  coverImage,
+  price,
+  priceUSD,
+  difficulty,
+  totalDuration,
+  instructor
+}`
+
+// Lección completa con recursos (para el reproductor)
+export const LESSON_FULL_QUERY = groq`*[_type == "courseLesson" && slug.current == $slug][0] {
+  ...,
+  "resources": resources[] {
+    title,
+    resourceType,
+    "fileUrl": file.asset->url,
+    "fileName": file.asset->originalFilename,
+    externalUrl,
+    description
+  }
+}`
+
+// Lección por ID
+export const LESSON_BY_ID_QUERY = groq`*[_type == "courseLesson" && _id == $id][0] {
+  ...,
+  "resources": resources[] {
+    title,
+    resourceType,
+    "fileUrl": file.asset->url,
+    "fileName": file.asset->originalFilename,
+    externalUrl,
+    description
+  }
+}`
+
+// ============================================
+// Academia - Códigos de Descuento
+// ============================================
+
+// Código de descuento por código
+export const DISCOUNT_CODE_BY_CODE_QUERY = groq`*[
+  _type == "discountCode" &&
+  upper(code) == upper($code)
+][0] {
+  _id,
+  code,
+  description,
+  active,
+  discountType,
+  discountValue,
+  currency,
+  usageType,
+  maxUses,
+  validFrom,
+  validUntil,
+  minPurchaseAmount,
+  "appliesToCourses": appliesToCourses[]-> {
+    _id,
+    title
+  }
+}`
+
+// Todos los códigos activos (para admin)
+export const DISCOUNT_CODES_QUERY = groq`*[_type == "discountCode"] | order(_createdAt desc) {
+  _id,
+  code,
+  description,
+  active,
+  discountType,
+  discountValue,
+  currency,
+  usageType,
+  maxUses,
+  validFrom,
+  validUntil,
+  minPurchaseAmount,
+  "appliesToCourses": appliesToCourses[]-> {
+    _id,
+    title
+  }
+}`

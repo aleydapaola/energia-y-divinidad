@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { User, Calendar, ShoppingBag, Settings, Crown } from "lucide-react"
+import { User, Calendar, ShoppingBag, Settings, Crown, GraduationCap, CalendarCheck } from "lucide-react"
 
 const navItems = [
   {
@@ -15,6 +15,16 @@ const navItems = [
     href: "/mi-cuenta/sesiones",
     label: "Mis Sesiones",
     icon: Calendar,
+  },
+  {
+    href: "/mi-cuenta/cursos",
+    label: "Mis Cursos",
+    icon: GraduationCap,
+  },
+  {
+    href: "/mi-cuenta/eventos",
+    label: "Mis Eventos",
+    icon: CalendarCheck,
   },
   {
     href: "/mi-cuenta/compras",
