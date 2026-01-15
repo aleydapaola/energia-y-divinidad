@@ -8,12 +8,19 @@
 
 ## Paleta de Colores
 
+### Colores Principales
 - Violeta principal: `#8A4BAF`
 - Violeta oscuro: `#654177`
 - Azul rey: `#2D4CC7`
 - Azul botones: `#4944a4`
 - Rosa claro (fondos): `#f8f0f5`
 - Azul claro (fondos): `#eef1fa`
+
+### Colores de Membresía (triada análoga)
+Basados en una progresión armónica alrededor del violeta de marca:
+- Rosa suave: `#C77DBA` (plan Esencia - accesible, cálido)
+- Violeta: `#8A4BAF` (plan Armonía - color de marca, anclaje)
+- Índigo profundo: `#5C4D9B` (plan Divinidad - premium, sofisticado)
 
 ## Tipografía
 

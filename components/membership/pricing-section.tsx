@@ -69,23 +69,23 @@ export function PricingSection({ tiers, isAuthenticated }: PricingSectionProps) 
       {/* Controles de selección */}
       <div className="flex flex-col items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-12">
         {/* Toggle de intervalo de facturación */}
-        <div className="inline-flex items-center bg-white dark:bg-neutral-800 rounded-lg p-1 sm:p-1.5 border border-neutral-200 dark:border-neutral-700">
+        <div className="inline-flex items-center bg-white rounded-lg p-1 sm:p-1.5 border border-gray-200">
           <button
             onClick={() => setBillingInterval('monthly')}
-            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-medium text-xs sm:text-sm transition-all ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-dm-sans font-medium text-xs sm:text-sm transition-all ${
               billingInterval === 'monthly'
-                ? 'bg-brand text-white shadow-sm'
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-brand'
+                ? 'bg-[#4944a4] text-white shadow-sm'
+                : 'text-[#654177] hover:text-[#8A4BAF]'
             }`}
           >
             Mensual
           </button>
           <button
             onClick={() => setBillingInterval('yearly')}
-            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-medium text-xs sm:text-sm transition-all relative ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-dm-sans font-medium text-xs sm:text-sm transition-all relative ${
               billingInterval === 'yearly'
-                ? 'bg-brand text-white shadow-sm'
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-brand'
+                ? 'bg-[#4944a4] text-white shadow-sm'
+                : 'text-[#654177] hover:text-[#8A4BAF]'
             }`}
           >
             Anual
@@ -96,23 +96,23 @@ export function PricingSection({ tiers, isAuthenticated }: PricingSectionProps) 
         </div>
 
         {/* Toggle de moneda */}
-        <div className="inline-flex items-center bg-white dark:bg-neutral-800 rounded-lg p-1 sm:p-1.5 border border-neutral-200 dark:border-neutral-700">
+        <div className="inline-flex items-center bg-white rounded-lg p-1 sm:p-1.5 border border-gray-200">
           <button
             onClick={() => setCurrency('COP')}
-            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-medium text-xs sm:text-sm transition-all ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-dm-sans font-medium text-xs sm:text-sm transition-all ${
               currency === 'COP'
-                ? 'bg-brand text-white shadow-sm'
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-brand'
+                ? 'bg-[#4944a4] text-white shadow-sm'
+                : 'text-[#654177] hover:text-[#8A4BAF]'
             }`}
           >
             🇨🇴 COP
           </button>
           <button
             onClick={() => setCurrency('USD')}
-            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-medium text-xs sm:text-sm transition-all ${
+            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-dm-sans font-medium text-xs sm:text-sm transition-all ${
               currency === 'USD'
-                ? 'bg-brand text-white shadow-sm'
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-brand'
+                ? 'bg-[#4944a4] text-white shadow-sm'
+                : 'text-[#654177] hover:text-[#8A4BAF]'
             }`}
           >
             🌍 USD
@@ -135,16 +135,16 @@ export function PricingSection({ tiers, isAuthenticated }: PricingSectionProps) 
       </div>
 
       {/* Información adicional */}
-      <div className="text-center mt-12 text-sm text-neutral-600 dark:text-neutral-400">
+      <div className="text-center mt-12 text-sm text-[#654177]/70 font-dm-sans">
         <p>
           Todos los planes se renuevan automáticamente.{' '}
-          <span className="font-medium">Puedes cancelar cuando quieras</span> desde tu panel de
+          <span className="font-medium text-[#654177]">Puedes cancelar cuando quieras</span> desde tu panel de
           control.
         </p>
         <p className="mt-2">
           {currency === 'COP'
-            ? 'Pagos en Colombia: Débito automático con Nequi'
-            : 'Pagos internacionales: Tarjeta de crédito/débito con Stripe'}
+            ? 'Pagos en Colombia: Nequi, tarjeta de crédito o débito'
+            : 'Pagos internacionales: Tarjeta de crédito/débito o PayPal'}
         </p>
       </div>
     </div>
