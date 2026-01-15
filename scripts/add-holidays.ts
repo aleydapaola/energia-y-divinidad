@@ -9,7 +9,7 @@
 import { createClient } from '@sanity/client'
 
 const client = createClient({
-  projectId: 'm0ymba77',
+  projectId: '81jpalr2',
   dataset: 'production',
   apiVersion: '2024-01-01',
   token: process.env.SANITY_TOKEN || process.env.SANITY_API_TOKEN,
@@ -58,7 +58,7 @@ async function addHolidays() {
   if (!process.env.SANITY_TOKEN && !process.env.SANITY_API_TOKEN) {
     console.error('Error: SANITY_TOKEN no está definido')
     console.log('\nPasos para obtener el token:')
-    console.log('1. Ve a: https://www.sanity.io/manage/project/m0ymba77/api#tokens')
+    console.log('1. Ve a: https://www.sanity.io/manage/project/81jpalr2/api#tokens')
     console.log('2. Haz clic en "Add API token"')
     console.log('3. Nombre: "Script Holidays"')
     console.log('4. Permisos: "Editor"')
