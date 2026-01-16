@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     if (response.status === 400 && data.title === "Member Exists") {
       return NextResponse.json(
-        { message: "Ya estás suscrita a nuestra newsletter" },
+        { message: "Ya estás en nuestra lista" },
         { status: 200 }
       )
     }

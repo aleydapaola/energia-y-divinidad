@@ -4,6 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import MeditationCard from "@/components/meditaciones/MeditationCard"
 import { getFeaturedFreeContent, type FreeContent } from "@/lib/sanity/queries/freeContent"
+import { NewsletterForm } from "@/components/newsletter"
 
 export default async function HomePage() {
   // Try to fetch featured meditations, fallback to empty array if Sanity not configured
@@ -787,20 +788,9 @@ export default async function HomePage() {
             </p>
 
             {/* Form */}
-            <form className="flex flex-col gap-4 max-w-sm mx-auto">
-              <input
-                type="email"
-                placeholder="Tu correo electrónico"
-                required
-                className="w-full px-5 py-3.5 bg-white border border-[#8A4BAF]/20 rounded-full text-[#4A4A4A] placeholder-[#9a9a9a] focus:outline-none focus:border-[#8A4BAF] focus:ring-2 focus:ring-[#8A4BAF]/20 transition-all font-dm-sans text-base text-center shadow-sm"
-              />
-              <button
-                type="submit"
-                className="w-full px-8 py-3.5 bg-[#4944a4] text-white rounded-full font-dm-sans text-base font-semibold hover:bg-[#3d3890] transition-all transform hover:scale-105 shadow-lg"
-              >
-                Suscribirme
-              </button>
-            </form>
+            <div className="max-w-sm mx-auto">
+              <NewsletterForm variant="inline" />
+            </div>
 
             {/* Privacy note */}
             <p className="font-dm-sans text-xs text-[#9a9a9a] mt-4">
