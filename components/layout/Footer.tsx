@@ -2,6 +2,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Mail, MapPin, Phone } from "lucide-react"
 import { features } from "@/lib/config/features"
+import { NewsletterForm } from "@/components/newsletter"
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
@@ -157,23 +158,7 @@ export function Footer() {
             </p>
 
             {/* Newsletter Form - Primary CTA */}
-            <form className="mb-6">
-              <div className="flex flex-col gap-2">
-                <input
-                  type="email"
-                  placeholder="Tu email"
-                  required
-                  className="px-4 py-2.5 bg-white border border-[#8A4BAF]/20 rounded-lg text-sm focus:outline-none focus:border-[#8A4BAF] focus:ring-1 focus:ring-[#8A4BAF] transition-colors"
-                  aria-label="Email para newsletter"
-                />
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-[#2D4CC7] text-white rounded-lg text-sm font-medium hover:bg-[#2541a8] transition-colors"
-                >
-                  Suscribirme
-                </button>
-              </div>
-            </form>
+            <NewsletterForm variant="footer" className="mb-6" />
 
             {/* Contact Information - Secondary */}
             <div className="space-y-2.5 border-t border-[#8A4BAF]/10 pt-4">
