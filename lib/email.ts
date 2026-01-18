@@ -1440,15 +1440,19 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
                           <tr>
                             <td align="center" style="padding-bottom: 20px;">
-                              <div style="width: 80px; height: 80px; background-color: #d1fae5; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
-                                <span style="font-size: 40px;">✓</span>
-                              </div>
+                              <table role="presentation" style="border-collapse: collapse; margin: 0 auto;">
+                                <tr>
+                                  <td style="width: 80px; height: 80px; background-color: #d1fae5; border-radius: 50%; text-align: center; vertical-align: middle;">
+                                    <span style="font-size: 36px; color: #065f46; font-weight: bold; line-height: 80px;">&#10003;</span>
+                                  </td>
+                                </tr>
+                              </table>
                             </td>
                           </tr>
                           <tr>
                             <td align="center" style="padding-bottom: 20px;">
                               <span style="display: inline-block; padding: 8px 20px; background-color: #d1fae5; color: #065f46; border-radius: 20px; font-size: 14px; font-weight: 600;">
-                                ✅ Pago Confirmado
+                                Pago Confirmado
                               </span>
                             </td>
                           </tr>
