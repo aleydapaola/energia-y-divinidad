@@ -123,7 +123,7 @@ export async function sendVerificationEmail({ email, name, token }: SendVerifica
                           © ${new Date().getFullYear()} Energía y Divinidad. Todos los derechos reservados.
                         </p>
                         <p style="margin: 10px 0 0; font-size: 12px; color: #999999;">
-                          Si tienes preguntas, contáctanos en <a href="mailto:hola@energiaydivinidad.com" style="color: #8A4BAF;">hola@energiaydivinidad.com</a>
+                          Si tienes preguntas, contáctanos en <a href="mailto:contacto@energiaydivinidad.com" style="color: #8A4BAF;">contacto@energiaydivinidad.com</a>
                         </p>
                       </td>
                     </tr>
@@ -501,7 +501,7 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
                           © ${new Date().getFullYear()} Energía y Divinidad. Todos los derechos reservados.
                         </p>
                         <p style="margin: 10px 0 0; font-size: 12px; color: #999999;">
-                          ¿Preguntas? <a href="mailto:hola@energiaydivinidad.com" style="color: #8A4BAF;">hola@energiaydivinidad.com</a>
+                          ¿Preguntas? <a href="mailto:contacto@energiaydivinidad.com" style="color: #8A4BAF;">contacto@energiaydivinidad.com</a>
                         </p>
                       </td>
                     </tr>
@@ -862,7 +862,7 @@ export async function sendPackCodeEmail(params: SendPackCodeEmailParams) {
                           © ${new Date().getFullYear()} Energía y Divinidad. Todos los derechos reservados.
                         </p>
                         <p style="margin: 10px 0 0; font-size: 12px; color: #999999;">
-                          ¿Preguntas? <a href="mailto:hola@energiaydivinidad.com" style="color: #8A4BAF;">hola@energiaydivinidad.com</a>
+                          ¿Preguntas? <a href="mailto:contacto@energiaydivinidad.com" style="color: #8A4BAF;">contacto@energiaydivinidad.com</a>
                         </p>
                       </td>
                     </tr>
@@ -1061,7 +1061,7 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
                           © ${new Date().getFullYear()} Energía y Divinidad. Todos los derechos reservados.
                         </p>
                         <p style="margin: 10px 0 0; font-size: 12px; color: #999999;">
-                          ¿Preguntas? <a href="mailto:hola@energiaydivinidad.com" style="color: #8A4BAF;">hola@energiaydivinidad.com</a>
+                          ¿Preguntas? <a href="mailto:contacto@energiaydivinidad.com" style="color: #8A4BAF;">contacto@energiaydivinidad.com</a>
                         </p>
                       </td>
                     </tr>
@@ -1534,7 +1534,7 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
                           © ${new Date().getFullYear()} Energía y Divinidad. Todos los derechos reservados.
                         </p>
                         <p style="margin: 10px 0 0; font-size: 12px; color: #999999;">
-                          ¿Preguntas? <a href="mailto:hola@energiaydivinidad.com" style="color: #8A4BAF;">hola@energiaydivinidad.com</a>
+                          ¿Preguntas? <a href="mailto:contacto@energiaydivinidad.com" style="color: #8A4BAF;">contacto@energiaydivinidad.com</a>
                         </p>
                       </td>
                     </tr>
@@ -1728,7 +1728,7 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
                           © ${new Date().getFullYear()} Energía y Divinidad. Todos los derechos reservados.
                         </p>
                         <p style="margin: 10px 0 0; font-size: 12px; color: #999999;">
-                          ¿Preguntas? <a href="mailto:hola@energiaydivinidad.com" style="color: #8A4BAF;">hola@energiaydivinidad.com</a>
+                          ¿Preguntas? <a href="mailto:contacto@energiaydivinidad.com" style="color: #8A4BAF;">contacto@energiaydivinidad.com</a>
                         </p>
                       </td>
                     </tr>
