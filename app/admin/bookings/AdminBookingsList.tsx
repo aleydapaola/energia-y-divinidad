@@ -175,8 +175,8 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
     try {
       const newDateTime = new Date(`${newDate}T${newTime}:00`)
 
-      const response = await fetch(`/api/bookings/${selectedBooking.id}/reschedule`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/admin/bookings/${selectedBooking.id}/reschedule`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           newDate: newDateTime.toISOString(),
@@ -206,8 +206,8 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
     setError(null)
 
     try {
-      const response = await fetch(`/api/bookings/${selectedBooking.id}/cancel`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/admin/bookings/${selectedBooking.id}/cancel`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           reason: reason || 'Cancelada por administrador',
@@ -236,8 +236,25 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
     setError(null)
 
     try {
-      const response = await fetch(`/api/admin/bookings/${selectedBooking.id}/status`, {
-        method: 'PATCH',
+      // Usar endpoint específico según el nuevo estado
+      let endpoint = ''
+      switch (newStatus) {
+        case 'COMPLETED':
+          endpoint = `/api/admin/bookings/${selectedBooking.id}/complete`
+          break
+        case 'NO_SHOW':
+          endpoint = `/api/admin/bookings/${selectedBooking.id}/no-show`
+          break
+        case 'CANCELLED':
+          endpoint = `/api/admin/bookings/${selectedBooking.id}/cancel`
+          break
+        default:
+          // Fallback al endpoint genérico de status
+          endpoint = `/api/admin/bookings/${selectedBooking.id}/status`
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       })
