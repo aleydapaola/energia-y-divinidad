@@ -90,7 +90,13 @@ export function SesionesPageClient({
     setError(null)
   }
 
-  const handlePaymentMethodSelect = async (method: PaymentMethodType, region: PaymentRegion, phoneNumber?: string) => {
+  const handlePaymentMethodSelect = async (
+    method: PaymentMethodType,
+    region: PaymentRegion,
+    phoneNumber?: string,
+    guestEmail?: string,
+    guestName?: string
+  ) => {
     setIsProcessing(true)
     setError(null)
 
@@ -111,6 +117,8 @@ export function SesionesPageClient({
           amount: region === 'colombia' ? sessionDetails.price : sessionDetails.priceUSD,
           paymentMethod: method === 'wompi_nequi' ? 'nequi' : 'card',
           phoneNumber,
+          guestEmail,
+          guestName,
           sessionSlug: paymentType === 'single' ? selectedDate?.toISOString().split('T')[0] : undefined,
         }
       } else {

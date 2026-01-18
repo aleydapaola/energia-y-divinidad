@@ -397,10 +397,9 @@ export async function createWompiPaymentLink(request: {
   const paymentLink = data.data
 
   // Generar URL de checkout
-  const checkoutUrl =
-    WOMPI_CONFIG.environment === 'production'
-      ? `https://checkout.wompi.co/l/${paymentLink.id}`
-      : `https://checkout.sandbox.wompi.co/l/${paymentLink.id}`
+  // Wompi usa la misma URL para sandbox y producción
+  // El ambiente se determina por el tipo de llave (pub_test_ vs pub_prod_)
+  const checkoutUrl = `https://checkout.wompi.co/l/${paymentLink.id}`
 
   return {
     paymentLink: {

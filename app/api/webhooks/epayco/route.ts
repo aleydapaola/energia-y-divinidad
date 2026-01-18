@@ -8,6 +8,7 @@ import {
 } from '@/lib/epayco'
 import { createCourseEntitlement } from '@/lib/course-access'
 import { recordDiscountUsage } from '@/lib/discount-codes'
+import { getAppUrl } from '@/lib/utils'
 
 /**
  * POST /api/webhooks/epayco
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
   const refPayco = payload.x_ref_payco || payload.ref_payco || ''
   const invoice = payload.x_id_invoice || payload.x_invoice || ''
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const appUrl = getAppUrl()
   const redirectUrl = `${appUrl}/pago/confirmacion?ref=${invoice}&ref_payco=${refPayco}`
 
   return NextResponse.redirect(redirectUrl)

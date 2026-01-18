@@ -2,6 +2,8 @@ import { Resend } from 'resend';
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Energía y Divinidad <noreply@energiaydivinidad.com>';
 const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+// Logo URL para emails - usando URL de producción en Vercel
+const LOGO_URL = 'https://energia-y-divinidad.vercel.app/images/logoNoBackground.png';
 
 // Modo desarrollo: si está activo, se auto-verifica el email sin enviar correo real
 const DEV_MODE = process.env.NODE_ENV === 'development';
@@ -71,12 +73,12 @@ export async function sendVerificationEmail({ email, name, token }: SendVerifica
               <tr>
                 <td align="center" style="padding: 40px 20px;">
                   <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
-                    <!-- Header -->
+                    <!-- Header with Logo -->
                     <tr>
                       <td align="center" style="padding: 30px 0;">
-                        <h1 style="margin: 0; font-size: 32px; color: #8A4BAF; font-weight: 400;">
-                          Energía y Divinidad
-                        </h1>
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
                       </td>
                     </tr>
 
@@ -170,12 +172,12 @@ export async function sendWelcomeEmail({ email, name }: SendWelcomeEmailParams) 
               <tr>
                 <td align="center" style="padding: 40px 20px;">
                   <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
-                    <!-- Header -->
+                    <!-- Header with Logo -->
                     <tr>
                       <td align="center" style="padding: 30px 0;">
-                        <h1 style="margin: 0; font-size: 32px; color: #8A4BAF; font-weight: 400;">
-                          Energía y Divinidad
-                        </h1>
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
                       </td>
                     </tr>
 
@@ -410,12 +412,12 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
               <tr>
                 <td align="center" style="padding: 40px 20px;">
                   <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
-                    <!-- Header -->
+                    <!-- Header with Logo -->
                     <tr>
                       <td align="center" style="padding: 30px 0;">
-                        <h1 style="margin: 0; font-size: 32px; color: #8A4BAF; font-weight: 400;">
-                          Energía y Divinidad
-                        </h1>
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
                       </td>
                     </tr>
 
@@ -602,7 +604,9 @@ export async function sendEventReminder(params: EventReminderEmailParams) {
                   <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
                     <tr>
                       <td align="center" style="padding: 30px 0;">
-                        <h1 style="margin: 0; font-size: 32px; color: #8A4BAF;">Energía y Divinidad</h1>
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
                       </td>
                     </tr>
                     <tr>
@@ -749,12 +753,12 @@ export async function sendPackCodeEmail(params: SendPackCodeEmailParams) {
               <tr>
                 <td align="center" style="padding: 40px 20px;">
                   <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
-                    <!-- Header -->
+                    <!-- Header with Logo -->
                     <tr>
                       <td align="center" style="padding: 30px 0;">
-                        <h1 style="margin: 0; font-size: 32px; color: #8A4BAF; font-weight: 400;">
-                          Energía y Divinidad
-                        </h1>
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
                       </td>
                     </tr>
 
@@ -960,12 +964,12 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
               <tr>
                 <td align="center" style="padding: 40px 20px;">
                   <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
-                    <!-- Header -->
+                    <!-- Header with Logo -->
                     <tr>
                       <td align="center" style="padding: 30px 0;">
-                        <h1 style="margin: 0; font-size: 32px; color: #8A4BAF; font-weight: 400;">
-                          Energía y Divinidad
-                        </h1>
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
                       </td>
                     </tr>
 
@@ -1134,12 +1138,12 @@ export async function sendContactEmail(params: SendContactEmailParams) {
               <tr>
                 <td align="center" style="padding: 40px 20px;">
                   <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
-                    <!-- Header -->
+                    <!-- Header with Logo -->
                     <tr>
                       <td align="center" style="padding: 30px 0;">
-                        <h1 style="margin: 0; font-size: 32px; color: #8A4BAF; font-weight: 400;">
-                          Energía y Divinidad
-                        </h1>
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
                         <p style="margin: 10px 0 0; font-size: 14px; color: #666;">
                           Nuevo mensaje desde el formulario de contacto
                         </p>
@@ -1251,6 +1255,310 @@ ${message}
   }
 }
 
+// ============================================
+// EMAILS DE CONFIRMACIÓN DE PAGO
+// ============================================
+
+interface SendPaymentConfirmationEmailParams {
+  email: string;
+  name: string;
+  orderNumber: string;
+  orderType: 'PRODUCT' | 'SESSION' | 'EVENT' | 'MEMBERSHIP' | 'PREMIUM_CONTENT';
+  itemName: string;
+  amount: number;
+  currency: 'COP' | 'USD' | 'EUR';
+  paymentMethod: string;
+  transactionId?: string;
+  // Links específicos según tipo de producto
+  productLink?: string;
+  // Datos adicionales según tipo
+  sessionDate?: Date;
+  membershipPlan?: string;
+  eventDate?: Date;
+}
+
+export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmationEmailParams) {
+  const {
+    email,
+    name,
+    orderNumber,
+    orderType,
+    itemName,
+    amount,
+    currency,
+    paymentMethod,
+    transactionId,
+    productLink,
+    sessionDate,
+    membershipPlan,
+    eventDate,
+  } = params;
+
+  const formattedAmount = currency === 'COP'
+    ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(amount)
+    : currency === 'EUR'
+      ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
+      : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+
+  // Determinar el texto y link según tipo de producto
+  let productTypeText = '';
+  let ctaText = '';
+  let ctaLink = productLink || APP_URL;
+  let additionalInfo = '';
+
+  switch (orderType) {
+    case 'SESSION':
+      productTypeText = 'Sesión de Canalización';
+      ctaText = 'Ver mis sesiones';
+      ctaLink = productLink || `${APP_URL}/mi-cuenta/sesiones`;
+      if (sessionDate) {
+        additionalInfo = `
+          <tr>
+            <td style="padding: 8px 0;">
+              <span style="font-size: 14px; color: #666;">Fecha programada:</span>
+              <span style="float: right; font-size: 14px; color: #654177; font-weight: 600;">
+                ${sessionDate.toLocaleDateString('es-CO', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </td>
+          </tr>
+        `;
+      }
+      break;
+    case 'MEMBERSHIP':
+      productTypeText = 'Membresía';
+      ctaText = 'Ir a mi membresía';
+      ctaLink = productLink || `${APP_URL}/membresia/dashboard`;
+      if (membershipPlan) {
+        additionalInfo = `
+          <tr>
+            <td style="padding: 8px 0;">
+              <span style="font-size: 14px; color: #666;">Plan:</span>
+              <span style="float: right; font-size: 14px; color: #654177; font-weight: 600;">${membershipPlan}</span>
+            </td>
+          </tr>
+        `;
+      }
+      break;
+    case 'EVENT':
+      productTypeText = 'Evento';
+      ctaText = 'Ver mis reservas';
+      ctaLink = productLink || `${APP_URL}/dashboard/eventos`;
+      if (eventDate) {
+        additionalInfo = `
+          <tr>
+            <td style="padding: 8px 0;">
+              <span style="font-size: 14px; color: #666;">Fecha del evento:</span>
+              <span style="float: right; font-size: 14px; color: #654177; font-weight: 600;">
+                ${eventDate.toLocaleDateString('es-CO', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </td>
+          </tr>
+        `;
+      }
+      break;
+    case 'PREMIUM_CONTENT':
+      productTypeText = 'Contenido Premium';
+      ctaText = 'Ver mi contenido';
+      ctaLink = productLink || `${APP_URL}/mi-cuenta/contenido`;
+      break;
+    default:
+      productTypeText = 'Producto';
+      ctaText = 'Ir a mi cuenta';
+      ctaLink = productLink || `${APP_URL}/mi-cuenta`;
+  }
+
+  // Mapear método de pago a texto legible
+  const paymentMethodText = paymentMethod === 'WOMPI_CARD' ? 'Tarjeta de crédito'
+    : paymentMethod === 'WOMPI_NEQUI' ? 'Nequi'
+    : paymentMethod === 'EPAYCO_PAYPAL' ? 'PayPal'
+    : paymentMethod === 'EPAYCO_CARD' ? 'Tarjeta de crédito'
+    : paymentMethod;
+
+  if (DEV_MODE) {
+    console.log('\n========================================');
+    console.log('📧 EMAIL DE CONFIRMACIÓN DE PAGO (Modo Desarrollo)');
+    console.log('========================================');
+    console.log(`Para: ${email}`);
+    console.log(`Nombre: ${name}`);
+    console.log(`Orden: ${orderNumber}`);
+    console.log(`Tipo: ${productTypeText}`);
+    console.log(`Producto: ${itemName}`);
+    console.log(`Total: ${formattedAmount}`);
+    console.log(`Método: ${paymentMethodText}`);
+    if (transactionId) console.log(`Transacción: ${transactionId}`);
+    console.log(`Link: ${ctaLink}`);
+    console.log('========================================\n');
+
+    if (DEV_AUTO_VERIFY) {
+      return { success: true, data: { id: 'dev-mode-simulated' } };
+    }
+  }
+
+  try {
+    const { data, error } = await getResendClient().emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: `¡Pago confirmado! ${itemName} - Energía y Divinidad`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Confirmación de Pago</title>
+          </head>
+          <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f0f5;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td align="center" style="padding: 40px 20px;">
+                  <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
+                    <!-- Header with Logo -->
+                    <tr>
+                      <td align="center" style="padding: 30px 0;">
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
+                      </td>
+                    </tr>
+
+                    <!-- Main Content -->
+                    <tr>
+                      <td style="background-color: #ffffff; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px rgba(138, 75, 175, 0.1);">
+                        <!-- Success Badge -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td align="center" style="padding-bottom: 20px;">
+                              <div style="width: 80px; height: 80px; background-color: #d1fae5; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 40px;">✓</span>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td align="center" style="padding-bottom: 20px;">
+                              <span style="display: inline-block; padding: 8px 20px; background-color: #d1fae5; color: #065f46; border-radius: 20px; font-size: 14px; font-weight: 600;">
+                                ✅ Pago Confirmado
+                              </span>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <h2 style="margin: 0 0 20px; font-size: 24px; color: #654177; font-weight: 600; text-align: center;">
+                          ¡Gracias por tu compra, ${name}!
+                        </h2>
+                        <p style="margin: 0 0 25px; font-size: 16px; color: #666666; line-height: 1.6; text-align: center;">
+                          Tu pago ha sido procesado exitosamente. Aquí están los detalles de tu compra:
+                        </p>
+
+                        <!-- Order Details -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f8f0f5; border-radius: 12px; margin-bottom: 25px;">
+                          <tr>
+                            <td style="padding: 25px;">
+                              <h3 style="margin: 0 0 20px; font-size: 18px; color: #8A4BAF;">
+                                ${itemName}
+                              </h3>
+                              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(138, 75, 175, 0.1);">
+                                    <span style="font-size: 14px; color: #666;">Tipo:</span>
+                                    <span style="float: right; font-size: 14px; color: #654177; font-weight: 600;">${productTypeText}</span>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(138, 75, 175, 0.1);">
+                                    <span style="font-size: 14px; color: #666;">N° de orden:</span>
+                                    <span style="float: right; font-size: 14px; color: #654177; font-weight: 600;">${orderNumber}</span>
+                                  </td>
+                                </tr>
+                                ${additionalInfo}
+                                <tr>
+                                  <td style="padding: 8px 0; border-bottom: 1px solid rgba(138, 75, 175, 0.1);">
+                                    <span style="font-size: 14px; color: #666;">Método de pago:</span>
+                                    <span style="float: right; font-size: 14px; color: #654177; font-weight: 600;">${paymentMethodText}</span>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 12px 0 0;">
+                                    <span style="font-size: 16px; color: #654177; font-weight: 600;">Total pagado:</span>
+                                    <span style="float: right; font-size: 18px; color: #065f46; font-weight: 700;">${formattedAmount}</span>
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+
+                        ${transactionId ? `
+                        <p style="margin: 0 0 25px; font-size: 12px; color: #999; text-align: center;">
+                          ID de transacción: ${transactionId}
+                        </p>
+                        ` : ''}
+
+                        <!-- CTA Button -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td align="center" style="padding: 20px 0;">
+                              <a href="${ctaLink}" style="display: inline-block; padding: 16px 40px; background-color: #4944a4; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                                ${ctaText}
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <p style="margin: 25px 0 0; font-size: 14px; color: #999999; line-height: 1.6; text-align: center;">
+                          Con amor y luz,<br>
+                          <strong style="color: #8A4BAF;">Aleyda</strong>
+                        </p>
+                      </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                      <td align="center" style="padding: 30px 0;">
+                        <p style="margin: 0; font-size: 12px; color: #999999;">
+                          © ${new Date().getFullYear()} Energía y Divinidad. Todos los derechos reservados.
+                        </p>
+                        <p style="margin: 10px 0 0; font-size: 12px; color: #999999;">
+                          ¿Preguntas? <a href="mailto:hola@energiaydivinidad.com" style="color: #8A4BAF;">hola@energiaydivinidad.com</a>
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('Error sending payment confirmation email:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error sending payment confirmation email:', error);
+    return { success: false, error };
+  }
+}
+
+// ============================================
+// EMAILS DE CANCELACIÓN DE SESIONES
+// ============================================
+
 interface SendCancellationEmailParams {
   email: string;
   name: string;
@@ -1323,12 +1631,12 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
               <tr>
                 <td align="center" style="padding: 40px 20px;">
                   <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
-                    <!-- Header -->
+                    <!-- Header with Logo -->
                     <tr>
                       <td align="center" style="padding: 30px 0;">
-                        <h1 style="margin: 0; font-size: 32px; color: #8A4BAF; font-weight: 400;">
-                          Energía y Divinidad
-                        </h1>
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
                       </td>
                     </tr>
 

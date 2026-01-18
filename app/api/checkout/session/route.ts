@@ -4,6 +4,7 @@ import { stripe, getOrCreateStripeCustomer } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import { getSessionConfig } from '@/lib/sanity/queries/sessionConfig'
 import { getNequiMode, generateTransactionCode } from '@/lib/nequi'
+import { getAppUrl } from '@/lib/utils'
 
 interface CheckoutBody {
   sessionType: 'single' | 'pack'
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = getAppUrl()
 
     // Get prices from Sanity
     const singlePriceCOP = sessionConfig.price || 303198

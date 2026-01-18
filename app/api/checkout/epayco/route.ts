@@ -8,6 +8,7 @@ import {
   getEpaycoCheckoutConfig,
   type EpaycoCurrency,
 } from '@/lib/epayco'
+import { getAppUrl } from '@/lib/utils'
 
 type EpaycoPaymentMethod = 'card' | 'paypal'
 
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     const reference = generateEpaycoReference('EYD')
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = getAppUrl()
 
     // Extraer nombre y apellido del usuario
     const nameParts = (session.user.name || 'Usuario').split(' ')
@@ -203,7 +204,7 @@ export async function GET(request: NextRequest) {
     }
 
     const reference = generateEpaycoReference('EYD')
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = getAppUrl()
 
     const config = getEpaycoCheckoutConfig({
       amount,

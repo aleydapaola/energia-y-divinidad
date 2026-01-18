@@ -326,7 +326,8 @@ export function BookingCalendar({
               padding: 0.1rem;
             }
 
-            .booking-calendar .rdp-day > button {
+            /* Estilos base para botones de día (react-day-picker v9) */
+            .booking-calendar .rdp-day button {
               width: 100%;
               height: 100%;
               min-height: 2.5rem;
@@ -343,36 +344,38 @@ export function BookingCalendar({
             }
 
             @media (min-width: 640px) {
-              .booking-calendar .rdp-day > button {
+              .booking-calendar .rdp-day button {
                 min-height: 3rem;
                 font-size: 1rem;
               }
             }
 
             @media (min-width: 768px) {
-              .booking-calendar .rdp-day > button {
+              .booking-calendar .rdp-day button {
                 min-height: 3.5rem;
                 font-size: 1.0625rem;
               }
             }
 
             /* Días disponibles - estado normal */
-            .booking-calendar .rdp-day.available > button {
+            .booking-calendar .rdp-day.available button {
               background-color: #f8f0f5;
               color: #654177;
               border: 1px solid #8A4BAF;
+              cursor: pointer;
             }
 
             /* Días disponibles - estado hover */
-            .booking-calendar .rdp-day.available > button:hover:not(:disabled) {
+            .booking-calendar .rdp-day.available button:hover:not(:disabled) {
               background-color: #efe3ed;
               color: #654177;
               border-color: #8A4BAF;
             }
 
-            /* Día seleccionado - fondo violeta */
-            .booking-calendar .rdp-day.rdp-selected > button,
-            .booking-calendar .rdp-day [data-selected-single=true] {
+            /* Día seleccionado - fondo violeta (react-day-picker v9 usa data-selected-single) */
+            .booking-calendar .rdp-day button[data-selected-single="true"],
+            .booking-calendar .rdp-day.rdp-selected button,
+            .booking-calendar .rdp-selected button {
               background-color: #8A4BAF !important;
               color: white !important;
               border: 1px solid transparent !important;
@@ -380,14 +383,16 @@ export function BookingCalendar({
               box-shadow: none !important;
             }
 
-            .booking-calendar .rdp-day.rdp-selected > button:hover,
-            .booking-calendar .rdp-day [data-selected-single=true]:hover {
-              background-color: #8A4BAF !important;
+            .booking-calendar .rdp-day button[data-selected-single="true"]:hover,
+            .booking-calendar .rdp-day.rdp-selected button:hover,
+            .booking-calendar .rdp-selected button:hover {
+              background-color: #7a3d9f !important;
               border: 1px solid transparent !important;
             }
 
             /* Días no disponibles (fines de semana, festivos) - sin recuadro, solo texto gris */
-            .booking-calendar .rdp-day.rdp-disabled > button {
+            .booking-calendar .rdp-day.rdp-disabled button,
+            .booking-calendar .rdp-disabled button {
               background: transparent !important;
               color: #9CA3AF !important;
               border: none !important;
@@ -395,32 +400,33 @@ export function BookingCalendar({
             }
 
             /* Día de hoy cuando está deshabilitado (ej: domingo) - sin fondo especial */
-            .booking-calendar .rdp-day.rdp-today.rdp-disabled > button {
+            .booking-calendar .rdp-day.rdp-today.rdp-disabled button {
               background: transparent !important;
               color: #9CA3AF !important;
               border: none !important;
             }
 
             /* Día de hoy - remover fondo por defecto */
-            .booking-calendar .rdp-day.rdp-today > button {
+            .booking-calendar .rdp-day.rdp-today button:not([data-selected-single="true"]) {
               background: transparent;
             }
 
             /* Días fuera del mes (outside) - sin recuadro */
-            .booking-calendar .rdp-day.rdp-outside > button {
+            .booking-calendar .rdp-day.rdp-outside button,
+            .booking-calendar .rdp-outside button {
               background: transparent;
               color: #D1D5DB;
               border: none;
             }
 
             /* Días disponibles del siguiente mes - deben verse como disponibles */
-            .booking-calendar .rdp-day.available.rdp-outside > button {
+            .booking-calendar .rdp-day.available.rdp-outside button {
               background-color: #f8f0f5;
               color: #654177;
               border: 1px solid #8A4BAF;
             }
 
-            .booking-calendar .rdp-day.available.rdp-outside > button:hover:not(:disabled) {
+            .booking-calendar .rdp-day.available.rdp-outside button:hover:not(:disabled) {
               background-color: #efe3ed;
               color: #654177;
               border-color: #8A4BAF;

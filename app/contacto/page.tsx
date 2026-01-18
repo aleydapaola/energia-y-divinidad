@@ -82,11 +82,11 @@ export default async function ContactoPage() {
                     <div className="w-12 h-12 bg-[#8A4BAF] rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                       <Mail className="w-5 h-5 text-white" />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-dm-sans text-[#8A4BAF] font-semibold text-sm uppercase tracking-wide mb-1">
                         Correo electrónico
                       </p>
-                      <p className="font-dm-sans text-[#4A4A4A] text-lg">
+                      <p className="font-dm-sans text-[#4A4A4A] text-base sm:text-lg">
                         contacto@energiaydivinidad.com
                       </p>
                     </div>

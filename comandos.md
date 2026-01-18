@@ -54,3 +54,8 @@ cd ~/Projects/amor-sanacion-alquimia && npm run dev -- -p 3001
 
 - **Energia y Divinidad**: http://localhost:3000
 - **Amor Sanacion Alquimia**: http://localhost:3001
+
+
+
+curl -X POST http://localhost:3000/api/newsletter/archive-all \
+  -H "x-admin-secret: energia-divinidad-admin-ada3bdf0319d8ee072955b74032d0a36"

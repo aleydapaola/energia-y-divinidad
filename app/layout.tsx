@@ -42,6 +42,12 @@ const gazetaItalic = localFont({
   weight: "700",
 });
 
+const ukijDiwani = localFont({
+  src: "../public/fonts/UKIJDiT.ttf",
+  variable: "--font-ukij-diwani",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Energía y Divinidad - Canalización y Sanación",
   description: "Sesiones de canalización, chamanismo y terapia holística con Aleyda Vargas",
@@ -54,7 +60,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${openSans.variable} ${robotoSlab.variable} ${rightland.variable} ${playfairDisplay.variable} ${dmSans.variable} ${gazetaItalic.variable}`}>
+    <html lang="es" className={`${openSans.variable} ${robotoSlab.variable} ${rightland.variable} ${playfairDisplay.variable} ${dmSans.variable} ${gazetaItalic.variable} ${ukijDiwani.variable}`}>
       <body className="font-sans antialiased">
         <SessionProvider>
           {children}

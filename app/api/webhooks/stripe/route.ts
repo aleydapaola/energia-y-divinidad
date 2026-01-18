@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import Stripe from 'stripe'
+import { getAppUrl } from '@/lib/utils'
 
 /**
  * POST /api/webhooks/stripe
@@ -228,7 +229,7 @@ async function handleSessionPackCheckout(session: Stripe.Checkout.Session) {
   const currency = (session.currency?.toUpperCase() || 'USD') as 'USD' | 'EUR' | 'COP'
 
   // Llamar a la API interna para generar el código
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const appUrl = getAppUrl()
   const internalSecret = process.env.INTERNAL_API_SECRET
 
   try {

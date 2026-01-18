@@ -138,9 +138,13 @@ enum OrderType {
 }
 
 model Order {
-  id          String @id @default(cuid())
-  userId      String
-  orderNumber String @unique // Generado: ORD-YYYYMMDD-XXXX
+  id          String  @id @default(cuid())
+  userId      String?
+  orderNumber String  @unique // Generado: ORD-YYYYMMDD-XXXX
+
+  // Guest checkout - email cuando no hay usuario autenticado
+  guestEmail String?
+  guestName  String?
 
   // Tipo y referencia
   orderType OrderType
@@ -165,7 +169,7 @@ model Order {
   metadata Json?
 
   // Relaciones
-  user          User           @relation(fields: [userId], references: [id])
+  user          User?          @relation(fields: [userId], references: [id])
   manualPayment ManualPayment?
   stripePayment StripePayment?
   entitlements  Entitlement[]

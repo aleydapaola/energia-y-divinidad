@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { stripe, getOrCreateStripePrice, getOrCreateStripeCustomer } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
+import { getAppUrl } from '@/lib/utils'
 
 interface CheckoutBody {
   membershipTierId: string
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     )
 
     // Crear sesión de Checkout
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = getAppUrl()
 
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customer.id,

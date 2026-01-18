@@ -79,3 +79,6 @@ RESUMEN_*.md
 TODO_*.md
 *.docx
 *.pdf
+
+# Admin utilities (local only)
+/app/api/newsletter/archive-all/

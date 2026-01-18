@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { verifyNequiWebhookSignature } from '@/lib/nequi'
 import { prisma } from '@/lib/prisma'
+import { getAppUrl } from '@/lib/utils'
 
 /**
  * POST /api/webhooks/nequi
@@ -336,7 +337,7 @@ async function handleSinglePaymentCompleted(data: any) {
 
   // Si es un pack de sesiones (8 sesiones), generar código
   if (booking.sessionsTotal === 8) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = getAppUrl()
     const internalSecret = process.env.INTERNAL_API_SECRET
 
     try {

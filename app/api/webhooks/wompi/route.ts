@@ -8,6 +8,7 @@ import {
 } from '@/lib/wompi'
 import { createCourseEntitlement } from '@/lib/course-access'
 import { recordDiscountUsage } from '@/lib/discount-codes'
+import { randomBytes } from 'crypto'
 
 /**
  * POST /api/webhooks/wompi
@@ -171,6 +172,35 @@ async function handleTransactionUpdated(transaction: WompiTransactionData) {
 async function handleApprovedPayment(order: any) {
   const metadata = order.metadata as any
 
+  // Manejar guest checkout: crear/encontrar usuario si no hay userId
+  let userId = order.userId
+  const isGuestCheckout = metadata?.isGuestCheckout || (!userId && order.guestEmail)
+
+  if (isGuestCheckout && order.guestEmail) {
+    userId = await findOrCreateUserForGuest(order.guestEmail, order.guestName)
+
+    // Actualizar orden con el userId
+    await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        userId,
+        metadata: {
+          ...metadata,
+          convertedFromGuest: true,
+          convertedAt: new Date().toISOString(),
+        },
+      },
+    })
+
+    // Actualizar order object para las funciones siguientes
+    order.userId = userId
+  }
+
+  if (!userId) {
+    console.error(`No se pudo determinar usuario para orden ${order.id}`)
+    return
+  }
+
   switch (order.orderType) {
     case 'MEMBERSHIP':
       await createMembershipFromOrder(order, metadata)
@@ -192,7 +222,7 @@ async function handleApprovedPayment(order: any) {
       console.log(`Tipo de orden no manejado: ${order.orderType}`)
   }
 
-  console.log(`Pago aprobado procesado para orden ${order.id}`)
+  console.log(`Pago aprobado procesado para orden ${order.id}${isGuestCheckout ? ' (guest checkout)' : ''}`)
 }
 
 /**
@@ -353,6 +383,55 @@ function generatePackCode(): string {
     code += chars.charAt(Math.floor(Math.random() * chars.length))
   }
   return code
+}
+
+/**
+ * Encontrar o crear usuario para guest checkout
+ * Si el email ya existe, usa ese usuario
+ * Si no existe, crea uno nuevo sin contraseña (puede establecerla después)
+ */
+async function findOrCreateUserForGuest(
+  email: string,
+  name?: string | null
+): Promise<string> {
+  // Buscar usuario existente por email
+  const existingUser = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+  })
+
+  if (existingUser) {
+    return existingUser.id
+  }
+
+  // Crear usuario nuevo sin contraseña
+  // Genera un token para que pueda establecer contraseña después
+  const setPasswordToken = randomBytes(32).toString('hex')
+  const setPasswordExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 días
+
+  const newUser = await prisma.user.create({
+    data: {
+      email: email.toLowerCase(),
+      name: name || null,
+      password: null, // Sin contraseña - guest checkout
+      emailVerified: null, // No verificado aún
+    },
+  })
+
+  // Guardar token para establecer contraseña
+  await prisma.verificationToken.create({
+    data: {
+      identifier: email.toLowerCase(),
+      token: setPasswordToken,
+      expires: setPasswordExpires,
+    },
+  })
+
+  console.log(`Usuario creado para guest checkout: ${newUser.id} (${email})`)
+
+  // TODO: Enviar email con link para crear contraseña
+  // El link sería: /auth/set-password?token=${setPasswordToken}
+
+  return newUser.id
 }
 
 /**

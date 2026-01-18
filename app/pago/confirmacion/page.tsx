@@ -11,12 +11,16 @@ function ConfirmacionContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
+  // Parámetros de la URL
   const reference = searchParams?.get('ref') || ''
   const refPayco = searchParams?.get('ref_payco') || ''
+  // Wompi redirige con el ID de la transacción
+  const wompiTransactionId = searchParams?.get('id') || ''
 
   const [status, setStatus] = useState<PaymentStatus>('loading')
   const [orderData, setOrderData] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<string | null>(null)
 
   useEffect(() => {
     async function checkPaymentStatus() {
@@ -26,46 +30,102 @@ function ConfirmacionContent() {
         return
       }
 
-      try {
-        // Consultar estado de la orden
-        const response = await fetch(`/api/orders/${reference}/status`)
+      // Si viene de Wompi con ID de transacción, verificar estado real con la API
+      if (wompiTransactionId) {
+        try {
+          // Verificar transacción directamente con Wompi (como Stripe)
+          const verifyResponse = await fetch(
+            `/api/payments/wompi/verify?transactionId=${wompiTransactionId}&ref=${reference}`
+          )
 
+          if (!verifyResponse.ok) {
+            throw new Error('Error verificando transacción')
+          }
+
+          const verifyData = await verifyResponse.json()
+
+          // Cargar datos de la orden para mostrar en UI
+          if (verifyData.order) {
+            setOrderData(verifyData.order)
+            setPaymentMethod(verifyData.order.paymentMethod || null)
+          }
+
+          // Mostrar resultado real de la transacción
+          switch (verifyData.transactionStatus) {
+            case 'APPROVED':
+              setStatus('success')
+              break
+            case 'DECLINED':
+            case 'ERROR':
+              setStatus('failed')
+              setError('El pago fue rechazado. Por favor verifica los datos de tu tarjeta e intenta nuevamente.')
+              break
+            case 'VOIDED':
+              setStatus('failed')
+              setError('El pago fue cancelado.')
+              break
+            case 'PENDING':
+              setStatus('pending')
+              break
+            default:
+              setStatus('failed')
+              setError('Estado de pago desconocido.')
+          }
+        } catch (err: any) {
+          console.error('Error verifying Wompi transaction:', err)
+          setStatus('failed')
+          setError('Error verificando el pago. Por favor contacta soporte.')
+        }
+        return
+      }
+
+      // Si viene de ePayco
+      if (refPayco) {
+        try {
+          const response = await fetch(`/api/orders/${reference}/status`)
+          if (response.ok) {
+            const data = await response.json()
+            setOrderData(data)
+            setPaymentMethod(data.paymentMethod || null)
+          }
+        } catch {
+          // Ignorar
+        }
+        setStatus('success')
+        return
+      }
+
+      // Sin ID de transacción externa, verificar estado en BD
+      try {
+        const response = await fetch(`/api/orders/${reference}/status`)
         if (!response.ok) {
           throw new Error('Error al consultar estado del pago')
         }
 
         const data = await response.json()
         setOrderData(data)
+        setPaymentMethod(data.paymentMethod || null)
 
-        // Determinar estado
         switch (data.paymentStatus) {
           case 'COMPLETED':
             setStatus('success')
             break
-          case 'PENDING':
-          case 'PROCESSING':
-            setStatus('pending')
-            break
           case 'FAILED':
           case 'CANCELLED':
-          default:
             setStatus('failed')
             break
+          default:
+            setStatus('pending')
         }
       } catch (err: any) {
         console.error('Error checking payment status:', err)
-        // Si no podemos verificar, asumimos éxito si venimos de ePayco con ref_payco
-        if (refPayco) {
-          setStatus('pending')
-        } else {
-          setStatus('failed')
-          setError(err.message)
-        }
+        setStatus('failed')
+        setError(err.message)
       }
     }
 
     checkPaymentStatus()
-  }, [reference, refPayco])
+  }, [reference, refPayco, wompiTransactionId])
 
   if (status === 'loading') {
     return (
@@ -124,19 +184,33 @@ function ConfirmacionContent() {
                 Pago en Proceso
               </h1>
               <p className="font-dm-sans text-gray-600 mb-6">
-                Tu pago está siendo procesado. Esto puede tomar unos minutos.
-                Te enviaremos un correo cuando se confirme.
+                {paymentMethod === 'WOMPI_NEQUI'
+                  ? 'Se envió una solicitud de pago a tu app Nequi. Por favor apruébala para completar la compra.'
+                  : 'Tu pago está siendo verificado. Esto puede tomar unos segundos.'}
               </p>
               {reference && (
                 <div className="bg-[#eef1fa] rounded-lg p-4 mb-6">
                   <p className="font-dm-sans text-sm text-gray-600">
                     <span className="font-semibold">Referencia:</span> {reference}
                   </p>
+                  {orderData?.itemName && (
+                    <p className="font-dm-sans text-sm text-gray-600 mt-1">
+                      <span className="font-semibold">Producto:</span> {orderData.itemName}
+                    </p>
+                  )}
                 </div>
               )}
-              <p className="font-dm-sans text-sm text-gray-500 mb-6">
-                Si pagaste con Nequi, recuerda aprobar el pago desde tu app.
-              </p>
+              {paymentMethod === 'WOMPI_NEQUI' && (
+                <p className="font-dm-sans text-sm text-gray-500 mb-6">
+                  Abre tu app de Nequi y aprueba el pago pendiente.
+                </p>
+              )}
+              {paymentMethod === 'WOMPI_CARD' && (
+                <div className="flex items-center justify-center gap-2 text-gray-500 mb-6">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="font-dm-sans text-sm">Verificando con el banco...</span>
+                </div>
+              )}
             </>
           )}
 

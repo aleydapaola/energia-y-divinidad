@@ -7,12 +7,14 @@ import type { PaymentMethodType } from '@/lib/membership-access'
 export type PaymentRegion = 'colombia' | 'international'
 
 interface PaymentMethodSelectorProps {
-  onMethodSelect: (method: PaymentMethodType, region: PaymentRegion, phoneNumber?: string) => void
+  onMethodSelect: (method: PaymentMethodType, region: PaymentRegion, phoneNumber?: string, guestEmail?: string, guestName?: string) => void
   onCancel?: () => void
   isLoading?: boolean
   pricesCOP: number
   pricesUSD: number
   productName: string
+  isAuthenticated?: boolean
+  userEmail?: string
 }
 
 interface PaymentOption {
@@ -30,11 +32,18 @@ export function PaymentMethodSelector({
   pricesCOP,
   pricesUSD,
   productName,
+  isAuthenticated = false,
+  userEmail,
 }: PaymentMethodSelectorProps) {
   const [selectedRegion, setSelectedRegion] = useState<PaymentRegion | null>(null)
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType | null>(null)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [phoneError, setPhoneError] = useState('')
+
+  // Guest checkout fields
+  const [guestEmail, setGuestEmail] = useState('')
+  const [guestName, setGuestName] = useState('')
+  const [emailError, setEmailError] = useState('')
 
   // Auto-detect region based on timezone (Colombia is UTC-5)
   useEffect(() => {
@@ -105,16 +114,38 @@ export function PaymentMethodSelector({
     return true
   }
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setEmailError('Ingresa un email válido')
+      return false
+    }
+    setEmailError('')
+    return true
+  }
+
+  // Check if guest email is required (not authenticated and no userEmail)
+  const needsGuestEmail = !isAuthenticated && !userEmail
+
   const handleConfirm = () => {
     if (!selectedMethod || !selectedRegion) return
+
+    // Validar email si es guest checkout
+    if (needsGuestEmail) {
+      if (!guestEmail.trim()) {
+        setEmailError('El email es requerido')
+        return
+      }
+      if (!validateEmail(guestEmail)) return
+    }
 
     // Validar teléfono si es Nequi
     if (selectedOption?.requiresPhone) {
       if (!validatePhoneNumber(phoneNumber)) return
       const cleanPhone = phoneNumber.replace(/\s|-/g, '')
-      onMethodSelect(selectedMethod, selectedRegion, cleanPhone)
+      onMethodSelect(selectedMethod, selectedRegion, cleanPhone, needsGuestEmail ? guestEmail : undefined, needsGuestEmail ? guestName : undefined)
     } else {
-      onMethodSelect(selectedMethod, selectedRegion)
+      onMethodSelect(selectedMethod, selectedRegion, undefined, needsGuestEmail ? guestEmail : undefined, needsGuestEmail ? guestName : undefined)
     }
   }
 
@@ -238,6 +269,54 @@ export function PaymentMethodSelector({
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Guest Email Input - shown when not authenticated */}
+        {needsGuestEmail && selectedMethod && (
+          <div className="p-4 sm:p-6 border-b border-gray-100">
+            <p className="font-dm-sans text-sm text-gray-600 mb-3">
+              Ingresa tus datos para recibir la confirmación
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="block font-dm-sans text-sm text-gray-600 mb-2">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={guestEmail}
+                  onChange={(e) => {
+                    setGuestEmail(e.target.value)
+                    setEmailError('')
+                  }}
+                  placeholder="tu@email.com"
+                  className={`w-full p-3 sm:p-4 rounded-xl border-2 font-dm-sans text-base transition-colors ${
+                    emailError
+                      ? 'border-red-400 focus:border-red-500'
+                      : 'border-gray-200 focus:border-[#8A4BAF]'
+                  } focus:outline-none`}
+                />
+                {emailError && (
+                  <p className="mt-2 font-dm-sans text-sm text-red-500">{emailError}</p>
+                )}
+              </div>
+              <div>
+                <label className="block font-dm-sans text-sm text-gray-600 mb-2">
+                  Nombre (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="Tu nombre"
+                  className="w-full p-3 sm:p-4 rounded-xl border-2 border-gray-200 font-dm-sans text-base transition-colors focus:border-[#8A4BAF] focus:outline-none"
+                />
+              </div>
+            </div>
+            <p className="mt-3 font-dm-sans text-xs text-gray-500">
+              Recibirás la confirmación de tu compra en este email. Después podrás crear una cuenta para acceder a tu historial.
+            </p>
           </div>
         )}
 

@@ -62,6 +62,7 @@ export default {
         playfair: ['var(--font-playfair)', 'serif'],
         'dm-sans': ['var(--font-dm-sans)', 'sans-serif'],
         'gazeta': ['var(--font-gazeta-italic)', 'serif'],
+        'ukij-diwani': ['var(--font-ukij-diwani)', 'serif'],
       },
       backgroundImage: {
         'header-gradient': 'linear-gradient(180deg, #EFDFDA 0%, #FFFFFF 65%)',

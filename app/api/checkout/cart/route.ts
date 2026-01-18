@@ -14,6 +14,7 @@ import {
   createEpaycoPayPalPayment,
   generateEpaycoReference,
 } from '@/lib/epayco'
+import { getAppUrl } from '@/lib/utils'
 
 type PaymentMethod = 'wompi_nequi' | 'wompi_card' | 'epayco_card' | 'epayco_paypal'
 
@@ -225,7 +226,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = getAppUrl()
 
     // Procesar según método de pago
     if (isWompi) {

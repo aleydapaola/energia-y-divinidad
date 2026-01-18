@@ -5,6 +5,7 @@ import {
   createWompiPaymentLink,
   generateWompiReference,
 } from '@/lib/wompi'
+import { getAppUrl } from '@/lib/utils'
 
 type WompiPaymentMethod = 'nequi' | 'card'
 
@@ -21,10 +22,14 @@ interface CheckoutBody {
   // Para membresías
   billingInterval?: 'monthly' | 'yearly'
 
-  // Datos del cliente
+  // Datos del cliente (para guest checkout)
   customerName?: string
   customerEmail?: string
   customerPhone?: string
+
+  // Guest checkout fields
+  guestEmail?: string
+  guestName?: string
 
   // Para sesiones/eventos
   sessionSlug?: string
@@ -39,10 +44,6 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth()
 
-    if (!session?.user?.id || !session?.user?.email) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
-    }
-
     const body: CheckoutBody = await request.json()
     const {
       productType,
@@ -51,7 +52,29 @@ export async function POST(request: NextRequest) {
       amount,
       paymentMethod,
       billingInterval,
+      guestEmail,
+      guestName,
     } = body
+
+    // Determinar si es usuario autenticado o guest checkout
+    const isAuthenticated = !!session?.user?.id
+    const userEmail = session?.user?.email || guestEmail
+
+    // Si no está autenticado, requiere email de invitado
+    if (!isAuthenticated && !guestEmail) {
+      return NextResponse.json(
+        { error: 'Se requiere email para continuar' },
+        { status: 400 }
+      )
+    }
+
+    // Membresías requieren cuenta (por acceso recurrente a contenido)
+    if (productType === 'membership' && !isAuthenticated) {
+      return NextResponse.json(
+        { error: 'Debes iniciar sesión para adquirir una membresía' },
+        { status: 401 }
+      )
+    }
 
     // Validaciones básicas
     if (!productType || !productId || !productName || !amount || !paymentMethod) {
@@ -59,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Para membresías, verificar que no tenga una activa
-    if (productType === 'membership') {
+    if (productType === 'membership' && session?.user?.id) {
       const existingSubscription = await prisma.subscription.findFirst({
         where: {
           userId: session.user.id,
@@ -76,12 +99,14 @@ export async function POST(request: NextRequest) {
     }
 
     const reference = generateWompiReference('EYD')
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = getAppUrl()
 
     // Crear orden pendiente en la base de datos
     const order = await prisma.order.create({
       data: {
-        userId: session.user.id,
+        userId: isAuthenticated ? session!.user!.id : undefined,
+        guestEmail: !isAuthenticated ? guestEmail : undefined,
+        guestName: !isAuthenticated ? guestName : undefined,
         orderNumber: reference,
         orderType: getOrderType(productType),
         itemId: productId,
@@ -93,23 +118,23 @@ export async function POST(request: NextRequest) {
         metadata: {
           productType,
           billingInterval: billingInterval || null,
+          isGuestCheckout: !isAuthenticated,
+          customerEmail: userEmail,
+          customerName: guestName || session?.user?.name || null,
         },
       },
     })
 
-    // Convertir a centavos para Wompi
+    // Usar checkout hospedado de Wompi (Payment Links) para todos los métodos
+    // Wompi muestra tarjeta, Nequi, PSE, etc. automáticamente
     const amountInCents = Math.round(amount * 100)
 
-    // Tanto Nequi como tarjeta usan el checkout hospedado de Wompi
-    // El botón Nequi aparece automáticamente en el widget de Wompi
-    // Si el usuario seleccionó Nequi, se puede pre-seleccionar en el checkout
     const { paymentLink, checkoutUrl } = await createWompiPaymentLink({
       name: productName,
       description: `${productName} - Energía y Divinidad`,
       amountInCents,
       singleUse: true,
       redirectUrl: `${appUrl}/pago/confirmacion?ref=${reference}`,
-      // Wompi muestra todos los métodos disponibles (Nequi, tarjeta, PSE, etc.)
     })
 
     // Actualizar orden con ID del payment link
@@ -119,7 +144,7 @@ export async function POST(request: NextRequest) {
         metadata: {
           ...(order.metadata as object),
           wompiPaymentLinkId: paymentLink.id,
-          preferredMethod: paymentMethod, // Guardar preferencia para analytics
+          preferredMethod: paymentMethod,
         },
       },
     })

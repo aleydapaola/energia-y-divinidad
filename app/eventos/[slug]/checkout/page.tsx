@@ -135,6 +135,8 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
           customerName,
           customerEmail,
           customerPhone,
+          guestEmail: customerEmail,
+          guestName: customerName,
           seats,
           notes,
         }

@@ -29,7 +29,7 @@ export function Header({ session }: HeaderProps) {
     <header className="bg-white border-b border-gray-200 relative">
       <div className="container mx-auto px-4">
         {/* Desktop Navigation */}
-        <div className="hidden lg:flex items-center justify-between py-4">
+        <div className="hidden lg:flex items-center justify-between h-16">
           {/* Logo - Left Side */}
           <Link href="/" className="flex items-center group">
             <h1 className="font-rightland text-[#4b316c] text-3xl leading-none tracking-tight">

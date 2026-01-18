@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         email_address: email,
-        status: "subscribed",
+        status: "pending", // Double opt-in: requires email confirmation
         tags: ["website"],
       }),
     })
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { message: "¡Gracias por suscribirte!" },
+      { message: "¡Revisa tu correo para confirmar tu suscripción!" },
       { status: 201 }
     )
   } catch (error) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Loader2, CheckCircle } from "lucide-react"
 
 interface NewsletterFormProps {
@@ -12,6 +12,17 @@ export function NewsletterForm({ variant = "footer", className = "" }: Newslette
   const [email, setEmail] = useState("")
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [message, setMessage] = useState("")
+
+  // Auto-hide success message after 5 seconds
+  useEffect(() => {
+    if (status === "success") {
+      const timer = setTimeout(() => {
+        setStatus("idle")
+        setMessage("")
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [status])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,13 +61,21 @@ export function NewsletterForm({ variant = "footer", className = "" }: Newslette
     }
   }
 
+  const dismissSuccess = () => {
+    setStatus("idle")
+    setMessage("")
+  }
+
   if (status === "success") {
     return (
-      <div className={`flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg p-4 ${className}`}>
-        <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
+      <div
+        onClick={dismissSuccess}
+        className={`flex items-center gap-3 bg-[#eef1fa] border border-[#4944a4]/20 rounded-lg p-4 cursor-pointer transition-opacity hover:opacity-80 ${className}`}
+      >
+        <CheckCircle className="w-6 h-6 text-[#4944a4] flex-shrink-0" />
         <div>
-          <p className="text-green-800 font-medium text-sm">{message}</p>
-          <p className="text-green-600 text-xs mt-0.5">Revisa tu bandeja de entrada</p>
+          <p className="text-[#2D4CC7] font-medium text-sm">{message}</p>
+          <p className="text-[#4944a4]/70 text-xs mt-0.5">Confirma tu suscripción en el email que te hemos enviado</p>
         </div>
       </div>
     )
