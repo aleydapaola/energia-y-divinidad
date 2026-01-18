@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Loader2, CreditCard, Smartphone, AlertCircle } from 'lucide-react'
+import { Loader2, CreditCard, Smartphone, AlertCircle, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react'
 import { PaymentMethodSelector, type PaymentRegion } from '@/components/pago/PaymentMethodSelector'
 import type { PaymentMethodType } from '@/lib/membership-access'
 
@@ -21,6 +21,14 @@ function CheckoutContent() {
   const [error, setError] = useState<string | null>(null)
   const [showPaymentSelector, setShowPaymentSelector] = useState(false)
 
+  // Estado de membresía actual (para upgrade/downgrade)
+  const [currentSubscription, setCurrentSubscription] = useState<{
+    tierId: string
+    tierName: string
+    tierOrder?: number
+  } | null>(null)
+  const [newTierOrder, setNewTierOrder] = useState<number | null>(null)
+
   // Form data
   const [acceptedTerms, setAcceptedTerms] = useState(false)
 
@@ -32,6 +40,31 @@ function CheckoutContent() {
       )
     }
   }, [status, router, tierId, interval])
+
+  // Check current membership status
+  useEffect(() => {
+    async function checkCurrentMembership() {
+      if (status !== 'authenticated') return
+
+      try {
+        const response = await fetch('/api/membership/status')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.hasActiveMembership && data.subscription) {
+            setCurrentSubscription({
+              tierId: data.subscription.membershipTierId,
+              tierName: data.subscription.membershipTierName,
+              tierOrder: data.tier?.order,
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Error checking membership:', error)
+      }
+    }
+
+    checkCurrentMembership()
+  }, [status])
 
   // Fetch tier data from Sanity
   useEffect(() => {
@@ -48,6 +81,7 @@ function CheckoutContent() {
         }
         const data = await response.json()
         setTierData(data)
+        setNewTierOrder(data.order)
       } catch (err: any) {
         setError(err.message)
       } finally {
@@ -57,6 +91,29 @@ function CheckoutContent() {
 
     fetchTierData()
   }, [tierId, router])
+
+  // Determinar tipo de cambio de plan
+  const getPlanChangeType = () => {
+    if (!currentSubscription) return null
+    if (currentSubscription.tierId === tierId) return 'same'
+    if (
+      currentSubscription.tierOrder !== undefined &&
+      newTierOrder !== null &&
+      newTierOrder > currentSubscription.tierOrder
+    ) {
+      return 'upgrade'
+    }
+    if (
+      currentSubscription.tierOrder !== undefined &&
+      newTierOrder !== null &&
+      newTierOrder < currentSubscription.tierOrder
+    ) {
+      return 'downgrade'
+    }
+    return 'change' // No podemos determinar si es upgrade o downgrade
+  }
+
+  const planChangeType = getPlanChangeType()
 
   if (status === 'loading' || loading) {
     return (
@@ -79,6 +136,36 @@ function CheckoutContent() {
           >
             Volver a Membresías
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Si el usuario ya tiene este mismo plan
+  if (planChangeType === 'same') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8f0f5] px-4">
+        <div className="max-w-md w-full text-center">
+          <RefreshCw className="w-12 h-12 text-amber-600 mx-auto mb-4" />
+          <h1 className="font-gazeta text-2xl text-[#654177] mb-4">Ya tienes este plan</h1>
+          <p className="font-dm-sans text-gray-600 mb-6">
+            Ya estás suscrito al plan <strong>{currentSubscription?.tierName}</strong>.
+            Si deseas cambiar de plan, selecciona uno diferente.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => router.push('/dashboard/membresia/publicaciones')}
+              className="bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Ir a mi Membresía
+            </button>
+            <button
+              onClick={() => router.push('/membresia')}
+              className="bg-white border border-[#4944a4] text-[#4944a4] hover:bg-[#4944a4] hover:text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Ver otros planes
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -191,8 +278,54 @@ function CheckoutContent() {
     <div className="min-h-screen bg-[#f8f0f5] py-12 px-4">
       <div className="max-w-4xl mx-auto">
         <h1 className="font-gazeta text-3xl sm:text-4xl text-[#8A4BAF] text-center mb-8">
-          Finalizar Suscripción
+          {planChangeType ? 'Cambiar de Plan' : 'Finalizar Suscripción'}
         </h1>
+
+        {/* Banner de cambio de plan */}
+        {planChangeType && (
+          <div
+            className={`mb-8 rounded-xl p-4 flex items-center gap-4 ${
+              planChangeType === 'upgrade'
+                ? 'bg-green-50 border border-green-200'
+                : planChangeType === 'downgrade'
+                ? 'bg-amber-50 border border-amber-200'
+                : 'bg-blue-50 border border-blue-200'
+            }`}
+          >
+            {planChangeType === 'upgrade' ? (
+              <ArrowUp className="w-8 h-8 text-green-600 flex-shrink-0" />
+            ) : planChangeType === 'downgrade' ? (
+              <ArrowDown className="w-8 h-8 text-amber-600 flex-shrink-0" />
+            ) : (
+              <RefreshCw className="w-8 h-8 text-blue-600 flex-shrink-0" />
+            )}
+            <div>
+              <p
+                className={`font-dm-sans font-semibold ${
+                  planChangeType === 'upgrade'
+                    ? 'text-green-700'
+                    : planChangeType === 'downgrade'
+                    ? 'text-amber-700'
+                    : 'text-blue-700'
+                }`}
+              >
+                {planChangeType === 'upgrade'
+                  ? 'Upgrade de Membresía'
+                  : planChangeType === 'downgrade'
+                  ? 'Downgrade de Membresía'
+                  : 'Cambio de Plan'}
+              </p>
+              <p className="font-dm-sans text-sm text-gray-600">
+                Pasarás de <strong>{currentSubscription?.tierName}</strong> a{' '}
+                <strong>{tierData?.name}</strong>
+                {planChangeType === 'upgrade' &&
+                  '. El cambio se aplicará inmediatamente.'}
+                {planChangeType === 'downgrade' &&
+                  '. El cambio se aplicará al final de tu período actual.'}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-5 gap-8">
           {/* Formulario de checkout */}

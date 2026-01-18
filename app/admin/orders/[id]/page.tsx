@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   User,
   Mail,
-  Calendar,
   CreditCard,
   Package,
   Clock,
@@ -29,15 +28,6 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
           id: true,
           name: true,
           email: true,
-          country: true,
-        },
-      },
-      booking: {
-        select: {
-          id: true,
-          status: true,
-          scheduledAt: true,
-          resourceName: true,
         },
       },
     },
@@ -201,47 +191,21 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                   <p className="text-sm text-gray-500 font-dm-sans">Moneda</p>
                   <p className="font-medium text-gray-900 font-dm-sans">{order.currency}</p>
                 </div>
-                {order.providerTransactionId && (
-                  <div className="col-span-2">
-                    <p className="text-sm text-gray-500 font-dm-sans">ID Transacción</p>
-                    <p className="font-mono text-sm text-gray-900">{order.providerTransactionId}</p>
-                  </div>
-                )}
+                {(() => {
+                  const meta = order.metadata as Record<string, unknown> | null
+                  const txId = meta?.transactionId as string | undefined
+                  if (!txId) return null
+                  return (
+                    <div className="col-span-2">
+                      <p className="text-sm text-gray-500 font-dm-sans">ID Transacción</p>
+                      <p className="font-mono text-sm text-gray-900">{txId}</p>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           </div>
 
-          {/* Booking Info (if exists) */}
-          {order.booking && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="font-gazeta text-xl text-[#654177] mb-4">Sesión asociada</h2>
-              <div className="flex items-center gap-4 p-4 bg-[#f8f0f5]/50 rounded-lg">
-                <Calendar className="w-5 h-5 text-[#8A4BAF]" />
-                <div>
-                  <p className="font-medium text-[#654177] font-dm-sans">{order.booking.resourceName}</p>
-                  {order.booking.scheduledAt && (
-                    <p className="text-sm text-gray-500 font-dm-sans">
-                      {formatDate(order.booking.scheduledAt)}
-                    </p>
-                  )}
-                  <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${
-                    order.booking.status === 'CONFIRMED' ? 'bg-green-100 text-green-700' :
-                    order.booking.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700' :
-                    order.booking.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
-                    'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {order.booking.status}
-                  </span>
-                </div>
-                <Link
-                  href={`/admin/bookings?id=${order.booking.id}`}
-                  className="ml-auto text-sm text-[#8A4BAF] hover:underline font-dm-sans"
-                >
-                  Ver sesión
-                </Link>
-              </div>
-            </div>
-          )}
 
           {/* Audit Log */}
           {auditLogs.length > 0 && (
@@ -287,12 +251,6 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                   {order.user?.email || order.guestEmail || 'Sin email'}
                 </span>
               </div>
-              {(order.user?.country) && (
-                <div className="flex items-center gap-3">
-                  <span className="w-4 h-4 text-center">🌍</span>
-                  <span className="text-sm font-dm-sans">{order.user.country}</span>
-                </div>
-              )}
               {order.user?.id && (
                 <Link
                   href={`/admin/users/${order.user.id}`}

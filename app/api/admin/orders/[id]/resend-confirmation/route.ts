@@ -12,7 +12,17 @@ export async function POST(
     const session = await auth()
     const { id } = await params
 
-    if (!session?.user?.id || session.user.role !== 'ADMIN') {
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // Verificar rol de admin
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true, email: true },
+    })
+
+    if (currentUser?.role !== 'ADMIN') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
@@ -20,7 +30,6 @@ export async function POST(
       where: { id },
       include: {
         user: { select: { email: true, name: true } },
-        booking: { select: { scheduledAt: true } },
       },
     })
 
@@ -56,14 +65,13 @@ export async function POST(
       amount: Number(order.amount),
       currency: order.currency as 'COP' | 'USD' | 'EUR',
       paymentMethod: order.paymentMethod || 'N/A',
-      transactionId: order.providerTransactionId || undefined,
-      sessionDate: order.booking?.scheduledAt || undefined,
+      transactionId: (order.metadata as Record<string, unknown>)?.transactionId as string | undefined,
     })
 
     // Crear audit log
     await createAuditLog({
       actorId: session.user.id,
-      actorEmail: session.user.email!,
+      actorEmail: currentUser.email || session.user.email || 'unknown',
       entityType: 'order',
       entityId: id,
       action: 'resend_email',

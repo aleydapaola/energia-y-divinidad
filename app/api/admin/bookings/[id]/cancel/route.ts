@@ -12,7 +12,17 @@ export async function POST(
     const session = await auth()
     const { id } = await params
 
-    if (!session?.user?.id || session.user.role !== 'ADMIN') {
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // Verificar rol de admin
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true, email: true },
+    })
+
+    if (currentUser?.role !== 'ADMIN') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
@@ -23,11 +33,6 @@ export async function POST(
       where: { id },
       include: {
         user: { select: { email: true, name: true } },
-        packRedemption: {
-          include: {
-            packCode: true,
-          },
-        },
       },
     })
 
@@ -46,11 +51,16 @@ export async function POST(
 
     const before = { status: booking.status }
 
-    // Si viene de un pack, devolver la sesión al pack
+    // Verificar si hay un pack redemption asociado
+    const packRedemption = await prisma.packRedemption.findUnique({
+      where: { bookingId: id },
+      include: { packCode: true },
+    })
+
     let packSessionReturned = false
-    if (booking.packRedemption && booking.packRedemption.packCode) {
+    if (packRedemption?.packCode) {
       await prisma.sessionPackCode.update({
-        where: { id: booking.packRedemption.packCode.id },
+        where: { id: packRedemption.packCode.id },
         data: {
           sessionsUsed: { decrement: 1 },
         },
@@ -69,7 +79,7 @@ export async function POST(
 
     await createAuditLog({
       actorId: session.user.id,
-      actorEmail: session.user.email!,
+      actorEmail: currentUser.email || 'unknown',
       entityType: 'booking',
       entityId: id,
       action: 'cancel',

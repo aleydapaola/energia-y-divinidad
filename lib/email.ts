@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Energía y Divinidad <noreply@energiaydivinidad.com>';
 const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
@@ -39,7 +40,7 @@ interface SendEmailWithLoggingParams {
   html: string;
   entityType?: string;
   entityId?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Prisma.InputJsonValue;
 }
 
 /**
@@ -56,7 +57,7 @@ export async function sendEmailWithLogging(params: SendEmailWithLoggingParams) {
       entityType: params.entityType,
       entityId: params.entityId,
       status: 'PENDING',
-      metadata: params.metadata ?? null,
+      metadata: params.metadata,
     },
   });
 
@@ -156,7 +157,7 @@ interface SendVerificationEmailParams {
 }
 
 export async function sendVerificationEmail({ email, name, token }: SendVerificationEmailParams) {
-  const verificationUrl = `${APP_URL}/api/auth/verify-email?token=${token}`;
+  const verificationUrl = `${APP_URL}/auth/verify-email?token=${token}`;
 
   // En modo desarrollo con auto-verify, solo mostramos el link en consola
   if (DEV_MODE) {

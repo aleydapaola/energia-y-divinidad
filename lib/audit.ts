@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 // Tipos para el sistema de auditoría
 export type AuditEntityType = 'booking' | 'order' | 'subscription' | 'user'
@@ -14,6 +15,7 @@ export type AuditAction =
   | 'update'
   | 'delete'
   | 'resend_email'
+  | 'role_change'
 
 interface CreateAuditLogParams {
   actorId: string
@@ -21,10 +23,10 @@ interface CreateAuditLogParams {
   entityType: AuditEntityType
   entityId: string
   action: AuditAction
-  before?: Record<string, unknown>
-  after?: Record<string, unknown>
+  before?: Prisma.InputJsonValue
+  after?: Prisma.InputJsonValue
   reason?: string
-  metadata?: Record<string, unknown>
+  metadata?: Prisma.InputJsonValue
 }
 
 /**
@@ -38,8 +40,8 @@ export async function createAuditLog(params: CreateAuditLogParams) {
       entityType: params.entityType,
       entityId: params.entityId,
       action: params.action,
-      before: params.before ?? null,
-      after: params.after ?? null,
+      before: params.before,
+      after: params.after,
       reason: params.reason,
       metadata: params.metadata,
     },

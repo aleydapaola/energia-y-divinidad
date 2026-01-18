@@ -10,7 +10,17 @@ export async function GET(
     const session = await auth()
     const { id } = await params
 
-    if (!session?.user?.id || session.user.role !== 'ADMIN') {
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    // Verificar rol de admin
+    const currentUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    })
+
+    if (currentUser?.role !== 'ADMIN') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
@@ -22,15 +32,6 @@ export async function GET(
             id: true,
             name: true,
             email: true,
-            country: true,
-          },
-        },
-        booking: {
-          select: {
-            id: true,
-            status: true,
-            scheduledAt: true,
-            resourceName: true,
           },
         },
       },
@@ -69,16 +70,14 @@ export async function GET(
       guestName: order.guestName,
       orderType: order.orderType,
       itemName: order.itemName,
-      sanityProductId: order.sanityProductId,
+      itemId: order.itemId,
       amount: Number(order.amount),
       currency: order.currency,
       paymentMethod: order.paymentMethod,
       paymentStatus: order.paymentStatus,
-      providerTransactionId: order.providerTransactionId,
       discountCode: order.discountCode,
       discountAmount: order.discountAmount ? Number(order.discountAmount) : null,
       metadata: order.metadata,
-      booking: order.booking,
       createdAt: order.createdAt.toISOString(),
       updatedAt: order.updatedAt.toISOString(),
       auditLogs: auditLogs.map((log) => ({

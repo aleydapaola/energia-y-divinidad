@@ -14,7 +14,7 @@ export default async function AdminOrdersPage() {
     id: o.id,
     orderNumber: o.orderNumber,
     userId: o.userId,
-    userName: o.user?.name,
+    userName: o.user?.name || null,
     userEmail: o.user?.email || o.guestEmail,
     orderType: o.orderType,
     itemName: o.itemName,
