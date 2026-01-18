@@ -1,51 +1,19 @@
-import { prisma } from "@/lib/prisma"
 import Link from "next/link"
-import { Calendar, Users, CheckCircle, Clock, AlertCircle } from "lucide-react"
+import {
+  Calendar,
+  Users,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  DollarSign,
+  TrendingUp,
+  AlertTriangle,
+  CreditCard,
+} from "lucide-react"
+import { getDashboardSummary } from "@/lib/admin-stats"
 
 export default async function AdminDashboardPage() {
-  // Get stats
-  const now = new Date()
-
-  const [
-    totalBookings,
-    upcomingBookings,
-    pendingBookings,
-    totalUsers,
-  ] = await Promise.all([
-    prisma.booking.count(),
-    prisma.booking.count({
-      where: {
-        scheduledAt: { gte: now },
-        status: { in: ["CONFIRMED", "PENDING"] },
-      },
-    }),
-    prisma.booking.count({
-      where: { status: "PENDING" },
-    }),
-    prisma.user.count(),
-  ])
-
-  // Get upcoming sessions for today and tomorrow
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 2)
-  tomorrow.setHours(0, 0, 0, 0)
-
-  const nextSessions = await prisma.booking.findMany({
-    where: {
-      scheduledAt: {
-        gte: now,
-        lt: tomorrow,
-      },
-      status: { in: ["CONFIRMED", "PENDING"] },
-    },
-    include: {
-      user: {
-        select: { name: true, email: true },
-      },
-    },
-    orderBy: { scheduledAt: "asc" },
-    take: 5,
-  })
+  const { sales, alerts, bookings, users, upcomingSessions } = await getDashboardSummary()
 
   const formatDateTime = (date: Date) => {
     return new Date(date).toLocaleDateString("es-CO", {
@@ -57,6 +25,15 @@ export default async function AdminDashboardPage() {
     })
   }
 
+  const formatCurrency = (amount: number, currency: "COP" | "USD") => {
+    if (currency === "USD") {
+      return `$${amount.toFixed(2)} USD`
+    }
+    return `$${amount.toLocaleString("es-CO")} COP`
+  }
+
+  const hasAlerts = alerts.failedPayments > 0 || alerts.recentCancellations > 0 || alerts.pendingBookings > 0
+
   return (
     <div className="space-y-8">
       <div>
@@ -66,58 +43,176 @@ export default async function AdminDashboardPage() {
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-[#f8f0f5] rounded-lg">
-              <Calendar className="w-6 h-6 text-[#8A4BAF]" />
+      {/* Alerts Panel */}
+      {hasAlerts && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600" />
+            <h3 className="font-medium text-amber-800 font-dm-sans">Alertas</h3>
+          </div>
+          <ul className="space-y-1 text-sm text-amber-700 font-dm-sans">
+            {alerts.failedPayments > 0 && (
+              <li className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                {alerts.failedPayments} pago(s) fallido(s) en las últimas 24h
+              </li>
+            )}
+            {alerts.recentCancellations > 0 && (
+              <li className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                {alerts.recentCancellations} cancelación(es) en las últimas 24h
+              </li>
+            )}
+            {alerts.pendingBookings > 0 && (
+              <li className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                {alerts.pendingBookings} sesión(es) pendiente(s) de confirmar
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      {/* Sales Stats */}
+      <div>
+        <h2 className="font-gazeta text-xl text-[#654177] mb-4">Ventas</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Ventas Hoy COP */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-50 rounded-lg">
+                <DollarSign className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#654177]">
+                  {formatCurrency(sales.today.COP, "COP")}
+                </p>
+                <p className="text-sm text-gray-500 font-dm-sans">Hoy (COP)</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-semibold text-[#654177]">{totalBookings}</p>
-              <p className="text-sm text-gray-500 font-dm-sans">Total Sesiones</p>
+            {sales.today.USD > 0 && (
+              <p className="mt-2 text-sm text-gray-500 font-dm-sans">
+                + {formatCurrency(sales.today.USD, "USD")}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-gray-400 font-dm-sans">
+              {sales.today.count} orden(es)
+            </p>
+          </div>
+
+          {/* Ventas 7 días COP */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#654177]">
+                  {formatCurrency(sales.week.COP, "COP")}
+                </p>
+                <p className="text-sm text-gray-500 font-dm-sans">Últimos 7 días (COP)</p>
+              </div>
+            </div>
+            {sales.week.USD > 0 && (
+              <p className="mt-2 text-sm text-gray-500 font-dm-sans">
+                + {formatCurrency(sales.week.USD, "USD")}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-gray-400 font-dm-sans">
+              {sales.week.count} orden(es)
+            </p>
+          </div>
+
+          {/* Suscripciones Activas */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-50 rounded-lg">
+                <CreditCard className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#654177]">
+                  {users.activeSubscriptions}
+                </p>
+                <p className="text-sm text-gray-500 font-dm-sans">Membresías activas</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-green-50 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+          {/* Total Usuarios */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-indigo-50 rounded-lg">
+                <Users className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#654177]">{users.totalUsers}</p>
+                <p className="text-sm text-gray-500 font-dm-sans">Usuarios</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-semibold text-[#654177]">{upcomingBookings}</p>
-              <p className="text-sm text-gray-500 font-dm-sans">Próximas</p>
-            </div>
+            {users.newUsersThisMonth > 0 && (
+              <p className="mt-2 text-sm text-green-600 font-dm-sans">
+                +{users.newUsersThisMonth} este mes
+              </p>
+            )}
           </div>
         </div>
+      </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-yellow-50 rounded-lg">
-              <Clock className="w-6 h-6 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-[#654177]">{pendingBookings}</p>
-              <p className="text-sm text-gray-500 font-dm-sans">Pendientes</p>
+      {/* Bookings Stats */}
+      <div>
+        <h2 className="font-gazeta text-xl text-[#654177] mb-4">Sesiones</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-[#f8f0f5] rounded-lg">
+                <Calendar className="w-6 h-6 text-[#8A4BAF]" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#654177]">{bookings.total}</p>
+                <p className="text-sm text-gray-500 font-dm-sans">Total Sesiones</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <Users className="w-6 h-6 text-blue-600" />
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-50 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#654177]">{bookings.upcoming}</p>
+                <p className="text-sm text-gray-500 font-dm-sans">Próximas</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-semibold text-[#654177]">{totalUsers}</p>
-              <p className="text-sm text-gray-500 font-dm-sans">Usuarios</p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-yellow-50 rounded-lg">
+                <Clock className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#654177]">{bookings.pending}</p>
+                <p className="text-sm text-gray-500 font-dm-sans">Pendientes</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-emerald-50 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#654177]">{bookings.completedThisMonth}</p>
+                <p className="text-sm text-gray-500 font-dm-sans">Completadas (mes)</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Next Sessions */}
+      {/* Upcoming Sessions */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-gazeta text-xl text-[#654177]">Próximas Sesiones</h2>
@@ -129,16 +224,16 @@ export default async function AdminDashboardPage() {
           </Link>
         </div>
 
-        {nextSessions.length > 0 ? (
+        {upcomingSessions.length > 0 ? (
           <div className="space-y-3">
-            {nextSessions.map((session) => (
+            {upcomingSessions.map((session) => (
               <div
                 key={session.id}
                 className="flex items-center justify-between p-4 bg-[#f8f0f5]/50 rounded-lg"
               >
                 <div>
                   <p className="font-medium text-[#654177] font-dm-sans">
-                    {session.user.name || session.user.email}
+                    {session.userName || session.userEmail}
                   </p>
                   <p className="text-sm text-gray-500 font-dm-sans">
                     {session.resourceName}
@@ -146,7 +241,7 @@ export default async function AdminDashboardPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-[#654177] font-dm-sans">
-                    {session.scheduledAt && formatDateTime(session.scheduledAt)}
+                    {formatDateTime(session.scheduledAt)}
                   </p>
                   <span
                     className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${

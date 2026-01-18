@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { prisma } from '@/lib/prisma';
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Energía y Divinidad <noreply@energiaydivinidad.com>';
 const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
@@ -25,6 +26,127 @@ function getResendClient(): Resend {
 // Función auxiliar para verificar si debemos simular el envío en desarrollo
 export function shouldSimulateEmail(): boolean {
   return DEV_MODE && DEV_AUTO_VERIFY;
+}
+
+// ============================================
+// EMAIL LOGGING - Trazabilidad de emails enviados
+// ============================================
+
+interface SendEmailWithLoggingParams {
+  to: string;
+  subject: string;
+  template: string;
+  html: string;
+  entityType?: string;
+  entityId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Envía un email y registra el resultado en EmailLog para trazabilidad.
+ * Usar esta función para emails que requieren auditoría (confirmaciones, notificaciones admin, etc.)
+ */
+export async function sendEmailWithLogging(params: SendEmailWithLoggingParams) {
+  // Crear log en estado PENDING
+  const emailLog = await prisma.emailLog.create({
+    data: {
+      to: params.to,
+      template: params.template,
+      subject: params.subject,
+      entityType: params.entityType,
+      entityId: params.entityId,
+      status: 'PENDING',
+      metadata: params.metadata ?? null,
+    },
+  });
+
+  // En modo desarrollo con auto-verify, simular envío
+  if (DEV_MODE && DEV_AUTO_VERIFY) {
+    console.log('\n========================================');
+    console.log(`📧 EMAIL SIMULADO (${params.template})`);
+    console.log('========================================');
+    console.log(`Para: ${params.to}`);
+    console.log(`Asunto: ${params.subject}`);
+    console.log('========================================\n');
+
+    await prisma.emailLog.update({
+      where: { id: emailLog.id },
+      data: {
+        status: 'SENT',
+        providerMessageId: 'dev-mode-simulated',
+        sentAt: new Date(),
+      },
+    });
+
+    return { success: true, messageId: 'dev-mode-simulated', emailLogId: emailLog.id };
+  }
+
+  try {
+    const result = await getResendClient().emails.send({
+      from: FROM_EMAIL,
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+    });
+
+    if (result.error) {
+      await prisma.emailLog.update({
+        where: { id: emailLog.id },
+        data: {
+          status: 'FAILED',
+          errorMessage: result.error.message,
+        },
+      });
+
+      console.error('Error sending email:', result.error);
+      return { success: false, error: result.error, emailLogId: emailLog.id };
+    }
+
+    // Actualizar log con éxito
+    await prisma.emailLog.update({
+      where: { id: emailLog.id },
+      data: {
+        status: 'SENT',
+        providerMessageId: result.data?.id,
+        sentAt: new Date(),
+      },
+    });
+
+    return { success: true, messageId: result.data?.id, emailLogId: emailLog.id };
+  } catch (error) {
+    // Actualizar log con error
+    await prisma.emailLog.update({
+      where: { id: emailLog.id },
+      data: {
+        status: 'FAILED',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      },
+    });
+
+    console.error('Error sending email:', error);
+    return { success: false, error, emailLogId: emailLog.id };
+  }
+}
+
+/**
+ * Obtiene el historial de emails enviados a un destinatario
+ */
+export async function getEmailHistory(to: string, limit: number = 20) {
+  return prisma.emailLog.findMany({
+    where: { to },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+}
+
+/**
+ * Obtiene emails relacionados con una entidad específica
+ */
+export async function getEntityEmailHistory(entityType: string, entityId: string) {
+  return prisma.emailLog.findMany({
+    where: { entityType, entityId },
+    orderBy: { createdAt: 'desc' },
+  });
 }
 
 interface SendVerificationEmailParams {
@@ -1263,7 +1385,7 @@ interface SendPaymentConfirmationEmailParams {
   email: string;
   name: string;
   orderNumber: string;
-  orderType: 'PRODUCT' | 'SESSION' | 'EVENT' | 'MEMBERSHIP' | 'PREMIUM_CONTENT';
+  orderType: 'PRODUCT' | 'SESSION' | 'EVENT' | 'MEMBERSHIP' | 'PREMIUM_CONTENT' | 'COURSE';
   itemName: string;
   amount: number;
   currency: 'COP' | 'USD' | 'EUR';
@@ -1332,8 +1454,8 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
       break;
     case 'MEMBERSHIP':
       productTypeText = 'Membresía';
-      ctaText = 'Ir a mi membresía';
-      ctaLink = productLink || `${APP_URL}/membresia/dashboard`;
+      ctaText = 'Ir a mi cuenta';
+      ctaLink = productLink || `${APP_URL}/mi-cuenta`;
       if (membershipPlan) {
         additionalInfo = `
           <tr>
@@ -1372,6 +1494,11 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
       productTypeText = 'Contenido Premium';
       ctaText = 'Ver mi contenido';
       ctaLink = productLink || `${APP_URL}/mi-cuenta/contenido`;
+      break;
+    case 'COURSE':
+      productTypeText = 'Curso';
+      ctaText = 'Ir a mis cursos';
+      ctaLink = productLink || `${APP_URL}/mi-cuenta/cursos`;
       break;
     default:
       productTypeText = 'Producto';

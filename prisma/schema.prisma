@@ -701,3 +701,55 @@ model LessonProgress {
   @@index([courseProgressId])
   @@map("lesson_progress")
 }
+
+// ============================================
+// BOUNDED CONTEXT: Audit & Logging
+// ============================================
+
+// Registro de acciones administrativas para trazabilidad
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String   // userId del admin que ejecutó la acción
+  actorEmail String   // Email para referencia rápida
+
+  entityType String   // "booking" | "order" | "subscription" | "user"
+  entityId   String
+  action     String   // "cancel" | "reschedule" | "refund" | "status_change" | "complete" | "no_show"
+
+  before     Json?    // Estado anterior (snapshot)
+  after      Json?    // Estado posterior (snapshot)
+  reason     String?  // Motivo proporcionado por el admin
+  metadata   Json?    // Datos adicionales (IP, user agent, etc.)
+
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// Registro de emails enviados para trazabilidad y debugging
+model EmailLog {
+  id                String   @id @default(cuid())
+  to                String   // Email destinatario
+  template          String   // "booking_confirmation" | "booking_cancelled" | "booking_rescheduled" | etc.
+  subject           String?  // Asunto del email
+
+  entityType        String?  // "booking" | "order" | "subscription"
+  entityId          String?
+
+  status            String   @default("PENDING") // "PENDING" | "SENT" | "FAILED"
+  providerMessageId String?  // ID de Resend
+  errorMessage      String?  // Mensaje de error si falló
+
+  metadata          Json?    // Datos adicionales del email
+
+  sentAt            DateTime?
+  createdAt         DateTime @default(now())
+
+  @@index([to])
+  @@index([entityType, entityId])
+  @@index([status])
+  @@map("email_logs")
+}
