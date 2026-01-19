@@ -554,11 +554,10 @@ async function sendAdminSaleNotification(
   } else {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true, name: true, phone: true },
+      select: { email: true, name: true },
     })
     customerEmail = user?.email || null
     customerName = user?.name || null
-    customerPhone = user?.phone || undefined
   }
 
   // Verificar metadata para datos adicionales

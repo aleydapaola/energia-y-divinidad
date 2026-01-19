@@ -174,7 +174,7 @@ async function handleSubscriptionApproved(subscriptionId: string, data: any) {
   // Obtener datos del usuario para notificación
   const user = await prisma.user.findUnique({
     where: { id: subscription.userId },
-    select: { email: true, name: true, phone: true },
+    select: { email: true, name: true },
   })
 
   // Notificar al administrador
@@ -184,7 +184,6 @@ async function handleSubscriptionApproved(subscriptionId: string, data: any) {
         saleType: 'MEMBERSHIP',
         customerName: user.name || 'Cliente',
         customerEmail: user.email,
-        customerPhone: user.phone || undefined,
         itemName: subscription.membershipTierName,
         amount: Number(subscription.amount),
         currency: subscription.currency as 'COP' | 'USD' | 'EUR',

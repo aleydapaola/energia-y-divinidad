@@ -197,7 +197,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   // Obtener datos del usuario para notificación
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true, name: true, phone: true },
+    select: { email: true, name: true },
   })
 
   // Notificar al administrador
@@ -207,7 +207,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         saleType: 'MEMBERSHIP',
         customerName: user.name || 'Cliente',
         customerEmail: user.email,
-        customerPhone: user.phone || undefined,
         itemName: membershipTierName || 'Membresía',
         amount: (stripeSubscription.items.data[0].price.unit_amount || 0) / 100,
         currency: stripeSubscription.currency.toUpperCase() as 'COP' | 'USD' | 'EUR',
