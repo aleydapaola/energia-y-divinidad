@@ -77,15 +77,16 @@ El violeta (`#8A4BAF`) se reserva para:
 
 ### Pasarelas de Pago
 
-| Pasarela | Monedas | Métodos |
-|----------|---------|---------|
-| **Wompi** | Solo COP | Nequi, Tarjetas colombianas |
-| **ePayco** | COP, USD | PayPal, Tarjetas internacionales |
+| Pasarela | Monedas | Métodos | Comisión |
+|----------|---------|---------|----------|
+| **Nequi API** | Solo COP | Nequi (Push) | 1.5% + IVA |
+| **Wompi** | Solo COP | Tarjetas colombianas | 1.99% + IVA |
+| **ePayco** | COP, USD | PayPal, Tarjetas internacionales | 2.68% + IVA + $900 |
 
 ### Métodos por Región
 
 #### Colombia (COP)
-- **Nequi** → Wompi
+- **Nequi** → Nequi API (directo) - *Pendiente de integrar*
 - **Tarjeta de crédito** → Wompi
 - **PayPal** → ePayco
 
@@ -136,7 +137,18 @@ Esta estrategia aplica a TODOS los productos de pago:
 ### Variables de Entorno Requeridas
 
 ```bash
-# Wompi (Colombia)
+# Nequi API Directa (Colombia - Pagos Nequi)
+# Pendiente: obtener credenciales en https://negocios.nequi.co/registro/api_push
+NEQUI_CLIENT_ID=
+NEQUI_CLIENT_SECRET=
+NEQUI_API_KEY=
+NEQUI_AUTH_URI=https://oauth.sandbox.nequi.com/oauth2/token
+NEQUI_API_BASE_PATH=https://api.sandbox.nequi.com
+# Producción:
+# NEQUI_AUTH_URI=https://oauth.nequi.com/oauth2/token
+# NEQUI_API_BASE_PATH=https://api.nequi.com
+
+# Wompi (Colombia - Tarjetas)
 NEXT_PUBLIC_WOMPI_PUBLIC_KEY=
 WOMPI_PRIVATE_KEY=
 WOMPI_EVENTS_SECRET=
@@ -148,4 +160,62 @@ NEXT_PUBLIC_EPAYCO_PUBLIC_KEY=
 EPAYCO_PRIVATE_KEY=
 EPAYCO_P_KEY=
 EPAYCO_TEST_MODE=true
+
+# Notificaciones Admin (ventas)
+# Email donde se reciben las notificaciones de nuevas ventas
+ADMIN_NOTIFICATION_EMAIL=admin@energiaydivinidad.com
+```
+
+### Integración ePayco
+
+#### URLs oficiales
+| Recurso | URL |
+|---------|-----|
+| Dashboard (Login) | https://dashboard.epayco.com/login |
+| Documentación API | https://docs.epayco.com/docs/api |
+| Documentación general | https://docs.epayco.com/ |
+
+#### Cómo obtener credenciales
+1. Iniciar sesión en https://dashboard.epayco.com/login
+2. Ir a **Integraciones** → **Llaves API** (o Settings → Customizations → Secret Keys)
+3. Obtener las siguientes credenciales:
+   - **P_CUST_ID_CLIENTE** → `NEXT_PUBLIC_EPAYCO_PUBLIC_KEY`
+   - **PRIVATE_KEY** → `EPAYCO_PRIVATE_KEY`
+   - **P_KEY** → `EPAYCO_P_KEY`
+4. Para modo pruebas usar `EPAYCO_TEST_MODE=true` (no genera costos)
+
+### Integración Nequi API (Pendiente)
+
+**Estado**: Pendiente de credenciales
+
+#### URLs oficiales
+| Recurso | URL |
+|---------|-----|
+| Registro API Push | https://negocios.nequi.co/registro/api_push |
+| Documentación técnica | https://docs.conecta.nequi.com.co/ |
+| Portal Nequi Negocios | https://www.nequi.com.co/negocios |
+| Certificación | certificacion@conecta.nequi.com |
+
+#### Proceso para obtener credenciales
+1. Registrarse en https://negocios.nequi.co/registro/api_push
+2. Enviar documentación del negocio
+3. Esperar aprobación (3 días hábiles)
+4. Firmar contrato electrónicamente via Zapsign
+5. Recibir las llaves (Client ID, Client Secret, API Key)
+6. Probar en sandbox
+7. Certificar enviando casos de prueba JSON a certificacion@conecta.nequi.com
+8. Pasar a producción
+
+#### Archivos a crear cuando tengamos credenciales
+| Archivo | Descripción |
+|---------|-------------|
+| `lib/nequi-conecta.ts` | Integración con Nequi API |
+| `app/api/checkout/nequi/route.ts` | API para crear pagos Nequi |
+| `app/api/webhooks/nequi/route.ts` | Webhook de Nequi |
+
+#### Flujo de pago Push
+```
+Usuario selecciona Nequi → Servidor envía Push a Nequi API →
+Nequi envía notificación al celular → Usuario aprueba en app →
+Webhook confirma pago → Se crea el booking
 ```
