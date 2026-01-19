@@ -18,7 +18,7 @@ export default async function MisSesionesPage() {
     orderBy: { scheduledAt: "desc" },
   })
 
-  // Separar en próximas y pasadas
+  // Separar en próximas, pasadas y canceladas
   const now = new Date()
   const upcomingBookings = bookings.filter(
     (b) => b.scheduledAt && new Date(b.scheduledAt) >= now && b.status !== "CANCELLED"

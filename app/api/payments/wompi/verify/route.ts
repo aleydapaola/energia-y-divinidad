@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getWompiApiUrl, WOMPI_CONFIG } from '@/lib/wompi'
-import { sendPaymentConfirmationEmail } from '@/lib/email'
-import { randomBytes } from 'crypto'
+import { processApprovedPayment } from '@/lib/payment-processor'
 
 /**
  * GET /api/payments/wompi/verify
@@ -13,373 +12,141 @@ import { randomBytes } from 'crypto'
  * - ref: Referencia de la orden (orderNumber)
  */
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const transactionId = searchParams.get('transactionId')
-    const reference = searchParams.get('ref')
+  const { searchParams } = new URL(request.url)
+  const transactionId = searchParams.get('transactionId')
+  const reference = searchParams.get('ref')
 
-    if (!transactionId) {
-      return NextResponse.json({ error: 'Transaction ID requerido' }, { status: 400 })
-    }
+  console.log('[VERIFY/WOMPI] === INICIANDO VERIFICACIÓN ===')
+  console.log('[VERIFY/WOMPI] transactionId:', transactionId)
+  console.log('[VERIFY/WOMPI] reference:', reference)
 
-    // Consultar transacción en Wompi
-    const wompiResponse = await fetch(
-      `${getWompiApiUrl()}/transactions/${transactionId}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${WOMPI_CONFIG.privateKey}`,
-        },
-      }
+  if (!transactionId || !reference) {
+    return NextResponse.json(
+      { error: 'Se requiere transactionId y ref' },
+      { status: 400 }
     )
+  }
+
+  try {
+    // 1. Obtener estado de la transacción desde Wompi
+    const wompiUrl = `${getWompiApiUrl()}/transactions/${transactionId}`
+    console.log('[VERIFY/WOMPI] Fetching from Wompi:', wompiUrl)
+
+    const wompiResponse = await fetch(wompiUrl, {
+      headers: {
+        Authorization: `Bearer ${WOMPI_CONFIG.privateKey}`,
+      },
+    })
 
     if (!wompiResponse.ok) {
-      console.error('Error fetching Wompi transaction:', wompiResponse.status)
-      return NextResponse.json(
-        { error: 'Error consultando transacción' },
-        { status: 500 }
-      )
+      console.error('[VERIFY/WOMPI] Error respuesta Wompi:', wompiResponse.status)
+      throw new Error(`Error consultando Wompi: ${wompiResponse.status}`)
     }
 
     const wompiData = await wompiResponse.json()
     const transaction = wompiData.data
+    console.log('[VERIFY/WOMPI] Wompi response status:', transaction?.status)
 
-    // Buscar y actualizar la orden si tenemos la referencia
-    let order = null
-    if (reference) {
-      order = await prisma.order.findFirst({
-        where: { orderNumber: reference },
+    if (!transaction) {
+      return NextResponse.json(
+        { error: 'Transacción no encontrada en Wompi' },
+        { status: 404 }
+      )
+    }
+
+    // 2. Buscar la orden en nuestra BD
+    const order = await prisma.order.findFirst({
+      where: { orderNumber: reference },
+      include: { user: true },
+    })
+
+    if (!order) {
+      console.error('[VERIFY/WOMPI] Orden no encontrada:', reference)
+      return NextResponse.json(
+        { error: 'Orden no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    console.log('[VERIFY/WOMPI] Orden encontrada:', order.id, 'Status actual:', order.paymentStatus)
+
+    // 3. Actualizar estado de la orden según Wompi
+    const newPaymentStatus = mapWompiStatus(transaction.status)
+    const metadata = order.metadata as any
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        paymentStatus: newPaymentStatus,
+        metadata: {
+          ...metadata,
+          wompiTransactionId: transactionId,
+          wompiStatus: transaction.status,
+          wompiVerifiedAt: new Date().toISOString(),
+        },
+      },
+      include: { user: true },
+    })
+
+    console.log('[VERIFY/WOMPI] Orden actualizada a:', newPaymentStatus)
+
+    // 4. Si el pago fue aprobado, procesar con el servicio centralizado
+    if (transaction.status === 'APPROVED' && order.paymentStatus !== 'COMPLETED') {
+      console.log('[VERIFY/WOMPI] Pago aprobado, procesando...')
+
+      const result = await processApprovedPayment(updatedOrder, {
+        transactionId,
       })
 
-      if (order && order.paymentStatus === 'PENDING') {
-        // Mapear status de Wompi a nuestro modelo
-        let paymentStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | 'CANCELLED' = 'PENDING'
-        switch (transaction.status) {
-          case 'APPROVED':
-            paymentStatus = 'COMPLETED'
-            break
-          case 'DECLINED':
-          case 'ERROR':
-            paymentStatus = 'FAILED'
-            break
-          case 'VOIDED':
-            paymentStatus = 'CANCELLED'
-            break
-        }
-
-        // Actualizar orden si el estado cambió
-        if (paymentStatus !== 'PENDING') {
-          order = await prisma.order.update({
-            where: { id: order.id },
-            data: {
-              paymentStatus,
-              metadata: {
-                ...(order.metadata as object),
-                wompiTransactionId: transactionId,
-                wompiStatus: transaction.status,
-                verifiedAt: new Date().toISOString(),
-              },
-            },
-            include: {
-              user: true,
-            },
-          })
-
-          // Si el pago fue exitoso, procesar según tipo de producto
-          if (paymentStatus === 'COMPLETED') {
-            // Procesar el pago aprobado (crear booking, membresía, etc.)
-            await handleApprovedPayment(order)
-
-            const metadata = order.metadata as Record<string, any> | null
-            const customerEmail = order.user?.email || order.guestEmail || metadata?.customerEmail
-            const customerName = order.user?.name || order.guestName || metadata?.customerName || 'Cliente'
-
-            if (customerEmail) {
-              // Enviar email en background (no bloquear la respuesta)
-              sendPaymentConfirmationEmail({
-                email: customerEmail,
-                name: customerName,
-                orderNumber: order.orderNumber,
-                orderType: order.orderType as 'PRODUCT' | 'SESSION' | 'EVENT' | 'MEMBERSHIP' | 'PREMIUM_CONTENT',
-                itemName: order.itemName,
-                amount: Number(order.amount),
-                currency: order.currency as 'COP' | 'USD' | 'EUR',
-                paymentMethod: order.paymentMethod || 'WOMPI_CARD',
-                transactionId: transactionId,
-              }).catch((err) => {
-                console.error('Error sending payment confirmation email:', err)
-              })
-            }
-          }
-        }
+      if (!result.success) {
+        console.error('[VERIFY/WOMPI] Error procesando pago:', result.error)
+      } else {
+        console.log('[VERIFY/WOMPI] Pago procesado exitosamente')
       }
     }
 
+    // 5. Devolver resultado
     return NextResponse.json({
-      transactionId: transaction.id,
+      success: true,
       transactionStatus: transaction.status,
-      statusMessage: transaction.status_message,
-      amount: transaction.amount_in_cents / 100,
-      currency: transaction.currency,
-      paymentMethod: transaction.payment_method_type,
-      order: order
-        ? {
-            id: order.id,
-            orderNumber: order.orderNumber,
-            orderType: order.orderType,
-            itemName: order.itemName,
-            amount: Number(order.amount),
-            currency: order.currency,
-            paymentStatus: order.paymentStatus,
-            paymentMethod: order.paymentMethod,
-          }
-        : null,
+      paymentStatus: newPaymentStatus,
+      order: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        orderType: updatedOrder.orderType,
+        itemName: updatedOrder.itemName,
+        amount: updatedOrder.amount,
+        currency: updatedOrder.currency,
+        paymentStatus: newPaymentStatus,
+        paymentMethod: updatedOrder.paymentMethod,
+      },
     })
-  } catch (error) {
-    console.error('Error verifying Wompi payment:', error)
+  } catch (error: any) {
+    console.error('[VERIFY/WOMPI] Error:', error)
     return NextResponse.json(
-      { error: 'Error verificando pago' },
+      { error: error.message || 'Error verificando transacción' },
       { status: 500 }
     )
   }
 }
 
 /**
- * Procesar pago aprobado según tipo de producto
+ * Mapear status de Wompi a nuestro modelo
  */
-async function handleApprovedPayment(order: any) {
-  const metadata = order.metadata as any
-
-  // Manejar guest checkout: crear/encontrar usuario si no hay userId
-  let userId = order.userId
-  const isGuestCheckout = metadata?.isGuestCheckout || (!userId && order.guestEmail)
-
-  if (isGuestCheckout && order.guestEmail) {
-    userId = await findOrCreateUserForGuest(order.guestEmail, order.guestName)
-
-    // Actualizar orden con el userId
-    await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        userId,
-        metadata: {
-          ...metadata,
-          convertedFromGuest: true,
-          convertedAt: new Date().toISOString(),
-        },
-      },
-    })
-
-    order.userId = userId
-  }
-
-  if (!userId) {
-    console.error(`No se pudo determinar usuario para orden ${order.id}`)
-    return
-  }
-
-  // Verificar si ya existe un booking para esta orden (evitar duplicados)
-  const existingBooking = await prisma.booking.findFirst({
-    where: {
-      userId,
-      resourceId: order.itemId,
-      paymentStatus: 'COMPLETED',
-      createdAt: {
-        gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Últimas 24 horas
-      },
-    },
-  })
-
-  if (existingBooking) {
-    console.log(`Booking ya existe para orden ${order.id}: ${existingBooking.id}`)
-    return
-  }
-
-  switch (order.orderType) {
-    case 'MEMBERSHIP':
-      await createMembershipFromOrder(order, metadata)
-      break
-
-    case 'SESSION':
-      await createBookingFromOrder(order, metadata)
-      break
-
-    case 'EVENT':
-      await createEventBookingFromOrder(order, metadata)
-      break
-
+function mapWompiStatus(
+  status: string
+): 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | 'CANCELLED' {
+  switch (status) {
+    case 'APPROVED':
+      return 'COMPLETED'
+    case 'PENDING':
+      return 'PENDING'
+    case 'DECLINED':
+    case 'ERROR':
+      return 'FAILED'
+    case 'VOIDED':
+      return 'CANCELLED'
     default:
-      console.log(`Tipo de orden no manejado: ${order.orderType}`)
+      return 'PENDING'
   }
-
-  console.log(`Pago aprobado procesado para orden ${order.id}${isGuestCheckout ? ' (guest checkout)' : ''}`)
-}
-
-/**
- * Encontrar o crear usuario para guest checkout
- */
-async function findOrCreateUserForGuest(
-  email: string,
-  name?: string | null
-): Promise<string> {
-  const existingUser = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() },
-  })
-
-  if (existingUser) {
-    return existingUser.id
-  }
-
-  const setPasswordToken = randomBytes(32).toString('hex')
-  const setPasswordExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-
-  const newUser = await prisma.user.create({
-    data: {
-      email: email.toLowerCase(),
-      name: name || null,
-      password: null,
-      emailVerified: null,
-    },
-  })
-
-  await prisma.verificationToken.create({
-    data: {
-      identifier: email.toLowerCase(),
-      token: setPasswordToken,
-      expires: setPasswordExpires,
-    },
-  })
-
-  console.log(`Usuario creado para guest checkout: ${newUser.id} (${email})`)
-  return newUser.id
-}
-
-/**
- * Crear membresía desde orden aprobada
- */
-async function createMembershipFromOrder(order: any, metadata: any) {
-  const billingInterval = metadata.billingInterval || 'monthly'
-
-  const periodEnd = new Date()
-  if (billingInterval === 'yearly') {
-    periodEnd.setFullYear(periodEnd.getFullYear() + 1)
-  } else {
-    periodEnd.setMonth(periodEnd.getMonth() + 1)
-  }
-
-  const subscription = await prisma.subscription.create({
-    data: {
-      userId: order.userId,
-      membershipTierId: order.itemId,
-      membershipTierName: order.itemName,
-      status: 'ACTIVE',
-      paymentProvider: order.paymentMethod?.includes('NEQUI') ? 'wompi_nequi' : 'wompi_card',
-      billingInterval: billingInterval === 'yearly' ? 'YEARLY' : 'MONTHLY',
-      amount: order.amount,
-      currency: order.currency,
-      startDate: new Date(),
-      currentPeriodStart: new Date(),
-      currentPeriodEnd: periodEnd,
-    },
-  })
-
-  await prisma.entitlement.create({
-    data: {
-      userId: order.userId,
-      type: 'MEMBERSHIP',
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      expiresAt: periodEnd,
-      subscriptionId: subscription.id,
-      orderId: order.id,
-    },
-  })
-
-  console.log(`Membresía creada: ${subscription.id} para usuario ${order.userId}`)
-}
-
-/**
- * Crear booking de sesión desde orden aprobada
- */
-async function createBookingFromOrder(order: any, metadata: any) {
-  const isPack = metadata.productType === 'pack'
-  const sessionsTotal = isPack ? 8 : 1
-
-  const booking = await prisma.booking.create({
-    data: {
-      userId: order.userId,
-      bookingType: 'SESSION_1_ON_1',
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      status: 'CONFIRMED',
-      paymentStatus: 'COMPLETED',
-      paymentMethod: order.paymentMethod,
-      amount: order.amount,
-      currency: order.currency,
-      sessionsTotal,
-      sessionsRemaining: sessionsTotal,
-    },
-  })
-
-  if (isPack) {
-    const packCode = `PACK-${generatePackCode()}`
-
-    await prisma.booking.update({
-      where: { id: booking.id },
-      data: {
-        metadata: {
-          packCode,
-          generatedAt: new Date().toISOString(),
-        },
-      },
-    })
-
-    console.log(`Pack de sesiones creado: ${booking.id} - Código: ${packCode}`)
-  } else {
-    console.log(`Sesión individual confirmada: ${booking.id}`)
-  }
-}
-
-/**
- * Crear booking de evento desde orden aprobada
- */
-async function createEventBookingFromOrder(order: any, metadata: any) {
-  const booking = await prisma.booking.create({
-    data: {
-      userId: order.userId,
-      bookingType: 'EVENT',
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      status: 'CONFIRMED',
-      paymentStatus: 'COMPLETED',
-      paymentMethod: order.paymentMethod,
-      amount: order.amount,
-      currency: order.currency,
-    },
-  })
-
-  await prisma.entitlement.create({
-    data: {
-      userId: order.userId,
-      type: 'EVENT',
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      orderId: order.id,
-    },
-  })
-
-  console.log(`Entrada a evento confirmada: ${booking.id}`)
-}
-
-/**
- * Generar código de pack aleatorio
- */
-function generatePackCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  let code = ''
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return code
 }

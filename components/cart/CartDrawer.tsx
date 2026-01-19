@@ -1,19 +1,63 @@
 'use client'
 
-import { Fragment } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { X, ShoppingCart, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useCartStore, useCartSummary, formatPrice } from '@/lib/stores/cart-store'
 import { urlFor } from '@/sanity/lib/image'
+import { useSession } from 'next-auth/react'
 
 export function CartDrawer() {
+  const { data: session } = useSession()
   const items = useCartStore((state) => state.items)
   const isOpen = useCartStore((state) => state.isOpen)
   const closeCart = useCartStore((state) => state.closeCart)
   const removeItem = useCartStore((state) => state.removeItem)
   const { subtotal, discountAmount, total, currency, isEmpty, discount } = useCartSummary()
+
+  // Ref para evitar verificaciones repetidas en la misma apertura
+  const hasCheckedRef = useRef(false)
+  const lastOpenRef = useRef(false)
+
+  // Verificar y eliminar cursos ya comprados cuando se abre el carrito
+  useEffect(() => {
+    // Reset check flag cuando el carrito se cierra
+    if (!isOpen && lastOpenRef.current) {
+      hasCheckedRef.current = false
+    }
+    lastOpenRef.current = isOpen
+
+    // Solo verificar cuando se abre, hay usuario y no hemos verificado aún
+    if (!isOpen || !session?.user || items.length === 0 || hasCheckedRef.current) {
+      return
+    }
+
+    hasCheckedRef.current = true
+
+    const checkOwnedCourses = async () => {
+      // Copiar IDs para evitar problemas con el estado cambiante
+      const itemIds = items.map((item) => ({ id: item.id, title: item.title }))
+
+      for (const { id, title } of itemIds) {
+        try {
+          const response = await fetch(`/api/courses/${id}/access`)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.hasAccess) {
+              removeItem(id)
+              console.log(`[CART] Removed owned course: ${title}`)
+            }
+          }
+        } catch (error) {
+          console.error('Error checking course ownership:', error)
+        }
+      }
+    }
+
+    checkOwnedCourses()
+  }, [isOpen, session?.user, items, removeItem])
 
   return (
     <Transition.Root show={isOpen} as={Fragment}>

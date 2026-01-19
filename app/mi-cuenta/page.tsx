@@ -193,11 +193,9 @@ export default async function MiCuentaPage() {
                   <p className="font-medium text-[#654177] font-dm-sans">
                     {booking.resourceName}
                   </p>
-                  {booking.scheduledAt && (
-                    <p className="text-sm text-gray-500 font-dm-sans">
-                      {formatDate(booking.scheduledAt)} - {formatTime(booking.scheduledAt)}
-                    </p>
-                  )}
+                  <p className="text-sm text-gray-500 font-dm-sans">
+                    {formatDate(booking.scheduledAt!)} - {formatTime(booking.scheduledAt!)}
+                  </p>
                 </div>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-medium font-dm-sans ${

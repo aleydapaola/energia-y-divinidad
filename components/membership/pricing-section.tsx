@@ -8,9 +8,10 @@ import type { MembershipTier } from '@/types/membership'
 interface PricingSectionProps {
   tiers: MembershipTier[]
   isAuthenticated: boolean
+  currentTierId?: string // ID del tier actual si el usuario ya tiene membresía
 }
 
-export function PricingSection({ tiers, isAuthenticated }: PricingSectionProps) {
+export function PricingSection({ tiers, isAuthenticated, currentTierId }: PricingSectionProps) {
   const router = useRouter()
   const [currency, setCurrency] = useState<'COP' | 'USD'>('USD')
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly')
@@ -130,6 +131,7 @@ export function PricingSection({ tiers, isAuthenticated }: PricingSectionProps) 
             billingInterval={billingInterval}
             onSelect={handleSelectTier}
             isPopular={tier.popularityBadge === 'popular'}
+            isCurrentPlan={currentTierId === tier._id}
           />
         ))}
       </div>

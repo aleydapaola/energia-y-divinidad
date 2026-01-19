@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import {
   parseEpaycoWebhook,
-  normalizeEpaycoStatus,
   type EpaycoWebhookPayload,
   type EpaycoTransactionStatus,
 } from '@/lib/epayco'
-import { createCourseEntitlement } from '@/lib/course-access'
-import { recordDiscountUsage } from '@/lib/discount-codes'
+import { processApprovedPayment } from '@/lib/payment-processor'
 import { getAppUrl } from '@/lib/utils'
 
 /**
@@ -142,15 +140,16 @@ async function handleEpaycoTransaction(
   const transactionId = payload.x_transaction_id
   const status = payload.x_response
 
-  console.log(`Procesando transacción ePayco: ${refPayco} - ${reference} - ${status}`)
+  console.log(`[WEBHOOK/EPAYCO] Procesando transacción: ${refPayco} - ${reference} - ${status}`)
 
   // Buscar la orden por referencia (orderNumber)
   const order = await prisma.order.findFirst({
     where: { orderNumber: reference },
+    include: { user: true },
   })
 
   if (!order) {
-    console.error(`No se encontró orden con referencia ${reference}`)
+    console.error(`[WEBHOOK/EPAYCO] No se encontró orden con referencia ${reference}`)
     return
   }
 
@@ -173,174 +172,20 @@ async function handleEpaycoTransaction(
     },
   })
 
-  // Si el pago fue aprobado, procesar según tipo de producto
+  // Si el pago fue aprobado, usar el servicio centralizado
   if (normalizedStatus === 'approved') {
-    await handleApprovedPayment(order, payload)
-  } else if (normalizedStatus === 'declined' || normalizedStatus === 'error') {
-    console.log(`Pago rechazado/fallido para orden ${order.id}: ${status}`)
-    // TODO: Enviar notificación al usuario
-  }
-}
-
-/**
- * Procesar pago aprobado según tipo de producto
- */
-async function handleApprovedPayment(order: any, payload: EpaycoWebhookPayload) {
-  const metadata = order.metadata as any
-
-  switch (order.orderType) {
-    case 'MEMBERSHIP':
-      await createMembershipFromOrder(order, metadata)
-      break
-
-    case 'SESSION':
-      await createBookingFromOrder(order, metadata)
-      break
-
-    case 'EVENT':
-      await createEventBookingFromOrder(order, metadata)
-      break
-
-    case 'COURSE':
-      await createCourseEntitlementsFromOrder(order, metadata)
-      break
-
-    default:
-      console.log(`Tipo de orden no manejado: ${order.orderType}`)
-  }
-
-  console.log(`Pago ePayco aprobado procesado para orden ${order.id}`)
-}
-
-/**
- * Crear membresía desde orden aprobada
- */
-async function createMembershipFromOrder(order: any, metadata: any) {
-  const billingInterval = metadata.billingInterval || 'monthly'
-
-  // Calcular fecha de fin del período
-  const periodEnd = new Date()
-  if (billingInterval === 'yearly') {
-    periodEnd.setFullYear(periodEnd.getFullYear() + 1)
-  } else {
-    periodEnd.setMonth(periodEnd.getMonth() + 1)
-  }
-
-  // Determinar provider
-  const isPayPal = order.paymentMethod === 'EPAYCO_PAYPAL'
-  const provider = isPayPal ? 'epayco_paypal' : 'epayco_card'
-
-  // Crear suscripción
-  const subscription = await prisma.subscription.create({
-    data: {
-      userId: order.userId,
-      membershipTierId: order.itemId,
-      membershipTierName: order.itemName,
-      status: 'ACTIVE',
-      paymentProvider: provider,
-      billingInterval: billingInterval === 'yearly' ? 'YEARLY' : 'MONTHLY',
-      amount: order.amount,
-      currency: order.currency,
-      startDate: new Date(),
-      currentPeriodStart: new Date(),
-      currentPeriodEnd: periodEnd,
-    },
-  })
-
-  // Crear Entitlement
-  await prisma.entitlement.create({
-    data: {
-      userId: order.userId,
-      type: 'MEMBERSHIP',
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      expiresAt: periodEnd,
-      subscriptionId: subscription.id,
-      orderId: order.id,
-    },
-  })
-
-  console.log(`Membresía creada via ePayco: ${subscription.id} para usuario ${order.userId}`)
-
-  // TODO: Enviar email de bienvenida
-}
-
-/**
- * Crear booking de sesión desde orden aprobada
- */
-async function createBookingFromOrder(order: any, metadata: any) {
-  const isPack = metadata.productType === 'pack'
-  const sessionsTotal = isPack ? 8 : 1
-
-  const booking = await prisma.booking.create({
-    data: {
-      userId: order.userId,
-      bookingType: 'SESSION_1_ON_1',
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      status: 'CONFIRMED',
-      paymentStatus: 'COMPLETED',
-      paymentMethod: order.paymentMethod,
-      amount: order.amount,
-      currency: order.currency,
-      sessionsTotal,
-      sessionsRemaining: sessionsTotal,
-    },
-  })
-
-  // Si es pack, generar código
-  if (isPack) {
-    const packCode = `PACK-${generatePackCode()}`
-
-    await prisma.booking.update({
-      where: { id: booking.id },
-      data: {
-        metadata: {
-          packCode,
-          generatedAt: new Date().toISOString(),
-        },
-      },
+    const result = await processApprovedPayment(order, {
+      transactionId,
     })
 
-    console.log(`Pack de sesiones creado via ePayco: ${booking.id} - Código: ${packCode}`)
-    // TODO: Enviar email con código de pack
-  } else {
-    console.log(`Sesión individual confirmada via ePayco: ${booking.id}`)
-    // TODO: Enviar email de confirmación
+    if (!result.success) {
+      console.error(`[WEBHOOK/EPAYCO] Error procesando pago: ${result.error}`)
+      throw new Error(result.error)
+    }
+  } else if (normalizedStatus === 'declined' || normalizedStatus === 'error') {
+    console.log(`[WEBHOOK/EPAYCO] Pago rechazado/fallido para orden ${order.id}: ${status}`)
+    // TODO: Enviar notificación al usuario
   }
-}
-
-/**
- * Crear booking de evento desde orden aprobada
- */
-async function createEventBookingFromOrder(order: any, metadata: any) {
-  const booking = await prisma.booking.create({
-    data: {
-      userId: order.userId,
-      bookingType: 'EVENT',
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      status: 'CONFIRMED',
-      paymentStatus: 'COMPLETED',
-      paymentMethod: order.paymentMethod,
-      amount: order.amount,
-      currency: order.currency,
-    },
-  })
-
-  // Crear Entitlement para acceso al evento
-  await prisma.entitlement.create({
-    data: {
-      userId: order.userId,
-      type: 'EVENT',
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      orderId: order.id,
-    },
-  })
-
-  console.log(`Entrada a evento confirmada via ePayco: ${booking.id}`)
-  // TODO: Enviar email con entrada/QR
 }
 
 /**
@@ -369,54 +214,4 @@ function mapEpaycoStatus(
     default:
       return 'PENDING'
   }
-}
-
-/**
- * Generar código de pack aleatorio
- */
-function generatePackCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  let code = ''
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return code
-}
-
-/**
- * Crear entitlements de cursos desde orden aprobada
- */
-async function createCourseEntitlementsFromOrder(order: any, metadata: any) {
-  const courseIds = metadata.courseIds as string[]
-  const items = metadata.items as { id: string; name: string; price: number }[]
-
-  if (!courseIds || courseIds.length === 0) {
-    console.error(`No se encontraron courseIds en metadata para orden ${order.id}`)
-    return
-  }
-
-  // Crear entitlement para cada curso
-  for (const item of items) {
-    await createCourseEntitlement({
-      userId: order.userId,
-      courseId: item.id,
-      courseName: item.name,
-      orderId: order.id,
-    })
-  }
-
-  // Registrar uso del código de descuento si existe
-  if (order.discountCodeId && order.discountCode && order.discountAmount) {
-    await recordDiscountUsage({
-      discountCodeId: order.discountCodeId,
-      discountCode: order.discountCode,
-      userId: order.userId,
-      orderId: order.id,
-      discountAmount: Number(order.discountAmount),
-      currency: order.currency,
-    })
-  }
-
-  console.log(`Cursos asignados via ePayco para orden ${order.id}: ${courseIds.join(', ')}`)
-  // TODO: Enviar email de bienvenida con acceso a los cursos
 }

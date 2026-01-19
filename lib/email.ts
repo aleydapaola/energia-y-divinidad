@@ -1880,3 +1880,338 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
     return { success: false, error };
   }
 }
+
+// ============================================
+// NOTIFICACIONES AL ADMINISTRADOR
+// ============================================
+
+const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || 'admin@energiaydivinidad.com';
+
+type SaleType = 'SESSION' | 'SESSION_PACK' | 'MEMBERSHIP' | 'EVENT' | 'COURSE' | 'PREMIUM_CONTENT' | 'PRODUCT';
+
+interface AdminNotificationParams {
+  saleType: SaleType;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+  itemName: string;
+  amount: number;
+  currency: 'COP' | 'USD' | 'EUR';
+  paymentMethod: string;
+  orderNumber: string;
+  transactionId?: string;
+  // Datos específicos según tipo
+  sessionDate?: Date;
+  sessionCount?: number; // Para packs
+  membershipPlan?: string;
+  membershipInterval?: 'monthly' | 'yearly';
+  eventDate?: Date;
+  eventSeats?: number;
+  eventType?: 'online' | 'in_person';
+}
+
+/**
+ * Envía una notificación al administrador cuando se confirma una venta.
+ * Incluye todos los detalles relevantes según el tipo de producto.
+ */
+export async function sendAdminNotificationEmail(params: AdminNotificationParams) {
+  const {
+    saleType,
+    customerName,
+    customerEmail,
+    customerPhone,
+    itemName,
+    amount,
+    currency,
+    paymentMethod,
+    orderNumber,
+    transactionId,
+    sessionDate,
+    sessionCount,
+    membershipPlan,
+    membershipInterval,
+    eventDate,
+    eventSeats,
+    eventType,
+  } = params;
+
+  const formattedAmount = currency === 'COP'
+    ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(amount)
+    : currency === 'EUR'
+      ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
+      : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+
+  const formatDate = (date: Date) => date.toLocaleDateString('es-CO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  // Configurar textos según tipo de venta
+  const saleTypeConfig: Record<SaleType, { emoji: string; label: string; color: string }> = {
+    SESSION: { emoji: '🔮', label: 'Sesión de Canalización', color: '#8A4BAF' },
+    SESSION_PACK: { emoji: '📦', label: 'Pack de Sesiones', color: '#654177' },
+    MEMBERSHIP: { emoji: '⭐', label: 'Membresía', color: '#C77DBA' },
+    EVENT: { emoji: '📅', label: 'Evento', color: '#2D4CC7' },
+    COURSE: { emoji: '📚', label: 'Curso', color: '#059669' },
+    PREMIUM_CONTENT: { emoji: '🎬', label: 'Contenido Premium', color: '#7c3aed' },
+    PRODUCT: { emoji: '🛍️', label: 'Producto', color: '#d97706' },
+  };
+
+  const config = saleTypeConfig[saleType];
+
+  // Mapear método de pago a texto legible
+  const paymentMethodText = paymentMethod === 'WOMPI_CARD' ? 'Tarjeta (Wompi)'
+    : paymentMethod === 'WOMPI_NEQUI' ? 'Nequi (Wompi)'
+    : paymentMethod === 'EPAYCO_PAYPAL' ? 'PayPal (ePayco)'
+    : paymentMethod === 'EPAYCO_CARD' ? 'Tarjeta (ePayco)'
+    : paymentMethod === 'STRIPE' ? 'Stripe'
+    : paymentMethod === 'NEQUI_PUSH' ? 'Nequi Push'
+    : paymentMethod;
+
+  // Construir detalles específicos según tipo
+  let specificDetails = '';
+
+  if (saleType === 'SESSION' && sessionDate) {
+    specificDetails = `
+      <tr>
+        <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
+          <span style="color: #666;">📅 Fecha programada:</span>
+          <strong style="float: right; color: #333;">${formatDate(sessionDate)}</strong>
+        </td>
+      </tr>
+    `;
+  }
+
+  if (saleType === 'SESSION_PACK' && sessionCount) {
+    specificDetails = `
+      <tr>
+        <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
+          <span style="color: #666;">📦 Sesiones en pack:</span>
+          <strong style="float: right; color: #333;">${sessionCount} sesiones</strong>
+        </td>
+      </tr>
+    `;
+  }
+
+  if (saleType === 'MEMBERSHIP') {
+    specificDetails = `
+      <tr>
+        <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
+          <span style="color: #666;">⭐ Plan:</span>
+          <strong style="float: right; color: #333;">${membershipPlan || itemName}</strong>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
+          <span style="color: #666;">🔄 Frecuencia:</span>
+          <strong style="float: right; color: #333;">${membershipInterval === 'yearly' ? 'Anual' : 'Mensual'}</strong>
+        </td>
+      </tr>
+    `;
+  }
+
+  if (saleType === 'EVENT') {
+    specificDetails = `
+      <tr>
+        <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
+          <span style="color: #666;">📅 Fecha del evento:</span>
+          <strong style="float: right; color: #333;">${eventDate ? formatDate(eventDate) : 'Por definir'}</strong>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
+          <span style="color: #666;">👥 Cupos reservados:</span>
+          <strong style="float: right; color: #333;">${eventSeats || 1}</strong>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
+          <span style="color: #666;">📍 Modalidad:</span>
+          <strong style="float: right; color: #333;">${eventType === 'online' ? 'Online (Zoom)' : 'Presencial'}</strong>
+        </td>
+      </tr>
+    `;
+  }
+
+  const subject = `${config.emoji} Nueva venta: ${itemName} - ${formattedAmount}`;
+
+  if (DEV_MODE) {
+    console.log('\n========================================');
+    console.log('📧 NOTIFICACIÓN ADMIN (Modo Desarrollo)');
+    console.log('========================================');
+    console.log(`Para: ${ADMIN_EMAIL}`);
+    console.log(`Tipo: ${config.label}`);
+    console.log(`Cliente: ${customerName} <${customerEmail}>`);
+    if (customerPhone) console.log(`Teléfono: ${customerPhone}`);
+    console.log(`Producto: ${itemName}`);
+    console.log(`Total: ${formattedAmount}`);
+    console.log(`Método: ${paymentMethodText}`);
+    console.log(`Orden: ${orderNumber}`);
+    if (transactionId) console.log(`Transacción: ${transactionId}`);
+    console.log('========================================\n');
+
+    if (DEV_AUTO_VERIFY) {
+      return { success: true, data: { id: 'dev-mode-simulated' } };
+    }
+  }
+
+  try {
+    const { data, error } = await getResendClient().emails.send({
+      from: FROM_EMAIL,
+      to: ADMIN_EMAIL,
+      subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Nueva Venta</title>
+          </head>
+          <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td align="center" style="padding: 30px 20px;">
+                  <table role="presentation" style="width: 100%; max-width: 550px; border-collapse: collapse;">
+                    <!-- Header -->
+                    <tr>
+                      <td style="background: linear-gradient(135deg, ${config.color} 0%, #654177 100%); border-radius: 12px 12px 0 0; padding: 25px; text-align: center;">
+                        <span style="font-size: 40px;">${config.emoji}</span>
+                        <h1 style="margin: 10px 0 5px; font-size: 22px; color: #ffffff; font-weight: 600;">
+                          ¡Nueva Venta!
+                        </h1>
+                        <p style="margin: 0; font-size: 14px; color: rgba(255,255,255,0.9);">
+                          ${config.label}
+                        </p>
+                      </td>
+                    </tr>
+
+                    <!-- Main Content -->
+                    <tr>
+                      <td style="background-color: #ffffff; padding: 25px; border-left: 1px solid #eee; border-right: 1px solid #eee;">
+                        <!-- Amount highlight -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                          <tr>
+                            <td align="center" style="padding: 20px; background-color: #f0fdf4; border-radius: 10px; border: 2px solid #86efac;">
+                              <p style="margin: 0 0 5px; font-size: 14px; color: #166534; text-transform: uppercase; letter-spacing: 1px;">
+                                Total Recibido
+                              </p>
+                              <p style="margin: 0; font-size: 32px; color: #15803d; font-weight: 700;">
+                                ${formattedAmount}
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <!-- Product -->
+                        <h2 style="margin: 0 0 20px; font-size: 18px; color: #333; border-bottom: 2px solid ${config.color}; padding-bottom: 10px;">
+                          ${itemName}
+                        </h2>
+
+                        <!-- Customer Info -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #fafafa; border-radius: 8px; margin-bottom: 20px;">
+                          <tr>
+                            <td style="padding: 15px; border-bottom: 1px solid #eee;">
+                              <strong style="color: #654177;">👤 Cliente</strong>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
+                              <span style="color: #666;">Nombre:</span>
+                              <strong style="float: right; color: #333;">${customerName}</strong>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 10px 15px; ${customerPhone ? 'border-bottom: 1px solid #eee;' : ''}">
+                              <span style="color: #666;">Email:</span>
+                              <a href="mailto:${customerEmail}" style="float: right; color: #8A4BAF; text-decoration: none;">${customerEmail}</a>
+                            </td>
+                          </tr>
+                          ${customerPhone ? `
+                          <tr>
+                            <td style="padding: 10px 15px;">
+                              <span style="color: #666;">Teléfono:</span>
+                              <a href="https://wa.me/${customerPhone.replace(/[^0-9]/g, '')}" style="float: right; color: #25D366; text-decoration: none;">${customerPhone}</a>
+                            </td>
+                          </tr>
+                          ` : ''}
+                        </table>
+
+                        <!-- Order Details -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #fafafa; border-radius: 8px; margin-bottom: 20px;">
+                          <tr>
+                            <td style="padding: 15px; border-bottom: 1px solid #eee;">
+                              <strong style="color: #654177;">📋 Detalles de la Venta</strong>
+                            </td>
+                          </tr>
+                          ${specificDetails}
+                          <tr>
+                            <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
+                              <span style="color: #666;">Método de pago:</span>
+                              <strong style="float: right; color: #333;">${paymentMethodText}</strong>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 10px 15px; ${transactionId ? 'border-bottom: 1px solid #eee;' : ''}">
+                              <span style="color: #666;">N° de orden:</span>
+                              <strong style="float: right; color: #333; font-family: monospace;">${orderNumber}</strong>
+                            </td>
+                          </tr>
+                          ${transactionId ? `
+                          <tr>
+                            <td style="padding: 10px 15px;">
+                              <span style="color: #666;">ID Transacción:</span>
+                              <span style="float: right; color: #666; font-family: monospace; font-size: 12px;">${transactionId}</span>
+                            </td>
+                          </tr>
+                          ` : ''}
+                        </table>
+
+                        <!-- Quick Actions -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td align="center" style="padding: 10px 0;">
+                              <a href="${APP_URL}/admin" style="display: inline-block; padding: 12px 30px; background-color: #4944a4; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">
+                                Ver en Dashboard
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                      <td style="background-color: #f9fafb; border-radius: 0 0 12px 12px; padding: 20px; text-align: center; border: 1px solid #eee; border-top: none;">
+                        <p style="margin: 0; font-size: 12px; color: #999;">
+                          Notificación automática de Energía y Divinidad
+                        </p>
+                        <p style="margin: 5px 0 0; font-size: 12px; color: #999;">
+                          ${new Date().toLocaleString('es-CO', { dateStyle: 'full', timeStyle: 'short' })}
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('Error sending admin notification email:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error sending admin notification email:', error);
+    return { success: false, error };
+  }
+}

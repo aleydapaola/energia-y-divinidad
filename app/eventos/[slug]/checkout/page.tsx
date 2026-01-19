@@ -137,6 +137,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
           customerPhone,
           guestEmail: customerEmail,
           guestName: customerName,
+          scheduledAt: event.eventDate, // Fecha del evento para el dashboard
           seats,
           notes,
         }
@@ -154,6 +155,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
           customerLastName: customerName.split(' ').slice(1).join(' ') || 'Cliente',
           customerEmail,
           customerPhone,
+          scheduledAt: event.eventDate, // Fecha del evento para el dashboard
           seats,
           notes,
         }

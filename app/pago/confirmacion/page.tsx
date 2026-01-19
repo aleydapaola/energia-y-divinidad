@@ -1,15 +1,18 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { CheckCircle, XCircle, Clock, Loader2, Home, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import { useCartStore } from '@/lib/stores/cart-store'
 
 type PaymentStatus = 'success' | 'pending' | 'failed' | 'loading'
 
 function ConfirmacionContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const clearCart = useCartStore((state) => state.clearCart)
+  const cartCleared = useRef(false)
 
   // Parámetros de la URL
   const reference = searchParams?.get('ref') || ''
@@ -22,8 +25,23 @@ function ConfirmacionContent() {
   const [error, setError] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null)
 
+  // Limpiar carrito cuando el pago es exitoso (solo para cursos)
+  useEffect(() => {
+    if (status === 'success' && orderData?.orderType === 'COURSE' && !cartCleared.current) {
+      clearCart()
+      cartCleared.current = true
+      console.log('[CONFIRMACION] Carrito limpiado después de compra exitosa de cursos')
+    }
+  }, [status, orderData, clearCart])
+
   useEffect(() => {
     async function checkPaymentStatus() {
+      console.log('[CONFIRMACION] Checking payment status...')
+      console.log('[CONFIRMACION] reference:', reference)
+      console.log('[CONFIRMACION] wompiTransactionId:', wompiTransactionId)
+      console.log('[CONFIRMACION] refPayco:', refPayco)
+      console.log('[CONFIRMACION] Full URL params:', window.location.search)
+
       if (!reference) {
         setStatus('failed')
         setError('No se encontró referencia de pago')
@@ -32,6 +50,7 @@ function ConfirmacionContent() {
 
       // Si viene de Wompi con ID de transacción, verificar estado real con la API
       if (wompiTransactionId) {
+        console.log('[CONFIRMACION] Verifying with Wompi transactionId...')
         try {
           // Verificar transacción directamente con Wompi (como Stripe)
           const verifyResponse = await fetch(
@@ -96,6 +115,7 @@ function ConfirmacionContent() {
       }
 
       // Sin ID de transacción externa, verificar estado en BD
+      // PERO si la orden es de Wompi y está PENDING, intentar verificar por referencia
       try {
         const response = await fetch(`/api/orders/${reference}/status`)
         if (!response.ok) {
@@ -105,6 +125,40 @@ function ConfirmacionContent() {
         const data = await response.json()
         setOrderData(data)
         setPaymentMethod(data.paymentMethod || null)
+
+        // Si la orden está PENDING y es de Wompi, intentar verificar con la API de Wompi
+        // usando el endpoint de búsqueda por referencia
+        if (data.paymentStatus === 'PENDING' && data.paymentMethod?.startsWith('WOMPI')) {
+          console.log('[CONFIRMACION] Order is PENDING and from Wompi, trying to verify by reference...')
+          try {
+            const verifyByRefResponse = await fetch(
+              `/api/payments/wompi/verify-by-reference?ref=${reference}`
+            )
+            if (verifyByRefResponse.ok) {
+              const verifyData = await verifyByRefResponse.json()
+              console.log('[CONFIRMACION] Verify by reference result:', verifyData)
+              if (verifyData.order) {
+                setOrderData(verifyData.order)
+              }
+              switch (verifyData.transactionStatus) {
+                case 'APPROVED':
+                  setStatus('success')
+                  return
+                case 'DECLINED':
+                case 'ERROR':
+                  setStatus('failed')
+                  setError('El pago fue rechazado.')
+                  return
+                case 'PENDING':
+                  setStatus('pending')
+                  return
+              }
+            }
+          } catch (verifyErr) {
+            console.error('Error verifying by reference:', verifyErr)
+            // Continuar con el flujo normal
+          }
+        }
 
         switch (data.paymentStatus) {
           case 'COMPLETED':
@@ -232,20 +286,30 @@ function ConfirmacionContent() {
           <div className="space-y-3">
             {status === 'success' && orderData?.orderType === 'MEMBERSHIP' && (
               <Link
-                href="/membresia/dashboard"
+                href="/mi-cuenta"
                 className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
-                Ir a mi Membresía
+                Ir a mi cuenta
                 <ArrowRight className="w-5 h-5" />
               </Link>
             )}
 
             {status === 'success' && orderData?.orderType === 'SESSION' && (
               <Link
-                href="/sesiones/mis-sesiones"
+                href="/mi-cuenta?tab=sesiones"
                 className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 Ver mis Sesiones
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            )}
+
+            {status === 'success' && orderData?.orderType === 'COURSE' && (
+              <Link
+                href="/mi-cuenta/cursos"
+                className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                Ir a mis Cursos
                 <ArrowRight className="w-5 h-5" />
               </Link>
             )}

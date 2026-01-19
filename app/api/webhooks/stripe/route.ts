@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import Stripe from 'stripe'
 import { getAppUrl } from '@/lib/utils'
+import { sendAdminNotificationEmail } from '@/lib/email'
 
 /**
  * POST /api/webhooks/stripe
@@ -193,7 +194,34 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   console.log(`Suscripción creada exitosamente para usuario ${userId}`)
 
-  // TODO: Enviar email de bienvenida
+  // Obtener datos del usuario para notificación
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { email: true, name: true, phone: true },
+  })
+
+  // Notificar al administrador
+  if (user?.email) {
+    try {
+      await sendAdminNotificationEmail({
+        saleType: 'MEMBERSHIP',
+        customerName: user.name || 'Cliente',
+        customerEmail: user.email,
+        customerPhone: user.phone || undefined,
+        itemName: membershipTierName || 'Membresía',
+        amount: (stripeSubscription.items.data[0].price.unit_amount || 0) / 100,
+        currency: stripeSubscription.currency.toUpperCase() as 'COP' | 'USD' | 'EUR',
+        paymentMethod: 'STRIPE',
+        orderNumber: `SUB-${subscription.id.slice(0, 8).toUpperCase()}`,
+        transactionId: stripeSubscription.id,
+        membershipPlan: membershipTierName || undefined,
+        membershipInterval: billingInterval === 'yearly' ? 'yearly' : 'monthly',
+      })
+      console.log(`Notificación admin enviada para nueva membresía ${subscription.id}`)
+    } catch (error) {
+      console.error('Error enviando notificación admin:', error)
+    }
+  }
 }
 
 /**
@@ -257,6 +285,25 @@ async function handleSessionPackCheckout(session: Stripe.Checkout.Session) {
 
     const result = await response.json()
     console.log(`Código de pack generado: ${result.packCode} para usuario ${userId}`)
+
+    // Notificar al administrador
+    try {
+      await sendAdminNotificationEmail({
+        saleType: 'SESSION_PACK',
+        customerName: userName || 'Cliente',
+        customerEmail: userEmail,
+        itemName: 'Pack de 8 Sesiones',
+        amount: amountTotal / 100,
+        currency,
+        paymentMethod: 'STRIPE',
+        orderNumber: booking.id.slice(0, 8).toUpperCase(),
+        transactionId: session.id,
+        sessionCount: 8,
+      })
+      console.log(`Notificación admin enviada para pack de sesiones`)
+    } catch (emailError) {
+      console.error('Error enviando notificación admin:', emailError)
+    }
   } catch (error) {
     console.error('Error llamando a generate-pack-code:', error)
   }

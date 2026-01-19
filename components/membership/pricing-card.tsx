@@ -1,6 +1,6 @@
 'use client'
 
-import { Check } from 'lucide-react'
+import { Check, Crown } from 'lucide-react'
 import type { MembershipTier } from '@/types/membership'
 
 interface PricingCardProps {
@@ -9,6 +9,7 @@ interface PricingCardProps {
   billingInterval: 'monthly' | 'yearly'
   onSelect: (tierId: string) => void
   isPopular?: boolean
+  isCurrentPlan?: boolean // Indica si este es el plan actual del usuario
 }
 
 export function PricingCard({
@@ -17,6 +18,7 @@ export function PricingCard({
   billingInterval,
   onSelect,
   isPopular,
+  isCurrentPlan,
 }: PricingCardProps) {
   const price =
     billingInterval === 'monthly'
@@ -64,8 +66,16 @@ export function PricingCard({
       }`}
       style={{ borderColor }}
     >
-      {/* Popular badge */}
-      {isPopularTier && (
+      {/* Current Plan badge */}
+      {isCurrentPlan && (
+        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 px-4 py-1 rounded-full text-white text-sm font-dm-sans font-semibold shadow-md bg-amber-500 flex items-center gap-1.5">
+          <Crown className="w-4 h-4" />
+          Tu Plan Actual
+        </div>
+      )}
+
+      {/* Popular badge (solo si no es el plan actual) */}
+      {isPopularTier && !isCurrentPlan && (
         <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 px-4 py-1 rounded-full text-white text-sm font-dm-sans font-semibold shadow-md bg-[#8A4BAF]">
           Más Popular
         </div>
@@ -116,12 +126,18 @@ export function PricingCard({
       </div>
 
       {/* CTA Button */}
-      <button
-        onClick={() => onSelect(tier._id)}
-        className="w-full py-3 px-6 rounded-lg font-dm-sans font-semibold text-white transition-all bg-[#4944a4] hover:bg-[#3d3a8a] mb-6"
-      >
-        {tier.ctaButtonText || 'Comenzar Ahora'}
-      </button>
+      {isCurrentPlan ? (
+        <div className="w-full py-3 px-6 rounded-lg font-dm-sans font-semibold text-center bg-gray-100 text-gray-500 mb-6 border border-gray-200">
+          Plan Activo
+        </div>
+      ) : (
+        <button
+          onClick={() => onSelect(tier._id)}
+          className="w-full py-3 px-6 rounded-lg font-dm-sans font-semibold text-white transition-all bg-[#4944a4] hover:bg-[#3d3a8a] mb-6"
+        >
+          {tier.ctaButtonText || 'Comenzar Ahora'}
+        </button>
+      )}
 
       {/* Features */}
       <div className="space-y-3">

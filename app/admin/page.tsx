@@ -9,11 +9,13 @@ import {
   TrendingUp,
   AlertTriangle,
   CreditCard,
+  Ticket,
+  CalendarDays,
 } from "lucide-react"
 import { getDashboardSummary } from "@/lib/admin-stats"
 
 export default async function AdminDashboardPage() {
-  const { sales, alerts, bookings, users, upcomingSessions } = await getDashboardSummary()
+  const { sales, alerts, bookings, users, events, upcomingSessions } = await getDashboardSummary()
 
   const formatDateTime = (date: Date) => {
     return new Date(date).toLocaleDateString("es-CO", {
@@ -210,6 +212,92 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Events Stats */}
+      <div>
+        <h2 className="font-gazeta text-xl text-[#654177] mb-4">Eventos</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-pink-50 rounded-lg">
+                <Ticket className="w-6 h-6 text-pink-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#654177]">{events.totalEventOrders}</p>
+                <p className="text-sm text-gray-500 font-dm-sans">Entradas vendidas</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-rose-50 rounded-lg">
+                <CalendarDays className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#654177]">{events.eventOrdersThisMonth}</p>
+                <p className="text-sm text-gray-500 font-dm-sans">Entradas este mes</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-fuchsia-50 rounded-lg">
+                <DollarSign className="w-6 h-6 text-fuchsia-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#654177]">
+                  {formatCurrency(events.eventRevenueThisMonth.COP, "COP")}
+                </p>
+                <p className="text-sm text-gray-500 font-dm-sans">Ingresos eventos (mes)</p>
+              </div>
+            </div>
+            {events.eventRevenueThisMonth.USD > 0 && (
+              <p className="mt-2 text-sm text-gray-500 font-dm-sans">
+                + {formatCurrency(events.eventRevenueThisMonth.USD, "USD")}
+              </p>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-violet-50 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-violet-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-semibold text-[#654177]">{events.upcomingEvents.length}</p>
+                <p className="text-sm text-gray-500 font-dm-sans">Eventos con ventas</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Event Sales Breakdown */}
+        {events.upcomingEvents.length > 0 && (
+          <div className="mt-4 bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="font-medium text-[#654177] mb-3 font-dm-sans">Ventas por evento</h3>
+            <div className="space-y-3">
+              {events.upcomingEvents.map((event, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-3 bg-pink-50/50 rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium text-[#654177] font-dm-sans">{event.eventName}</p>
+                    <p className="text-sm text-gray-500 font-dm-sans">
+                      {event.ticketsSold} entrada(s) vendida(s)
+                    </p>
+                  </div>
+                  <p className="font-semibold text-[#654177] font-dm-sans">
+                    {formatCurrency(event.revenue, event.currency as "COP" | "USD")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Upcoming Sessions */}

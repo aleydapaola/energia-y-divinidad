@@ -221,6 +221,90 @@ export async function getUserStats(): Promise<UserStats> {
 }
 
 // ============================================
+// Estadísticas de Eventos
+// ============================================
+
+interface EventStats {
+  totalEventOrders: number
+  eventOrdersThisMonth: number
+  eventRevenueThisMonth: {
+    COP: number
+    USD: number
+  }
+  upcomingEvents: Array<{
+    eventName: string
+    ticketsSold: number
+    revenue: number
+    currency: string
+  }>
+}
+
+/**
+ * Obtiene estadísticas de eventos
+ */
+export async function getEventStats(): Promise<EventStats> {
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  // Órdenes de eventos completadas
+  const eventOrders = await prisma.order.findMany({
+    where: {
+      orderType: 'EVENT',
+      paymentStatus: 'COMPLETED',
+    },
+    select: {
+      id: true,
+      itemName: true,
+      amount: true,
+      currency: true,
+      createdAt: true,
+    },
+  })
+
+  const totalEventOrders = eventOrders.length
+  const ordersThisMonth = eventOrders.filter((o) => o.createdAt >= startOfMonth)
+  const eventOrdersThisMonth = ordersThisMonth.length
+
+  // Revenue por moneda este mes
+  const eventRevenueThisMonth = {
+    COP: ordersThisMonth
+      .filter((o) => o.currency === 'COP')
+      .reduce((sum, o) => sum + Number(o.amount), 0),
+    USD: ordersThisMonth
+      .filter((o) => o.currency === 'USD')
+      .reduce((sum, o) => sum + Number(o.amount), 0),
+  }
+
+  // Agrupar por evento para ver tickets vendidos
+  const eventSales = new Map<string, { ticketsSold: number; revenue: number; currency: string }>()
+  for (const order of eventOrders) {
+    const existing = eventSales.get(order.itemName) || {
+      ticketsSold: 0,
+      revenue: 0,
+      currency: order.currency,
+    }
+    existing.ticketsSold++
+    existing.revenue += Number(order.amount)
+    eventSales.set(order.itemName, existing)
+  }
+
+  const upcomingEvents = Array.from(eventSales.entries())
+    .map(([eventName, stats]) => ({
+      eventName,
+      ...stats,
+    }))
+    .sort((a, b) => b.ticketsSold - a.ticketsSold)
+    .slice(0, 5)
+
+  return {
+    totalEventOrders,
+    eventOrdersThisMonth,
+    eventRevenueThisMonth,
+    upcomingEvents,
+  }
+}
+
+// ============================================
 // Próximas Sesiones
 // ============================================
 
@@ -278,6 +362,7 @@ export interface DashboardSummary {
   alerts: DashboardAlerts
   bookings: BookingStats
   users: UserStats
+  events: EventStats
   upcomingSessions: UpcomingSession[]
 }
 
@@ -285,11 +370,12 @@ export interface DashboardSummary {
  * Obtiene todos los datos necesarios para el dashboard de admin
  */
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const [sales, alerts, bookings, users, upcomingSessions] = await Promise.all([
+  const [sales, alerts, bookings, users, events, upcomingSessions] = await Promise.all([
     getSalesStats(7),
     getAlerts(),
     getBookingStats(),
     getUserStats(),
+    getEventStats(),
     getUpcomingSessions(5),
   ])
 
@@ -298,6 +384,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     alerts,
     bookings,
     users,
+    events,
     upcomingSessions,
   }
 }

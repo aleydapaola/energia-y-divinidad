@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -223,9 +223,8 @@ export function AdminSubscriptionsList({ initialSubscriptions }: AdminSubscripti
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredSubscriptions.map((sub) => (
-                <>
+                <Fragment key={sub.id}>
                   <tr
-                    key={sub.id}
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => setExpandedSubscription(expandedSubscription === sub.id ? null : sub.id)}
                   >
@@ -298,7 +297,7 @@ export function AdminSubscriptionsList({ initialSubscriptions }: AdminSubscripti
                     </td>
                   </tr>
                   {expandedSubscription === sub.id && (
-                    <tr key={`${sub.id}-expanded`}>
+                    <tr>
                       <td colSpan={6} className="px-4 py-4 bg-gray-50">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
@@ -333,7 +332,7 @@ export function AdminSubscriptionsList({ initialSubscriptions }: AdminSubscripti
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>

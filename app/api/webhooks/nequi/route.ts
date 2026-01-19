@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { verifyNequiWebhookSignature } from '@/lib/nequi'
 import { prisma } from '@/lib/prisma'
 import { getAppUrl } from '@/lib/utils'
+import { sendAdminNotificationEmail } from '@/lib/email'
 
 /**
  * POST /api/webhooks/nequi
@@ -170,7 +171,34 @@ async function handleSubscriptionApproved(subscriptionId: string, data: any) {
 
   console.log(`Suscripción ${subscription.id} aprobada y activada`)
 
-  // TODO: Enviar email de bienvenida
+  // Obtener datos del usuario para notificación
+  const user = await prisma.user.findUnique({
+    where: { id: subscription.userId },
+    select: { email: true, name: true, phone: true },
+  })
+
+  // Notificar al administrador
+  if (user?.email) {
+    try {
+      await sendAdminNotificationEmail({
+        saleType: 'MEMBERSHIP',
+        customerName: user.name || 'Cliente',
+        customerEmail: user.email,
+        customerPhone: user.phone || undefined,
+        itemName: subscription.membershipTierName,
+        amount: Number(subscription.amount),
+        currency: subscription.currency as 'COP' | 'USD' | 'EUR',
+        paymentMethod: 'NEQUI_PUSH',
+        orderNumber: `SUB-${subscription.id.slice(0, 8).toUpperCase()}`,
+        transactionId: subscriptionId,
+        membershipPlan: subscription.membershipTierName,
+        membershipInterval: subscription.billingInterval === 'YEARLY' ? 'yearly' : 'monthly',
+      })
+      console.log(`Notificación admin enviada para membresía Nequi ${subscription.id}`)
+    } catch (error) {
+      console.error('Error enviando notificación admin:', error)
+    }
+  }
 }
 
 /**
@@ -368,9 +396,49 @@ async function handleSinglePaymentCompleted(data: any) {
     } catch (error) {
       console.error('Error llamando a generate-pack-code (Nequi):', error)
     }
+    // Notificar al administrador sobre el pack
+    if (booking.user?.email) {
+      try {
+        await sendAdminNotificationEmail({
+          saleType: 'SESSION_PACK',
+          customerName: booking.user.name || 'Cliente',
+          customerEmail: booking.user.email,
+          itemName: 'Pack de 8 Sesiones',
+          amount: Number(booking.amount),
+          currency: booking.currency as 'COP' | 'USD' | 'EUR',
+          paymentMethod: 'NEQUI_PUSH',
+          orderNumber: bookingId.slice(0, 8).toUpperCase(),
+          transactionId,
+          sessionCount: 8,
+        })
+        console.log(`Notificación admin enviada para pack Nequi`)
+      } catch (emailError) {
+        console.error('Error enviando notificación admin:', emailError)
+      }
+    }
   } else {
-    // Para sesión individual, solo confirmar
+    // Para sesión individual, confirmar y notificar
     console.log(`Pago único completado para booking ${bookingId}`)
-    // TODO: Enviar email de confirmación de sesión individual
+
+    // Notificar al administrador sobre la sesión individual
+    if (booking.user?.email) {
+      try {
+        await sendAdminNotificationEmail({
+          saleType: 'SESSION',
+          customerName: booking.user.name || 'Cliente',
+          customerEmail: booking.user.email,
+          itemName: booking.resourceName || 'Sesión de Canalización',
+          amount: Number(booking.amount),
+          currency: booking.currency as 'COP' | 'USD' | 'EUR',
+          paymentMethod: 'NEQUI_PUSH',
+          orderNumber: bookingId.slice(0, 8).toUpperCase(),
+          transactionId,
+          sessionDate: booking.scheduledAt || undefined,
+        })
+        console.log(`Notificación admin enviada para sesión individual Nequi`)
+      } catch (emailError) {
+        console.error('Error enviando notificación admin:', emailError)
+      }
+    }
   }
 }

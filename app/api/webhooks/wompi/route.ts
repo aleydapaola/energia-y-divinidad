@@ -6,9 +6,7 @@ import {
   type WompiWebhookEvent,
   type WompiTransactionStatus,
 } from '@/lib/wompi'
-import { createCourseEntitlement } from '@/lib/course-access'
-import { recordDiscountUsage } from '@/lib/discount-codes'
-import { randomBytes } from 'crypto'
+import { processApprovedPayment } from '@/lib/payment-processor'
 
 /**
  * POST /api/webhooks/wompi
@@ -128,15 +126,16 @@ interface WompiTransactionData {
 async function handleTransactionUpdated(transaction: WompiTransactionData) {
   const { reference, status, id: transactionId } = transaction
 
-  console.log(`Procesando transacción Wompi: ${transactionId} - ${reference} - ${status}`)
+  console.log(`[WEBHOOK/WOMPI] Procesando transacción: ${transactionId} - ${reference} - ${status}`)
 
   // Buscar la orden por referencia (orderNumber)
   const order = await prisma.order.findFirst({
     where: { orderNumber: reference },
+    include: { user: true },
   })
 
   if (!order) {
-    console.error(`No se encontró orden con referencia ${reference}`)
+    console.error(`[WEBHOOK/WOMPI] No se encontró orden con referencia ${reference}`)
     return
   }
 
@@ -157,199 +156,20 @@ async function handleTransactionUpdated(transaction: WompiTransactionData) {
     },
   })
 
-  // Si el pago fue aprobado, procesar según tipo de producto
+  // Si el pago fue aprobado, usar el servicio centralizado
   if (status === 'APPROVED') {
-    await handleApprovedPayment(order)
+    const result = await processApprovedPayment(order, {
+      transactionId,
+    })
+
+    if (!result.success) {
+      console.error(`[WEBHOOK/WOMPI] Error procesando pago: ${result.error}`)
+      throw new Error(result.error)
+    }
   } else if (status === 'DECLINED' || status === 'ERROR' || status === 'VOIDED') {
-    console.log(`Pago rechazado/fallido para orden ${order.id}: ${status}`)
+    console.log(`[WEBHOOK/WOMPI] Pago rechazado/fallido para orden ${order.id}: ${status}`)
     // TODO: Enviar notificación al usuario
   }
-}
-
-/**
- * Procesar pago aprobado según tipo de producto
- */
-async function handleApprovedPayment(order: any) {
-  const metadata = order.metadata as any
-
-  // Manejar guest checkout: crear/encontrar usuario si no hay userId
-  let userId = order.userId
-  const isGuestCheckout = metadata?.isGuestCheckout || (!userId && order.guestEmail)
-
-  if (isGuestCheckout && order.guestEmail) {
-    userId = await findOrCreateUserForGuest(order.guestEmail, order.guestName)
-
-    // Actualizar orden con el userId
-    await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        userId,
-        metadata: {
-          ...metadata,
-          convertedFromGuest: true,
-          convertedAt: new Date().toISOString(),
-        },
-      },
-    })
-
-    // Actualizar order object para las funciones siguientes
-    order.userId = userId
-  }
-
-  if (!userId) {
-    console.error(`No se pudo determinar usuario para orden ${order.id}`)
-    return
-  }
-
-  switch (order.orderType) {
-    case 'MEMBERSHIP':
-      await createMembershipFromOrder(order, metadata)
-      break
-
-    case 'SESSION':
-      await createBookingFromOrder(order, metadata)
-      break
-
-    case 'EVENT':
-      await createEventBookingFromOrder(order, metadata)
-      break
-
-    case 'COURSE':
-      await createCourseEntitlementsFromOrder(order, metadata)
-      break
-
-    default:
-      console.log(`Tipo de orden no manejado: ${order.orderType}`)
-  }
-
-  console.log(`Pago aprobado procesado para orden ${order.id}${isGuestCheckout ? ' (guest checkout)' : ''}`)
-}
-
-/**
- * Crear membresía desde orden aprobada
- */
-async function createMembershipFromOrder(order: any, metadata: any) {
-  const billingInterval = metadata.billingInterval || 'monthly'
-
-  // Calcular fecha de fin del período
-  const periodEnd = new Date()
-  if (billingInterval === 'yearly') {
-    periodEnd.setFullYear(periodEnd.getFullYear() + 1)
-  } else {
-    periodEnd.setMonth(periodEnd.getMonth() + 1)
-  }
-
-  // Crear suscripción
-  const subscription = await prisma.subscription.create({
-    data: {
-      userId: order.userId,
-      membershipTierId: order.itemId,
-      membershipTierName: order.itemName,
-      status: 'ACTIVE',
-      paymentProvider: order.paymentMethod.includes('NEQUI') ? 'wompi_nequi' : 'wompi_card',
-      billingInterval: billingInterval === 'yearly' ? 'YEARLY' : 'MONTHLY',
-      amount: order.amount,
-      currency: order.currency,
-      startDate: new Date(),
-      currentPeriodStart: new Date(),
-      currentPeriodEnd: periodEnd,
-    },
-  })
-
-  // Crear Entitlement
-  await prisma.entitlement.create({
-    data: {
-      userId: order.userId,
-      type: 'MEMBERSHIP',
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      expiresAt: periodEnd,
-      subscriptionId: subscription.id,
-      orderId: order.id,
-    },
-  })
-
-  console.log(`Membresía creada: ${subscription.id} para usuario ${order.userId}`)
-
-  // TODO: Enviar email de bienvenida
-}
-
-/**
- * Crear booking de sesión desde orden aprobada
- */
-async function createBookingFromOrder(order: any, metadata: any) {
-  const isPack = metadata.productType === 'pack'
-  const sessionsTotal = isPack ? 8 : 1
-
-  const booking = await prisma.booking.create({
-    data: {
-      userId: order.userId,
-      bookingType: 'SESSION_1_ON_1',
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      status: 'CONFIRMED',
-      paymentStatus: 'COMPLETED',
-      paymentMethod: order.paymentMethod,
-      amount: order.amount,
-      currency: order.currency,
-      sessionsTotal,
-      sessionsRemaining: sessionsTotal,
-    },
-  })
-
-  // Si es pack, generar código
-  if (isPack) {
-    const packCode = `PACK-${generatePackCode()}`
-
-    await prisma.booking.update({
-      where: { id: booking.id },
-      data: {
-        metadata: {
-          packCode,
-          generatedAt: new Date().toISOString(),
-        },
-      },
-    })
-
-    console.log(`Pack de sesiones creado: ${booking.id} - Código: ${packCode}`)
-    // TODO: Enviar email con código de pack
-  } else {
-    console.log(`Sesión individual confirmada: ${booking.id}`)
-    // TODO: Enviar email de confirmación
-  }
-}
-
-/**
- * Crear booking de evento desde orden aprobada
- */
-async function createEventBookingFromOrder(order: any, metadata: any) {
-  const booking = await prisma.booking.create({
-    data: {
-      userId: order.userId,
-      bookingType: 'EVENT',
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      status: 'CONFIRMED',
-      paymentStatus: 'COMPLETED',
-      paymentMethod: order.paymentMethod,
-      amount: order.amount,
-      currency: order.currency,
-    },
-  })
-
-  // Crear Entitlement para acceso al evento
-  await prisma.entitlement.create({
-    data: {
-      userId: order.userId,
-      type: 'EVENT',
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      orderId: order.id,
-    },
-  })
-
-  console.log(`Entrada a evento confirmada: ${booking.id}`)
-  // TODO: Enviar email con entrada/QR
 }
 
 /**
@@ -371,103 +191,4 @@ function mapWompiStatus(
     default:
       return 'PENDING'
   }
-}
-
-/**
- * Generar código de pack aleatorio
- */
-function generatePackCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  let code = ''
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return code
-}
-
-/**
- * Encontrar o crear usuario para guest checkout
- * Si el email ya existe, usa ese usuario
- * Si no existe, crea uno nuevo sin contraseña (puede establecerla después)
- */
-async function findOrCreateUserForGuest(
-  email: string,
-  name?: string | null
-): Promise<string> {
-  // Buscar usuario existente por email
-  const existingUser = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() },
-  })
-
-  if (existingUser) {
-    return existingUser.id
-  }
-
-  // Crear usuario nuevo sin contraseña
-  // Genera un token para que pueda establecer contraseña después
-  const setPasswordToken = randomBytes(32).toString('hex')
-  const setPasswordExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 días
-
-  const newUser = await prisma.user.create({
-    data: {
-      email: email.toLowerCase(),
-      name: name || null,
-      password: null, // Sin contraseña - guest checkout
-      emailVerified: null, // No verificado aún
-    },
-  })
-
-  // Guardar token para establecer contraseña
-  await prisma.verificationToken.create({
-    data: {
-      identifier: email.toLowerCase(),
-      token: setPasswordToken,
-      expires: setPasswordExpires,
-    },
-  })
-
-  console.log(`Usuario creado para guest checkout: ${newUser.id} (${email})`)
-
-  // TODO: Enviar email con link para crear contraseña
-  // El link sería: /auth/set-password?token=${setPasswordToken}
-
-  return newUser.id
-}
-
-/**
- * Crear entitlements de cursos desde orden aprobada
- */
-async function createCourseEntitlementsFromOrder(order: any, metadata: any) {
-  const courseIds = metadata.courseIds as string[]
-  const items = metadata.items as { id: string; name: string; price: number }[]
-
-  if (!courseIds || courseIds.length === 0) {
-    console.error(`No se encontraron courseIds en metadata para orden ${order.id}`)
-    return
-  }
-
-  // Crear entitlement para cada curso
-  for (const item of items) {
-    await createCourseEntitlement({
-      userId: order.userId,
-      courseId: item.id,
-      courseName: item.name,
-      orderId: order.id,
-    })
-  }
-
-  // Registrar uso del código de descuento si existe
-  if (order.discountCodeId && order.discountCode && order.discountAmount) {
-    await recordDiscountUsage({
-      discountCodeId: order.discountCodeId,
-      discountCode: order.discountCode,
-      userId: order.userId,
-      orderId: order.id,
-      discountAmount: Number(order.discountAmount),
-      currency: order.currency,
-    })
-  }
-
-  console.log(`Cursos asignados para orden ${order.id}: ${courseIds.join(', ')}`)
-  // TODO: Enviar email de bienvenida con acceso a los cursos
 }

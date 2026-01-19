@@ -34,6 +34,7 @@ interface CheckoutBody {
   // Para sesiones/eventos
   sessionSlug?: string
   eventId?: string
+  scheduledAt?: string // ISO date string para la fecha/hora de la sesión
 }
 
 /**
@@ -54,7 +55,17 @@ export async function POST(request: NextRequest) {
       billingInterval,
       guestEmail,
       guestName,
+      scheduledAt,
     } = body
+
+    // DEBUG: Log para rastrear scheduledAt
+    console.log('[CHECKOUT/WOMPI] Request body:', JSON.stringify({
+      productType,
+      productId,
+      productName,
+      scheduledAt,
+      hasScheduledAt: !!scheduledAt,
+    }))
 
     // Determinar si es usuario autenticado o guest checkout
     const isAuthenticated = !!session?.user?.id
@@ -102,6 +113,18 @@ export async function POST(request: NextRequest) {
     const appUrl = getAppUrl()
 
     // Crear orden pendiente en la base de datos
+    const orderMetadata = {
+      productType,
+      billingInterval: billingInterval || null,
+      isGuestCheckout: !isAuthenticated,
+      customerEmail: userEmail,
+      customerName: guestName || session?.user?.name || null,
+      scheduledAt: scheduledAt || null,
+    }
+
+    // DEBUG: Log metadata antes de guardar
+    console.log('[CHECKOUT/WOMPI] Order metadata:', JSON.stringify(orderMetadata))
+
     const order = await prisma.order.create({
       data: {
         userId: isAuthenticated ? session!.user!.id : undefined,
@@ -115,15 +138,12 @@ export async function POST(request: NextRequest) {
         currency: 'COP',
         paymentMethod: paymentMethod === 'nequi' ? 'WOMPI_NEQUI' : 'WOMPI_CARD',
         paymentStatus: 'PENDING',
-        metadata: {
-          productType,
-          billingInterval: billingInterval || null,
-          isGuestCheckout: !isAuthenticated,
-          customerEmail: userEmail,
-          customerName: guestName || session?.user?.name || null,
-        },
+        metadata: orderMetadata,
       },
     })
+
+    // DEBUG: Log orden creada
+    console.log('[CHECKOUT/WOMPI] Order created:', order.id, 'with scheduledAt:', (order.metadata as any)?.scheduledAt)
 
     // Usar checkout hospedado de Wompi (Payment Links) para todos los métodos
     // Wompi muestra tarjeta, Nequi, PSE, etc. automáticamente

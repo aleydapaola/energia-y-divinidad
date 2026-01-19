@@ -107,6 +107,24 @@ export function SesionesPageClient({
       let endpoint: string
       let body: any
 
+      // Construir fecha programada completa (fecha + hora)
+      let scheduledAt: string | undefined
+      if (paymentType === 'single' && selectedDate && selectedTime) {
+        const [hours, minutes] = selectedTime.split(':').map(Number)
+        const scheduledDateTime = new Date(selectedDate)
+        scheduledDateTime.setHours(hours, minutes, 0, 0)
+        scheduledAt = scheduledDateTime.toISOString()
+      }
+
+      // DEBUG: Log en cliente
+      console.log('[CLIENT] Payment request:', {
+        paymentType,
+        selectedDate: selectedDate?.toISOString(),
+        selectedTime,
+        scheduledAt,
+        hasScheduledAt: !!scheduledAt,
+      })
+
       if (method === 'wompi_nequi' || method === 'wompi_card') {
         // Pago via Wompi (Colombia)
         endpoint = '/api/checkout/wompi'
@@ -119,7 +137,8 @@ export function SesionesPageClient({
           phoneNumber,
           guestEmail,
           guestName,
-          sessionSlug: paymentType === 'single' ? selectedDate?.toISOString().split('T')[0] : undefined,
+          sessionSlug: paymentType === 'single' ? session.slug.current : undefined,
+          scheduledAt,
         }
       } else {
         // Pago via ePayco (Internacional)
@@ -131,6 +150,7 @@ export function SesionesPageClient({
           amount: region === 'colombia' ? sessionDetails.price : sessionDetails.priceUSD,
           currency,
           paymentMethod: method === 'epayco_paypal' ? 'paypal' : 'card',
+          scheduledAt,
         }
       }
 

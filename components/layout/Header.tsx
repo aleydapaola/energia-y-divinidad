@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { UserMenu } from "@/components/auth/UserMenu"
 import { CartButton, CartDrawer } from "@/components/cart"
 import { Menu, X } from "lucide-react"
@@ -32,9 +33,14 @@ export function Header({ session }: HeaderProps) {
         <div className="hidden lg:flex items-center justify-between h-16">
           {/* Logo - Left Side */}
           <Link href="/" className="flex items-center group">
-            <h1 className="font-rightland text-[#4b316c] text-3xl leading-none tracking-tight">
-              Energía y Divinidad
-            </h1>
+            <Image
+              src="/images/EnergiaDinividadHeading.png"
+              alt="Energía y Divinidad - Canalización y Sanación Espiritual"
+              width={200}
+              height={50}
+              className="h-10 w-auto"
+              priority
+            />
           </Link>
 
           {/* Navigation Menu - Center */}
@@ -87,9 +93,14 @@ export function Header({ session }: HeaderProps) {
         <div className="lg:hidden py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center">
-              <h1 className="font-rightland text-[#4b316c] text-2xl leading-none">
-                Energía y Divinidad
-              </h1>
+              <Image
+                src="/images/EnergiaDinividadHeading.png"
+                alt="Energía y Divinidad - Canalización y Sanación Espiritual"
+                width={160}
+                height={40}
+                className="h-8 w-auto"
+                priority
+              />
             </Link>
 
             <div className="flex items-center gap-3">

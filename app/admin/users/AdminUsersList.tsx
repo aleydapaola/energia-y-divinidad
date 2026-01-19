@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -216,9 +216,8 @@ export function AdminUsersList({ initialUsers }: AdminUsersListProps) {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredUsers.map((user) => (
-                <>
+                <Fragment key={user.id}>
                   <tr
-                    key={user.id}
                     className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
                   >
@@ -301,7 +300,7 @@ export function AdminUsersList({ initialUsers }: AdminUsersListProps) {
                     </td>
                   </tr>
                   {expandedUser === user.id && (
-                    <tr key={`${user.id}-expanded`}>
+                    <tr>
                       <td colSpan={7} className="px-4 py-4 bg-gray-50">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
@@ -334,7 +333,7 @@ export function AdminUsersList({ initialUsers }: AdminUsersListProps) {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>

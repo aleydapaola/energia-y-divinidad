@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Sparkles, Heart, Users, LogIn, Zap } from 'lucide-react'
+import { Sparkles, Heart, Users, LogIn, Zap, Crown, ArrowLeft } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { PricingSection } from '@/components/membership/pricing-section'
@@ -17,6 +17,13 @@ export default function MembresiaPage() {
   const [tiers, setTiers] = useState<MembershipTier[]>([])
   const [loadingTiers, setLoadingTiers] = useState(true)
 
+  // Verificar si el usuario viene a cambiar de plan (desde configuración)
+  const [currentSubscription, setCurrentSubscription] = useState<{
+    tierId: string
+    tierName: string
+    status: string
+  } | null>(null)
+
   useEffect(() => {
     // Verificar si ya tiene membresía activa
     async function checkMembership() {
@@ -27,8 +34,13 @@ export default function MembresiaPage() {
           if (response.ok) {
             const data = await response.json()
             if (data.hasActiveMembership) {
-              router.push('/dashboard/membresia/publicaciones')
-              return
+              // Guardar datos de suscripción actual para mostrar en la UI
+              setCurrentSubscription({
+                tierId: data.subscription?.membershipTierId || '',
+                tierName: data.subscription?.membershipTierName || '',
+                status: data.subscription?.status || '',
+              })
+              // NO redirigir automáticamente - permitir que vean los planes para cambiar
             }
           }
         } catch (error) {
@@ -67,24 +79,50 @@ export default function MembresiaPage() {
       <div className="min-h-screen bg-[#f8f0f5] font-dm-sans">
         {/* Banner informativo para usuarios no autenticados */}
         {status === 'unauthenticated' && (
-        <div className="bg-gradient-to-r from-[#8A4BAF] to-[#654177] text-white py-4 px-6">
-          <div className="container mx-auto flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-              <Sparkles className="h-5 w-5 flex-shrink-0" />
-              <p className="text-sm md:text-base font-medium">
-                ¿Ya eres miembro? Inicia sesión para acceder a tu contenido exclusivo
-              </p>
+          <div className="bg-gradient-to-r from-[#8A4BAF] to-[#654177] text-white py-4 px-6">
+            <div className="container mx-auto flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-5 w-5 flex-shrink-0" />
+                <p className="text-sm md:text-base font-medium">
+                  ¿Ya eres miembro? Inicia sesión para acceder a tu contenido exclusivo
+                </p>
+              </div>
+              <Link
+                href="/auth/signin?callbackUrl=/dashboard/membresia/publicaciones"
+                className="flex items-center gap-2 bg-white text-[#654177] px-5 py-2 rounded-lg hover:bg-neutral-50 transition font-semibold text-sm whitespace-nowrap"
+              >
+                <LogIn size={18} />
+                Iniciar Sesión
+              </Link>
             </div>
-            <Link
-              href="/auth/signin?callbackUrl=/dashboard/membresia/publicaciones"
-              className="flex items-center gap-2 bg-white text-[#654177] px-5 py-2 rounded-lg hover:bg-neutral-50 transition font-semibold text-sm whitespace-nowrap"
-            >
-              <LogIn size={18} />
-              Iniciar Sesión
-            </Link>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Banner para miembros existentes que quieren cambiar de plan */}
+        {currentSubscription && (
+          <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white py-4 px-6">
+            <div className="container mx-auto flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <Crown className="h-5 w-5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm md:text-base font-medium">
+                    Tu plan actual: <span className="font-bold">{currentSubscription.tierName}</span>
+                  </p>
+                  <p className="text-xs md:text-sm text-white/80">
+                    Selecciona otro plan para hacer upgrade o downgrade
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/dashboard/membresia/publicaciones"
+                className="flex items-center gap-2 bg-white text-amber-600 px-5 py-2 rounded-lg hover:bg-neutral-50 transition font-semibold text-sm whitespace-nowrap"
+              >
+                <ArrowLeft size={18} />
+                Volver a mi membresía
+              </Link>
+            </div>
+          </div>
+        )}
 
       {/* Hero Section */}
       <section className="py-20 px-6 bg-gradient-to-b from-[#8A4BAF]/10 to-transparent">
@@ -169,7 +207,11 @@ export default function MembresiaPage() {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8A4BAF]"></div>
             </div>
           ) : tiers.length > 0 ? (
-            <PricingSection tiers={tiers} isAuthenticated={status === 'authenticated'} />
+            <PricingSection
+              tiers={tiers}
+              isAuthenticated={status === 'authenticated'}
+              currentTierId={currentSubscription?.tierId}
+            />
           ) : (
             <div className="text-center py-12">
               <p className="text-[#654177]/60">No hay planes de membresía disponibles en este momento.</p>

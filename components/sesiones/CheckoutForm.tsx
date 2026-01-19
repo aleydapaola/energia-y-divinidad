@@ -114,6 +114,7 @@ export function CheckoutForm({
           customerEmail: formData.email,
           customerPhone: formData.phone,
           sessionSlug: session.slug.current,
+          scheduledAt: scheduledDateTime.toISOString(),
         }
       } else {
         // Pago via ePayco (Internacional)
@@ -128,6 +129,9 @@ export function CheckoutForm({
           customerName: formData.name.split(' ')[0],
           customerLastName: formData.name.split(' ').slice(1).join(' ') || 'Cliente',
           customerPhone: formData.phone,
+          customerEmail: formData.email,
+          sessionSlug: session.slug.current,
+          scheduledAt: scheduledDateTime.toISOString(),
         }
       }
 

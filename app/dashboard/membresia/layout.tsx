@@ -2,8 +2,6 @@ import { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { hasActiveMembership, getActiveSubscription } from '@/lib/membership-access'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
 import { MembershipNav } from '@/components/membership/membership-nav'
 import { MembershipHeader } from '@/components/membership/membership-header'
 
@@ -29,11 +27,9 @@ export default async function MembershipLayout({ children }: MembershipLayoutPro
   // Obtener datos de suscripción para el header
   const subscription = await getActiveSubscription(session.user.id)
 
+  // Nota: Header y Footer ya están en el layout padre (app/dashboard/layout.tsx)
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8f0f5]">
-      {/* Header global del sitio */}
-      <Header session={session} />
-
+    <div className="flex-1 flex flex-col bg-[#f8f0f5]">
       {/* Header con información de membresía */}
       <MembershipHeader subscription={subscription} user={session.user} />
 
@@ -48,9 +44,6 @@ export default async function MembershipLayout({ children }: MembershipLayoutPro
           <main className="flex-1 min-w-0">{children}</main>
         </div>
       </div>
-
-      {/* Footer global del sitio */}
-      <Footer />
     </div>
   )
 }

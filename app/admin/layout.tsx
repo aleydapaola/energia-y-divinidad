@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { Calendar, Users, LayoutDashboard, ShoppingCart, CreditCard, ArrowLeft } from "lucide-react"
+import { Calendar, Users, LayoutDashboard, ShoppingCart, CreditCard, ArrowLeft, Ticket } from "lucide-react"
 
 export default async function AdminLayout({
   children,
@@ -82,6 +82,13 @@ export default async function AdminLayout({
             >
               <CreditCard className="w-5 h-5 text-[#8A4BAF]" />
               <span className="font-dm-sans">Membresías</span>
+            </Link>
+            <Link
+              href="/admin/events"
+              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-[#f8f0f5] rounded-lg transition-colors"
+            >
+              <Ticket className="w-5 h-5 text-[#8A4BAF]" />
+              <span className="font-dm-sans">Eventos</span>
             </Link>
             <Link
               href="/admin/users"

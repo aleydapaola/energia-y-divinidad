@@ -30,6 +30,11 @@ interface CheckoutBody {
   customerName?: string
   customerLastName?: string
   customerPhone?: string
+  customerEmail?: string
+
+  // Para sesiones
+  sessionSlug?: string
+  scheduledAt?: string // ISO date string para la fecha/hora de la sesión
 }
 
 /**
@@ -57,6 +62,8 @@ export async function POST(request: NextRequest) {
       customerName,
       customerLastName,
       customerPhone,
+      customerEmail,
+      scheduledAt,
     } = body
 
     // Validaciones básicas
@@ -109,6 +116,8 @@ export async function POST(request: NextRequest) {
         metadata: {
           productType,
           billingInterval: billingInterval || null,
+          scheduledAt: scheduledAt || null,
+          customerEmail: customerEmail || session.user.email,
         },
       },
     })
