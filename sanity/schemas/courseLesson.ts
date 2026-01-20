@@ -243,6 +243,64 @@ export default defineType({
       description: 'Solo las lecciones publicadas serán visibles',
       initialValue: true,
     }),
+
+    // --- Drip Content (Liberación Programada) ---
+    defineField({
+      name: 'dripMode',
+      title: '📅 Modo de Liberación',
+      type: 'string',
+      group: 'settings',
+      description: 'Controla cuándo se libera esta lección para los estudiantes',
+      options: {
+        list: [
+          { title: 'Inmediato (disponible al inscribirse)', value: 'immediate' },
+          { title: 'Días desde inscripción', value: 'offset' },
+          { title: 'Fecha fija', value: 'fixed' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'immediate',
+    }),
+    defineField({
+      name: 'dripOffsetDays',
+      title: 'Días desde inscripción',
+      type: 'number',
+      group: 'settings',
+      description: 'Días después de la inscripción para liberar esta lección',
+      hidden: ({ parent }) => parent?.dripMode !== 'offset',
+      validation: (Rule) => Rule.min(0),
+    }),
+    defineField({
+      name: 'availableAt',
+      title: 'Fecha de liberación',
+      type: 'datetime',
+      group: 'settings',
+      description: 'Fecha fija en la que se libera esta lección',
+      hidden: ({ parent }) => parent?.dripMode !== 'fixed',
+      options: {
+        dateFormat: 'DD/MM/YYYY',
+        timeFormat: 'HH:mm',
+      },
+    }),
+
+    // --- Quiz de la Lección ---
+    defineField({
+      name: 'quiz',
+      title: '📝 Quiz de la Lección',
+      type: 'reference',
+      group: 'settings',
+      to: [{ type: 'quiz' }],
+      description: 'Quiz opcional que el estudiante debe aprobar para completar esta lección',
+    }),
+    defineField({
+      name: 'requiresQuizToComplete',
+      title: 'Requiere Quiz para Completar',
+      type: 'boolean',
+      group: 'settings',
+      description: 'Si está activo, el estudiante debe aprobar el quiz para marcar la lección como completada',
+      initialValue: false,
+      hidden: ({ parent }) => !parent?.quiz,
+    }),
   ],
 
   preview: {

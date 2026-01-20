@@ -87,19 +87,8 @@ export default defineType({
     defineField({
       name: 'coverImage',
       title: 'Imagen de Portada',
-      type: 'image',
+      type: 'coverImage',
       description: 'Imagen principal que aparecerá en las tarjetas y página de detalle',
-      options: {
-        hotspot: true,
-      },
-      fields: [
-        {
-          name: 'alt',
-          type: 'string',
-          title: 'Texto Alternativo',
-          description: 'Descripción de la imagen para accesibilidad',
-        },
-      ],
       validation: (Rule) => Rule.required(),
     }),
 
@@ -258,29 +247,8 @@ export default defineType({
     defineField({
       name: 'seo',
       title: 'SEO (Opcional)',
-      type: 'object',
+      type: 'seo',
       description: 'Optimización para motores de búsqueda',
-      options: {
-        collapsible: true,
-        collapsed: true,
-      },
-      fields: [
-        {
-          name: 'metaTitle',
-          title: 'Meta Título',
-          type: 'string',
-          description: 'Título para Google (máx. 60 caracteres)',
-          validation: (Rule) => Rule.max(60),
-        },
-        {
-          name: 'metaDescription',
-          title: 'Meta Descripción',
-          type: 'text',
-          rows: 3,
-          description: 'Descripción para Google (máx. 160 caracteres)',
-          validation: (Rule) => Rule.max(160),
-        },
-      ],
     }),
   ],
 

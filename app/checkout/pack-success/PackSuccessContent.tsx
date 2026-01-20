@@ -30,7 +30,7 @@ export default function PackSuccessContent() {
       }
 
       try {
-        // Obtener datos del pack code asociado a esta sesión de Stripe
+        // Obtener datos del pack code asociado a este booking
         const response = await fetch(`/api/checkout/pack-code?session_id=${sessionId}`)
 
         if (!response.ok) {

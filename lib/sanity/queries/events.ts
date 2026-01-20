@@ -1,6 +1,14 @@
 import { client } from '../client'
+import { sanityFetch } from '@/sanity/lib/fetch'
+import type { EventPerk } from '@/types/events'
+import {
+  pricingProjection,
+  membershipAccessProjection,
+  seoProjection,
+  mainImageProjection,
+} from '@/sanity/lib/projections'
 
-// Interface para Event (actualizada con nuevos campos)
+// Interface para Event (actualizada con objetos reutilizables)
 export interface Event {
   _id: string
   _type: 'event'
@@ -42,11 +50,18 @@ export interface Event {
   recording?: {
     url?: string
     availableUntil?: string
+    replayDurationDays?: number
+    replayByPlan?: Array<{
+      tier: { _ref: string; _id?: string; name?: string }
+      durationDays: number
+    }>
   }
 
-  // Precios
+  // Precios (campos normalizados - compatibles con pricing object y legacy)
   price?: number
   priceUSD?: number
+  memberDiscount?: number
+  isFree?: boolean
   earlyBirdPrice?: number
   earlyBirdDeadline?: string
 
@@ -64,20 +79,24 @@ export interface Event {
   timeOfDay?: 'morning' | 'afternoon' | 'evening'
   eventSeries?: string
 
-  // Membresía
+  // Membresía (campos normalizados - compatibles con membershipAccess y legacy)
   includedInMembership: boolean
-  requiresMembership: boolean
-  membershipTiers?: Array<{ _ref: string }>
-  memberDiscount?: number
+  memberOnlyPurchase: boolean
+  membershipTiers?: Array<{ _id: string; name: string; tierLevel?: number }>
+
+  // Perks
+  perks?: EventPerk[]
 
   // SEO
   seo?: {
     metaTitle?: string
     metaDescription?: string
+    ogImageUrl?: string
   }
 }
 
 // Query fields comunes
+// Usa proyecciones reutilizables para soportar tanto campos nuevos como legacy
 const eventFields = `
   _id,
   _type,
@@ -85,13 +104,7 @@ const eventFields = `
   slug,
   eventType,
   description,
-  mainImage {
-    asset-> {
-      _ref,
-      url
-    },
-    alt
-  },
+  ${mainImageProjection},
   featured,
   published,
   status,
@@ -112,10 +125,15 @@ const eventFields = `
   },
   recording {
     url,
-    availableUntil
+    availableUntil,
+    replayDurationDays,
+    replayByPlan[] {
+      tier-> { _id, name },
+      durationDays
+    }
   },
-  price,
-  priceUSD,
+  // Precios - usa proyección reutilizable
+  ${pricingProjection},
   earlyBirdPrice,
   earlyBirdDeadline,
   capacity,
@@ -128,17 +146,21 @@ const eventFields = `
   tags,
   timeOfDay,
   eventSeries,
-  includedInMembership,
-  requiresMembership,
-  membershipTiers[]-> {
-    _id,
-    title
+  // Membresía - usa proyección reutilizable
+  ${membershipAccessProjection},
+  perks[] {
+    type,
+    title,
+    description,
+    cap,
+    priorityPlans[]-> {
+      _id,
+      name
+    },
+    deliveryMode,
+    assetUrl
   },
-  memberDiscount,
-  seo {
-    metaTitle,
-    metaDescription
-  }
+  ${seoProjection}
 `
 
 /**
@@ -149,7 +171,7 @@ export async function getAllEvents(): Promise<Event[]> {
     ${eventFields}
   }`
 
-  return client.fetch(query)
+  return sanityFetch({ query, tags: ['event'] })
 }
 
 /**
@@ -168,7 +190,7 @@ export async function getUpcomingEvents(limit?: number): Promise<Event[]> {
     ${eventFields}
   }`
 
-  return client.fetch(query)
+  return sanityFetch({ query, tags: ['event'] })
 }
 
 /**
@@ -187,14 +209,14 @@ export async function getFeaturedEvents(limit: number = 3): Promise<Event[]> {
     ${eventFields}
   }`
 
-  const featuredEvents = await client.fetch(query)
+  const featuredEvents = await sanityFetch<Event[]>({ query, tags: ['event'] })
 
   // Si no hay suficientes eventos destacados, completar con próximos eventos
   if (featuredEvents.length < limit) {
     const remaining = limit - featuredEvents.length
     const featuredIds = featuredEvents.map((e: Event) => e._id)
 
-    const moreEvents = await client.fetch(`*[
+    const moreQuery = `*[
       _type == "event"
       && published == true
       && status == "upcoming"
@@ -202,7 +224,13 @@ export async function getFeaturedEvents(limit: number = 3): Promise<Event[]> {
       && !(_id in $featuredIds)
     ] | order(eventDate asc) [0...${remaining}] {
       ${eventFields}
-    }`, { featuredIds })
+    }`
+
+    const moreEvents = await sanityFetch<Event[]>({
+      query: moreQuery,
+      params: { featuredIds },
+      tags: ['event'],
+    })
 
     return [...featuredEvents, ...moreEvents]
   }
@@ -229,7 +257,7 @@ export async function getEventsByType(
     ${eventFields}
   }`
 
-  return client.fetch(query)
+  return sanityFetch({ query, tags: ['event'] })
 }
 
 /**
@@ -240,17 +268,19 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
     ${eventFields}
   }`
 
-  return client.fetch(query, { slug })
+  return sanityFetch({ query, params: { slug }, tags: ['event'] })
 }
 
 /**
  * Get event by ID (for internal use, e.g., bookings)
+ * Note: Uses direct client.fetch() without caching for real-time accuracy
  */
 export async function getEventById(id: string): Promise<Event | null> {
   const query = `*[_type == "event" && _id == $id][0] {
     ${eventFields}
   }`
 
+  // Use client directly for booking operations that need real-time data
   return client.fetch(query, { id })
 }
 
@@ -271,7 +301,7 @@ export async function getEventsByLocation(
     ${eventFields}
   }`
 
-  return client.fetch(query)
+  return sanityFetch({ query, tags: ['event'] })
 }
 
 /**
@@ -290,7 +320,7 @@ export async function getEventsByMonth(year: number, month: number): Promise<Eve
     ${eventFields}
   }`
 
-  return client.fetch(query)
+  return sanityFetch({ query, tags: ['event'] })
 }
 
 /**
@@ -313,7 +343,7 @@ export async function getEventsWithRecordings(limit?: number): Promise<Event[]> 
     ${eventFields}
   }`
 
-  return client.fetch(query)
+  return sanityFetch({ query, tags: ['event'] })
 }
 
 // ============================================

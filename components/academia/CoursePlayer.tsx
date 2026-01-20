@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, Menu, X } from 'lucide-react'
+import { ChevronLeft, Menu, X, Award, ClipboardList } from 'lucide-react'
 import { LessonVideo } from './LessonVideo'
 import { LessonResources } from './LessonResources'
 import { LessonList } from './LessonList'
@@ -28,12 +28,23 @@ interface Lesson {
   content?: PortableTextBlock[]
   resources?: Resource[]
   completed?: boolean
+  quizId?: string
+  requiresQuizToComplete?: boolean
 }
 
 interface Module {
   _id: string
   title: string
+  unlockDate?: string
   lessons: Lesson[]
+}
+
+interface QuizCertificateInfo {
+  hasCertificate?: boolean
+  finalQuizId?: string
+  requiresFinalQuizToComplete?: boolean
+  hasPassedFinalQuiz?: boolean
+  existingCertificateId?: string
 }
 
 interface CoursePlayerProps {
@@ -52,6 +63,10 @@ interface CoursePlayerProps {
   onLessonComplete: (lessonId: string) => void
   onLessonSelect: (lessonId: string) => void
   onProgressUpdate: (lessonId: string, watchedSeconds: number, position: number) => void
+  dripEnabled?: boolean
+  defaultDripDays?: number
+  startedAt?: Date
+  quizCertificateInfo?: QuizCertificateInfo
 }
 
 export function CoursePlayer({
@@ -62,6 +77,10 @@ export function CoursePlayer({
   onLessonComplete,
   onLessonSelect,
   onProgressUpdate,
+  dripEnabled,
+  defaultDripDays,
+  startedAt,
+  quizCertificateInfo,
 }: CoursePlayerProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -142,6 +161,10 @@ export function CoursePlayer({
               onLessonSelect(id)
               setSidebarOpen(false)
             }}
+            dripEnabled={dripEnabled}
+            defaultDripDays={defaultDripDays}
+            startedAt={startedAt}
+            courseId={course._id}
           />
         </div>
       </aside>
@@ -208,6 +231,84 @@ export function CoursePlayer({
           {/* Resources */}
           {currentLesson.resources && currentLesson.resources.length > 0 && (
             <LessonResources resources={currentLesson.resources} />
+          )}
+
+          {/* Lesson Quiz CTA */}
+          {currentLesson.quizId && (
+            <div className="mt-8 p-4 bg-[#8A4BAF]/5 border border-[#8A4BAF]/20 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-[#8A4BAF]/10 rounded-full">
+                  <ClipboardList className="h-5 w-5 text-[#8A4BAF]" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-dm-sans font-medium text-[#654177]">
+                    Quiz de la lección
+                  </p>
+                  <p className="font-dm-sans text-sm text-gray-600">
+                    {currentLesson.requiresQuizToComplete
+                      ? 'Completa el quiz para marcar esta lección como terminada'
+                      : 'Pon a prueba tus conocimientos'}
+                  </p>
+                </div>
+                <a
+                  href={`/academia/${course.slug.current}/quiz/${currentLesson.quizId}?courseId=${course._id}&lessonId=${currentLesson._id}`}
+                  className="flex items-center gap-2 bg-[#8A4BAF] hover:bg-[#7a3f9e] text-white font-dm-sans font-semibold py-2 px-4 rounded-lg transition-colors"
+                >
+                  Tomar Quiz
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* Course Completion / Certificate CTA */}
+          {progress.completionPercentage >= 100 && quizCertificateInfo?.hasCertificate && (
+            <div className="mt-8 p-6 bg-gradient-to-r from-[#8A4BAF]/10 to-[#4944a4]/10 border border-[#8A4BAF]/30 rounded-xl">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-[#8A4BAF]/20 rounded-full">
+                  <Award className="h-8 w-8 text-[#8A4BAF]" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-gazeta text-lg text-[#654177]">
+                    {quizCertificateInfo.existingCertificateId
+                      ? '¡Certificado disponible!'
+                      : quizCertificateInfo.requiresFinalQuizToComplete && !quizCertificateInfo.hasPassedFinalQuiz
+                        ? 'Completa el examen final'
+                        : '¡Felicitaciones! Puedes obtener tu certificado'}
+                  </p>
+                  <p className="font-dm-sans text-sm text-[#654177]/80">
+                    {quizCertificateInfo.existingCertificateId
+                      ? 'Descarga tu certificado de completación'
+                      : quizCertificateInfo.requiresFinalQuizToComplete && !quizCertificateInfo.hasPassedFinalQuiz
+                        ? 'Aprueba el examen final para obtener tu certificado'
+                        : 'Has completado todos los requisitos del curso'}
+                  </p>
+                </div>
+                {quizCertificateInfo.existingCertificateId ? (
+                  <a
+                    href={`/api/certificates/${quizCertificateInfo.existingCertificateId}/download`}
+                    className="flex items-center gap-2 bg-[#8A4BAF] hover:bg-[#7a3f9e] text-white font-dm-sans font-semibold py-2 px-4 rounded-lg transition-colors"
+                  >
+                    Descargar
+                  </a>
+                ) : quizCertificateInfo.requiresFinalQuizToComplete &&
+                  quizCertificateInfo.finalQuizId &&
+                  !quizCertificateInfo.hasPassedFinalQuiz ? (
+                  <a
+                    href={`/academia/${course.slug.current}/quiz/${quizCertificateInfo.finalQuizId}?courseId=${course._id}`}
+                    className="flex items-center gap-2 bg-[#8A4BAF] hover:bg-[#7a3f9e] text-white font-dm-sans font-semibold py-2 px-4 rounded-lg transition-colors"
+                  >
+                    Tomar Examen
+                  </a>
+                ) : (
+                  <a
+                    href={`/mi-cuenta/cursos`}
+                    className="flex items-center gap-2 bg-[#8A4BAF] hover:bg-[#7a3f9e] text-white font-dm-sans font-semibold py-2 px-4 rounded-lg transition-colors"
+                  >
+                    Ver Certificado
+                  </a>
+                )}
+              </div>
+            </div>
           )}
 
           {/* Navigation */}

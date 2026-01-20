@@ -1,5 +1,7 @@
-import { client } from '../client'
+import { sanityFetch } from '@/sanity/lib/fetch'
 import type { MembershipTier, MembershipPostSanity } from '@/types/membership'
+// Nota: Las proyecciones de membership son específicas y no usan las genéricas
+// porque los schemas de membershipTier y membershipPost tienen campos propios
 
 // ============================================
 // MEMBERSHIP TIERS QUERIES
@@ -43,7 +45,7 @@ export async function getAllMembershipTiers(): Promise<MembershipTier[]> {
     ${membershipTierProjection}
   }`
 
-  return await client.fetch(query)
+  return sanityFetch({ query, tags: ['membership'] })
 }
 
 /**
@@ -54,7 +56,7 @@ export async function getMembershipTierById(id: string): Promise<MembershipTier 
     ${membershipTierProjection}
   }`
 
-  return await client.fetch(query, { id })
+  return sanityFetch({ query, params: { id }, tags: ['membership'] })
 }
 
 /**
@@ -65,7 +67,7 @@ export async function getMembershipTierBySlug(slug: string): Promise<MembershipT
     ${membershipTierProjection}
   }`
 
-  return await client.fetch(query, { slug })
+  return sanityFetch({ query, params: { slug }, tags: ['membership'] })
 }
 
 /**
@@ -76,7 +78,7 @@ export async function getFeaturedMembershipTiers(): Promise<MembershipTier[]> {
     ${membershipTierProjection}
   }`
 
-  return await client.fetch(query)
+  return sanityFetch({ query, tags: ['membership'] })
 }
 
 // ============================================
@@ -188,7 +190,7 @@ export async function getAllMembershipPosts(options?: {
     ${membershipPostProjection}
   }`
 
-  return await client.fetch(query)
+  return sanityFetch({ query, tags: ['membership-post'] })
 }
 
 /**
@@ -201,7 +203,7 @@ export async function getMembershipPostBySlug(
     ${membershipPostProjection}
   }`
 
-  return await client.fetch(query, { slug })
+  return sanityFetch({ query, params: { slug }, tags: ['membership-post'] })
 }
 
 /**
@@ -212,7 +214,7 @@ export async function getMembershipPostById(id: string): Promise<MembershipPostS
     ${membershipPostProjection}
   }`
 
-  return await client.fetch(query, { id })
+  return sanityFetch({ query, params: { id }, tags: ['membership-post'] })
 }
 
 /**
@@ -225,7 +227,7 @@ export async function getPinnedMembershipPosts(): Promise<MembershipPostSanity[]
     ${membershipPostProjection}
   }`
 
-  return await client.fetch(query)
+  return sanityFetch({ query, tags: ['membership-post'] })
 }
 
 /**
@@ -238,7 +240,7 @@ export async function getRecentMembershipPosts(limit: number = 10): Promise<Memb
     ${membershipPostProjection}
   }`
 
-  return await client.fetch(query)
+  return sanityFetch({ query, tags: ['membership-post'] })
 }
 
 /**
@@ -251,7 +253,7 @@ export async function searchMembershipPosts(searchTerm: string): Promise<Members
     ${membershipPostProjection}
   }`
 
-  return await client.fetch(query, { searchTerm: `*${searchTerm}*` })
+  return sanityFetch({ query, params: { searchTerm: `*${searchTerm}*` }, tags: ['membership-post'] })
 }
 
 // ============================================
@@ -280,7 +282,7 @@ export async function getPremiumContentForTier(tierId: string): Promise<any[]> {
     featured
   }`
 
-  return await client.fetch(query, { tierId })
+  return sanityFetch({ query, params: { tierId }, tags: ['premium'] })
 }
 
 /**
@@ -294,6 +296,10 @@ export async function isPremiumContentAvailableForTier(
     _id
   }`
 
-  const result = await client.fetch(query, { contentId, tierId })
+  const result = await sanityFetch<{ _id: string } | null>({
+    query,
+    params: { contentId, tierId },
+    tags: ['premium'],
+  })
   return !!result
 }

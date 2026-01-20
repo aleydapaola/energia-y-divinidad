@@ -43,6 +43,7 @@ export interface MembershipTier {
     privateGroup?: boolean
     monthlyLiveSession?: boolean
     oneOnOneSessionsIncluded?: number
+    creditsExpireDays?: number
   }
   limitations?: {
     maxDownloadsPerMonth?: number
@@ -261,6 +262,7 @@ export interface PremiumContentAccess {
 
 export type PaymentRegion = 'colombia' | 'international'
 
+// LEGACY: 'stripe' se mantiene para datos históricos
 export type PaymentMethodType = 'nequi_recurring' | 'nequi_manual' | 'stripe' | 'paypal'
 
 export interface PaymentMethodInfo {

@@ -74,22 +74,11 @@ export default defineType({
     defineField({
       name: 'coverImage',
       title: 'Imagen de Portada',
-      type: 'image',
+      type: 'coverImage',
       group: 'basic',
       description: `📐 TAMAÑO RECOMENDADO: 1200 x 630 píxeles (formato horizontal 16:9)
 📦 FORMATO: JPG o PNG
 📏 PESO MÁXIMO: 2 MB`,
-      options: {
-        hotspot: true,
-        accept: 'image/jpeg,image/png,image/webp',
-      },
-      fields: [
-        {
-          name: 'alt',
-          type: 'string',
-          title: 'Descripción de la imagen',
-        },
-      ],
       validation: (Rule) => Rule.required(),
     }),
     defineField({
@@ -146,40 +135,95 @@ export default defineType({
       ],
     }),
 
+    // --- Drip Content (Liberación Programada) ---
+    defineField({
+      name: 'dripEnabled',
+      title: '📅 Liberación Programada',
+      type: 'boolean',
+      group: 'content',
+      description: 'Activar liberación programada de lecciones (drip content)',
+      initialValue: false,
+    }),
+    defineField({
+      name: 'defaultDripDays',
+      title: 'Días entre lecciones',
+      type: 'number',
+      group: 'content',
+      description:
+        'Días entre liberación de cada lección (ej: 7 = lección 1 día 0, lección 2 día 7, lección 3 día 14...)',
+      hidden: ({ parent }) => !parent?.dripEnabled,
+      validation: (Rule) => Rule.min(1),
+    }),
+
+    // --- Evaluación y Certificación ---
+    defineField({
+      name: 'finalQuiz',
+      title: '📝 Examen Final',
+      type: 'reference',
+      group: 'content',
+      to: [{ type: 'quiz' }],
+      description: 'Quiz final que el estudiante debe aprobar para obtener el certificado',
+    }),
+    defineField({
+      name: 'certificate',
+      title: '🏆 Certificado',
+      type: 'reference',
+      group: 'content',
+      to: [{ type: 'certificate' }],
+      description: 'Plantilla de certificado para este curso',
+    }),
+    defineField({
+      name: 'requiresFinalQuizToComplete',
+      title: 'Requiere Examen Final',
+      type: 'boolean',
+      group: 'content',
+      description: 'Si está activo, el estudiante debe aprobar el examen final para obtener el certificado',
+      initialValue: true,
+      hidden: ({ parent }) => !parent?.finalQuiz,
+    }),
+
     // ============================================
-    // GRUPO: Precios
+    // GRUPO: Precios (usando objeto reutilizable)
     // ============================================
     defineField({
+      name: 'pricing',
+      title: 'Precios',
+      type: 'pricing',
+      group: 'pricing',
+    }),
+
+    // --- Campos legacy (ocultos, para compatibilidad) ---
+    defineField({
       name: 'price',
-      title: 'Precio en Pesos (COP)',
+      title: 'Precio en Pesos (COP) [LEGACY]',
       type: 'number',
       group: 'pricing',
-      description: 'Precio para pagos en Colombia. Ej: 297000',
-      validation: (Rule) => Rule.min(0),
+      hidden: true,
+      deprecated: { reason: 'Usar el campo pricing en su lugar' },
     }),
     defineField({
       name: 'priceUSD',
-      title: 'Precio en Dólares (USD)',
+      title: 'Precio en Dólares (USD) [LEGACY]',
       type: 'number',
       group: 'pricing',
-      description: 'Precio para pagos internacionales. Ej: 97',
-      validation: (Rule) => Rule.min(0),
+      hidden: true,
+      deprecated: { reason: 'Usar el campo pricing en su lugar' },
     }),
     defineField({
       name: 'compareAtPrice',
-      title: 'Precio Anterior COP (Tachado)',
+      title: 'Precio Anterior COP (Tachado) [LEGACY]',
       type: 'number',
       group: 'pricing',
-      description: 'Opcional - Precio original antes del descuento (aparecerá tachado)',
-      validation: (Rule) => Rule.min(0),
+      hidden: true,
+      deprecated: { reason: 'Usar el campo pricing en su lugar' },
     }),
     defineField({
       name: 'compareAtPriceUSD',
-      title: 'Precio Anterior USD (Tachado)',
+      title: 'Precio Anterior USD (Tachado) [LEGACY]',
       type: 'number',
       group: 'pricing',
-      description: 'Opcional - Precio original en USD antes del descuento',
-      validation: (Rule) => Rule.min(0),
+      hidden: true,
+      deprecated: { reason: 'Usar el campo pricing en su lugar' },
     }),
 
     // ============================================
@@ -298,62 +342,50 @@ export default defineType({
     }),
 
     // ============================================
-    // GRUPO: Membresía
+    // GRUPO: Membresía (usando objeto reutilizable)
     // ============================================
     defineField({
+      name: 'membershipAccess',
+      title: 'Acceso por Membresía',
+      type: 'membershipAccess',
+      group: 'membership',
+    }),
+
+    // --- Campos legacy (ocultos, para compatibilidad) ---
+    defineField({
       name: 'includedInMembership',
-      title: '¿Incluido en la Membresía?',
+      title: '¿Incluido en la Membresía? [LEGACY]',
       type: 'boolean',
       group: 'membership',
-      description: 'Los miembros pueden acceder sin pagar extra',
-      initialValue: false,
+      hidden: true,
+      deprecated: { reason: 'Usar el campo membershipAccess en su lugar' },
     }),
     defineField({
       name: 'membershipTiers',
-      title: 'Niveles de Membresía',
+      title: 'Niveles de Membresía [LEGACY]',
       type: 'array',
       group: 'membership',
-      description: 'Qué niveles de membresía tienen acceso a este curso',
       of: [{ type: 'reference', to: [{ type: 'membershipTier' }] }],
-      hidden: ({ parent }) => !parent?.includedInMembership,
+      hidden: true,
+      deprecated: { reason: 'Usar el campo membershipAccess en su lugar' },
     }),
     defineField({
       name: 'memberDiscount',
-      title: 'Descuento para Miembros (%)',
+      title: 'Descuento para Miembros (%) [LEGACY]',
       type: 'number',
       group: 'membership',
-      description: 'Porcentaje de descuento para miembros (ej: 20 = 20%)',
-      validation: (Rule) => Rule.min(0).max(100),
-      hidden: ({ parent }) => parent?.includedInMembership,
+      hidden: true,
+      deprecated: { reason: 'Usar el campo pricing.memberDiscount en su lugar' },
     }),
 
     // ============================================
-    // GRUPO: SEO
+    // GRUPO: SEO (usando objeto reutilizable)
     // ============================================
     defineField({
       name: 'seo',
       title: 'SEO',
-      type: 'object',
+      type: 'seo',
       group: 'seo',
-      options: {
-        collapsible: true,
-        collapsed: true,
-      },
-      fields: [
-        {
-          name: 'metaTitle',
-          title: 'Título para Google',
-          type: 'string',
-          validation: (Rule) => Rule.max(60),
-        },
-        {
-          name: 'metaDescription',
-          title: 'Descripción para Google',
-          type: 'text',
-          rows: 2,
-          validation: (Rule) => Rule.max(160),
-        },
-      ],
     }),
   ],
 
@@ -364,11 +396,12 @@ export default defineType({
       status: 'status',
       featured: 'featured',
       published: 'published',
-      price: 'price',
+      price: 'pricing.price',
+      legacyPrice: 'price',
       media: 'coverImage',
     },
     prepare(selection) {
-      const { title, courseType, status, featured, published, price } = selection
+      const { title, courseType, status, featured, published, price, legacyPrice } = selection
 
       const statusEmoji: Record<string, string> = {
         draft: '📝',
@@ -378,7 +411,8 @@ export default defineType({
       }
 
       const typeLabel = courseType === 'simple' ? '📖 Simple' : '📚 Modular'
-      const priceText = price ? `$${price.toLocaleString('es-CO')} COP` : 'Sin precio'
+      const displayPrice = price || legacyPrice
+      const priceText = displayPrice ? `$${displayPrice.toLocaleString('es-CO')} COP` : 'Sin precio'
 
       let prefix = ''
       if (!published) prefix += '🔒 '
@@ -406,7 +440,7 @@ export default defineType({
     {
       title: 'Precio (menor a mayor)',
       name: 'priceAsc',
-      by: [{ field: 'price', direction: 'asc' }],
+      by: [{ field: 'pricing.price', direction: 'asc' }],
     },
   ],
 })

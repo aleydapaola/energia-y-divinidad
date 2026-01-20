@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Calendar, ShoppingBag, Crown, ArrowRight, GraduationCap, CalendarCheck } from "lucide-react"
 import { hasActiveMembership } from "@/lib/membership-access"
 import { getUserCourses } from "@/lib/course-access"
+import { CreditsCard } from "@/components/cuenta/CreditsCard"
 
 export default async function MiCuentaPage() {
   const session = await auth()
@@ -169,6 +170,9 @@ export default async function MiCuentaPage() {
           </div>
         </div>
       </div>
+
+      {/* Créditos de Sesión (solo si el usuario tiene membresía) */}
+      {hasMembership && <CreditsCard />}
 
       {/* Próximas Sesiones */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">

@@ -2,21 +2,29 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { verifyNequiWebhookSignature } from '@/lib/nequi'
 import { prisma } from '@/lib/prisma'
-import { getAppUrl } from '@/lib/utils'
+import { processPaymentWebhook } from '@/lib/payments'
 import { sendAdminNotificationEmail } from '@/lib/email'
 
 /**
  * POST /api/webhooks/nequi
  * Procesar eventos de webhooks de Nequi API Conecta
  *
- * Eventos esperados:
+ * Este endpoint maneja dos tipos de eventos:
+ * 1. Suscripciones (lógica específica de Nequi)
+ * 2. Pagos únicos (usa el procesador unificado)
+ *
+ * Eventos de suscripción:
  * - subscription.approved: Usuario aprobó la suscripción en la app
  * - payment.succeeded: Cobro automático exitoso
  * - payment.failed: Fallo en cobro automático
- * - subscription.cancelled: Suscripción cancelada por el usuario o por Nequi
+ * - subscription.cancelled: Suscripción cancelada
+ *
+ * Eventos de pago único:
+ * - single_payment.completed / payment.single.completed
+ * - payment.status (procesado por el adaptador unificado)
  */
 export async function POST(request: NextRequest) {
-  const body = await request.text()
+  const rawBody = await request.text()
   const headersList = await headers()
   const signature = headersList.get('x-nequi-signature')
 
@@ -25,29 +33,21 @@ export async function POST(request: NextRequest) {
   }
 
   // Verificar firma del webhook
-  const isValid = verifyNequiWebhookSignature(body, signature)
+  const isValid = verifyNequiWebhookSignature(rawBody, signature)
 
   if (!isValid) {
-    console.error('Firma de webhook de Nequi inválida')
+    console.error('[WEBHOOK-NEQUI] Invalid signature')
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
-  let event: any
+  let event: WebhookEvent
 
   try {
-    event = JSON.parse(body)
+    event = JSON.parse(rawBody)
   } catch (err) {
-    console.error('Error parseando webhook de Nequi:', err)
+    console.error('[WEBHOOK-NEQUI] Error parsing JSON:', err)
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
-
-  // Estructura esperada del evento:
-  // {
-  //   eventId: string,
-  //   eventType: string,
-  //   subscriptionId: string,
-  //   data: { ... }
-  // }
 
   const { eventId, eventType, subscriptionId, data } = event
 
@@ -55,13 +55,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing event data' }, { status: 400 })
   }
 
+  // Determinar si es un evento de suscripción o pago único
+  const isSubscriptionEvent = [
+    'subscription.approved',
+    'subscription.cancelled',
+    'payment.succeeded',
+    'payment.failed',
+  ].includes(eventType)
+
+  // Para pagos únicos, usar el procesador unificado
+  if (!isSubscriptionEvent) {
+    const clonedRequest = new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      body: rawBody,
+    })
+
+    const result = await processPaymentWebhook('nequi', clonedRequest, rawBody)
+
+    if (!result.success && !result.processed) {
+      console.error('[WEBHOOK-NEQUI] Failed to process:', result.error)
+    }
+
+    return NextResponse.json({
+      received: true,
+      processed: result.processed,
+      eventId: result.eventId,
+    })
+  }
+
+  // Para eventos de suscripción, usar lógica específica
   // Idempotencia: verificar si ya procesamos este evento
   const existingEvent = await prisma.webhookEvent.findUnique({
     where: { eventId },
   })
 
   if (existingEvent?.processed) {
-    console.log(`Evento ${eventId} ya fue procesado`)
+    console.log(`[WEBHOOK-NEQUI] Event ${eventId} already processed`)
     return NextResponse.json({ received: true, processed: false })
   }
 
@@ -72,39 +102,30 @@ export async function POST(request: NextRequest) {
       provider: 'nequi',
       eventId,
       eventType,
-      payload: event,
+      payload: JSON.parse(rawBody),
       processed: false,
     },
     update: {},
   })
 
   try {
-    // Procesar según tipo de evento
+    // Procesar según tipo de evento de suscripción
     switch (eventType) {
       case 'subscription.approved':
-        await handleSubscriptionApproved(subscriptionId, data)
+        await handleSubscriptionApproved(subscriptionId!, data)
         break
 
       case 'payment.succeeded':
-        await handlePaymentSucceeded(subscriptionId, data)
+        await handlePaymentSucceeded(subscriptionId!, data)
         break
 
       case 'payment.failed':
-        await handlePaymentFailed(subscriptionId, data)
+        await handlePaymentFailed(subscriptionId!, data)
         break
 
       case 'subscription.cancelled':
-        await handleSubscriptionCancelled(subscriptionId, data)
+        await handleSubscriptionCancelled(subscriptionId!, data)
         break
-
-      // Pagos únicos (no suscripciones)
-      case 'single_payment.completed':
-      case 'payment.single.completed':
-        await handleSinglePaymentCompleted(data)
-        break
-
-      default:
-        console.log(`Evento de Nequi no manejado: ${eventType}`)
     }
 
     // Marcar como procesado exitosamente
@@ -117,15 +138,16 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({ received: true, processed: true })
-  } catch (error: any) {
-    console.error(`Error procesando webhook de Nequi ${eventType}:`, error)
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error(`[WEBHOOK-NEQUI] Error processing ${eventType}:`, error)
 
     // Registrar error
     await prisma.webhookEvent.update({
       where: { eventId },
       data: {
         failed: true,
-        errorMessage: error.message,
+        errorMessage,
         retryCount: { increment: 1 },
       },
     })
@@ -134,17 +156,28 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Types
+interface WebhookEvent {
+  eventId: string
+  eventType: string
+  subscriptionId?: string
+  data?: Record<string, unknown>
+}
+
 /**
  * Manejar subscription.approved
  * El usuario aprobó la suscripción en su app Nequi
  */
-async function handleSubscriptionApproved(subscriptionId: string, data: any) {
+async function handleSubscriptionApproved(
+  subscriptionId: string,
+  _data: Record<string, unknown> | undefined
+) {
   const subscription = await prisma.subscription.findFirst({
     where: { nequiSubscriptionId: subscriptionId },
   })
 
   if (!subscription) {
-    console.error(`No se encontró suscripción con nequiSubscriptionId ${subscriptionId}`)
+    console.error(`[WEBHOOK-NEQUI] Subscription not found: ${subscriptionId}`)
     return
   }
 
@@ -169,7 +202,7 @@ async function handleSubscriptionApproved(subscriptionId: string, data: any) {
     },
   })
 
-  console.log(`Suscripción ${subscription.id} aprobada y activada`)
+  console.log(`[WEBHOOK-NEQUI] Subscription ${subscription.id} approved and activated`)
 
   // Obtener datos del usuario para notificación
   const user = await prisma.user.findUnique({
@@ -193,9 +226,9 @@ async function handleSubscriptionApproved(subscriptionId: string, data: any) {
         membershipPlan: subscription.membershipTierName,
         membershipInterval: subscription.billingInterval === 'YEARLY' ? 'yearly' : 'monthly',
       })
-      console.log(`Notificación admin enviada para membresía Nequi ${subscription.id}`)
+      console.log(`[WEBHOOK-NEQUI] Admin notification sent for membership ${subscription.id}`)
     } catch (error) {
-      console.error('Error enviando notificación admin:', error)
+      console.error('[WEBHOOK-NEQUI] Error sending admin notification:', error)
     }
   }
 }
@@ -204,13 +237,16 @@ async function handleSubscriptionApproved(subscriptionId: string, data: any) {
  * Manejar payment.succeeded
  * Cobro automático exitoso (renovación)
  */
-async function handlePaymentSucceeded(subscriptionId: string, data: any) {
+async function handlePaymentSucceeded(
+  subscriptionId: string,
+  _data: Record<string, unknown> | undefined
+) {
   const subscription = await prisma.subscription.findFirst({
     where: { nequiSubscriptionId: subscriptionId },
   })
 
   if (!subscription) {
-    console.error(`No se encontró suscripción con nequiSubscriptionId ${subscriptionId}`)
+    console.error(`[WEBHOOK-NEQUI] Subscription not found: ${subscriptionId}`)
     return
   }
 
@@ -245,23 +281,23 @@ async function handlePaymentSucceeded(subscriptionId: string, data: any) {
     },
   })
 
-  // TODO: Registrar orden de renovación cuando se implemente el flujo de órdenes para Nequi
-  // El modelo Order actual requiere campos específicos que no aplican para renovaciones automáticas de Nequi
-
-  console.log(`Renovación exitosa para suscripción ${subscription.id}`)
+  console.log(`[WEBHOOK-NEQUI] Renewal successful for subscription ${subscription.id}`)
 }
 
 /**
  * Manejar payment.failed
  * Fallo en cobro automático
  */
-async function handlePaymentFailed(subscriptionId: string, data: any) {
+async function handlePaymentFailed(
+  subscriptionId: string,
+  _data: Record<string, unknown> | undefined
+) {
   const subscription = await prisma.subscription.findFirst({
     where: { nequiSubscriptionId: subscriptionId },
   })
 
   if (!subscription) {
-    console.error(`No se encontró suscripción con nequiSubscriptionId ${subscriptionId}`)
+    console.error(`[WEBHOOK-NEQUI] Subscription not found: ${subscriptionId}`)
     return
   }
 
@@ -273,7 +309,7 @@ async function handlePaymentFailed(subscriptionId: string, data: any) {
     },
   })
 
-  console.log(`Pago fallido para suscripción ${subscription.id}`)
+  console.log(`[WEBHOOK-NEQUI] Payment failed for subscription ${subscription.id}`)
 
   // TODO: Enviar notificación al usuario
 }
@@ -282,13 +318,16 @@ async function handlePaymentFailed(subscriptionId: string, data: any) {
  * Manejar subscription.cancelled
  * Suscripción cancelada
  */
-async function handleSubscriptionCancelled(subscriptionId: string, data: any) {
+async function handleSubscriptionCancelled(
+  subscriptionId: string,
+  _data: Record<string, unknown> | undefined
+) {
   const subscription = await prisma.subscription.findFirst({
     where: { nequiSubscriptionId: subscriptionId },
   })
 
   if (!subscription) {
-    console.error(`No se encontró suscripción con nequiSubscriptionId ${subscriptionId}`)
+    console.error(`[WEBHOOK-NEQUI] Subscription not found: ${subscriptionId}`)
     return
   }
 
@@ -314,130 +353,5 @@ async function handleSubscriptionCancelled(subscriptionId: string, data: any) {
     },
   })
 
-  console.log(`Suscripción ${subscription.id} cancelada y entitlements revocados`)
-}
-
-/**
- * Manejar single_payment.completed / payment.single.completed
- * Pago único completado (para sesiones individuales o packs)
- */
-async function handleSinglePaymentCompleted(data: any) {
-  // Estructura esperada:
-  // data: { bookingId: string, transactionId: string, amount: number, ... }
-  const { bookingId, transactionId } = data
-
-  if (!bookingId) {
-    console.error('Falta bookingId en evento de pago único')
-    return
-  }
-
-  // Buscar el booking
-  const booking = await prisma.booking.findUnique({
-    where: { id: bookingId },
-    include: {
-      user: {
-        select: { id: true, email: true, name: true }
-      }
-    }
-  })
-
-  if (!booking) {
-    console.error(`No se encontró booking con ID ${bookingId}`)
-    return
-  }
-
-  // Si ya está procesado, ignorar
-  if (booking.paymentStatus === 'COMPLETED') {
-    console.log(`Booking ${bookingId} ya tiene pago completado`)
-    return
-  }
-
-  // Actualizar booking
-  await prisma.booking.update({
-    where: { id: bookingId },
-    data: {
-      status: 'CONFIRMED',
-      paymentStatus: 'COMPLETED',
-      adminNotes: transactionId ? `Nequi Transaction ID: ${transactionId}` : undefined,
-    },
-  })
-
-  // Si es un pack de sesiones (8 sesiones), generar código
-  if (booking.sessionsTotal === 8) {
-    const appUrl = getAppUrl()
-    const internalSecret = process.env.INTERNAL_API_SECRET
-
-    try {
-      const response = await fetch(`${appUrl}/api/checkout/generate-pack-code`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': internalSecret || '',
-        },
-        body: JSON.stringify({
-          bookingId: booking.id,
-          userId: booking.userId,
-          userEmail: booking.user?.email || '',
-          userName: booking.user?.name || 'Querida alma',
-          amount: Number(booking.amount),
-          currency: booking.currency as 'COP' | 'USD' | 'EUR',
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        console.error('Error generando código de pack (Nequi):', error)
-        return
-      }
-
-      const result = await response.json()
-      console.log(`Código de pack generado (Nequi): ${result.packCode} para booking ${bookingId}`)
-    } catch (error) {
-      console.error('Error llamando a generate-pack-code (Nequi):', error)
-    }
-    // Notificar al administrador sobre el pack
-    if (booking.user?.email) {
-      try {
-        await sendAdminNotificationEmail({
-          saleType: 'SESSION_PACK',
-          customerName: booking.user.name || 'Cliente',
-          customerEmail: booking.user.email,
-          itemName: 'Pack de 8 Sesiones',
-          amount: Number(booking.amount),
-          currency: booking.currency as 'COP' | 'USD' | 'EUR',
-          paymentMethod: 'NEQUI_PUSH',
-          orderNumber: bookingId.slice(0, 8).toUpperCase(),
-          transactionId,
-          sessionCount: 8,
-        })
-        console.log(`Notificación admin enviada para pack Nequi`)
-      } catch (emailError) {
-        console.error('Error enviando notificación admin:', emailError)
-      }
-    }
-  } else {
-    // Para sesión individual, confirmar y notificar
-    console.log(`Pago único completado para booking ${bookingId}`)
-
-    // Notificar al administrador sobre la sesión individual
-    if (booking.user?.email) {
-      try {
-        await sendAdminNotificationEmail({
-          saleType: 'SESSION',
-          customerName: booking.user.name || 'Cliente',
-          customerEmail: booking.user.email,
-          itemName: booking.resourceName || 'Sesión de Canalización',
-          amount: Number(booking.amount),
-          currency: booking.currency as 'COP' | 'USD' | 'EUR',
-          paymentMethod: 'NEQUI_PUSH',
-          orderNumber: bookingId.slice(0, 8).toUpperCase(),
-          transactionId,
-          sessionDate: booking.scheduledAt || undefined,
-        })
-        console.log(`Notificación admin enviada para sesión individual Nequi`)
-      } catch (emailError) {
-        console.error('Error enviando notificación admin:', emailError)
-      }
-    }
-  }
+  console.log(`[WEBHOOK-NEQUI] Subscription ${subscription.id} cancelled and entitlements revoked`)
 }

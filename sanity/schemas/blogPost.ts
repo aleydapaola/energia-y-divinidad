@@ -56,22 +56,7 @@ export default defineType({
     defineField({
       name: 'mainImage',
       title: 'Imagen Principal',
-      type: 'image',
-      options: {
-        hotspot: true,
-      },
-      fields: [
-        {
-          name: 'alt',
-          type: 'string',
-          title: 'Texto Alternativo',
-        },
-        {
-          name: 'caption',
-          type: 'string',
-          title: 'Pie de Imagen',
-        },
-      ],
+      type: 'coverImage',
       validation: (Rule) => Rule.required(),
     }),
     defineField({
@@ -394,27 +379,7 @@ export default defineType({
     defineField({
       name: 'seo',
       title: 'SEO',
-      type: 'object',
-      fields: [
-        {
-          name: 'metaTitle',
-          title: 'Meta Título',
-          type: 'string',
-          validation: (Rule) => Rule.max(60),
-        },
-        {
-          name: 'metaDescription',
-          title: 'Meta Descripción',
-          type: 'text',
-          validation: (Rule) => Rule.max(160),
-        },
-        {
-          name: 'keywords',
-          title: 'Palabras Clave',
-          type: 'array',
-          of: [{ type: 'string' }],
-        },
-      ],
+      type: 'seo',
     }),
     defineField({
       name: 'published',

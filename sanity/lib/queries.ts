@@ -1,6 +1,14 @@
 import { groq } from 'next-sanity'
+import {
+  pricingProjection,
+  membershipAccessProjection,
+  seoProjection,
+  coverImageProjection,
+} from './projections'
 
+// ============================================
 // Eventos
+// ============================================
 export const EVENTS_QUERY = groq`*[_type == "event" && published == true] | order(eventDate asc)`
 
 export const EVENT_BY_SLUG_QUERY = groq`*[_type == "event" && slug.current == $slug][0]`
@@ -102,11 +110,28 @@ export const FOOTER_PAGES_QUERY = groq`*[
   showInFooter == true
 ] | order(footerColumn asc)`
 
+// Páginas Legales
+export const LEGAL_PAGE_BY_SLUG_QUERY = groq`*[
+  _type == "page" &&
+  slug.current == $slug &&
+  pageType in ["terms", "privacy", "cookies", "legal"]
+][0]{
+  _id,
+  title,
+  slug,
+  pageType,
+  content,
+  version,
+  lastUpdated,
+  seo
+}`
+
 // ============================================
 // Academia - Cursos
 // ============================================
 
 // Lista de cursos publicados para el catálogo
+// Usa proyecciones para compatibilidad con campos legacy y nuevos objetos
 export const COURSES_QUERY = groq`*[
   _type == "course" &&
   published == true &&
@@ -114,14 +139,12 @@ export const COURSES_QUERY = groq`*[
 ] | order(displayOrder asc) {
   _id,
   title,
-  slug,
+  "slug": slug.current,
   shortDescription,
-  coverImage,
+  ${coverImageProjection},
   courseType,
-  price,
-  priceUSD,
-  compareAtPrice,
-  compareAtPriceUSD,
+  ${pricingProjection},
+  ${membershipAccessProjection},
   difficulty,
   totalDuration,
   topics,
@@ -130,8 +153,18 @@ export const COURSES_QUERY = groq`*[
 }`
 
 // Curso completo con módulos y lecciones
+// Usa proyecciones para compatibilidad con campos legacy y nuevos objetos
 export const COURSE_BY_SLUG_QUERY = groq`*[_type == "course" && slug.current == $slug][0] {
   ...,
+  ${coverImageProjection},
+  ${pricingProjection},
+  ${membershipAccessProjection},
+  ${seoProjection},
+  dripEnabled,
+  defaultDripDays,
+  "hasCertificate": defined(certificate),
+  "finalQuizId": finalQuiz->._id,
+  requiresFinalQuizToComplete,
   "modules": modules[]-> {
     _id,
     title,
@@ -141,13 +174,18 @@ export const COURSE_BY_SLUG_QUERY = groq`*[_type == "course" && slug.current == 
     "lessons": lessons[]-> {
       _id,
       title,
-      slug,
+      "slug": slug.current,
       description,
       order,
       lessonType,
       videoDuration,
       isFreePreview,
       published,
+      dripMode,
+      dripOffsetDays,
+      availableAt,
+      "quizId": quiz->._id,
+      requiresQuizToComplete,
       "liveSession": liveSession {
         scheduledAt,
         estimatedDuration,
@@ -158,22 +196,22 @@ export const COURSE_BY_SLUG_QUERY = groq`*[_type == "course" && slug.current == 
   "simpleLesson": simpleLesson-> {
     _id,
     title,
-    slug,
+    "slug": slug.current,
     description,
     lessonType,
     videoDuration,
     isFreePreview,
     published,
+    dripMode,
+    dripOffsetDays,
+    availableAt,
+    "quizId": quiz->._id,
+    requiresQuizToComplete,
     "liveSession": liveSession {
       scheduledAt,
       estimatedDuration,
       recordingUrl
     }
-  },
-  "membershipTiers": membershipTiers[]-> {
-    _id,
-    name,
-    tierLevel
   }
 }`
 
@@ -181,10 +219,9 @@ export const COURSE_BY_SLUG_QUERY = groq`*[_type == "course" && slug.current == 
 export const COURSES_BY_IDS_QUERY = groq`*[_type == "course" && _id in $ids] {
   _id,
   title,
-  slug,
-  coverImage,
-  price,
-  priceUSD,
+  "slug": slug.current,
+  ${coverImageProjection},
+  ${pricingProjection},
   status,
   published
 }`
@@ -198,11 +235,10 @@ export const FEATURED_COURSES_QUERY = groq`*[
 ] | order(displayOrder asc)[0...4] {
   _id,
   title,
-  slug,
+  "slug": slug.current,
   shortDescription,
-  coverImage,
-  price,
-  priceUSD,
+  ${coverImageProjection},
+  ${pricingProjection},
   difficulty,
   totalDuration,
   instructor
@@ -278,5 +314,137 @@ export const DISCOUNT_CODES_QUERY = groq`*[_type == "discountCode"] | order(_cre
   "appliesToCourses": appliesToCourses[]-> {
     _id,
     title
+  }
+}`
+
+// ============================================
+// Academia - Quizzes
+// ============================================
+
+// Quiz completo (con respuestas - para calificación)
+export const QUIZ_FULL_QUERY = groq`*[_type == "quiz" && _id == $id][0] {
+  _id,
+  title,
+  description,
+  passingScore,
+  maxAttempts,
+  retakeDelayHours,
+  timeLimit,
+  shuffleQuestions,
+  shuffleOptions,
+  showResultsImmediately,
+  "questions": questions[] {
+    text,
+    type,
+    options,
+    correctAnswer,
+    correctAnswers,
+    points,
+    explanation
+  }
+}`
+
+// Quiz para estudiante (sin respuestas correctas)
+export const QUIZ_FOR_STUDENT_QUERY = groq`*[_type == "quiz" && _id == $id][0] {
+  _id,
+  title,
+  description,
+  passingScore,
+  timeLimit,
+  shuffleQuestions,
+  shuffleOptions,
+  showResultsImmediately,
+  "questions": questions[] {
+    text,
+    type,
+    options,
+    points
+  }
+}`
+
+// Quiz info básica
+export const QUIZ_INFO_QUERY = groq`*[_type == "quiz" && _id == $id][0] {
+  _id,
+  title,
+  passingScore,
+  maxAttempts,
+  retakeDelayHours,
+  timeLimit,
+  "totalQuestions": count(questions)
+}`
+
+// ============================================
+// Academia - Certificados
+// ============================================
+
+// Plantilla de certificado por ID
+export const CERTIFICATE_TEMPLATE_QUERY = groq`*[_type == "certificate" && _id == $id][0] {
+  _id,
+  title,
+  certificateTitle,
+  issuerName,
+  issuerTitle,
+  "templateImageUrl": templateImage.asset->url,
+  "logoImageUrl": logoImage.asset->url,
+  "signatureImageUrl": signatureImage.asset->url,
+  primaryColor,
+  secondaryColor,
+  showCourseHours,
+  showCompletionDate,
+  showQRCode,
+  validityDuration,
+  customText
+}`
+
+// Curso con certificado y quiz final
+export const COURSE_WITH_CERTIFICATE_QUERY = groq`*[_type == "course" && _id == $id][0] {
+  _id,
+  title,
+  totalDuration,
+  instructor,
+  "certificate": certificate-> {
+    _id,
+    title,
+    certificateTitle,
+    issuerName,
+    issuerTitle,
+    "templateImageUrl": templateImage.asset->url,
+    "logoImageUrl": logoImage.asset->url,
+    "signatureImageUrl": signatureImage.asset->url,
+    primaryColor,
+    secondaryColor,
+    showCourseHours,
+    showCompletionDate,
+    showQRCode,
+    validityDuration,
+    customText
+  },
+  "finalQuiz": finalQuiz-> {
+    _id,
+    title,
+    passingScore
+  },
+  requiresFinalQuizToComplete
+}`
+
+// Curso con quiz/certificado básico (para player)
+export const COURSE_QUIZ_CERTIFICATE_INFO_QUERY = groq`*[_type == "course" && _id == $id][0] {
+  _id,
+  "hasCertificate": defined(certificate),
+  "finalQuizId": finalQuiz->._id,
+  requiresFinalQuizToComplete,
+  "certificateId": certificate->._id
+}`
+
+// Lección con quiz
+export const LESSON_WITH_QUIZ_QUERY = groq`*[_type == "courseLesson" && _id == $id][0] {
+  _id,
+  title,
+  "quizId": quiz->._id,
+  requiresQuizToComplete,
+  "quiz": quiz-> {
+    _id,
+    title,
+    passingScore
   }
 }`

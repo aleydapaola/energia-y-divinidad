@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { sendCancellationEmail } from '@/lib/email'
+import { cancelBooking } from '@/lib/services/booking-cancellation'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -29,133 +28,38 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
     const { reason } = body
 
-    // Obtener booking con usuario
-    const booking = await prisma.booking.findUnique({
-      where: { id },
-      include: {
-        user: {
-          select: { id: true, email: true, name: true, role: true }
-        }
-      }
+    // Usar el servicio de cancelación
+    const result = await cancelBooking({
+      bookingId: id,
+      cancelledBy: 'user',
+      requestingUserId: session.user.id,
+      reason,
     })
 
-    if (!booking) {
-      return NextResponse.json(
-        { error: 'Reserva no encontrada' },
-        { status: 404 }
-      )
-    }
-
-    // Verificar permisos
-    const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, email: true, name: true }
-    })
-
-    const isAdmin = currentUser?.role === 'ADMIN'
-    const isOwner = booking.userId === session.user.id
-
-    if (!isAdmin && !isOwner) {
-      return NextResponse.json(
-        { error: 'No tienes permiso para cancelar esta sesión' },
-        { status: 403 }
-      )
-    }
-
-    // Restricciones para clientes (no admins)
-    if (!isAdmin) {
-      // Mínimo 24h antes de la sesión
-      if (booking.scheduledAt) {
-        const hoursUntilSession = (booking.scheduledAt.getTime() - Date.now()) / (1000 * 60 * 60)
-        if (hoursUntilSession < 24) {
-          return NextResponse.json(
-            { error: 'Las cancelaciones deben hacerse con al menos 24 horas de anticipación. Contacta con Aleyda para casos especiales.' },
-            { status: 400 }
-          )
-        }
+    if (!result.success) {
+      const statusMap: Record<string, number> = {
+        NOT_FOUND: 404,
+        ALREADY_CANCELLED: 400,
+        UNAUTHORIZED: 403,
+        TOO_LATE: 400,
+        INVALID_STATUS: 400,
+        INTERNAL_ERROR: 500,
       }
-    }
-
-    // Solo se pueden cancelar sesiones CONFIRMED o PENDING
-    if (!['CONFIRMED', 'PENDING'].includes(booking.status)) {
       return NextResponse.json(
-        { error: `No se puede cancelar una sesión con estado: ${booking.status}` },
-        { status: 400 }
+        { error: result.error },
+        { status: statusMap[result.errorCode!] || 500 }
       )
-    }
-
-    // Si la sesión era parte de un pack, devolver la sesión al pack
-    let packCodeUpdated = false
-    if (booking.entitlementId) {
-      // Buscar si hay un pack redemption asociado
-      const redemption = await prisma.packRedemption.findUnique({
-        where: { bookingId: booking.id },
-        include: { packCode: true }
-      })
-
-      if (redemption && redemption.packCode.active) {
-        // Decrementar sesiones usadas del pack
-        await prisma.sessionPackCode.update({
-          where: { id: redemption.packCode.id },
-          data: {
-            sessionsUsed: { decrement: 1 }
-          }
-        })
-
-        // Eliminar el redemption
-        await prisma.packRedemption.delete({
-          where: { id: redemption.id }
-        })
-
-        packCodeUpdated = true
-      }
-    }
-
-    // Actualizar booking
-    const updatedBooking = await prisma.booking.update({
-      where: { id },
-      data: {
-        status: 'CANCELLED',
-        cancelledAt: new Date(),
-        cancellationReason: reason || (isAdmin ? 'Cancelada por administrador' : 'Cancelada por el cliente'),
-      },
-      include: {
-        user: {
-          select: { id: true, email: true, name: true }
-        }
-      }
-    })
-
-    // Enviar email de confirmación de cancelación
-    try {
-      await sendCancellationEmail({
-        email: booking.user.email,
-        name: booking.user.name || 'Querida alma',
-        sessionName: booking.resourceName,
-        scheduledDate: booking.scheduledAt,
-        cancelledBy: isAdmin ? 'admin' : 'client',
-        reason: reason,
-        packSessionReturned: packCodeUpdated,
-      })
-    } catch (emailError) {
-      console.error('Error enviando email de cancelación:', emailError)
-      // No fallar la operación si el email falla
     }
 
     return NextResponse.json({
       success: true,
-      booking: {
-        id: updatedBooking.id,
-        status: updatedBooking.status,
-        cancelledAt: updatedBooking.cancelledAt,
-      },
-      packSessionReturned: packCodeUpdated,
-      message: packCodeUpdated
-        ? 'Sesión cancelada. La sesión ha sido devuelta a tu pack.'
-        : 'Sesión cancelada exitosamente'
+      booking: result.booking,
+      packSessionReturned: result.refunded?.packSessions || false,
+      creditRefunded: result.refunded?.credits || false,
+      message: result.message,
     })
 
   } catch (error) {

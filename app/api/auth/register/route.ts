@@ -7,12 +7,20 @@ import { randomBytes } from 'crypto';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, password } = body;
+    const { name, email, password, acceptedTerms } = body;
 
     // Validación de campos requeridos
     if (!name || !email || !password) {
       return NextResponse.json(
         { error: 'Nombre, email y contraseña son requeridos' },
+        { status: 400 }
+      );
+    }
+
+    // Validación de aceptación de términos
+    if (!acceptedTerms) {
+      return NextResponse.json(
+        { error: 'Debes aceptar los Términos y Condiciones y la Política de Privacidad' },
         { status: 400 }
       );
     }
@@ -60,6 +68,9 @@ export async function POST(request: NextRequest) {
     // Hash de la contraseña
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    // Versión inicial de términos (se puede obtener de Sanity en el futuro)
+    const currentTermsVersion = '1.0';
+
     // Crear el usuario
     const user = await prisma.user.create({
       data: {
@@ -67,6 +78,8 @@ export async function POST(request: NextRequest) {
         email: email.toLowerCase(),
         password: hashedPassword,
         emailVerified: null, // No verificado aún
+        acceptedTermsVersion: currentTermsVersion,
+        acceptedTermsAt: new Date(),
       },
     });
 

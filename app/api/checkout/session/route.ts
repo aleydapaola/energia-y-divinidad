@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { stripe, getOrCreateStripeCustomer } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import { getSessionConfig } from '@/lib/sanity/queries/sessionConfig'
 import { getNequiMode, generateTransactionCode } from '@/lib/nequi'
@@ -10,7 +9,7 @@ interface CheckoutBody {
   sessionType: 'single' | 'pack'
   date?: string // ISO date string for single session
   time?: string // Time slot for single session
-  paymentMethod: 'nequi' | 'stripe' | 'paypal'
+  paymentMethod: 'nequi' | 'paypal' | 'epayco'
   region: 'colombia' | 'international'
 }
 
@@ -62,6 +61,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Pagos internacionales van por ePayco
+    if (region === 'international' && paymentMethod !== 'epayco' && paymentMethod !== 'paypal') {
+      return NextResponse.json(
+        { error: 'Para pagos internacionales usa tarjeta o PayPal (ePayco)' },
+        { status: 400 }
+      )
+    }
+
     // Get session config from Sanity (prices, duration, etc.)
     const sessionConfig = await getSessionConfig()
 
@@ -91,79 +98,13 @@ export async function POST(request: NextRequest) {
     )
 
     // Handle different payment methods
-    if (paymentMethod === 'stripe') {
-      // Stripe checkout for international payments
-      const customer = await getOrCreateStripeCustomer(
-        session.user.id,
-        session.user.email,
-        session.user.name || undefined
+    if (paymentMethod === 'epayco') {
+      // ePayco para pagos internacionales con tarjeta
+      // TODO: Implementar cuando esté listo el flujo de ePayco para sesiones
+      return NextResponse.json(
+        { error: 'Pago con tarjeta internacional en desarrollo. Por favor contacta por WhatsApp.' },
+        { status: 400 }
       )
-
-      const amountInCents = prices.USD * 100
-
-      // Determine success URL based on session type
-      const successUrl = sessionType === 'pack'
-        ? `${appUrl}/checkout/pack-success?session_id={CHECKOUT_SESSION_ID}`
-        : `${appUrl}/sesiones/confirmacion?session_id={CHECKOUT_SESSION_ID}&type=${sessionType}`
-
-      const checkoutSession = await stripe.checkout.sessions.create({
-        customer: customer.id,
-        mode: 'payment',
-        payment_method_types: ['card'],
-        line_items: [
-          {
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: productName,
-                description:
-                  sessionType === 'single'
-                    ? `Sesión programada para ${date} a las ${time}`
-                    : '8 sesiones de canalización (pagas 7, obtienes 8). Válido por 1 año.',
-              },
-              unit_amount: amountInCents,
-            },
-            quantity: 1,
-          },
-        ],
-        success_url: successUrl,
-        cancel_url: `${appUrl}/sesiones`,
-        metadata: {
-          userId: session.user.id,
-          userEmail: session.user.email,
-          userName: session.user.name || '',
-          sessionType,
-          date: date || '',
-          time: time || '',
-          productType: sessionType === 'pack' ? 'session_pack' : 'session',
-        },
-      })
-
-      // Create pending booking in database
-      await prisma.booking.create({
-        data: {
-          userId: session.user.id,
-          bookingType: 'SESSION_1_ON_1',
-          resourceId: 'session-flexible',
-          resourceName: productName,
-          scheduledAt: date ? new Date(`${date}T${time}:00`) : null,
-          duration: sessionConfig.duration || 90,
-          status: 'PENDING_PAYMENT',
-          amount: prices.USD,
-          currency: 'USD',
-          paymentMethod: 'STRIPE',
-          paymentStatus: 'PENDING',
-          stripeSessionId: checkoutSession.id,
-          sessionsTotal: sessionType === 'pack' ? 8 : 1,
-          sessionsRemaining: sessionType === 'pack' ? 8 : 1,
-        },
-      })
-
-      return NextResponse.json({
-        url: checkoutSession.url,
-        sessionId: checkoutSession.id,
-        paymentMethod: 'stripe',
-      })
     }
 
     if (paymentMethod === 'nequi') {

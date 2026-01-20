@@ -36,11 +36,26 @@ export default defineType({
           { title: 'Términos y Condiciones', value: 'terms' },
           { title: 'Política de Privacidad', value: 'privacy' },
           { title: 'Política de Cookies', value: 'cookies' },
+          { title: 'Aviso Legal', value: 'legal' },
           { title: 'Página Personalizada', value: 'custom' },
         ],
         layout: 'dropdown',
       },
       validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'version',
+      title: 'Versión del Documento',
+      type: 'string',
+      description: 'Versión del documento legal (ej: 1.0, 2.0). Usado para tracking de aceptación.',
+      hidden: ({ parent }) => !['terms', 'privacy', 'cookies', 'legal'].includes(parent?.pageType),
+    }),
+    defineField({
+      name: 'lastUpdated',
+      title: 'Última Actualización',
+      type: 'datetime',
+      description: 'Fecha de la última actualización del contenido legal.',
+      hidden: ({ parent }) => !['terms', 'privacy', 'cookies', 'legal'].includes(parent?.pageType),
     }),
     defineField({
       name: 'hero',
@@ -397,33 +412,14 @@ export default defineType({
     defineField({
       name: 'seo',
       title: 'SEO',
-      type: 'object',
-      fields: [
-        {
-          name: 'metaTitle',
-          title: 'Meta Título',
-          type: 'string',
-          validation: (Rule) => Rule.max(60),
-        },
-        {
-          name: 'metaDescription',
-          title: 'Meta Descripción',
-          type: 'text',
-          validation: (Rule) => Rule.max(160),
-        },
-        {
-          name: 'keywords',
-          title: 'Palabras Clave',
-          type: 'array',
-          of: [{ type: 'string' }],
-        },
-        {
-          name: 'ogImage',
-          title: 'Imagen para Redes Sociales',
-          type: 'image',
-          description: 'Imagen que aparece al compartir en redes sociales',
-        },
-      ],
+      type: 'seo',
+    }),
+    defineField({
+      name: 'keywords',
+      title: 'Palabras Clave (SEO)',
+      type: 'array',
+      of: [{ type: 'string' }],
+      description: 'Palabras clave adicionales para SEO',
     }),
     defineField({
       name: 'published',
@@ -450,6 +446,7 @@ export default defineType({
         terms: 'Términos',
         privacy: 'Privacidad',
         cookies: 'Cookies',
+        legal: 'Aviso Legal',
         custom: 'Personalizada',
       }
       let prefix = ''

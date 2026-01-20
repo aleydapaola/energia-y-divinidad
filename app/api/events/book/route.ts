@@ -3,51 +3,21 @@ import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { getEventById } from '@/lib/sanity/queries/events'
 import { auth } from '@/lib/auth'
-import { sendEventBookingConfirmation } from '@/lib/email'
-
-// Helper to generate order number: EVT-YYYYMMDD-XXXX
-function generateOrderNumber(): string {
-  const date = new Date()
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
-
-  return `EVT-${year}${month}${day}-${random}`
-}
-
-// Rate limiting simple (en producción usar Redis)
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now()
-  const windowMs = 60 * 1000 // 1 minuto
-  const maxRequests = 5
-
-  const record = rateLimitMap.get(ip)
-
-  if (!record || now > record.resetTime) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs })
-    return true
-  }
-
-  if (record.count >= maxRequests) {
-    return false
-  }
-
-  record.count++
-  return true
-}
+import { sendEventBookingConfirmation, sendWaitlistJoinedEmail } from '@/lib/email'
+import {
+  getAvailableSpots,
+  addToWaitlist,
+  getWaitlistEntry,
+} from '@/lib/events/seat-allocation'
+import { generateOrderNumber } from '@/lib/order-utils'
+import { applyRateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
     // Rate limiting
-    const ip = request.headers.get('x-forwarded-for') || 'unknown'
-    if (!checkRateLimit(ip)) {
-      return NextResponse.json(
-        { error: 'Demasiadas solicitudes. Intenta de nuevo en un minuto.' },
-        { status: 429 }
-      )
+    const rateLimitResponse = applyRateLimit(request, { maxRequests: 5, windowMs: 60_000 })
+    if (rateLimitResponse) {
+      return rateLimitResponse
     }
 
     const body = await request.json()
@@ -132,18 +102,84 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validar disponibilidad de cupos
-    if (event.capacity && event.availableSpots !== undefined) {
-      if (seats > event.availableSpots) {
-        return NextResponse.json(
-          { error: `Solo quedan ${event.availableSpots} cupos disponibles` },
-          { status: 400 }
-        )
+    // Validar disponibilidad de cupos usando el servicio de seat-allocation
+    const availableSpots = await getAvailableSpots(eventId)
+
+    if (availableSpots !== null && seats > availableSpots) {
+      // No hay suficientes cupos - ofrecer unirse a la lista de espera
+      // Solo si el usuario está autenticado
+      const session = await auth()
+
+      if (!session?.user?.id) {
+        return NextResponse.json({
+          success: false,
+          soldOut: true,
+          availableSpots,
+          error: 'No hay cupos disponibles. Inicia sesión para unirte a la lista de espera.',
+        }, { status: 200 })
+      }
+
+      // Verificar si ya está en la lista de espera
+      const existingEntry = await getWaitlistEntry(eventId, session.user.id)
+
+      if (existingEntry && ['WAITING', 'OFFER_PENDING'].includes(existingEntry.status)) {
+        return NextResponse.json({
+          success: false,
+          waitlist: true,
+          alreadyInWaitlist: true,
+          position: existingEntry.position,
+          status: existingEntry.status,
+          offerExpiresAt: existingEntry.offerExpiresAt,
+          message: existingEntry.status === 'OFFER_PENDING'
+            ? `¡Tienes una oferta pendiente! Acepta tu cupo antes de que expire.`
+            : `Ya estás en la lista de espera en posición ${existingEntry.position}`,
+        }, { status: 200 })
+      }
+
+      // Añadir a la lista de espera
+      try {
+        const waitlistEntry = await addToWaitlist({
+          eventId,
+          userId: session.user.id,
+          seatsRequested: seats,
+          userEmail: customerEmail,
+          userName: customerName,
+        })
+
+        // Enviar email de confirmación de waitlist
+        try {
+          await sendWaitlistJoinedEmail({
+            email: customerEmail,
+            name: customerName,
+            eventTitle: event.title,
+            eventDate: event.eventDate,
+            position: waitlistEntry.position,
+            seatsRequested: seats,
+          })
+        } catch (emailError) {
+          console.error('Error sending waitlist joined email:', emailError)
+        }
+
+        return NextResponse.json({
+          success: false,
+          waitlist: true,
+          position: waitlistEntry.position,
+          waitlistEntryId: waitlistEntry.id,
+          message: `Te has unido a la lista de espera en posición ${waitlistEntry.position}. Te notificaremos cuando haya un cupo disponible.`,
+        }, { status: 200 })
+      } catch (waitlistError) {
+        console.error('Error adding to waitlist:', waitlistError)
+        return NextResponse.json({
+          success: false,
+          soldOut: true,
+          availableSpots,
+          error: 'No hay cupos disponibles y no se pudo añadir a la lista de espera.',
+        }, { status: 400 })
       }
     }
 
-    // Verificar si requiere membresía
-    if (event.requiresMembership) {
+    // Verificar si requiere membresía (solo miembros pueden comprar)
+    if (event.memberOnlyPurchase) {
       const session = await auth()
       if (!session?.user?.email) {
         return NextResponse.json(
@@ -192,6 +228,8 @@ export async function POST(request: NextRequest) {
         paymentMethodEnum = 'WOMPI_NEQUI'
         break
       case 'stripe':
+        // LEGACY: Redirigir a ePayco para compatibilidad
+        console.warn('Payment method "stripe" is deprecated, mapping to EPAYCO_CARD')
         paymentMethodEnum = 'EPAYCO_CARD'
         break
       default:
@@ -273,7 +311,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generar número de orden
-    const orderNumber = generateOrderNumber()
+    const orderNumber = generateOrderNumber('EVT')
 
     // Crear orden y booking en transacción
     const result = await prisma.$transaction(async (tx) => {
@@ -309,6 +347,10 @@ export async function POST(request: NextRequest) {
           paymentMethod: paymentMethodEnum,
           paymentStatus: isFreeForMember ? 'COMPLETED' : 'PENDING',
           userNotes: notes || null,
+          metadata: {
+            seats,
+            customerPhone,
+          },
         },
       })
 
@@ -328,8 +370,30 @@ export async function POST(request: NextRequest) {
         },
       })
 
+      // Crear seat allocation para tracking de cupos
+      await tx.seatAllocation.create({
+        data: {
+          eventId,
+          bookingId: booking.id,
+          userId: user.id,
+          seats,
+          status: 'ACTIVE',
+        },
+      })
+
       return { order, booking }
     })
+
+    // Allocate perks if booking is confirmed (free for member)
+    if (result.booking.status === 'CONFIRMED') {
+      try {
+        const { allocatePerks } = await import('@/lib/events/perks')
+        await allocatePerks(result.booking.id)
+      } catch (perkError) {
+        console.error('Error allocating perks:', perkError)
+        // Don't fail booking if perk allocation fails
+      }
+    }
 
     // Enviar email de confirmación
     try {

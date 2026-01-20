@@ -1,4 +1,6 @@
 import { client } from '../client'
+import { sanityFetch } from '@/sanity/lib/fetch'
+import { mainImageProjection, seoProjection } from '@/sanity/lib/projections'
 
 // ==========================================
 // INTERFACES
@@ -90,19 +92,14 @@ export interface SessionConfig {
 }
 
 // Query fields
+// Usa proyecciones reutilizables para mainImage y seo
 const sessionConfigFields = `
   _id,
   _type,
   title,
   slug,
   description,
-  mainImage {
-    asset-> {
-      _ref,
-      url
-    },
-    alt
-  },
+  ${mainImageProjection},
   duration,
   deliveryMethod,
   price,
@@ -146,10 +143,7 @@ const sessionConfigFields = `
     type,
     required
   },
-  seo {
-    metaTitle,
-    metaDescription
-  },
+  ${seoProjection},
   status,
   published
 `
@@ -165,7 +159,7 @@ export async function getSessionConfig(): Promise<SessionConfig | null> {
   const query = `*[_type == "sessionConfig"][0] {
     ${sessionConfigFields}
   }`
-  return client.fetch(query)
+  return sanityFetch({ query, tags: ['session'] })
 }
 
 /**
@@ -175,7 +169,7 @@ export async function getActiveSession(): Promise<SessionConfig | null> {
   const query = `*[_type == "sessionConfig" && published == true && status == "active"][0] {
     ${sessionConfigFields}
   }`
-  return client.fetch(query)
+  return sanityFetch({ query, tags: ['session'] })
 }
 
 /**
@@ -187,7 +181,7 @@ export async function getHolidays(): Promise<Holiday[]> {
     name,
     recurring
   }`
-  const result = await client.fetch(query)
+  const result = await sanityFetch<Holiday[] | null>({ query, tags: ['session'] })
   return result || []
 }
 
@@ -200,7 +194,7 @@ export async function getBlockedDates(): Promise<BlockedDateRange[]> {
     endDate,
     reason
   }`
-  const result = await client.fetch(query)
+  const result = await sanityFetch<BlockedDateRange[] | null>({ query, tags: ['session'] })
   return result || []
 }
 
@@ -214,7 +208,7 @@ export async function getAvailableTimezones(): Promise<Timezone[]> {
     offsetHours,
     isDefault
   }`
-  const result = await client.fetch(query)
+  const result = await sanityFetch<Timezone[] | null>({ query, tags: ['session'] })
   return result || []
 }
 
@@ -231,7 +225,7 @@ export async function getWeeklySchedule(): Promise<WeeklySchedule | null> {
     saturday[] { start, end },
     sunday[] { start, end }
   }`
-  return client.fetch(query)
+  return sanityFetch({ query, tags: ['session'] })
 }
 
 // ==========================================

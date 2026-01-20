@@ -17,6 +17,9 @@ import {
   getTimeUntilEvent,
 } from '@/lib/sanity/queries/events'
 import { features } from '@/lib/config/features'
+import WaitlistButton from '@/components/eventos/WaitlistButton'
+import { EventPerksSection } from '@/components/eventos/EventPerksSection'
+import type { EventPerk } from '@/types/events'
 
 interface EventPageProps {
   params: Promise<{ slug: string }>
@@ -279,16 +282,26 @@ export default async function EventDetailPage({ params }: EventPageProps) {
 
               {/* CTA Button */}
               {!isCancelled && !isPast && (
-                <Link
-                  href={canBook ? `/eventos/${event.slug.current}/checkout` : '#'}
-                  className={`block w-full py-4 rounded-xl text-lg font-medium text-center transition-colors ${
-                    canBook
-                      ? 'bg-[#4944a4] text-white hover:bg-[#3d3a8a]'
-                      : 'bg-gray-300 text-gray-600 cursor-not-allowed pointer-events-none'
-                  }`}
-                >
-                  {isSoldOut ? 'Cupos Agotados' : 'Reservar mi Cupo'}
-                </Link>
+                <>
+                  {canBook ? (
+                    <Link
+                      href={`/eventos/${event.slug.current}/checkout`}
+                      className="block w-full py-4 rounded-xl text-lg font-medium text-center transition-colors bg-[#4944a4] text-white hover:bg-[#3d3a8a]"
+                    >
+                      Reservar mi Cupo
+                    </Link>
+                  ) : isSoldOut ? (
+                    <WaitlistButton
+                      eventId={event._id}
+                      eventTitle={event.title}
+                      maxSeats={event.maxPerBooking || 1}
+                    />
+                  ) : (
+                    <div className="bg-gray-300 text-gray-600 py-4 rounded-xl text-center text-lg font-medium cursor-not-allowed">
+                      No disponible
+                    </div>
+                  )}
+                </>
               )}
 
               {isPast && (
@@ -327,9 +340,14 @@ export default async function EventDetailPage({ params }: EventPageProps) {
         </div>
       </section>
 
+      {/* Event Perks */}
+      {event.perks && event.perks.length > 0 && (
+        <EventPerksSection perks={event.perks as EventPerk[]} />
+      )}
+
       {/* What's Included / What to Bring */}
       {(event.includes?.length || event.whatToBring?.length) && (
-        <section className="py-12 bg-[#f8f0f5]">
+        <section className="py-12 bg-white">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
               {(event.includes?.length ?? 0) > 0 && (
@@ -384,8 +402,8 @@ export default async function EventDetailPage({ params }: EventPageProps) {
         </section>
       )}
 
-      {/* Membership Required */}
-      {event.requiresMembership && (
+      {/* Membership Required (solo miembros pueden comprar) */}
+      {event.memberOnlyPurchase && (
         <section className="py-12 bg-[#eef1fa]">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto">

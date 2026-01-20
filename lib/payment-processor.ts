@@ -16,6 +16,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { createCourseEntitlement } from '@/lib/course-access'
+import { grantMonthlyCredits } from '@/lib/credits'
 import { recordDiscountUsage } from '@/lib/discount-codes'
 import { sendPaymentConfirmationEmail, sendAdminNotificationEmail } from '@/lib/email'
 import { randomBytes } from 'crypto'
@@ -278,6 +279,17 @@ async function createMembershipFromOrder(
     },
   })
 
+  // Grant initial monthly credits
+  try {
+    const creditsResult = await grantMonthlyCredits(userId, subscription.id)
+    if (creditsResult.granted > 0) {
+      console.log(`[PAYMENT-PROCESSOR] Granted ${creditsResult.granted} initial credits`)
+    }
+  } catch (error) {
+    // Don't fail subscription creation if credits fail
+    console.error('[PAYMENT-PROCESSOR] Error granting initial credits:', error)
+  }
+
   console.log(`[PAYMENT-PROCESSOR] Membresía creada: ${subscription.id} para usuario ${userId}`)
 
   return subscription
@@ -383,6 +395,16 @@ async function createEventBookingFromOrder(
       orderId: order.id,
     },
   })
+
+  // Allocate perks for the confirmed event booking
+  try {
+    const { allocatePerks } = await import('@/lib/events/perks')
+    await allocatePerks(booking.id)
+    console.log(`[PAYMENT-PROCESSOR] Perks allocated for event booking: ${booking.id}`)
+  } catch (perkError) {
+    // Don't fail booking if perk allocation fails
+    console.error('[PAYMENT-PROCESSOR] Error allocating perks:', perkError)
+  }
 
   console.log(`[PAYMENT-PROCESSOR] Entrada a evento confirmada: ${booking.id}`)
 

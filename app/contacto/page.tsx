@@ -226,7 +226,7 @@ export default async function ContactoPage() {
                   ¿Atienden a personas de otros países?
                 </h3>
                 <p className="font-dm-sans text-[#4A4A4A] leading-relaxed">
-                  Por supuesto. Las sesiones son online, por lo que puedo atenderte estés donde estés. Coordinaremos un horario que funcione para ambos según tu zona horaria. Los pagos internacionales se procesan en USD a través de Stripe o PayPal.
+                  Por supuesto. Las sesiones son online, por lo que puedo atenderte estés donde estés. Coordinaremos un horario que funcione para ambos según tu zona horaria. Los pagos internacionales se procesan en USD a través de PayPal.
                 </p>
               </div>
 

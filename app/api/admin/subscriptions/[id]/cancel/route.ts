@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { createAuditLog } from '@/lib/audit'
+import { cancelSubscription } from '@/lib/services/subscription-cancellation'
 
 export async function POST(
   request: NextRequest,
@@ -18,102 +18,44 @@ export async function POST(
     // Verificar rol de admin
     const currentUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { role: true },
+      select: { role: true, email: true },
     })
 
     if (currentUser?.role !== 'ADMIN') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
     const { reason, immediate = false } = body
 
-    const subscription = await prisma.subscription.findUnique({
-      where: { id },
-      include: {
-        user: { select: { id: true, email: true, name: true } },
-        entitlements: true,
-      },
+    // Usar el servicio de cancelación
+    const result = await cancelSubscription({
+      subscriptionId: id,
+      cancelledBy: 'admin',
+      requestingUserId: session.user.id,
+      requestingUserEmail: currentUser.email || session.user.email || undefined,
+      reason,
+      immediate,
+      revokeEntitlementsNow: immediate,
     })
 
-    if (!subscription) {
-      return NextResponse.json({ error: 'Suscripción no encontrada' }, { status: 404 })
-    }
-
-    if (subscription.status === 'CANCELLED') {
+    if (!result.success) {
+      const statusMap: Record<string, number> = {
+        NOT_FOUND: 404,
+        ALREADY_CANCELLED: 400,
+        NO_ACTIVE_SUBSCRIPTION: 400,
+        INTERNAL_ERROR: 500,
+      }
       return NextResponse.json(
-        { error: 'La suscripción ya está cancelada' },
-        { status: 400 }
+        { error: result.error },
+        { status: statusMap[result.errorCode!] || 500 }
       )
     }
 
-    const previousStatus = subscription.status
-    const now = new Date()
-
-    // Determinar nueva fecha de período según tipo de cancelación
-    const newPeriodEnd = immediate ? now : subscription.currentPeriodEnd
-
-    // Actualizar suscripción
-    const updatedSubscription = await prisma.subscription.update({
-      where: { id },
-      data: {
-        status: 'CANCELLED',
-        cancelledAt: now,
-        currentPeriodEnd: newPeriodEnd,
-      },
-    })
-
-    // Revocar entitlements si es cancelación inmediata
-    if (immediate && subscription.entitlements.length > 0) {
-      await prisma.entitlement.updateMany({
-        where: {
-          subscriptionId: id,
-          revoked: false,
-        },
-        data: {
-          revoked: true,
-          revokedAt: now,
-          revokedReason: reason || 'Cancelación administrativa de suscripción',
-        },
-      })
-    }
-
-    // Crear registro de auditoría
-    await createAuditLog({
-      actorId: session.user.id,
-      actorEmail: session.user.email!,
-      entityType: 'subscription',
-      entityId: id,
-      action: 'cancel',
-      before: {
-        status: previousStatus,
-        cancelledAt: null,
-      },
-      after: {
-        status: 'CANCELLED',
-        cancelledAt: now.toISOString(),
-        immediate,
-      },
-      reason: reason || 'Cancelación administrativa',
-      metadata: {
-        userId: subscription.userId,
-        userEmail: subscription.user.email,
-        membershipTier: subscription.membershipTierName,
-        immediate,
-      },
-    })
-
     return NextResponse.json({
       success: true,
-      message: immediate
-        ? 'Suscripción cancelada inmediatamente'
-        : 'Suscripción cancelada. El acceso continúa hasta el fin del período actual.',
-      subscription: {
-        id: updatedSubscription.id,
-        status: updatedSubscription.status,
-        cancelledAt: updatedSubscription.cancelledAt?.toISOString(),
-        currentPeriodEnd: updatedSubscription.currentPeriodEnd.toISOString(),
-      },
+      message: result.message,
+      subscription: result.subscription,
     })
   } catch (error) {
     console.error('Error cancelling subscription:', error)

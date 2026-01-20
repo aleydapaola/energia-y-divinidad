@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { stripe } from '@/lib/stripe'
 
 /**
- * GET /api/checkout/pack-code?session_id=xxx
- * Obtiene el código de pack asociado a una sesión de Stripe
+ * GET /api/checkout/pack-code?booking_id=xxx
+ * Obtiene el código de pack asociado a un booking
  */
 export async function GET(request: NextRequest) {
   try {
@@ -16,36 +15,26 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams
-    const sessionId = searchParams.get('session_id')
+    const bookingId = searchParams.get('booking_id')
 
-    if (!sessionId) {
+    if (!bookingId) {
       return NextResponse.json(
-        { error: 'Falta session_id' },
+        { error: 'Falta booking_id' },
         { status: 400 }
       )
     }
 
-    // Obtener la sesión de Stripe para verificar que pertenece al usuario
-    const stripeSession = await stripe.checkout.sessions.retrieve(sessionId)
-
-    if (!stripeSession || stripeSession.metadata?.userId !== session.user.id) {
-      return NextResponse.json(
-        { error: 'Sesión no encontrada o no autorizada' },
-        { status: 404 }
-      )
-    }
-
-    // Buscar el booking asociado
+    // Verificar que el booking pertenece al usuario
     const booking = await prisma.booking.findFirst({
       where: {
-        stripeSessionId: sessionId,
+        id: bookingId,
         userId: session.user.id,
       },
     })
 
     if (!booking) {
       return NextResponse.json(
-        { error: 'Reserva no encontrada' },
+        { error: 'Reserva no encontrada o no autorizada' },
         { status: 404 }
       )
     }
@@ -56,7 +45,6 @@ export async function GET(request: NextRequest) {
     })
 
     if (!packCode) {
-      // El código aún no se ha generado (puede estar procesándose)
       return NextResponse.json(
         { error: 'Código aún no generado. Revisa tu email en unos minutos.' },
         { status: 404 }

@@ -14,6 +14,7 @@ export default defineType({
     { name: 'pricing', title: 'Precios y Cupos' },
     { name: 'details', title: 'Detalles del Evento' },
     { name: 'membership', title: 'Membresía' },
+    { name: 'perks', title: 'Perks y Bonos' },
     { name: 'seo', title: 'SEO (Opcional)' },
   ],
 
@@ -64,20 +65,8 @@ export default defineType({
 📦 FORMATO: JPG o PNG
 📏 PESO MÁXIMO: 2 MB
 💡 CONSEJO: Usa imágenes luminosas y de alta calidad. Evita texto pequeño en la imagen.`,
-      type: 'image',
+      type: 'coverImage',
       group: 'basic',
-      options: {
-        hotspot: true,
-        accept: 'image/jpeg,image/png,image/webp',
-      },
-      fields: [
-        {
-          name: 'alt',
-          type: 'string',
-          title: 'Descripción de la imagen',
-          description: 'Describe brevemente qué muestra la imagen (para accesibilidad). Ej: "Mujer meditando en la naturaleza"',
-        },
-      ],
       validation: (Rule) => Rule.required().error('La imagen es obligatoria'),
     }),
     defineField({
@@ -273,32 +262,72 @@ export default defineType({
         },
         {
           name: 'availableUntil',
-          title: 'Disponible hasta',
+          title: 'Disponible hasta (global)',
           type: 'date',
-          description: 'Opcional - Fecha límite para ver la grabación',
+          description: 'Fecha límite global para ver la grabación (aplica a todos los usuarios)',
+        },
+        {
+          name: 'replayDurationDays',
+          title: 'Días de acceso por defecto',
+          type: 'number',
+          description: 'Días de acceso desde la fecha del evento para usuarios sin membresía. Ej: 14 = 2 semanas',
+          validation: (Rule) => Rule.min(0),
+          initialValue: 14,
+        },
+        {
+          name: 'replayByPlan',
+          title: 'Duración por Plan de Membresía',
+          type: 'array',
+          description: 'Días de acceso adicionales según el plan de membresía del usuario',
+          of: [
+            {
+              type: 'object',
+              fields: [
+                {
+                  name: 'tier',
+                  title: 'Plan de Membresía',
+                  type: 'reference',
+                  to: [{ type: 'membershipTier' }],
+                  validation: (Rule) => Rule.required(),
+                },
+                {
+                  name: 'durationDays',
+                  title: 'Días de Acceso',
+                  type: 'number',
+                  description: '0 = acceso permanente mientras la grabación exista',
+                  validation: (Rule) => Rule.min(0),
+                  initialValue: 30,
+                },
+              ],
+              preview: {
+                select: {
+                  tierName: 'tier.name',
+                  days: 'durationDays',
+                },
+                prepare({ tierName, days }) {
+                  return {
+                    title: tierName || 'Plan sin seleccionar',
+                    subtitle: days === 0 ? 'Acceso permanente' : `${days} días`,
+                  }
+                },
+              },
+            },
+          ],
         },
       ],
     }),
 
     // ============================================
-    // GRUPO: Precios y Cupos
+    // GRUPO: Precios y Cupos (usando objeto reutilizable)
     // ============================================
     defineField({
-      name: 'price',
-      title: 'Precio en Pesos (COP)',
-      description: 'Precio para pagos en Colombia. Ej: 150000',
-      type: 'number',
+      name: 'pricing',
+      title: 'Precios',
+      type: 'pricing',
       group: 'pricing',
-      validation: (Rule) => Rule.min(0),
     }),
-    defineField({
-      name: 'priceUSD',
-      title: 'Precio en Dólares (USD)',
-      description: 'Precio para pagos internacionales. Ej: 40',
-      type: 'number',
-      group: 'pricing',
-      validation: (Rule) => Rule.min(0),
-    }),
+
+    // --- Early Bird (específico de eventos) ---
     defineField({
       name: 'earlyBirdPrice',
       title: 'Precio Early Bird (COP)',
@@ -314,6 +343,24 @@ export default defineType({
       type: 'date',
       group: 'pricing',
       hidden: ({ parent }) => !parent?.earlyBirdPrice,
+    }),
+
+    // --- Campos legacy (ocultos, para compatibilidad) ---
+    defineField({
+      name: 'price',
+      title: 'Precio en Pesos (COP) [LEGACY]',
+      type: 'number',
+      group: 'pricing',
+      hidden: true,
+      deprecated: { reason: 'Usar el campo pricing en su lugar' },
+    }),
+    defineField({
+      name: 'priceUSD',
+      title: 'Precio en Dólares (USD) [LEGACY]',
+      type: 'number',
+      group: 'pricing',
+      hidden: true,
+      deprecated: { reason: 'Usar el campo pricing en su lugar' },
     }),
     defineField({
       name: 'capacity',
@@ -429,41 +476,152 @@ export default defineType({
     }),
 
     // ============================================
-    // GRUPO: Membresía
+    // GRUPO: Membresía (usando objeto reutilizable)
     // ============================================
     defineField({
+      name: 'membershipAccess',
+      title: 'Acceso por Membresía',
+      type: 'membershipAccess',
+      group: 'membership',
+    }),
+
+    // --- Campos legacy (ocultos, para compatibilidad) ---
+    defineField({
       name: 'includedInMembership',
-      title: '¿Incluido en Membresía?',
-      description: 'Si activas esto, los miembros pueden asistir sin pagar extra',
+      title: '¿Incluido en Membresía? [LEGACY]',
       type: 'boolean',
       group: 'membership',
-      initialValue: false,
+      hidden: true,
+      deprecated: { reason: 'Usar el campo membershipAccess en su lugar' },
     }),
     defineField({
       name: 'requiresMembership',
-      title: '¿Requiere Membresía?',
-      description: 'Si activas esto, SOLO los miembros pueden inscribirse',
+      title: '¿Requiere Membresía? [LEGACY]',
       type: 'boolean',
       group: 'membership',
-      initialValue: false,
+      hidden: true,
+      deprecated: { reason: 'Usar el campo membershipAccess en su lugar' },
     }),
     defineField({
       name: 'membershipTiers',
-      title: 'Niveles de Membresía Permitidos',
-      description: 'Selecciona qué niveles de membresía pueden acceder',
+      title: 'Niveles de Membresía [LEGACY]',
       type: 'array',
       group: 'membership',
       of: [{ type: 'reference', to: [{ type: 'membershipTier' }] }],
-      hidden: ({ parent }) => !parent?.requiresMembership,
+      hidden: true,
+      deprecated: { reason: 'Usar el campo membershipAccess en su lugar' },
     }),
     defineField({
       name: 'memberDiscount',
-      title: 'Descuento para Miembros (%)',
-      description: 'Opcional - Porcentaje de descuento para miembros (ej: 20 = 20% de descuento)',
+      title: 'Descuento para Miembros (%) [LEGACY]',
       type: 'number',
       group: 'membership',
-      validation: (Rule) => Rule.min(0).max(100),
-      hidden: ({ parent }) => parent?.includedInMembership,
+      hidden: true,
+      deprecated: { reason: 'Usar el campo pricing.memberDiscount en su lugar' },
+    }),
+
+    // ============================================
+    // GRUPO: Perks y Bonos
+    // ============================================
+    defineField({
+      name: 'perks',
+      title: 'Perks del Evento',
+      description: 'Bonos y beneficios adicionales para los asistentes',
+      type: 'array',
+      group: 'perks',
+      of: [
+        {
+          type: 'object',
+          name: 'eventPerk',
+          title: 'Perk',
+          fields: [
+            {
+              name: 'type',
+              title: 'Tipo de Perk',
+              type: 'string',
+              options: {
+                list: [
+                  { title: 'Grabación', value: 'recording' },
+                  { title: 'Transcripción', value: 'transcript' },
+                  { title: 'Workbook/Material', value: 'workbook' },
+                  { title: 'Meditación Bonus', value: 'bonus_meditation' },
+                  { title: 'Mensaje Personal', value: 'personal_message' },
+                  { title: 'Q&A Prioritario', value: 'priority_qa' },
+                ],
+                layout: 'dropdown',
+              },
+              validation: (Rule) => Rule.required(),
+            },
+            {
+              name: 'title',
+              title: 'Título',
+              type: 'string',
+              validation: (Rule) => Rule.required(),
+            },
+            {
+              name: 'description',
+              title: 'Descripción',
+              type: 'text',
+              rows: 2,
+            },
+            {
+              name: 'cap',
+              title: 'Cupos Limitados',
+              description: 'Dejar vacío para ilimitado',
+              type: 'number',
+              validation: (Rule) => Rule.min(1),
+            },
+            {
+              name: 'priorityPlans',
+              title: 'Planes con Acceso Garantizado',
+              description: 'Miembros de estos planes tienen acceso garantizado a este perk',
+              type: 'array',
+              of: [{ type: 'reference', to: [{ type: 'membershipTier' }] }],
+            },
+            {
+              name: 'deliveryMode',
+              title: 'Modo de Entrega',
+              type: 'string',
+              options: {
+                list: [
+                  { title: 'Automático (con confirmación)', value: 'automatic' },
+                  { title: 'Manual (admin entrega)', value: 'manual' },
+                  { title: 'Post-Evento', value: 'post_event' },
+                ],
+                layout: 'radio',
+              },
+              initialValue: 'automatic',
+            },
+            {
+              name: 'assetUrl',
+              title: 'URL del Recurso',
+              description: 'URL del archivo o recurso (si ya está disponible)',
+              type: 'url',
+            },
+          ],
+          preview: {
+            select: {
+              title: 'title',
+              type: 'type',
+              cap: 'cap',
+            },
+            prepare({ title, type, cap }: { title?: string; type?: string; cap?: number }) {
+              const typeLabels: Record<string, string> = {
+                recording: 'Grabación',
+                transcript: 'Transcripción',
+                workbook: 'Workbook',
+                bonus_meditation: 'Meditación',
+                personal_message: 'Mensaje',
+                priority_qa: 'Q&A',
+              }
+              return {
+                title: title || 'Sin título',
+                subtitle: `${typeLabels[type || ''] || type}${cap ? ` - ${cap} cupos` : ' - Ilimitado'}`,
+              }
+            },
+          },
+        },
+      ],
     }),
 
     // ============================================
@@ -473,29 +631,8 @@ export default defineType({
       name: 'seo',
       title: 'SEO',
       description: 'Opcional - Para mejorar cómo aparece en Google',
-      type: 'object',
+      type: 'seo',
       group: 'seo',
-      options: {
-        collapsible: true,
-        collapsed: true,
-      },
-      fields: [
-        {
-          name: 'metaTitle',
-          title: 'Título para Google',
-          description: 'Si lo dejas vacío, se usará el título del evento',
-          type: 'string',
-          validation: (Rule) => Rule.max(60).warning('Máximo 60 caracteres para mejor SEO'),
-        },
-        {
-          name: 'metaDescription',
-          title: 'Descripción para Google',
-          description: 'Breve descripción que aparecerá en los resultados de búsqueda',
-          type: 'text',
-          rows: 2,
-          validation: (Rule) => Rule.max(160).warning('Máximo 160 caracteres para mejor SEO'),
-        },
-      ],
     }),
   ],
 

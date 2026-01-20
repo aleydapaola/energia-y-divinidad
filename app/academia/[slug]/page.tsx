@@ -44,12 +44,12 @@ export async function generateStaticParams() {
   }
 
   try {
-    const courses = await sanityFetch<{ slug: { current: string } }[]>({
+    const courses = await sanityFetch<{ slug: string }[]>({
       query: COURSES_QUERY,
     })
 
     return (courses || []).map((course) => ({
-      slug: course.slug.current,
+      slug: course.slug,
     }))
   } catch {
     return []

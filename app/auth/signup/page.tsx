@@ -19,12 +19,14 @@ export default function SignUpPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    acceptedTerms: false,
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: type === "checkbox" ? checked : value,
     }))
     setError(null)
     setShowResendLink(false)
@@ -52,6 +54,10 @@ export default function SignUpPage() {
       setError("Las contraseñas no coinciden")
       return false
     }
+    if (!formData.acceptedTerms) {
+      setError("Debes aceptar los Términos y Condiciones y la Política de Privacidad")
+      return false
+    }
     return true
   }
 
@@ -71,6 +77,7 @@ export default function SignUpPage() {
           name: formData.name,
           email: formData.email,
           password: formData.password,
+          acceptedTerms: formData.acceptedTerms,
         }),
       })
 
@@ -227,6 +234,40 @@ export default function SignUpPage() {
               </div>
             </div>
 
+            {/* Terms acceptance checkbox */}
+            <div className="flex items-start gap-3">
+              <input
+                id="acceptedTerms"
+                name="acceptedTerms"
+                type="checkbox"
+                checked={formData.acceptedTerms}
+                onChange={handleChange}
+                disabled={isLoading}
+                className="mt-1 w-4 h-4 text-[#8A4BAF] border-gray-300 rounded focus:ring-[#8A4BAF]/20 focus:ring-2 cursor-pointer"
+              />
+              <label
+                htmlFor="acceptedTerms"
+                className="text-sm text-gray-600 font-dm-sans cursor-pointer"
+              >
+                He leído y acepto los{" "}
+                <Link
+                  href="/terminos"
+                  target="_blank"
+                  className="text-[#8A4BAF] hover:text-[#654177] underline"
+                >
+                  Términos y Condiciones
+                </Link>{" "}
+                y la{" "}
+                <Link
+                  href="/privacidad"
+                  target="_blank"
+                  className="text-[#8A4BAF] hover:text-[#654177] underline"
+                >
+                  Política de Privacidad
+                </Link>
+              </label>
+            </div>
+
             {/* Error message */}
             {error && (
               <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm font-dm-sans">
@@ -272,16 +313,6 @@ export default function SignUpPage() {
           </div>
         </div>
 
-        <p className="text-center text-sm text-gray-500 font-dm-sans">
-          Al registrarte, aceptas nuestros{" "}
-          <Link href="/terminos" className="text-[#8A4BAF] hover:underline">
-            Términos de Servicio
-          </Link>{" "}
-          y{" "}
-          <Link href="/privacidad" className="text-[#8A4BAF] hover:underline">
-            Política de Privacidad
-          </Link>
-        </p>
       </div>
     </div>
   )

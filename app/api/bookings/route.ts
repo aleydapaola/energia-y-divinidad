@@ -1,17 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
-
-// Helper to generate order number: ORD-YYYYMMDD-XXXX
-function generateOrderNumber(): string {
-  const date = new Date()
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
-
-  return `ORD-${year}${month}${day}-${random}`
-}
+import { generateOrderNumber } from '@/lib/order-utils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -121,6 +111,8 @@ export async function POST(request: NextRequest) {
         paymentMethodEnum = 'WOMPI_NEQUI'
         break
       case 'stripe':
+        // LEGACY: Redirigir a ePayco para compatibilidad
+        console.warn('Payment method "stripe" is deprecated, mapping to EPAYCO_CARD')
         paymentMethodEnum = 'EPAYCO_CARD'
         break
       default:
@@ -135,7 +127,7 @@ export async function POST(request: NextRequest) {
     const finalCurrency = country === 'colombia' ? 'COP' : 'USD'
 
     // Generate order number
-    const orderNumber = generateOrderNumber()
+    const orderNumber = generateOrderNumber('ORD')
 
     // Create order and booking in a transaction
     const result = await prisma.$transaction(async (tx) => {

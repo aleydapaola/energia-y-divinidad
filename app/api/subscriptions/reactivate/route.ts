@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { reactivateStripeSubscription } from '@/lib/stripe'
 import { createNequiSubscription } from '@/lib/nequi'
 
 /**
@@ -40,23 +39,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Reactivar según el proveedor
-    if (subscription.paymentProvider === 'stripe' && subscription.stripeSubscriptionId) {
-      // Remover flag de cancelación en Stripe
-      await reactivateStripeSubscription(subscription.stripeSubscriptionId)
-
-      // Actualizar en DB
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: {
-          cancelledAt: null,
-          status: 'ACTIVE',
+    if (subscription.paymentProvider === 'stripe') {
+      // LEGACY: Stripe ya no está soportado
+      // Las suscripciones de Stripe no se pueden reactivar automáticamente
+      return NextResponse.json(
+        {
+          error: 'Las suscripciones de Stripe no se pueden reactivar automáticamente. Por favor crea una nueva suscripción con Nequi o tarjeta.'
         },
-      })
-
-      return NextResponse.json({
-        success: true,
-        message: 'Tu suscripción ha sido reactivada exitosamente',
-      })
+        { status: 400 }
+      )
     } else if (subscription.paymentProvider === 'nequi') {
       // Para Nequi, necesitamos crear una nueva suscripción
       // porque una vez cancelada no se puede reactivar

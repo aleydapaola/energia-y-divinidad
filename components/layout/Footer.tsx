@@ -22,10 +22,10 @@ export function Footer() {
       { label: "Contacto", href: "/contacto" },
     ],
     legal: [
-      { label: "Política de privacidad", href: "/politica-de-privacidad" },
+      { label: "Política de Privacidad", href: "/privacidad" },
       { label: "Aviso Legal", href: "/aviso-legal" },
-      { label: "Política de Cookies", href: "/politica-de-cookies" },
-      { label: "Términos y Condiciones", href: "/terminos-y-condiciones" },
+      { label: "Política de Cookies", href: "/cookies" },
+      { label: "Términos y Condiciones", href: "/terminos" },
     ],
   }
 

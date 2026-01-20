@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Session } from '@/lib/sanity/queries/sessions'
-import { Mail, Phone, User, MapPin, CreditCard, AlertCircle, Smartphone, Loader2 } from 'lucide-react'
+import { Mail, Phone, User, MapPin, CreditCard, AlertCircle, Smartphone, Loader2, Coins, CheckCircle } from 'lucide-react'
 import type { PaymentMethodType } from '@/lib/membership-access'
 
 interface CheckoutFormProps {
@@ -33,6 +33,30 @@ export function CheckoutForm({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Credit payment state
+  const [payWithCredit, setPayWithCredit] = useState(false)
+  const [creditBalance, setCreditBalance] = useState<number>(0)
+  const [loadingCredits, setLoadingCredits] = useState(true)
+
+  // Fetch credit balance on mount
+  useEffect(() => {
+    async function fetchCredits() {
+      try {
+        const response = await fetch('/api/credits/balance')
+        if (response.ok) {
+          const data = await response.json()
+          setCreditBalance(data.balance.available || 0)
+        }
+      } catch (error) {
+        console.error('Error fetching credits:', error)
+      } finally {
+        setLoadingCredits(false)
+      }
+    }
+
+    fetchCredits()
+  }, [])
+
   // Auto-select recommended method when country is selected
   const handleCountryChange = (selectedCountry: Country) => {
     setCountry(selectedCountry)
@@ -58,26 +82,29 @@ export function CheckoutForm({
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!country) {
-      newErrors.country = 'Debes seleccionar tu país'
-    }
+    // Skip country/payment validation when using credits
+    if (!payWithCredit) {
+      if (!country) {
+        newErrors.country = 'Debes seleccionar tu país'
+      }
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'El nombre es obligatorio'
-    }
+      if (!paymentMethod) {
+        newErrors.paymentMethod = 'Debes seleccionar un método de pago'
+      }
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'El email es obligatorio'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email inválido'
-    }
+      if (!formData.name.trim()) {
+        newErrors.name = 'El nombre es obligatorio'
+      }
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'El teléfono es obligatorio'
-    }
+      if (!formData.email.trim()) {
+        newErrors.email = 'El email es obligatorio'
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        newErrors.email = 'Email inválido'
+      }
 
-    if (!paymentMethod) {
-      newErrors.paymentMethod = 'Debes seleccionar un método de pago'
+      if (!formData.phone.trim()) {
+        newErrors.phone = 'El teléfono es obligatorio'
+      }
     }
 
     setErrors(newErrors)
@@ -94,6 +121,29 @@ export function CheckoutForm({
     setIsSubmitting(true)
 
     try {
+      // Handle credit payment
+      if (payWithCredit) {
+        const response = await fetch('/api/sessions/book-with-credit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionSlug: session.slug.current,
+            scheduledAt: scheduledDateTime.toISOString(),
+          }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Error al reservar con crédito')
+        }
+
+        // Redirect to confirmation page
+        router.push(`/pago/confirmacion?bookingId=${data.booking.id}&credit=true`)
+        return
+      }
+
+      // Regular payment flow
       const currency = country === 'colombia' ? 'COP' : 'USD'
       const amount = country === 'colombia' ? session.price : session.priceUSD
 
@@ -177,7 +227,56 @@ export function CheckoutForm({
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Country Selection - MANDATORY */}
+        {/* Credit Payment Option - Only show if user has credits */}
+        {!loadingCredits && creditBalance > 0 && (
+          <div
+            className={`rounded-lg p-4 border-2 transition-all cursor-pointer ${
+              payWithCredit
+                ? 'bg-gradient-to-br from-[#8A4BAF]/10 to-[#654177]/10 border-[#8A4BAF]'
+                : 'bg-gray-50 border-gray-200 hover:border-[#8A4BAF]/30'
+            }`}
+            onClick={() => setPayWithCredit(!payWithCredit)}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    payWithCredit ? 'bg-[#8A4BAF] text-white' : 'bg-gray-200 text-gray-600'
+                  }`}
+                >
+                  <Coins className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-dm-sans font-medium text-gray-900">
+                    Usar crédito de membresía
+                  </p>
+                  <p className="text-sm text-gray-500 font-dm-sans">
+                    Tienes {creditBalance} {creditBalance === 1 ? 'crédito disponible' : 'créditos disponibles'}
+                  </p>
+                </div>
+              </div>
+              <div
+                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                  payWithCredit
+                    ? 'bg-[#8A4BAF] border-[#8A4BAF]'
+                    : 'border-gray-300 bg-white'
+                }`}
+              >
+                {payWithCredit && <CheckCircle className="w-4 h-4 text-white" />}
+              </div>
+            </div>
+            {payWithCredit && (
+              <div className="mt-3 pt-3 border-t border-[#8A4BAF]/20">
+                <p className="text-sm text-[#654177] font-dm-sans">
+                  Tu reserva se confirmará inmediatamente sin necesidad de pago adicional.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Country Selection - Only show if not paying with credit */}
+        {!payWithCredit && (
         <div>
           <label className="block text-sm font-medium text-[#654177] mb-3">
             País <span className="text-red-500">*</span>
@@ -220,9 +319,10 @@ export function CheckoutForm({
             </p>
           )}
         </div>
+        )}
 
         {/* Payment Method Selection */}
-        {country && (
+        {!payWithCredit && country && (
           <div className="bg-[#eef1fa] rounded-lg p-4">
             <label className="block text-sm font-medium text-[#654177] mb-3">
               Método de Pago <span className="text-red-500">*</span>
@@ -269,7 +369,8 @@ export function CheckoutForm({
           </div>
         )}
 
-        {/* Contact Information */}
+        {/* Contact Information - Only show if not paying with credit */}
+        {!payWithCredit && (
         <div className="space-y-4">
           <h3 className="font-gazeta text-lg text-[#8A4BAF]">
             Información de Contacto
@@ -362,6 +463,7 @@ export function CheckoutForm({
             />
           </div>
         </div>
+        )}
 
         {/* Summary */}
         <div className="bg-[#f8f0f5] rounded-lg p-4 space-y-2">
@@ -379,12 +481,23 @@ export function CheckoutForm({
           </div>
           <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-200">
             <span className="font-dm-sans text-gray-600">Total a pagar:</span>
+            {payWithCredit ? (
+              <div className="text-right">
+                <span className="font-dm-sans font-bold text-[#8A4BAF] text-lg">
+                  1 crédito
+                </span>
+                <p className="text-xs text-gray-500 line-through">
+                  ${session.price.toLocaleString('es-CO')} COP
+                </p>
+              </div>
+            ) : (
             <span className="font-dm-sans font-bold text-[#8A4BAF] text-lg">
               {country === 'colombia'
                 ? `$${session.price.toLocaleString('es-CO')} COP`
                 : `$${session.priceUSD || session.price} USD`
               }
             </span>
+            )}
           </div>
         </div>
 
@@ -399,9 +512,9 @@ export function CheckoutForm({
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={isSubmitting || !country || !paymentMethod}
+          disabled={isSubmitting || (!payWithCredit && (!country || !paymentMethod))}
           className={`w-full py-4 rounded-lg font-dm-sans text-lg font-semibold transition-all ${
-            isSubmitting || !country || !paymentMethod
+            isSubmitting || (!payWithCredit && (!country || !paymentMethod))
               ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
               : 'bg-[#4944a4] text-white hover:bg-[#3d3a8a] shadow-md hover:shadow-lg'
           }`}
@@ -411,6 +524,8 @@ export function CheckoutForm({
               <Loader2 className="w-5 h-5 animate-spin" />
               Procesando...
             </span>
+          ) : payWithCredit ? (
+            'Reservar con Crédito'
           ) : (
             'Continuar al Pago'
           )}

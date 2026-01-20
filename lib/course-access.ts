@@ -18,6 +18,30 @@ export interface CourseAccessResult {
   }
 }
 
+// Drip Content Types
+export type DripMode = 'immediate' | 'offset' | 'fixed'
+
+export interface LessonWithDrip {
+  _id: string
+  order?: number
+  isFreePreview?: boolean
+  dripMode?: DripMode
+  dripOffsetDays?: number
+  availableAt?: string
+}
+
+export interface CourseWithDrip {
+  _id: string
+  dripEnabled?: boolean
+  defaultDripDays?: number
+}
+
+export interface LessonAccessResult {
+  canAccess: boolean
+  reason: 'available' | 'drip_locked' | 'module_locked' | 'no_course_access' | 'free_preview'
+  availableAt?: Date
+}
+
 export interface CourseWithProgress {
   courseId: string
   courseTitle: string
@@ -374,4 +398,140 @@ export async function getLessonProgress(
   }
 
   return progressMap
+}
+
+/**
+ * Calculate drip availability date for a lesson
+ */
+export function calculateDripAvailability(
+  lesson: LessonWithDrip,
+  course: CourseWithDrip,
+  startedAt: Date,
+  globalLessonIndex: number
+): Date | null {
+  // If drip is not enabled, lesson is immediately available
+  if (!course.dripEnabled) {
+    return null
+  }
+
+  const dripMode = lesson.dripMode || 'immediate'
+
+  switch (dripMode) {
+    case 'immediate':
+      return null
+
+    case 'fixed':
+      if (lesson.availableAt) {
+        return new Date(lesson.availableAt)
+      }
+      return null
+
+    case 'offset':
+      if (lesson.dripOffsetDays !== undefined && lesson.dripOffsetDays !== null) {
+        const availableDate = new Date(startedAt)
+        availableDate.setDate(availableDate.getDate() + lesson.dripOffsetDays)
+        return availableDate
+      }
+      // Fallback to default drip days based on lesson order
+      if (course.defaultDripDays) {
+        const availableDate = new Date(startedAt)
+        availableDate.setDate(availableDate.getDate() + course.defaultDripDays * globalLessonIndex)
+        return availableDate
+      }
+      return null
+
+    default:
+      // If no dripMode is set but drip is enabled, use default days
+      if (course.defaultDripDays) {
+        const availableDate = new Date(startedAt)
+        availableDate.setDate(availableDate.getDate() + course.defaultDripDays * globalLessonIndex)
+        return availableDate
+      }
+      return null
+  }
+}
+
+/**
+ * Check if a user can access a specific lesson
+ * Takes into account drip content, module unlock dates, and course access
+ */
+export async function canAccessLesson(
+  userId: string | null,
+  courseId: string,
+  lesson: LessonWithDrip,
+  course: CourseWithDrip,
+  moduleUnlockDate?: string | null,
+  globalLessonIndex: number = 0
+): Promise<LessonAccessResult> {
+  // 1. Free preview lessons are always accessible
+  if (lesson.isFreePreview) {
+    return { canAccess: true, reason: 'free_preview' }
+  }
+
+  // 2. Check course access (requires userId)
+  if (!userId) {
+    return { canAccess: false, reason: 'no_course_access' }
+  }
+
+  const courseAccess = await canAccessCourse(userId, courseId)
+  if (!courseAccess.hasAccess) {
+    return { canAccess: false, reason: 'no_course_access' }
+  }
+
+  // 3. Check module unlock date
+  if (moduleUnlockDate) {
+    const unlockDate = new Date(moduleUnlockDate)
+    if (unlockDate > new Date()) {
+      return { canAccess: false, reason: 'module_locked', availableAt: unlockDate }
+    }
+  }
+
+  // 4. Check drip content
+  if (!course.dripEnabled) {
+    return { canAccess: true, reason: 'available' }
+  }
+
+  // Get user's course progress to determine startedAt
+  const courseProgress = await prisma.courseProgress.findUnique({
+    where: {
+      userId_courseId: { userId, courseId },
+    },
+    select: {
+      startedAt: true,
+    },
+  })
+
+  // If no progress exists, create one and use current date as startedAt
+  const startedAt = courseProgress?.startedAt || new Date()
+
+  // Calculate availability
+  const availableAt = calculateDripAvailability(lesson, course, startedAt, globalLessonIndex)
+
+  if (availableAt && availableAt > new Date()) {
+    return { canAccess: false, reason: 'drip_locked', availableAt }
+  }
+
+  return { canAccess: true, reason: 'available' }
+}
+
+/**
+ * Get user's course start date (or create progress if not exists)
+ */
+export async function getCourseStartDate(userId: string, courseId: string): Promise<Date> {
+  const courseProgress = await prisma.courseProgress.upsert({
+    where: {
+      userId_courseId: { userId, courseId },
+    },
+    create: {
+      userId,
+      courseId,
+      completionPercentage: 0,
+    },
+    update: {},
+    select: {
+      startedAt: true,
+    },
+  })
+
+  return courseProgress.startedAt
 }

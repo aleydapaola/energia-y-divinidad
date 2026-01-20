@@ -1,4 +1,6 @@
 import { client } from '../client'
+import { sanityFetch } from '@/sanity/lib/fetch'
+import { coverImageProjection, seoProjection } from '@/sanity/lib/projections'
 
 // Interface para Free Content
 export interface FreeContent {
@@ -42,6 +44,7 @@ export interface FreeContent {
 }
 
 // Query base para campos comunes
+// Usa proyecciones reutilizables para coverImage y seo
 const freeContentFields = `
   _id,
   _type,
@@ -50,13 +53,7 @@ const freeContentFields = `
   contentType,
   description,
   extendedDescription,
-  coverImage {
-    asset-> {
-      _ref,
-      url
-    },
-    alt
-  },
+  ${coverImageProjection},
   videoUrl,
   audioFile {
     asset-> {
@@ -74,7 +71,7 @@ const freeContentFields = `
   downloadable,
   displayOrder,
   viewCount,
-  seo
+  ${seoProjection}
 `
 
 /**
@@ -88,7 +85,7 @@ export async function getAllFreeContent(): Promise<FreeContent[]> {
     }
   `
 
-  return await client.fetch(query)
+  return sanityFetch({ query, tags: ['free-content'] })
 }
 
 /**
@@ -102,7 +99,7 @@ export async function getFeaturedFreeContent(limit: number = 3): Promise<FreeCon
     }
   `
 
-  return await client.fetch(query)
+  return sanityFetch({ query, tags: ['free-content'] })
 }
 
 /**
@@ -115,7 +112,7 @@ export async function getFreeContentBySlug(slug: string): Promise<FreeContent | 
     }
   `
 
-  return await client.fetch(query, { slug })
+  return sanityFetch({ query, params: { slug }, tags: ['free-content'] })
 }
 
 /**
@@ -131,7 +128,7 @@ export async function getFreeContentByType(
     }
   `
 
-  return await client.fetch(query, { contentType })
+  return sanityFetch({ query, params: { contentType }, tags: ['free-content'] })
 }
 
 /**
@@ -152,7 +149,7 @@ export async function getFreeContentByTopic(topic: string): Promise<FreeContent[
     }
   `
 
-  return await client.fetch(query, { topic })
+  return sanityFetch({ query, params: { topic }, tags: ['free-content'] })
 }
 
 /**
@@ -163,7 +160,7 @@ export async function getAllFreeContentTopics(): Promise<string[]> {
     *[_type == "freeContent" && published == true].topics[] | unique
   `
 
-  return await client.fetch(query)
+  return sanityFetch({ query, tags: ['free-content'] })
 }
 
 /**
@@ -182,7 +179,7 @@ export async function getRelatedFreeContent(
         ${freeContentFields}
       }
     `
-    return await client.fetch(query, { currentSlug })
+    return sanityFetch({ query, params: { currentSlug }, tags: ['free-content'] })
   }
 
   const query = `
@@ -191,7 +188,7 @@ export async function getRelatedFreeContent(
     }
   `
 
-  return await client.fetch(query, { currentSlug, topics })
+  return sanityFetch({ query, params: { currentSlug, topics }, tags: ['free-content'] })
 }
 
 /**

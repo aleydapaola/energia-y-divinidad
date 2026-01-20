@@ -17,6 +17,7 @@ interface Lesson {
 interface Module {
   _id: string
   title: string
+  unlockDate?: string
   lessons: Lesson[]
 }
 
@@ -26,10 +27,13 @@ interface CoursePlayerClientProps {
     title: string
     slug: { current: string }
     courseType: 'simple' | 'modular'
+    dripEnabled?: boolean
+    defaultDripDays?: number
   }
   modules: Module[]
   initialLesson: Lesson
   userId: string
+  startedAt?: Date
 }
 
 interface Progress {
@@ -42,6 +46,7 @@ export function CoursePlayerClient({
   modules,
   initialLesson,
   userId,
+  startedAt,
 }: CoursePlayerClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -201,6 +206,9 @@ export function CoursePlayerClient({
       onLessonComplete={handleLessonComplete}
       onLessonSelect={handleLessonSelect}
       onProgressUpdate={handleProgressUpdate}
+      dripEnabled={course.dripEnabled}
+      defaultDripDays={course.defaultDripDays}
+      startedAt={startedAt ? new Date(startedAt) : undefined}
     />
   )
 }

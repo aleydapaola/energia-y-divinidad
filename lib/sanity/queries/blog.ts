@@ -1,5 +1,6 @@
 import { groq } from 'next-sanity'
-import { client } from '@/sanity/lib/client'
+import { sanityFetch } from '@/sanity/lib/fetch'
+import { mainImageProjection, seoProjection } from '@/sanity/lib/projections'
 
 // Types
 export interface BlogPost {
@@ -126,20 +127,14 @@ export interface PortableTextBlock {
 }
 
 // GROQ Queries
+// Usa proyecciones reutilizables para mainImage y seo
 export const BLOG_POSTS_QUERY = groq`
   *[_type == "blogPost" && published == true] | order(publishedAt desc) {
     _id,
     title,
     slug,
     excerpt,
-    "mainImage": mainImage {
-      asset-> {
-        _id,
-        url
-      },
-      alt,
-      caption
-    },
+    ${mainImageProjection},
     categories,
     readingTime,
     publishedAt,
@@ -154,14 +149,7 @@ export const BLOG_POSTS_BY_CATEGORY_QUERY = groq`
     title,
     slug,
     excerpt,
-    "mainImage": mainImage {
-      asset-> {
-        _id,
-        url
-      },
-      alt,
-      caption
-    },
+    ${mainImageProjection},
     categories,
     readingTime,
     publishedAt,
@@ -185,14 +173,7 @@ export const BLOG_POST_BY_SLUG_QUERY = groq`
       }
     },
     excerpt,
-    "mainImage": mainImage {
-      asset-> {
-        _id,
-        url
-      },
-      alt,
-      caption
-    },
+    ${mainImageProjection},
     categories,
     tags,
     content[] {
@@ -224,12 +205,7 @@ export const BLOG_POST_BY_SLUG_QUERY = groq`
       title,
       slug,
       excerpt,
-      "mainImage": mainImage {
-        asset-> {
-          url
-        },
-        alt
-      },
+      ${mainImageProjection},
       publishedAt,
       categories,
       readingTime,
@@ -240,30 +216,20 @@ export const BLOG_POST_BY_SLUG_QUERY = groq`
       title,
       slug,
       shortDescription,
-      "mainImage": mainImage {
-        asset-> {
-          url
-        },
-        alt
-      }
+      ${mainImageProjection}
     },
     "relatedEvents": relatedEvents[]-> {
       _id,
       title,
       slug,
       excerpt,
-      "mainImage": mainImage {
-        asset-> {
-          url
-        },
-        alt
-      },
+      ${mainImageProjection},
       eventDate
     },
     publishedAt,
     updatedAt,
     featured,
-    seo,
+    ${seoProjection},
     published
   }
 `
@@ -274,14 +240,7 @@ export const FEATURED_BLOG_POSTS_QUERY = groq`
     title,
     slug,
     excerpt,
-    "mainImage": mainImage {
-      asset-> {
-        _id,
-        url
-      },
-      alt,
-      caption
-    },
+    ${mainImageProjection},
     categories,
     readingTime,
     publishedAt,
@@ -296,14 +255,7 @@ export const LATEST_BLOG_POSTS_QUERY = groq`
     title,
     slug,
     excerpt,
-    "mainImage": mainImage {
-      asset-> {
-        _id,
-        url
-      },
-      alt,
-      caption
-    },
+    ${mainImageProjection},
     categories,
     readingTime,
     publishedAt,
@@ -314,23 +266,23 @@ export const LATEST_BLOG_POSTS_QUERY = groq`
 
 // Fetch functions
 export async function getBlogPosts(): Promise<BlogPostPreview[]> {
-  return client.fetch(BLOG_POSTS_QUERY)
+  return sanityFetch({ query: BLOG_POSTS_QUERY, tags: ['blog'] })
 }
 
 export async function getBlogPostsByCategory(category: string): Promise<BlogPostPreview[]> {
-  return client.fetch(BLOG_POSTS_BY_CATEGORY_QUERY, { category })
+  return sanityFetch({ query: BLOG_POSTS_BY_CATEGORY_QUERY, params: { category }, tags: ['blog'] })
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
-  return client.fetch(BLOG_POST_BY_SLUG_QUERY, { slug })
+  return sanityFetch({ query: BLOG_POST_BY_SLUG_QUERY, params: { slug }, tags: ['blog'] })
 }
 
 export async function getFeaturedBlogPosts(): Promise<BlogPostPreview[]> {
-  return client.fetch(FEATURED_BLOG_POSTS_QUERY)
+  return sanityFetch({ query: FEATURED_BLOG_POSTS_QUERY, tags: ['blog'] })
 }
 
 export async function getLatestBlogPosts(limit: number = 6): Promise<BlogPostPreview[]> {
-  return client.fetch(LATEST_BLOG_POSTS_QUERY, { limit })
+  return sanityFetch({ query: LATEST_BLOG_POSTS_QUERY, params: { limit }, tags: ['blog'] })
 }
 
 // Get all unique categories from published posts
@@ -339,7 +291,7 @@ export const BLOG_CATEGORIES_QUERY = groq`
 `
 
 export async function getBlogCategories(): Promise<string[]> {
-  const categories = await client.fetch<string[]>(BLOG_CATEGORIES_QUERY)
+  const categories = await sanityFetch<string[]>({ query: BLOG_CATEGORIES_QUERY, tags: ['blog'] })
   // Remove duplicates and nulls
   return [...new Set(categories.filter(Boolean))]
 }

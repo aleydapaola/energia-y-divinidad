@@ -1379,6 +1379,199 @@ ${message}
 }
 
 // ============================================
+// EMAILS DE CONFIRMACIÓN DE RESERVA (CRÉDITOS)
+// ============================================
+
+interface SendBookingConfirmationEmailParams {
+  email: string;
+  name: string;
+  sessionName: string;
+  scheduledAt: Date;
+  duration: number;
+  deliveryMethod: string;
+  bookingId: string;
+  paidWithCredit?: boolean;
+}
+
+export async function sendBookingConfirmationEmail(params: SendBookingConfirmationEmailParams) {
+  const {
+    email,
+    name,
+    sessionName,
+    scheduledAt,
+    duration,
+    deliveryMethod,
+    bookingId,
+    paidWithCredit,
+  } = params;
+
+  const formattedDate = scheduledAt.toLocaleDateString('es-CO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const paymentNote = paidWithCredit
+    ? '✨ Esta sesión fue reservada con un crédito de tu membresía.'
+    : '';
+
+  if (DEV_MODE) {
+    console.log('\n========================================');
+    console.log('📧 EMAIL DE CONFIRMACIÓN DE RESERVA (Modo Desarrollo)');
+    console.log('========================================');
+    console.log(`Para: ${email}`);
+    console.log(`Nombre: ${name}`);
+    console.log(`Sesión: ${sessionName}`);
+    console.log(`Fecha: ${formattedDate}`);
+    console.log(`Duración: ${duration} minutos`);
+    console.log(`Método: ${deliveryMethod}`);
+    console.log(`ID Reserva: ${bookingId}`);
+    if (paidWithCredit) console.log(`Pagado con crédito: Sí`);
+    console.log('========================================\n');
+
+    if (DEV_AUTO_VERIFY) {
+      return { success: true, data: { id: 'dev-mode-simulated' } };
+    }
+  }
+
+  try {
+    const { data, error } = await getResendClient().emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: `¡Sesión confirmada! ${sessionName} - Energía y Divinidad`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Reserva Confirmada</title>
+          </head>
+          <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f0f5;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td align="center" style="padding: 40px 20px;">
+                  <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
+                    <!-- Header with Logo -->
+                    <tr>
+                      <td align="center" style="padding: 30px 0;">
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
+                      </td>
+                    </tr>
+
+                    <!-- Main Content -->
+                    <tr>
+                      <td style="background-color: #ffffff; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px rgba(138, 75, 175, 0.1);">
+                        <!-- Status Badge -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td align="center" style="padding-bottom: 20px;">
+                              <span style="display: inline-block; padding: 8px 20px; background-color: #d1fae5; color: #065f46; border-radius: 20px; font-size: 14px; font-weight: 600;">
+                                ✅ Reserva Confirmada
+                              </span>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <h2 style="margin: 0 0 20px; font-size: 24px; color: #654177; font-weight: 600;">
+                          ¡Hola ${name}!
+                        </h2>
+                        <p style="margin: 0 0 20px; font-size: 16px; color: #666666; line-height: 1.6;">
+                          Tu sesión ha sido confirmada. Nos vemos pronto.
+                        </p>
+
+                        <!-- Session Details -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f8f0f5; border-radius: 12px; margin-bottom: 20px;">
+                          <tr>
+                            <td style="padding: 20px;">
+                              <h3 style="margin: 0 0 15px; font-size: 18px; color: #8A4BAF;">
+                                ${sessionName}
+                              </h3>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177;">
+                                📅 <strong>Fecha:</strong> ${formattedDate}
+                              </p>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177;">
+                                ⏱️ <strong>Duración:</strong> ${duration} minutos
+                              </p>
+                              <p style="margin: 0; font-size: 14px; color: #654177;">
+                                📍 <strong>Modalidad:</strong> ${deliveryMethod}
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+
+                        ${paidWithCredit ? `
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                          <tr>
+                            <td style="padding: 15px; background-color: #ede9fe; border-radius: 8px;">
+                              <p style="margin: 0; font-size: 14px; color: #5b21b6;">
+                                ${paymentNote}
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+                        ` : ''}
+
+                        <p style="margin: 0 0 10px; font-size: 14px; color: #999999; line-height: 1.6;">
+                          <strong>ID de reserva:</strong> ${bookingId}
+                        </p>
+
+                        <!-- CTA Button -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td align="center" style="padding: 30px 0;">
+                              <a href="${APP_URL}/mi-cuenta" style="display: inline-block; padding: 16px 40px; background-color: #4944a4; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                                Ver mis reservas
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <p style="margin: 0; font-size: 14px; color: #999999; line-height: 1.6; text-align: center;">
+                          Con amor y luz,<br>
+                          <strong style="color: #8A4BAF;">Aleyda</strong>
+                        </p>
+                      </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                      <td style="padding: 30px 0; text-align: center;">
+                        <p style="margin: 0 0 10px; font-size: 12px; color: #999999;">
+                          Si necesitas reprogramar o cancelar tu sesión, hazlo con al menos 24 horas de anticipación.
+                        </p>
+                        <p style="margin: 0; font-size: 12px; color: #999999;">
+                          ${new Date().getFullYear()} Energía y Divinidad. Todos los derechos reservados.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('Error sending booking confirmation email:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error sending booking confirmation email:', error);
+    return { success: false, error };
+  }
+}
+
+// ============================================
 // EMAILS DE CONFIRMACIÓN DE PAGO
 // ============================================
 
@@ -1699,6 +1892,7 @@ interface SendCancellationEmailParams {
   cancelledBy: 'client' | 'admin';
   reason?: string;
   packSessionReturned?: boolean;
+  creditRefunded?: boolean;
 }
 
 export async function sendCancellationEmail(params: SendCancellationEmailParams) {
@@ -1710,6 +1904,7 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
     cancelledBy,
     reason,
     packSessionReturned,
+    creditRefunded,
   } = params;
 
   const formattedDate = scheduledDate
@@ -1738,6 +1933,7 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
     console.log(`Cancelado por: ${cancelledBy}`);
     if (reason) console.log(`Motivo: ${reason}`);
     if (packSessionReturned) console.log(`Sesión devuelta al pack: Sí`);
+    if (creditRefunded) console.log(`Crédito reembolsado: Sí`);
     console.log('========================================\n');
 
     if (DEV_AUTO_VERIFY) {
@@ -1825,6 +2021,18 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
                             <td style="padding: 15px; background-color: #d1fae5; border-radius: 8px;">
                               <p style="margin: 0; font-size: 14px; color: #065f46;">
                                 ✅ <strong>Buenas noticias:</strong> La sesión ha sido devuelta a tu pack. Puedes usarla para reservar en otra fecha.
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+                        ` : ''}
+
+                        ${creditRefunded ? `
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                          <tr>
+                            <td style="padding: 15px; background-color: #d1fae5; border-radius: 8px;">
+                              <p style="margin: 0; font-size: 14px; color: #065f46;">
+                                ✅ <strong>Buenas noticias:</strong> Tu crédito de sesión ha sido reembolsado. Puedes usarlo para reservar en otra fecha.
                               </p>
                             </td>
                           </tr>
@@ -2214,4 +2422,492 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
     console.error('Error sending admin notification email:', error);
     return { success: false, error };
   }
+}
+
+// ============================================
+// EMAILS DE LISTA DE ESPERA
+// ============================================
+
+interface WaitlistJoinedEmailParams {
+  email: string;
+  name: string;
+  eventTitle: string;
+  eventDate: string;
+  position: number;
+  seatsRequested: number;
+}
+
+/**
+ * Send email when user joins waitlist
+ */
+export async function sendWaitlistJoinedEmail(params: WaitlistJoinedEmailParams) {
+  const { email, name, eventTitle, eventDate, position, seatsRequested } = params;
+
+  const formattedDate = new Date(eventDate).toLocaleDateString('es-CO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const seatsText = seatsRequested > 1 ? `${seatsRequested} cupos` : '1 cupo';
+
+  return sendEmailWithLogging({
+    to: email,
+    subject: `Te has unido a la lista de espera - ${eventTitle}`,
+    template: 'waitlist_joined',
+    entityType: 'event',
+    metadata: { eventTitle, position, seatsRequested },
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background-color: #f8f0f5;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto;">
+            <tr>
+              <td style="background-color: white; border-radius: 12px; padding: 0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <!-- Header -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="background: linear-gradient(135deg, #8A4BAF 0%, #654177 100%); border-radius: 12px 12px 0 0; padding: 30px; text-align: center;">
+                      <img src="${LOGO_URL}" alt="Energía y Divinidad" style="width: 60px; height: auto; margin-bottom: 15px;">
+                      <h1 style="margin: 0; color: white; font-size: 24px; font-weight: 600;">
+                        Lista de Espera
+                      </h1>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Content -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="padding: 30px;">
+                      <p style="margin: 0 0 20px; font-size: 16px; color: #333;">
+                        Hola <strong>${name}</strong>,
+                      </p>
+                      <p style="margin: 0 0 20px; font-size: 16px; color: #333; line-height: 1.6;">
+                        Te has unido a la lista de espera para el evento:
+                      </p>
+
+                      <!-- Event Info Box -->
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 20px 0;">
+                        <tr>
+                          <td style="background-color: #f8f0f5; border-radius: 8px; padding: 20px; border-left: 4px solid #8A4BAF;">
+                            <h2 style="margin: 0 0 10px; font-size: 18px; color: #654177;">
+                              ${eventTitle}
+                            </h2>
+                            <p style="margin: 0 0 8px; font-size: 14px; color: #666;">
+                              📅 ${formattedDate}
+                            </p>
+                            <p style="margin: 0; font-size: 14px; color: #666;">
+                              🎟️ ${seatsText} solicitado(s)
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <!-- Position Info -->
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 20px 0;">
+                        <tr>
+                          <td style="background-color: #eef1fa; border-radius: 8px; padding: 20px; text-align: center;">
+                            <p style="margin: 0 0 5px; font-size: 14px; color: #2D4CC7;">
+                              Tu posición en la lista:
+                            </p>
+                            <p style="margin: 0; font-size: 48px; font-weight: bold; color: #2D4CC7;">
+                              #${position}
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <p style="margin: 20px 0; font-size: 14px; color: #666; line-height: 1.6;">
+                        Te notificaremos por email cuando haya un cupo disponible para ti.
+                        Tendrás <strong>24 horas</strong> para confirmar tu reserva una vez recibas la notificación.
+                      </p>
+
+                      <!-- CTA Button -->
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                          <td style="padding: 20px 0; text-align: center;">
+                            <a href="${APP_URL}/mi-cuenta/eventos" style="display: inline-block; background-color: #4944a4; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+                              Ver mis eventos
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Footer -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="background-color: #f9fafb; border-radius: 0 0 12px 12px; padding: 20px; text-align: center;">
+                      <p style="margin: 0; font-size: 12px; color: #999;">
+                        Con amor y luz,<br>Aleyda y Energía y Divinidad
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
+    `,
+  });
+}
+
+interface WaitlistOfferEmailParams {
+  email: string;
+  name: string;
+  eventTitle: string;
+  eventDate: string;
+  seats: number;
+  expiresAt: Date;
+}
+
+/**
+ * Send email when a spot becomes available from waitlist
+ */
+export async function sendWaitlistOfferEmail(params: WaitlistOfferEmailParams) {
+  const { email, name, eventTitle, eventDate, seats, expiresAt } = params;
+
+  const formattedDate = new Date(eventDate).toLocaleDateString('es-CO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const formattedExpiry = expiresAt.toLocaleDateString('es-CO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const seatsText = seats > 1 ? `${seats} cupos` : '1 cupo';
+
+  return sendEmailWithLogging({
+    to: email,
+    subject: `🎉 ¡Cupo disponible! - ${eventTitle}`,
+    template: 'waitlist_offer',
+    entityType: 'event',
+    metadata: { eventTitle, seats, expiresAt: expiresAt.toISOString() },
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background-color: #f8f0f5;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto;">
+            <tr>
+              <td style="background-color: white; border-radius: 12px; padding: 0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <!-- Header -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-radius: 12px 12px 0 0; padding: 30px; text-align: center;">
+                      <img src="${LOGO_URL}" alt="Energía y Divinidad" style="width: 60px; height: auto; margin-bottom: 15px;">
+                      <h1 style="margin: 0; color: white; font-size: 24px; font-weight: 600;">
+                        🎉 ¡Cupo Disponible!
+                      </h1>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Content -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="padding: 30px;">
+                      <p style="margin: 0 0 20px; font-size: 16px; color: #333;">
+                        ¡Hola <strong>${name}</strong>! 🌟
+                      </p>
+                      <p style="margin: 0 0 20px; font-size: 16px; color: #333; line-height: 1.6;">
+                        ¡Buenas noticias! Se ha liberado un cupo para el evento al que estabas esperando:
+                      </p>
+
+                      <!-- Event Info Box -->
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 20px 0;">
+                        <tr>
+                          <td style="background-color: #f0fdf4; border-radius: 8px; padding: 20px; border-left: 4px solid #22c55e;">
+                            <h2 style="margin: 0 0 10px; font-size: 18px; color: #166534;">
+                              ${eventTitle}
+                            </h2>
+                            <p style="margin: 0 0 8px; font-size: 14px; color: #15803d;">
+                              📅 ${formattedDate}
+                            </p>
+                            <p style="margin: 0; font-size: 14px; color: #15803d;">
+                              🎟️ ${seatsText} disponible(s) para ti
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <!-- Urgency Alert -->
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 20px 0;">
+                        <tr>
+                          <td style="background-color: #fef3c7; border-radius: 8px; padding: 20px; border-left: 4px solid #f59e0b;">
+                            <p style="margin: 0 0 5px; font-size: 14px; color: #92400e; font-weight: bold;">
+                              ⏰ Tienes hasta:
+                            </p>
+                            <p style="margin: 0; font-size: 16px; color: #78350f; font-weight: bold;">
+                              ${formattedExpiry}
+                            </p>
+                            <p style="margin: 10px 0 0; font-size: 13px; color: #92400e;">
+                              Si no confirmas tu cupo antes de esta fecha, pasará a la siguiente persona en la lista.
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <!-- CTA Button -->
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                          <td style="padding: 20px 0; text-align: center;">
+                            <a href="${APP_URL}/mi-cuenta/eventos" style="display: inline-block; background-color: #22c55e; color: white; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                              ✨ Aceptar mi cupo
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <p style="margin: 20px 0 0; font-size: 13px; color: #666; text-align: center;">
+                        Si no deseas este cupo, puedes ignorar este email o rechazarlo en tu panel.
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Footer -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="background-color: #f9fafb; border-radius: 0 0 12px 12px; padding: 20px; text-align: center;">
+                      <p style="margin: 0; font-size: 12px; color: #999;">
+                        Con amor y luz,<br>Aleyda y Energía y Divinidad
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
+    `,
+  });
+}
+
+interface WaitlistOfferReminderEmailParams {
+  email: string;
+  name: string;
+  eventTitle: string;
+  hoursRemaining: number;
+}
+
+/**
+ * Send reminder email when waitlist offer is about to expire
+ */
+export async function sendWaitlistOfferReminderEmail(params: WaitlistOfferReminderEmailParams) {
+  const { email, name, eventTitle, hoursRemaining } = params;
+
+  return sendEmailWithLogging({
+    to: email,
+    subject: `⏰ Recordatorio: Tu cupo expira en ${hoursRemaining}h - ${eventTitle}`,
+    template: 'waitlist_reminder',
+    entityType: 'event',
+    metadata: { eventTitle, hoursRemaining },
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background-color: #f8f0f5;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto;">
+            <tr>
+              <td style="background-color: white; border-radius: 12px; padding: 0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <!-- Header -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 12px 12px 0 0; padding: 30px; text-align: center;">
+                      <img src="${LOGO_URL}" alt="Energía y Divinidad" style="width: 60px; height: auto; margin-bottom: 15px;">
+                      <h1 style="margin: 0; color: white; font-size: 24px; font-weight: 600;">
+                        ⏰ Recordatorio
+                      </h1>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Content -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="padding: 30px;">
+                      <p style="margin: 0 0 20px; font-size: 16px; color: #333;">
+                        Hola <strong>${name}</strong>,
+                      </p>
+                      <p style="margin: 0 0 20px; font-size: 16px; color: #333; line-height: 1.6;">
+                        Te recordamos que tu cupo reservado para <strong>${eventTitle}</strong> expira pronto.
+                      </p>
+
+                      <!-- Urgency Box -->
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 20px 0;">
+                        <tr>
+                          <td style="background-color: #fef3c7; border-radius: 8px; padding: 25px; text-align: center; border: 2px solid #f59e0b;">
+                            <p style="margin: 0 0 5px; font-size: 14px; color: #92400e;">
+                              Tiempo restante:
+                            </p>
+                            <p style="margin: 0; font-size: 48px; font-weight: bold; color: #d97706;">
+                              ${hoursRemaining}h
+                            </p>
+                            <p style="margin: 10px 0 0; font-size: 13px; color: #92400e;">
+                              Después de este tiempo, el cupo pasará a otra persona
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <!-- CTA Button -->
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                          <td style="padding: 20px 0; text-align: center;">
+                            <a href="${APP_URL}/mi-cuenta/eventos" style="display: inline-block; background-color: #f59e0b; color: white; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                              Confirmar mi cupo ahora
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Footer -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="background-color: #f9fafb; border-radius: 0 0 12px 12px; padding: 20px; text-align: center;">
+                      <p style="margin: 0; font-size: 12px; color: #999;">
+                        Con amor y luz,<br>Aleyda y Energía y Divinidad
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
+    `,
+  });
+}
+
+interface WaitlistOfferExpiredEmailParams {
+  email: string;
+  name: string;
+  eventTitle: string;
+}
+
+/**
+ * Send email when waitlist offer has expired
+ */
+export async function sendWaitlistOfferExpiredEmail(params: WaitlistOfferExpiredEmailParams) {
+  const { email, name, eventTitle } = params;
+
+  return sendEmailWithLogging({
+    to: email,
+    subject: `Tu cupo ha expirado - ${eventTitle}`,
+    template: 'waitlist_expired',
+    entityType: 'event',
+    metadata: { eventTitle },
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background-color: #f8f0f5;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto;">
+            <tr>
+              <td style="background-color: white; border-radius: 12px; padding: 0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <!-- Header -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="background: linear-gradient(135deg, #8A4BAF 0%, #654177 100%); border-radius: 12px 12px 0 0; padding: 30px; text-align: center;">
+                      <img src="${LOGO_URL}" alt="Energía y Divinidad" style="width: 60px; height: auto; margin-bottom: 15px;">
+                      <h1 style="margin: 0; color: white; font-size: 24px; font-weight: 600;">
+                        Cupo Expirado
+                      </h1>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Content -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="padding: 30px;">
+                      <p style="margin: 0 0 20px; font-size: 16px; color: #333;">
+                        Hola <strong>${name}</strong>,
+                      </p>
+                      <p style="margin: 0 0 20px; font-size: 16px; color: #333; line-height: 1.6;">
+                        Lamentamos informarte que el cupo que habíamos reservado para ti en
+                        <strong>${eventTitle}</strong> ha expirado al no recibir confirmación a tiempo.
+                      </p>
+                      <p style="margin: 0 0 20px; font-size: 16px; color: #333; line-height: 1.6;">
+                        El cupo ha sido ofrecido a la siguiente persona en la lista de espera.
+                      </p>
+
+                      <!-- Info Box -->
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 20px 0;">
+                        <tr>
+                          <td style="background-color: #eef1fa; border-radius: 8px; padding: 20px;">
+                            <p style="margin: 0; font-size: 14px; color: #2D4CC7; line-height: 1.6;">
+                              💡 Si aún te interesa asistir a este u otros eventos, puedes volver a unirte a la lista de espera
+                              o explorar otros eventos disponibles.
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <!-- CTA Button -->
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                          <td style="padding: 20px 0; text-align: center;">
+                            <a href="${APP_URL}/eventos" style="display: inline-block; background-color: #4944a4; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 14px;">
+                              Ver todos los eventos
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Footer -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="background-color: #f9fafb; border-radius: 0 0 12px 12px; padding: 20px; text-align: center;">
+                      <p style="margin: 0; font-size: 12px; color: #999;">
+                        Con amor y luz,<br>Aleyda y Energía y Divinidad
+                      </p>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+      </html>
+    `,
+  });
 }

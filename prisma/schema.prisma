@@ -28,6 +28,10 @@ model User {
   password      String? // Para autenticación con email/password
   role          UserRole  @default(USER)
 
+  // Consentimiento legal
+  acceptedTermsVersion String?   // Versión de términos aceptados (ej: "1.0")
+  acceptedTermsAt      DateTime? // Fecha y hora de aceptación
+
   // Relaciones
   accounts         Account[]
   sessions         Session[]
@@ -35,6 +39,8 @@ model User {
   subscriptions    Subscription[]
   entitlements     Entitlement[]
   bookings         Booking[]
+  seatAllocations  SeatAllocation[]
+  waitlistEntries  WaitlistEntry[]
   sessionPackCodes SessionPackCode[]
   postLikes        MembershipPostLike[]
   postComments     MembershipPostComment[]
@@ -42,6 +48,10 @@ model User {
   pollVotes        PollVote[]
   postViews        MembershipPostView[]
   courseProgress   CourseProgress[]
+  creditsLedger    CreditsLedger[]
+  quizAttempts     QuizAttempt[]
+  certificates     Certificate[]
+  perkAllocations  PerkAllocation[]
 
   // Metadata
   createdAt DateTime @default(now())
@@ -111,7 +121,7 @@ enum PaymentMethod {
   // Gratis (descuento 100%)
   FREE
 
-  // Legacy (mantener para migraciones)
+  // LEGACY - mantener para datos históricos, no usar para nuevos pagos
   STRIPE
   NEQUI
   MANUAL_NEQUI
@@ -207,7 +217,8 @@ model ManualPayment {
   @@map("manual_payments")
 }
 
-// Pagos con Stripe
+// LEGACY - Mantener para datos históricos de pagos con Stripe
+// No se crean nuevos registros desde que Stripe fue deprecado
 model StripePayment {
   id      String @id @default(cuid())
   orderId String @unique
@@ -267,7 +278,7 @@ model Subscription {
   currency        String             @default("COP")
   paymentProvider String             @default("stripe") // "stripe" | "nequi" | "manual"
 
-  // Stripe (si aplica)
+  // LEGACY - Stripe (mantener para suscripciones históricas)
   stripeSubscriptionId String? @unique
   stripeCustomerId     String?
 
@@ -388,7 +399,7 @@ model Booking {
   sessionsTotal     Int? // Total de sesiones en el paquete
   sessionsRemaining Int? // Sesiones restantes
 
-  // Stripe payment (if applicable)
+  // LEGACY - Stripe payment (mantener para bookings históricos)
   stripeSessionId String? @unique
 
   // Nequi payment (if applicable)
@@ -430,6 +441,115 @@ model Booking {
   @@index([userId])
   @@index([scheduledAt])
   @@map("bookings")
+}
+
+// ============================================
+// BOUNDED CONTEXT: Event Seat Management
+// ============================================
+
+enum SeatAllocationStatus {
+  ACTIVE   // Seat is confirmed and occupied
+  RELEASED // Seat was released (cancellation)
+}
+
+model SeatAllocation {
+  id        String @id @default(cuid())
+  eventId   String // Sanity event _id
+  bookingId String @unique
+  userId    String
+  seats     Int    @default(1) // Number of seats in this allocation
+
+  status SeatAllocationStatus @default(ACTIVE)
+
+  // Timestamps
+  allocatedAt DateTime  @default(now())
+  releasedAt  DateTime?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([eventId])
+  @@index([userId])
+  @@index([eventId, status])
+  @@map("seat_allocations")
+}
+
+enum WaitlistStatus {
+  WAITING       // In queue waiting for spot
+  OFFER_PENDING // Spot offered, waiting for acceptance
+  ACCEPTED      // User accepted, becoming booking
+  DECLINED      // User declined the offer
+  EXPIRED       // Offer expired without response
+  CANCELLED     // User cancelled their waitlist entry
+}
+
+model WaitlistEntry {
+  id      String @id @default(cuid())
+  eventId String // Sanity event _id
+  userId  String
+
+  // Queue management
+  position       Int // Position in waitlist (1-based)
+  seatsRequested Int @default(1)
+
+  status WaitlistStatus @default(WAITING)
+
+  // Offer lifecycle
+  offerSentAt    DateTime?
+  offerExpiresAt DateTime?
+  reminderSentAt DateTime? // For 6h reminder email
+  respondedAt    DateTime?
+
+  // When accepted, links to the created booking
+  resultingBookingId String?
+
+  // Contact info (copied at creation time for notifications)
+  userEmail String
+  userName  String?
+
+  // Metadata
+  notes String? @db.Text
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId]) // One entry per user per event
+  @@index([eventId, status])
+  @@index([eventId, position])
+  @@index([offerExpiresAt])
+  @@map("waitlist_entries")
+}
+
+// ============================================
+// BOUNDED CONTEXT: Event Replay Views
+// ============================================
+
+// Tracking de visualizaciones de replays de eventos
+model EventReplayView {
+  id                  String   @id @default(cuid())
+  bookingId           String   @unique // Un registro por booking
+  eventId             String   // Sanity event _id (denormalizado para queries)
+  userId              String   // Denormalizado para queries
+
+  // Métricas de visualización
+  viewCount           Int      @default(1)  // Veces que inició el replay
+  totalWatchedSeconds Int      @default(0)  // Segundos totales vistos
+  lastWatchedAt       DateTime @default(now())
+  lastPosition        Int      @default(0)  // Posición para continuar (segundos)
+
+  // Timestamps
+  firstViewedAt       DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([eventId, userId])
+  @@map("event_replay_views")
 }
 
 // ============================================
@@ -703,6 +823,98 @@ model LessonProgress {
 }
 
 // ============================================
+// BOUNDED CONTEXT: Membership Credits
+// ============================================
+
+enum CreditReason {
+  MONTHLY_GRANT     // Créditos mensuales de suscripción
+  PROMO_GRANT       // Créditos promocionales
+  ADMIN_ADJUSTMENT  // Ajuste manual por admin
+  REDEEM            // Canje por reserva
+  REFUND            // Devolución por cancelación
+}
+
+enum PerkAllocationStatus {
+  PENDING      // Asignado pero no entregado
+  DELIVERED    // Entregado al usuario
+  UNAVAILABLE  // No disponible (cupos agotados)
+}
+
+model CreditsLedger {
+  id             String       @id @default(cuid())
+  userId         String
+
+  // Detalles de la transacción
+  amount         Int          // +1 para otorgar, -1 para canjear
+  reason         CreditReason
+
+  // Referencias
+  subscriptionId String?      // Suscripción origen (para grants)
+  bookingId      String?      // Reserva asociada (para redemptions)
+  referenceId    String?      // Referencia genérica (código promo, nota admin, etc.)
+
+  // Expiración (solo para grants)
+  expiresAt      DateTime?    // Cuando expira este crédito
+
+  // Auditoría
+  notes          String?      @db.Text
+  createdBy      String?      // userId del admin para ajustes manuales
+
+  // Relaciones
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt      DateTime     @default(now())
+
+  @@index([userId])
+  @@index([userId, expiresAt])
+  @@index([subscriptionId])
+  @@index([bookingId])
+  @@map("credits_ledger")
+}
+
+// ============================================
+// BOUNDED CONTEXT: Event Perks
+// ============================================
+
+// Asignación de perks a bookings de eventos
+model PerkAllocation {
+  id           String               @id @default(cuid())
+  eventId      String               // Sanity event _id
+  bookingId    String
+  userId       String
+
+  // Perk info (desnormalizado desde Sanity para display/auditoría)
+  perkType     String               // 'recording' | 'transcript' | 'workbook' | etc.
+  perkTitle    String
+  perkIndex    Int                  // Índice en el array de perks (para ordenar)
+
+  // Estado
+  status       PerkAllocationStatus @default(PENDING)
+
+  // Info de entrega
+  deliveredAt  DateTime?
+  deliveredBy  String?              // Admin userId que entregó
+  assetUrl     String?              // URL del recurso entregado (puede diferir de Sanity)
+
+  // Metadata adicional
+  metadata     Json?                // Datos adicionales (ej: plan prioritario usado)
+
+  // Timestamps
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  // Relaciones
+  user         User                 @relation(fields: [userId], references: [id])
+
+  @@unique([bookingId, perkType])   // Una asignación por tipo de perk por booking
+  @@index([eventId])
+  @@index([userId])
+  @@index([eventId, perkType, status])
+  @@map("perk_allocations")
+}
+
+// ============================================
 // BOUNDED CONTEXT: Audit & Logging
 // ============================================
 
@@ -752,4 +964,80 @@ model EmailLog {
   @@index([entityType, entityId])
   @@index([status])
   @@map("email_logs")
+}
+
+// ============================================
+// BOUNDED CONTEXT: Academia - Quizzes & Certificates
+// ============================================
+
+// Intento de quiz por un usuario
+model QuizAttempt {
+  id           String   @id @default(cuid())
+  userId       String
+  quizId       String   // Sanity quiz _id
+  courseId     String   // Sanity course _id
+  lessonId     String?  // Sanity lesson _id (null para examen final del curso)
+
+  // Resultados
+  score        Decimal  @db.Decimal(5, 2) // Porcentaje de aciertos
+  totalPoints  Int      // Puntos totales posibles
+  earnedPoints Int      // Puntos obtenidos
+  passed       Boolean  // Si aprobó según el passingScore del quiz
+
+  // Respuestas guardadas como JSON
+  // Formato: [{ questionIndex, questionText, selectedAnswer, correctAnswer, correct, points }]
+  answers      Json
+
+  // Tiempos
+  startedAt    DateTime @default(now())
+  completedAt  DateTime
+  timeSpent    Int      // Segundos que tardó en completar
+
+  // Relaciones
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, quizId])
+  @@index([courseId])
+  @@index([lessonId])
+  @@map("quiz_attempts")
+}
+
+// Certificado emitido a un usuario por completar un curso
+model Certificate {
+  id                String    @id @default(cuid())
+  userId            String
+  courseId          String    // Sanity course _id
+  courseName        String    // Nombre del curso (desnormalizado para display)
+
+  // Datos del certificado
+  certificateNumber String    @unique  // Formato: CERT-YYYYMMDD-XXXXXX
+  studentName       String    // Nombre del estudiante al momento de emisión
+  issuedAt          DateTime  @default(now())
+  validUntil        DateTime? // null = perpetuo (sin vencimiento)
+
+  // PDF generado (cache opcional)
+  pdfUrl            String?   // URL de Vercel Blob si se cacheó
+  pdfGeneratedAt    DateTime? // Cuándo se generó el PDF cacheado
+
+  // Metadata
+  quizScore         Decimal?  @db.Decimal(5, 2) // Puntaje del examen final si aplica
+  courseHours       Int?      // Horas del curso al momento de emisión
+
+  // Relaciones
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([certificateNumber])
+  @@map("certificates")
 }
