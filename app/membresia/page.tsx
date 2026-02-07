@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Sparkles, Heart, Users, LogIn, Zap, Crown, ArrowLeft } from 'lucide-react'
+import { Sparkles, Heart, Users, LogIn, Crown, ArrowLeft } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { PricingSection } from '@/components/membership/pricing-section'
@@ -133,11 +133,12 @@ export default function MembresiaPage() {
             </div>
           </div>
           <h1 className="font-gazeta text-4xl sm:text-5xl lg:text-6xl text-[#654177] mb-6">
-            Únete a Nuestra Comunidad
+            Club del Despertar Espiritual
           </h1>
           <p className="text-xl text-[#654177]/80 max-w-2xl mx-auto mb-8 leading-relaxed">
-            Forma parte de una comunidad exclusiva dedicada al crecimiento espiritual,
-            la sanación energética y el despertar de la consciencia.
+            Un espacio sagrado de acompañamiento, conexión y expansión de conciencia,
+            creado para quienes sienten el llamado a despertar su luz interior,
+            fortalecer su vínculo con los Seres de Luz y avanzar con claridad en su camino espiritual.
           </p>
         </div>
       </section>
@@ -145,9 +146,12 @@ export default function MembresiaPage() {
       {/* Benefits Section */}
       <section className="py-16 px-6 bg-white">
         <div className="max-w-6xl mx-auto">
-          <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF] mb-12 text-center">
-            ¿Por qué hacerte miembro?
+          <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF] mb-6 text-center">
+            ¿Qué encontrarás aquí?
           </h2>
+          <p className="text-center text-[#654177]/70 mb-12 max-w-2xl mx-auto">
+            Guía canalizada, meditaciones, encuentros y mensajes que te acompañarán en tu proceso de evolución personal y espiritual.
+          </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center p-6">
@@ -155,11 +159,24 @@ export default function MembresiaPage() {
                 <Heart className="text-[#8A4BAF]" size={32} />
               </div>
               <h3 className="font-gazeta text-xl text-[#654177] mb-3">
-                Contenido Premium
+                Meditaciones Canalizadas
               </h3>
               <p className="text-[#654177]/70">
-                Accede a meditaciones, canalizaciones y enseñanzas diseñadas específicamente
-                para profundizar tu camino espiritual.
+                Cada meditación es guiada por un Ser de Luz, trabajando un propósito
+                específico de sanación y evolución espiritual.
+              </p>
+            </div>
+
+            <div className="text-center p-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#8A4BAF]/10 mb-4">
+                <Sparkles className="text-[#8A4BAF]" size={32} />
+              </div>
+              <h3 className="font-gazeta text-xl text-[#654177] mb-3">
+                Códigos Sagrados
+              </h3>
+              <p className="text-[#654177]/70">
+                Ciclos alineados con la energía del mes, el Ser de Luz que guía
+                la canalización y el propósito espiritual del momento.
               </p>
             </div>
 
@@ -168,24 +185,11 @@ export default function MembresiaPage() {
                 <Users className="text-[#8A4BAF]" size={32} />
               </div>
               <h3 className="font-gazeta text-xl text-[#654177] mb-3">
-                Comunidad Privada
+                Encuentros en Vivo
               </h3>
               <p className="text-[#654177]/70">
-                Conéctate con personas en tu mismo camino espiritual y comparte
-                experiencias en un espacio seguro y sagrado.
-              </p>
-            </div>
-
-            <div className="text-center p-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#8A4BAF]/10 mb-4">
-                <Zap className="text-[#8A4BAF]" size={32} />
-              </div>
-              <h3 className="font-gazeta text-xl text-[#654177] mb-3">
-                Actualizaciones Semanales
-              </h3>
-              <p className="text-[#654177]/70">
-                Recibe contenido nuevo cada semana con ejercicios prácticos,
-                meditaciones guiadas y enseñanzas exclusivas.
+                Encuentros online guiados por Seres de Luz con temáticas de sanación,
+                activación espiritual y despertar de conciencia.
               </p>
             </div>
           </div>
@@ -196,7 +200,7 @@ export default function MembresiaPage() {
       <section className="py-16 px-6 bg-[#eef1fa]">
         <div className="max-w-6xl mx-auto">
           <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF] mb-4 text-center">
-            Elige tu Membresía
+            Membresías Disponibles
           </h2>
           <p className="text-center text-[#654177]/70 mb-12 max-w-2xl mx-auto">
             Todos los planes incluyen acceso inmediato y puedes cancelar cuando quieras.
@@ -292,10 +296,10 @@ export default function MembresiaPage() {
       <section className="py-16 px-6 bg-gradient-to-b from-[#8A4BAF]/10 to-[#f8f0f5]">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF] mb-4">
-            ¿Listo para comenzar tu viaje?
+            ¿Sientes el llamado?
           </h2>
           <p className="text-[#654177]/80 mb-8 text-lg">
-            Únete hoy y forma parte de nuestra comunidad espiritual
+            Únete al Club del Despertar Espiritual y comienza tu proceso de evolución
           </p>
           <Link
             href="/membresia/checkout"

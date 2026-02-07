@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, Crown } from 'lucide-react'
+import { Check, Crown, ArrowUp, Sparkles } from 'lucide-react'
 import type { MembershipTier } from '@/types/membership'
 
 interface PricingCardProps {
@@ -10,6 +10,7 @@ interface PricingCardProps {
   onSelect: (tierId: string) => void
   isPopular?: boolean
   isCurrentPlan?: boolean // Indica si este es el plan actual del usuario
+  currentTierOrder?: number // Orden del plan actual del usuario (para determinar upgrade/downgrade)
 }
 
 export function PricingCard({
@@ -19,7 +20,13 @@ export function PricingCard({
   onSelect,
   isPopular,
   isCurrentPlan,
+  currentTierOrder,
 }: PricingCardProps) {
+  // Determinar si es upgrade o downgrade (solo si el usuario tiene membresía)
+  const userHasMembership = currentTierOrder !== undefined
+  const isUpgrade = userHasMembership && !isCurrentPlan && (tier.tierLevel || 0) > currentTierOrder
+  const isDowngrade = userHasMembership && !isCurrentPlan && (tier.tierLevel || 0) < currentTierOrder
+
   const price =
     billingInterval === 'monthly'
       ? currency === 'COP'
@@ -61,14 +68,16 @@ export function PricingCard({
 
   return (
     <div
-      className={`relative bg-white rounded-xl shadow-lg p-6 sm:p-8 border-2 transition-all hover:shadow-xl ${
-        isPopularTier ? 'scale-100 lg:scale-105' : ''
+      className={`relative rounded-xl p-6 sm:p-8 transition-all flex flex-col ${
+        isPopularTier
+          ? 'bg-gradient-to-b from-[#f8f0f5] to-white shadow-2xl border-[3px] ring-1 ring-[#5C4D9B]/20'
+          : 'bg-white shadow-lg border-2'
       }`}
       style={{ borderColor }}
     >
       {/* Current Plan badge */}
       {isCurrentPlan && (
-        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 px-4 py-1 rounded-full text-white text-sm font-dm-sans font-semibold shadow-md bg-amber-500 flex items-center gap-1.5">
+        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 px-4 py-1 rounded-full text-white text-sm font-dm-sans font-semibold shadow-md bg-[#654177] flex items-center gap-1.5">
           <Crown className="w-4 h-4" />
           Tu Plan Actual
         </div>
@@ -127,8 +136,37 @@ export function PricingCard({
 
       {/* CTA Button */}
       {isCurrentPlan ? (
-        <div className="w-full py-3 px-6 rounded-lg font-dm-sans font-semibold text-center bg-gray-100 text-gray-500 mb-6 border border-gray-200">
-          Plan Activo
+        <div className="w-full py-3 px-6 rounded-lg font-dm-sans font-semibold text-center bg-[#f8f0f5] text-[#8A4BAF] mb-6 border-2 border-[#8A4BAF]">
+          <div className="flex items-center justify-center gap-2">
+            <Crown className="w-4 h-4" />
+            Tu Plan Activo
+          </div>
+        </div>
+      ) : isUpgrade ? (
+        <div className="mb-6">
+          <button
+            onClick={() => onSelect(tier._id)}
+            className="w-full py-3 px-6 rounded-lg font-dm-sans font-semibold text-white transition-all bg-gradient-to-r from-[#8A4BAF] to-[#5C4D9B] hover:from-[#7a3d9f] hover:to-[#4c3d8b] flex items-center justify-center gap-2"
+          >
+            <ArrowUp className="w-4 h-4" />
+            Mejorar a {tier.name}
+          </button>
+          <p className="text-xs text-center text-green-600 font-dm-sans mt-2 flex items-center justify-center gap-1">
+            <Sparkles className="w-3 h-3" />
+            Desbloquea más beneficios
+          </p>
+        </div>
+      ) : isDowngrade ? (
+        <div className="mb-6">
+          <button
+            onClick={() => onSelect(tier._id)}
+            className="w-full py-3 px-6 rounded-lg font-dm-sans font-semibold text-[#654177] transition-all bg-gray-100 hover:bg-gray-200 border border-gray-300"
+          >
+            Cambiar a {tier.name}
+          </button>
+          <p className="text-xs text-center text-gray-500 font-dm-sans mt-2">
+            Puedes cambiar de plan en cualquier momento
+          </p>
         </div>
       ) : (
         <button
@@ -140,7 +178,7 @@ export function PricingCard({
       )}
 
       {/* Features */}
-      <div className="space-y-3">
+      <div className="space-y-3 flex-1">
         <p className="text-sm font-dm-sans font-semibold text-[#654177]">
           Incluye:
         </p>

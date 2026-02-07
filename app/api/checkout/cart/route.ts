@@ -9,14 +9,11 @@ import {
   createWompiPaymentLink,
   generateWompiReference,
 } from '@/lib/wompi'
-import {
-  createEpaycoCardPayment,
-  createEpaycoPayPalPayment,
-  generateEpaycoReference,
-} from '@/lib/epayco'
+import { createPayPalOrder } from '@/lib/paypal'
 import { getAppUrl } from '@/lib/utils'
+import { nanoid } from 'nanoid'
 
-type PaymentMethod = 'wompi_nequi' | 'wompi_card' | 'epayco_card' | 'epayco_paypal'
+type PaymentMethod = 'wompi_nequi' | 'wompi_card' | 'paypal_direct' | 'paypal_card'
 
 interface CartItem {
   courseId: string
@@ -131,7 +128,7 @@ export async function POST(request: NextRequest) {
     const isWompi = paymentMethod.startsWith('wompi')
     const reference = isWompi
       ? generateWompiReference('EYD')
-      : generateEpaycoReference('EYD')
+      : `PP-${nanoid(10).toUpperCase()}`
 
     // Crear nombre del pedido
     const orderName =
@@ -264,68 +261,44 @@ export async function POST(request: NextRequest) {
         checkoutUrl,
       })
     } else {
-      // ePayco (Internacional - COP/USD)
-      const nameParts = (session.user.name || 'Usuario').split(' ')
-      const firstName = nameParts[0] || 'Usuario'
-      const lastName = nameParts.slice(1).join(' ') || 'Cliente'
+      // PayPal (Internacional - COP/USD)
+      const paypalResult = await createPayPalOrder({
+        amount: finalAmount,
+        currency: currency as 'USD' | 'COP',
+        description: `${orderName} - Academia Energía y Divinidad`,
+        reference,
+        returnUrl: `${appUrl}/pago/confirmacion?ref=${reference}`,
+        cancelUrl: `${appUrl}/pago/cancelado?ref=${reference}`,
+        customerEmail: session.user.email,
+      })
 
-      const responseUrl = `${appUrl}/pago/confirmacion?ref=${reference}`
-      const confirmationUrl = `${appUrl}/api/webhooks/epayco`
-
-      let checkoutResponse
-
-      if (paymentMethod === 'epayco_paypal') {
-        checkoutResponse = await createEpaycoPayPalPayment({
-          amount: finalAmount,
-          currency,
-          description: `${orderName} - Academia Energía y Divinidad`,
-          invoice: reference,
-          customerName: firstName,
-          customerLastName: lastName,
-          customerEmail: session.user.email,
-          responseUrl,
-          confirmationUrl,
-          metadata: {
-            userId: session.user.id,
-            productType: 'course',
-            productId: reference, // Reference links to order with courseIds in metadata
-          },
-        })
-      } else {
-        checkoutResponse = await createEpaycoCardPayment({
-          amount: finalAmount,
-          currency,
-          description: `${orderName} - Academia Energía y Divinidad`,
-          invoice: reference,
-          customerName: firstName,
-          customerLastName: lastName,
-          customerEmail: session.user.email,
-          responseUrl,
-          confirmationUrl,
-          metadata: {
-            userId: session.user.id,
-            productType: 'course',
-            productId: reference, // Reference links to order with courseIds in metadata
-          },
-        })
-      }
-
-      if (!checkoutResponse.success) {
+      if (!paypalResult.success || !paypalResult.approvalUrl) {
         await prisma.order.update({
           where: { id: order.id },
           data: { paymentStatus: 'FAILED' },
         })
 
         return NextResponse.json(
-          { error: checkoutResponse.error || 'Error al procesar pago' },
+          { error: paypalResult.error || 'Error al procesar pago' },
           { status: 400 }
         )
       }
 
+      // Actualizar orden con ID de PayPal
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          metadata: {
+            ...(order.metadata as object),
+            paypalOrderId: paypalResult.orderId,
+          },
+        },
+      })
+
       return NextResponse.json({
         success: true,
         reference,
-        checkoutUrl: checkoutResponse.checkoutUrl,
+        approvalUrl: paypalResult.approvalUrl,
       })
     }
   } catch (error) {
@@ -343,11 +316,11 @@ function getPaymentMethodEnum(method: PaymentMethod) {
       return 'WOMPI_NEQUI'
     case 'wompi_card':
       return 'WOMPI_CARD'
-    case 'epayco_card':
-      return 'EPAYCO_CARD'
-    case 'epayco_paypal':
-      return 'EPAYCO_PAYPAL'
+    case 'paypal_direct':
+      return 'PAYPAL_DIRECT'
+    case 'paypal_card':
+      return 'PAYPAL_CARD'
     default:
-      return 'EPAYCO_CARD'
+      return 'PAYPAL_DIRECT'
   }
 }

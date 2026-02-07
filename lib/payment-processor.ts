@@ -10,7 +10,7 @@
  *
  * Es llamado desde:
  * - Webhooks de Wompi
- * - Webhooks de ePayco
+ * - Webhooks de PayPal
  * - Endpoints de verificación manual
  */
 
@@ -245,8 +245,8 @@ async function createMembershipFromOrder(
   let provider = 'unknown'
   if (order.paymentMethod?.includes('WOMPI')) {
     provider = order.paymentMethod.includes('NEQUI') ? 'wompi_nequi' : 'wompi_card'
-  } else if (order.paymentMethod?.includes('EPAYCO')) {
-    provider = order.paymentMethod.includes('PAYPAL') ? 'epayco_paypal' : 'epayco_card'
+  } else if (order.paymentMethod?.includes('PAYPAL')) {
+    provider = order.paymentMethod.includes('CARD') ? 'paypal_card' : 'paypal_direct'
   }
 
   // Crear suscripción

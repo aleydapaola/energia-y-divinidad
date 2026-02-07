@@ -4,6 +4,7 @@ import { Footer } from '@/components/layout/Footer'
 import { SesionesPageClient } from './SesionesPageClient'
 import { getFeaturedSessions, getSessionBySlug, getDeliveryMethodLabel } from '@/lib/sanity/queries/sessions'
 import { getBookingSettings } from '@/lib/sanity/queries/bookingSettings'
+import { auth } from '@/lib/auth'
 
 // Datos por defecto si no hay sesion configurada en Sanity
 const DEFAULT_SESSION = {
@@ -14,10 +15,11 @@ const DEFAULT_SESSION = {
   sessionType: 'channeling' as const,
   description: [],
   mainImage: { asset: { _ref: '', url: '' } },
-  duration: 60,
+  duration: 90,
   deliveryMethod: 'video_call' as const,
-  price: 150000,
-  priceUSD: 40,
+  price: 280000,
+  priceUSD: 70,
+  priceEUR: 65,
   memberDiscount: 0,
   availabilitySchedule: {
     monday: [{ start: '09:00', end: '19:00' }],
@@ -94,6 +96,9 @@ function formatPrice(price: number): string {
 }
 
 export default async function SesionesPage() {
+  // Get user session for header
+  const userSession = await auth()
+
   // Cargar datos desde Sanity
   const [sessions, bookingSettings] = await Promise.all([
     getFeaturedSessions(1), // Obtener la sesion destacada principal
@@ -111,25 +116,31 @@ export default async function SesionesPage() {
 
   // Preparar datos para el cliente
   const sessionData = session || DEFAULT_SESSION
+  // TODO: TEMPORAL - Cambiar de vuelta a sessionData.price después del testing
+  const testPriceCalendar = 1000 // Precio temporal para testing
   const sessionForCalendar = {
     _id: sessionData._id,
     title: sessionData.title,
     slug: sessionData.slug,
     duration: sessionData.duration,
-    price: sessionData.price,
-    priceUSD: sessionData.priceUSD || 40,
+    price: testPriceCalendar, // sessionData.price,
+    priceUSD: sessionData.priceUSD || 70,
+    priceEUR: (sessionData as any).priceEUR || 65,
     maxAdvanceBooking: sessionData.maxAdvanceBooking || 30,
     availabilitySchedule: sessionData.availabilitySchedule,
   }
 
   // Datos de la sesion para mostrar en la UI
+  // TODO: TEMPORAL - Cambiar de vuelta a sessionData.price después del testing
+  const testPrice = 1000 // Precio temporal para testing
   const sessionDetails = {
     duration: sessionData.duration,
     deliveryMethod: getDeliveryMethodLabel(sessionData.deliveryMethod),
     availableDays: getAvailableDaysText(sessionData as typeof DEFAULT_SESSION),
-    price: sessionData.price,
-    priceUSD: sessionData.priceUSD || 40,
-    formattedPrice: formatPrice(sessionData.price),
+    price: testPrice, // sessionData.price,
+    priceUSD: sessionData.priceUSD || 70,
+    priceEUR: (sessionData as any).priceEUR || 65,
+    formattedPrice: formatPrice(testPrice), // formatPrice(sessionData.price),
   }
 
   // Datos de bookingSettings
@@ -140,7 +151,7 @@ export default async function SesionesPage() {
 
   return (
     <>
-      <Header session={null} />
+      <Header session={userSession} />
       <Suspense fallback={<SesionesPageSkeleton />}>
         <SesionesPageClient
           session={sessionForCalendar}

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, MapPin, Video, Users, Minus, Plus, Loader2, CreditCard, Smartphone } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, Video, Users, Minus, Plus, Loader2, CreditCard, Key } from 'lucide-react'
 import type { PaymentMethodType } from '@/lib/membership-access'
 import { useSession } from 'next-auth/react'
 
@@ -141,20 +141,29 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
           seats,
           notes,
         }
+      } else if (paymentMethod === 'breb_manual') {
+        // Pago manual via Bre-B (Colombia)
+        endpoint = '/api/checkout/breb'
+        body = {
+          productType: 'event',
+          productId: event._id,
+          productName: `${event.title} (${seats} cupo${seats > 1 ? 's' : ''})`,
+          amount,
+          guestEmail: customerEmail,
+          guestName: customerName,
+          scheduledAt: event.eventDate,
+        }
       } else {
-        // Pago via ePayco (Internacional)
-        endpoint = '/api/checkout/epayco'
+        // Pago via PayPal (Internacional)
+        endpoint = '/api/checkout/paypal'
         body = {
           productType: 'event',
           productId: event._id,
           productName: `${event.title} (${seats} cupo${seats > 1 ? 's' : ''})`,
           amount,
           currency,
-          paymentMethod: paymentMethod === 'epayco_paypal' ? 'paypal' : 'card',
-          customerName: customerName.split(' ')[0],
-          customerLastName: customerName.split(' ').slice(1).join(' ') || 'Cliente',
-          customerEmail,
-          customerPhone,
+          guestEmail: customerEmail,
+          guestName: customerName,
           scheduledAt: event.eventDate, // Fecha del evento para el dashboard
           seats,
           notes,
@@ -388,7 +397,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                       checked={country === 'colombia'}
                       onChange={() => {
                         setCountry('colombia')
-                        setPaymentMethod('wompi_nequi')
+                        setPaymentMethod('wompi_card')
                       }}
                       className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
                     />
@@ -402,7 +411,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                       checked={country === 'international'}
                       onChange={() => {
                         setCountry('international')
-                        setPaymentMethod('epayco_card')
+                        setPaymentMethod('paypal_card')
                       }}
                       className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
                     />
@@ -419,25 +428,6 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                 <div className="space-y-3">
                   {country === 'colombia' ? (
                     <>
-                      {/* Nequi */}
-                      <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                        paymentMethod === 'wompi_nequi' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
-                      }`}>
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="wompi_nequi"
-                          checked={paymentMethod === 'wompi_nequi'}
-                          onChange={() => setPaymentMethod('wompi_nequi')}
-                          className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
-                        />
-                        <Smartphone className="w-5 h-5 text-[#8A4BAF]" />
-                        <div>
-                          <span className="font-medium">Nequi</span>
-                          <p className="text-xs text-gray-500">Serás redirigido al botón Nequi</p>
-                        </div>
-                      </label>
-
                       {/* Card Colombia */}
                       <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                         paymentMethod === 'wompi_card' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
@@ -457,16 +447,35 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                         </div>
                       </label>
 
-                      {/* PayPal Colombia */}
+                      {/* Bre-B Colombia */}
                       <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                        paymentMethod === 'epayco_paypal' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
+                        paymentMethod === 'breb_manual' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
                       }`}>
                         <input
                           type="radio"
                           name="paymentMethod"
-                          value="epayco_paypal"
-                          checked={paymentMethod === 'epayco_paypal'}
-                          onChange={() => setPaymentMethod('epayco_paypal')}
+                          value="breb_manual"
+                          checked={paymentMethod === 'breb_manual'}
+                          onChange={() => setPaymentMethod('breb_manual')}
+                          className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
+                        />
+                        <Key className="w-5 h-5 text-[#8A4BAF]" />
+                        <div>
+                          <span className="font-medium">Bre-B (Llave Bancolombia)</span>
+                          <p className="text-xs text-gray-500">Transferencia instantánea sin comisión</p>
+                        </div>
+                      </label>
+
+                      {/* PayPal Colombia */}
+                      <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                        paymentMethod === 'paypal_direct' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="paypal_direct"
+                          checked={paymentMethod === 'paypal_direct'}
+                          onChange={() => setPaymentMethod('paypal_direct')}
                           className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
                         />
                         <PayPalIcon />
@@ -478,16 +487,16 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                     </>
                   ) : (
                     <>
-                      {/* Card International */}
+                      {/* Card International via PayPal */}
                       <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                        paymentMethod === 'epayco_card' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
+                        paymentMethod === 'paypal_card' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
                       }`}>
                         <input
                           type="radio"
                           name="paymentMethod"
-                          value="epayco_card"
-                          checked={paymentMethod === 'epayco_card'}
-                          onChange={() => setPaymentMethod('epayco_card')}
+                          value="paypal_card"
+                          checked={paymentMethod === 'paypal_card'}
+                          onChange={() => setPaymentMethod('paypal_card')}
                           className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
                         />
                         <CreditCard className="w-5 h-5 text-[#8A4BAF]" />
@@ -499,14 +508,14 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
 
                       {/* PayPal International */}
                       <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                        paymentMethod === 'epayco_paypal' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
+                        paymentMethod === 'paypal_direct' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
                       }`}>
                         <input
                           type="radio"
                           name="paymentMethod"
-                          value="epayco_paypal"
-                          checked={paymentMethod === 'epayco_paypal'}
-                          onChange={() => setPaymentMethod('epayco_paypal')}
+                          value="paypal_direct"
+                          checked={paymentMethod === 'paypal_direct'}
+                          onChange={() => setPaymentMethod('paypal_direct')}
                           className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
                         />
                         <PayPalIcon />
@@ -521,7 +530,9 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                 <p className="mt-3 text-xs text-gray-500 text-center">
                   {paymentMethod?.startsWith('wompi')
                     ? 'Pago procesado de forma segura por Wompi (Bancolombia)'
-                    : 'Pago procesado de forma segura por ePayco'}
+                    : paymentMethod === 'breb_manual'
+                      ? 'Transferencia directa con Bre-B - Sin comisiones'
+                      : 'Pago procesado de forma segura por PayPal'}
                 </p>
               </div>
 

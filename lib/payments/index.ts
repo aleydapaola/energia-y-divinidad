@@ -2,9 +2,9 @@
  * Payment Gateway Module
  * Exports públicos del módulo de pagos
  *
- * Este módulo proporciona una interfaz unificada para las pasarelas de pago de Colombia:
+ * Este módulo proporciona una interfaz unificada para las pasarelas de pago:
  * - Wompi (Colombia - COP, tarjetas colombianas y Nequi)
- * - ePayco (Internacional - COP/USD, PayPal)
+ * - PayPal (Internacional y Colombia - COP/USD)
  * - Nequi (Colombia - COP, pagos push directos)
  */
 
@@ -22,5 +22,5 @@ export * from './webhook-processor'
 
 // Re-export adapters para acceso directo si es necesario
 export { WompiAdapter } from './adapters/wompi-adapter'
-export { EpaycoAdapter } from './adapters/epayco-adapter'
+export { PayPalAdapter } from './adapters/paypal-adapter'
 export { NequiAdapter } from './adapters/nequi-adapter'

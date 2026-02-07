@@ -5,8 +5,8 @@ import { Footer } from "@/components/layout/Footer"
 import { auth } from "@/lib/auth"
 
 export const metadata = {
-  title: "Sobre Mí - Aleyda Paola Vargas | Energía y Divinidad",
-  description: "Conoce la historia de Aleyda Paola Vargas, canalizadora espiritual y chamana profesional. Un camino de despertar, sanación y conexión con la conciencia universal.",
+  title: "Sobre Mí - Aleyda Paola | Energía y Divinidad",
+  description: "Conoce la historia de Aleyda Paola, canalizadora espiritual. Un camino de despertar, sanación y conexión con la conciencia universal.",
 }
 
 export default async function SobreMiPage() {
@@ -45,8 +45,8 @@ export default async function SobreMiPage() {
                 <div className="absolute -inset-4 bg-gradient-to-br from-[#8A4BAF]/20 via-[#654177]/10 to-transparent rounded-3xl blur-2xl"></div>
                 <Image
                   src="/images/AleydaPirineo2-1024x829.jpg.jpeg"
-                  alt="Aleyda Paola Vargas - Canalizadora espiritual y chamana profesional"
-                  title="Aleyda Paola Vargas - Canalizadora y chamana profesional"
+                  alt="Aleyda Paola - Canalizadora espiritual"
+                  title="Aleyda Paola - Canalizadora profesional"
                   width={1024}
                   height={829}
                   className="relative rounded-2xl shadow-2xl object-cover w-full h-auto"
@@ -56,7 +56,7 @@ export default async function SobreMiPage() {
 
               <div>
                 <p className="font-dm-sans text-lg text-[#4A4A4A] leading-relaxed mb-6">
-                  Hola, soy <strong className="text-[#8A4BAF]">Aleyda Paola Vargas</strong>, canalizadora espiritual y chamana profesional. Quiero compartir contigo el camino que me llevó a conectar con la conciencia y la energía universal.
+                  Hola, soy <strong className="text-[#8A4BAF]">Aleyda Paola</strong>, canalizadora espiritual. Quiero compartir contigo el camino que me llevó a conectar con la conciencia, la energía y divinidad universal.
                 </p>
               </div>
             </div>
@@ -68,10 +68,7 @@ export default async function SobreMiPage() {
               </h2>
               <div className="space-y-4 font-dm-sans text-[#4A4A4A] leading-relaxed">
                 <p>
-                  Mi viaje espiritual comenzó hace más de quince años, marcado por un evento trascendental: la muerte de mi abuelo. Lejos de apagar mi luz interior, su partida encendió una chispa en mí. En medio del duelo, sentí una fuerza mayor que me impulsaba a mirar más allá de lo visible.
-                </p>
-                <p>
-                  Fue entonces cuando comprendí que la vida continúa en otros planos y que mi abuelo, desde el silencio físico, se había convertido en mi guía. Él me conectó con la Fuente y me mostró el puente entre nuestro mundo y los planos superiores. Comprendí que estaba destinada a caminar sobre ese puente.
+                  Mi viaje espiritual comenzó hace trece años, marcado por un evento trascendental: la muerte de mi abuelo. Lejos de apagar mi luz interior, su partida encendió una chispa en mí. En medio del duelo, sentí una fuerza mayor que me impulsaba a mirar más allá de lo visible. Fue entonces cuando comprendí que la vida continúa en otros planos y que mi abuelo, desde el silencio físico, se había convertido en mi guía. Él me conectó con la Fuente y me mostró el puente entre nuestro mundo y los planos superiores. Comprendí que estaba destinada a caminar sobre ese puente.
                 </p>
                 <p className="text-[#8A4BAF] font-medium italic text-lg">
                   Pero el despertar espiritual no siempre nace en la luz… A veces, florece desde el dolor más profundo.
@@ -86,10 +83,19 @@ export default async function SobreMiPage() {
               </h2>
               <div className="space-y-4 font-dm-sans text-[#4A4A4A] leading-relaxed">
                 <p>
-                  Como madre de dos hijos, pasé por un proceso de separación, pérdida de empleo y una etapa de depresión profunda. Me sentía estancada, enfrentando bloqueos emocionales, económicos y físicos. Incluso mi cuerpo comenzó a manifestar la enfermedad.
+                  La muerte de mi abuelo marcó el inicio de un año profundamente transformador. Al mismo tiempo, atravesé un proceso de separación, la pérdida de mi empleo y el desafío de ser madre de dos hijos. Todo ocurrió en un mismo periodo, llevándome a una etapa de depresión profunda.
+                </p>
+                <p>
+                  Me sentía estancada, enfrentando bloqueos emocionales, económicos y físicos. Incluso mi cuerpo comenzó a manifestar ese desequilibrio a través de la enfermedad.
+                </p>
+                <p>
+                  Comencé entonces mi proceso de sanación física, ya que padecía fibromialgia, una rosácea muy fuerte y un lipoma en la espalda. Todo esto me llevó a reevaluar profundamente qué estaba ocurriendo con mi vida.
+                </p>
+                <p>
+                  Fue un llamado a detenerme, a mirar hacia adentro y a intentar poner en orden lo que, en ese momento, se había convertido en mi nueva realidad.
                 </p>
                 <p className="text-[#654177] font-medium">
-                  La tristeza por la pérdida de mi abuelo no solo afectó mi mente; fracturó mi alma e inundó mi corazón con un vacío difícil de explicar.
+                  La tristeza por la pérdida de mi abuelo no solo afectó mi mente, fracturó mi alma y dejó en mi corazón un vacío profundo, más allá de toda explicación racional.
                 </p>
               </div>
             </div>
@@ -101,13 +107,19 @@ export default async function SobreMiPage() {
               </h2>
               <div className="space-y-4 font-dm-sans text-[#4A4A4A] leading-relaxed">
                 <p>
-                  Fue entonces cuando decidí buscar respuestas. Comencé a leer libros sobre la muerte, a explorar herramientas de sanación emocional y a asistir a encuentros con maestros espirituales. Lo que comenzó como una búsqueda desesperada, se transformó en un camino profundo de conexión, sabiduría y transformación personal.
+                  Fue entonces cuando decidí buscar respuestas. Comencé a leer libros sobre la muerte, a explorar herramientas de sanación emocional y a asistir a encuentros con maestros espirituales.
                 </p>
                 <p>
-                  Y desde ese momento, supe que mi misión era acompañar a otros en su propio proceso de despertar espiritual y sanación del alma.
+                  No podía comprender que mi abuelo simplemente ya no estuviera. Me resultaba imposible asimilar que su cuerpo físico había muerto y que ya no formaba parte de este mundo.
                 </p>
                 <p>
-                  Luego de más de una década de búsqueda profunda, tras 12 años de estudio con las enseñanzas del maestro Gerardo Schmedling Torres, me sumergí en un camino con mucha disciplina de aprendizaje: numerología, constelaciones familiares, radiestesia, práctica de yoga, sanación con cristales, tarot evolutivo, Mesa Radiónica de Saint Germain y Registros Akáshicos.
+                  Fue entonces cuando comencé a buscar respuestas. Desde el día en que partió, se manifestaba en mis sueños y, con el tiempo, llegamos incluso a conversar frente a frente. En ese momento, yo aún no sabía que aquello que experimentaba era canalizar.
+                </p>
+                <p>
+                  Lo que comenzó como una búsqueda desesperada, se transformó en un camino profundo de conexión, sabiduría y transformación personal. Y desde ese momento, supe que mi misión era acompañar a otros en su propio proceso de despertar espiritual y sanación del alma.
+                </p>
+                <p>
+                  Luego, tras 3 años de estudio con las enseñanzas del maestro Gerardo Schmedling, me sumergí en un camino con mucha disciplina de aprendizaje: Mesa Radiónica de Saint Germain, numerología, constelaciones familiares, radiestesia, práctica de yoga, meditación, sanación con cristales, tarot evolutivo y Registros Akáshicos.
                 </p>
                 <p>
                   Cada herramienta fue abriendo más puertas en mi interior, conectando piezas de un rompecabezas espiritual que poco a poco cobraba sentido.
@@ -118,11 +130,11 @@ export default async function SobreMiPage() {
             {/* Section: La Canalización */}
             <div className="mb-12">
               <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF] mb-6">
-                Aprender a Canalizar con Luz y Conciencia
+                Aprender a Canalizar
               </h2>
               <div className="space-y-4 font-dm-sans text-[#4A4A4A] leading-relaxed">
                 <p>
-                  Y entonces llegó a mi vida lo que siempre había esperado: aprender a canalizar con Luz y Conciencia. Con profunda admiración y gratitud, reconozco la inspiración y guía de mi gran maestra Mercé Carbonell, a quien seguí durante años, asistiendo a sus encuentros, formaciones y compartires.
+                  Y entonces llegó a mi vida lo que siempre había esperado: aprender a canalizar. Con profunda admiración y gratitud, reconozco la inspiración y guía de mi gran maestra, a quien seguí durante años, asistiendo a sus encuentros, formaciones y compartires.
                 </p>
                 <p>
                   Ella encendió en mí el deseo profundo de desarrollar ese don que sentía latente desde siempre. Con paciencia, sabiduría y amor, me instruyó, motivó y acompañó a convertirme en lo que soy hoy: <strong className="text-[#8A4BAF]">una mujer al servicio de la luz</strong>.
@@ -131,7 +143,7 @@ export default async function SobreMiPage() {
                   Con los años, comprendí que mi destino estaba en la canalización. Al iniciar este camino, me enamoré de la Luz y la Conciencia, no solo como conceptos espirituales, sino como energía viva que se manifiesta en cada encuentro, cada sesión, cada mensaje recibido.
                 </p>
                 <p>
-                  Hoy canalizo desde el corazón, guiada por los Seres de Luz que, con infinita compasión y amor, me han tomado de la mano en este proceso de sanación de mi propia alma.
+                  Hoy canalizo desde el corazón, guiada por los Seres de Luz y por supuesto mi abuelo Fernando que, con infinita compasión y amor, me han tomado de la mano en este proceso de sanación de mi propia alma.
                 </p>
               </div>
             </div>
@@ -190,9 +202,9 @@ export default async function SobreMiPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
                   </div>
-                  <h3 className="font-gazeta text-xl text-[#654177] mb-3 text-center">Mensajes del Alma</h3>
+                  <h3 className="font-gazeta text-xl text-[#654177] mb-3 text-center">Mensajes que Nutren el Alma</h3>
                   <p className="font-dm-sans text-sm text-[#4A4A4A] leading-relaxed text-center">
-                    Los Seres de Luz tienen palabras precisas, amorosas y profundas para cada quien. Ser canal de esos mensajes es un acto de humildad y entrega total.
+                    Los Seres de Luz tienen palabras precisas, amorosas y profundas para cada uno. Ser canal de esos mensajes es un acto de humildad y entrega total.
                   </p>
                 </div>
               </div>
@@ -222,10 +234,10 @@ export default async function SobreMiPage() {
                 Con amor, luz y propósito,
               </p>
               <p className="font-gazeta text-2xl text-[#4b316c] font-semibold mb-1">
-                Aleyda Paola Vargas
+                Aleyda Paola
               </p>
               <p className="font-dm-sans text-[#8A4BAF] text-sm tracking-wide">
-                Canalizadora & Chamana Profesional
+                Canalizadora Profesional
               </p>
 
               {/* CTA */}

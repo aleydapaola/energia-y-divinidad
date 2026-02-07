@@ -242,7 +242,7 @@ function NequiPaymentContent() {
               ¿Necesitas ayuda con tu pago?
             </p>
             <a
-              href="https://wa.me/573001234567"
+              href="https://wa.me/573151165921"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-[#8A4BAF] hover:text-[#654177] font-dm-sans font-medium transition-colors"

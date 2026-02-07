@@ -3,6 +3,7 @@ import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import MeditationCard from '@/components/meditaciones/MeditationCard'
 import { getAllFreeContent } from '@/lib/sanity/queries/freeContent'
+import { auth } from '@/lib/auth'
 
 export const metadata: Metadata = {
   title: 'Meditaciones Gratis | Energía y Divinidad',
@@ -25,11 +26,14 @@ export const metadata: Metadata = {
 }
 
 export default async function MeditacionesPage() {
-  const meditations = await getAllFreeContent()
+  const [session, meditations] = await Promise.all([
+    auth(),
+    getAllFreeContent(),
+  ])
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <Header session={null} />
+      <Header session={session} />
 
       {/* Hero Section */}
       <section className="bg-gradient-to-b from-[#FFF8F0] to-white py-12 sm:py-16 md:py-20 lg:py-24">

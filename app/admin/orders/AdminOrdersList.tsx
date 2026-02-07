@@ -136,8 +136,12 @@ export function AdminOrdersList({ initialOrders }: AdminOrdersListProps) {
       WOMPI_CARD: 'Tarjeta (Wompi)',
       WOMPI_NEQUI: 'Nequi',
       WOMPI_PSE: 'PSE',
+      PAYPAL_DIRECT: 'PayPal',
+      PAYPAL_CARD: 'Tarjeta (PayPal)',
+      BREB_MANUAL: 'Bre-B (Manual)',
+      // Legacy - para órdenes históricas
       EPAYCO_CARD: 'Tarjeta (ePayco)',
-      EPAYCO_PAYPAL: 'PayPal',
+      EPAYCO_PAYPAL: 'PayPal (ePayco)',
       EPAYCO_PSE: 'PSE (ePayco)',
       STRIPE: 'Stripe',
       MANUAL_NEQUI: 'Nequi (Manual)',

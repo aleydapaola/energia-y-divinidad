@@ -86,7 +86,7 @@ function getOrderType(
 function getPaymentMethodEnum(
   gatewayName: string,
   paymentMethod: PaymentMethodType
-): 'WOMPI_NEQUI' | 'WOMPI_CARD' | 'WOMPI_PSE' | 'EPAYCO_CARD' | 'EPAYCO_PAYPAL' | 'EPAYCO_PSE' {
+): 'WOMPI_NEQUI' | 'WOMPI_CARD' | 'WOMPI_PSE' | 'PAYPAL_DIRECT' | 'PAYPAL_CARD' {
   if (gatewayName === 'wompi') {
     switch (paymentMethod) {
       case 'NEQUI':
@@ -98,14 +98,12 @@ function getPaymentMethodEnum(
       default:
         return 'WOMPI_CARD'
     }
-  } else if (gatewayName === 'epayco') {
+  } else if (gatewayName === 'paypal') {
     switch (paymentMethod) {
-      case 'PAYPAL':
-        return 'EPAYCO_PAYPAL'
-      case 'PSE':
-        return 'EPAYCO_PSE'
+      case 'CARD':
+        return 'PAYPAL_CARD'
       default:
-        return 'EPAYCO_CARD'
+        return 'PAYPAL_DIRECT'
     }
   } else if (gatewayName === 'nequi') {
     return 'WOMPI_NEQUI' // Nequi directo también se marca como WOMPI_NEQUI
@@ -120,16 +118,17 @@ export async function processCheckout(options: CheckoutOptions): Promise<Checkou
   const { data, userId, userEmail, userName, clientIP, baseUrl } = options
 
   try {
-    // 1. Verificar duplicados para membresías
+    // 1. Verificar si intenta comprar el mismo plan
     if (data.productType === 'MEMBERSHIP' && userId) {
-      const existingMembership = await checkExistingMembership(userId, data.productId)
-      if (existingMembership) {
+      const samePlanExists = await checkExistingMembership(userId, data.productId)
+      if (samePlanExists) {
         return {
           success: false,
-          error: 'Ya tienes una membresía activa',
+          error: 'Ya tienes este plan activo',
           errorCode: 'DUPLICATE',
         }
       }
+      // Si tiene otro plan, es un upgrade/downgrade - permitir continuar
     }
 
     // 2. Procesar código de descuento si existe
@@ -282,14 +281,24 @@ export async function processCheckout(options: CheckoutOptions): Promise<Checkou
 }
 
 /**
- * Verifica si el usuario ya tiene una membresía activa
+ * Verifica si el usuario ya tiene una membresía activa del MISMO tier
+ * Retorna true solo si tiene el mismo plan (bloquear)
+ * Retorna false si no tiene membresía o tiene un plan diferente (permitir upgrade/downgrade)
  */
-async function checkExistingMembership(userId: string, _tierId?: string): Promise<boolean> {
+async function checkExistingMembership(userId: string, tierId?: string): Promise<boolean> {
   const existing = await prisma.subscription.findFirst({
     where: {
       userId,
       status: { in: ['ACTIVE', 'TRIAL', 'PAST_DUE'] },
     },
   })
-  return !!existing
+
+  // Si no tiene membresía activa, permitir
+  if (!existing) return false
+
+  // Si tiene membresía pero es diferente tier, permitir (upgrade/downgrade)
+  if (tierId && existing.membershipTierId !== tierId) return false
+
+  // Mismo tier - bloquear
+  return true
 }

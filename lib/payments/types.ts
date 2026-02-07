@@ -4,7 +4,7 @@
  */
 
 // Pasarelas de pago activas
-export type PaymentGatewayName = 'wompi' | 'epayco' | 'nequi'
+export type PaymentGatewayName = 'wompi' | 'paypal' | 'nequi'
 
 // LEGACY - Solo para datos históricos, no usar para nuevos pagos
 export type LegacyPaymentGatewayName = 'stripe'

@@ -39,17 +39,19 @@ export function PricingSection({ tiers, isAuthenticated, currentTierId }: Pricin
   }, [])
 
   const handleSelectTier = (tierId: string) => {
+    const checkoutUrl = `/membresia/checkout?tier=${tierId}&interval=${billingInterval}&currency=${currency}`
+
     if (!isAuthenticated) {
       // Guardar selección y redirigir a login
       sessionStorage.setItem('selectedTier', tierId)
       sessionStorage.setItem('selectedInterval', billingInterval)
       sessionStorage.setItem('selectedCurrency', currency)
-      router.push(`/auth/signin?callbackUrl=/membresia/checkout?tier=${tierId}&interval=${billingInterval}&currency=${currency}`)
+      router.push(`/auth/signin?callbackUrl=${encodeURIComponent(checkoutUrl)}`)
       return
     }
 
     // Redirigir a checkout
-    router.push(`/membresia/checkout?tier=${tierId}&interval=${billingInterval}&currency=${currency}`)
+    router.push(checkoutUrl)
   }
 
   // Ordenar tiers por precio (para mostrar de menor a mayor)
@@ -122,18 +124,25 @@ export function PricingSection({ tiers, isAuthenticated, currentTierId }: Pricin
       </div>
 
       {/* Grid de pricing cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-7xl mx-auto px-2 sm:px-0" id="pricing">
-        {sortedTiers.map((tier) => (
-          <PricingCard
-            key={tier._id}
-            tier={tier}
-            currency={currency}
-            billingInterval={billingInterval}
-            onSelect={handleSelectTier}
-            isPopular={tier.popularityBadge === 'popular'}
-            isCurrentPlan={currentTierId === tier._id}
-          />
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 items-stretch gap-4 sm:gap-6 lg:gap-8 max-w-4xl mx-auto px-2 sm:px-0" id="pricing">
+        {sortedTiers.map((tier) => {
+          // Obtener el tierLevel del plan actual del usuario
+          const currentTier = currentTierId ? tiers.find(t => t._id === currentTierId) : null
+          const currentTierOrder = currentTier?.tierLevel
+
+          return (
+            <PricingCard
+              key={tier._id}
+              tier={tier}
+              currency={currency}
+              billingInterval={billingInterval}
+              onSelect={handleSelectTier}
+              isPopular={tier.popularityBadge === 'popular'}
+              isCurrentPlan={currentTierId === tier._id}
+              currentTierOrder={currentTierOrder}
+            />
+          )
+        })}
       </div>
 
       {/* Información adicional */}

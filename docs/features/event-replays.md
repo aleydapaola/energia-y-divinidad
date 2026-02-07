@@ -37,7 +37,6 @@ En Sanity, cada evento puede configurar:
 **Ejemplo de configuración:**
 - Usuarios sin membresía: 14 días
 - Plan Esencia: 30 días
-- Plan Armonía: 60 días
 - Plan Divinidad: 0 días (permanente)
 
 ### 2. Tracking de Visualizaciones

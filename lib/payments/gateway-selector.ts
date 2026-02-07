@@ -2,24 +2,24 @@
  * Payment Gateway Selector
  * Selecciona la pasarela apropiada según método de pago y región
  *
- * Estrategia de pagos para Colombia (CLAUDE.md):
+ * Estrategia de pagos:
  * - Nequi → Nequi API (si está configurado) o Wompi (fallback)
  * - Tarjetas colombianas (COP) → Wompi
  * - PSE → Wompi
- * - PayPal → ePayco
- * - Tarjetas internacionales (USD) → ePayco
+ * - PayPal → PayPal directo
+ * - Tarjetas internacionales (USD) → PayPal
  */
 
 import { PaymentGateway } from './gateway-interface'
 import { PaymentMethodType, Currency } from './types'
 import { WompiAdapter } from './adapters/wompi-adapter'
-import { EpaycoAdapter } from './adapters/epayco-adapter'
+import { PayPalAdapter } from './adapters/paypal-adapter'
 import { NequiAdapter } from './adapters/nequi-adapter'
 
 // Instancias singleton de cada adaptador
 const gateways = {
   wompi: new WompiAdapter(),
-  epayco: new EpaycoAdapter(),
+  paypal: new PayPalAdapter(),
   nequi: new NequiAdapter(),
 }
 
@@ -39,12 +39,12 @@ export function getGateway(name: GatewayName): PaymentGateway {
 /**
  * Selecciona el gateway apropiado para un método de pago y moneda
  *
- * Reglas de selección según CLAUDE.md:
+ * Reglas de selección:
  * - Nequi + COP → Nequi API (si configurado) o Wompi
  * - Tarjeta + COP → Wompi
  * - PSE + COP → Wompi
- * - PayPal → ePayco
- * - Tarjeta + USD → ePayco
+ * - PayPal → PayPal directo
+ * - Tarjeta + USD → PayPal
  */
 export function getGatewayForPayment(
   paymentMethod: PaymentMethodType,
@@ -75,23 +75,22 @@ export function getGatewayForPayment(
     return gateways.wompi
   }
 
-  // PayPal → ePayco (COP o USD)
+  // PayPal → PayPal directo (COP o USD)
   if (paymentMethod === 'PAYPAL') {
-    return gateways.epayco
+    return gateways.paypal
   }
 
-  // Efectivo (Efecty, Baloto) → ePayco
-  if (paymentMethod === 'CASH') {
-    return gateways.epayco
-  }
-
-  // Tarjetas internacionales → ePayco (USD)
+  // Tarjetas internacionales → PayPal (USD)
   if (paymentMethod === 'CARD' && currency === 'USD') {
-    return gateways.epayco
+    return gateways.paypal
   }
 
-  // Default: ePayco para cualquier otro caso internacional
-  return gateways.epayco
+  // Default: Wompi para COP, PayPal para USD
+  if (currency === 'USD') {
+    return gateways.paypal
+  }
+
+  return gateways.wompi
 }
 
 /**
@@ -114,13 +113,13 @@ export function getAvailablePaymentMethods(currency: Currency): {
         label: 'Nequi',
       },
       { method: 'PSE', gateway: 'wompi', label: 'PSE (Transferencia)' },
-      { method: 'PAYPAL', gateway: 'epayco', label: 'PayPal' }
+      { method: 'PAYPAL', gateway: 'paypal', label: 'PayPal' }
     )
   } else if (currency === 'USD') {
     // Internacional - Dólares
     methods.push(
-      { method: 'CARD', gateway: 'epayco', label: 'Credit/Debit Card' },
-      { method: 'PAYPAL', gateway: 'epayco', label: 'PayPal' }
+      { method: 'PAYPAL', gateway: 'paypal', label: 'PayPal' },
+      { method: 'CARD', gateway: 'paypal', label: 'Credit/Debit Card' }
     )
   }
 

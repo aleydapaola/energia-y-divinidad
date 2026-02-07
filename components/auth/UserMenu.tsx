@@ -72,6 +72,20 @@ export function UserMenu() {
               Mis Sesiones
             </Link>
             <Link
+              href="/mi-cuenta/cursos"
+              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setIsOpen(false)}
+            >
+              Mis Cursos
+            </Link>
+            <Link
+              href="/mi-cuenta/eventos"
+              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setIsOpen(false)}
+            >
+              Mis Eventos
+            </Link>
+            <Link
               href="/mi-cuenta/compras"
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               onClick={() => setIsOpen(false)}
@@ -79,11 +93,11 @@ export function UserMenu() {
               Mis Compras
             </Link>
             <Link
-              href="/dashboard/membresia/publicaciones"
-              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              href="/membresia"
+              className="block px-4 py-2 text-sm text-[#4944a4] font-medium hover:bg-gray-100 transition-colors"
               onClick={() => setIsOpen(false)}
             >
-              Mi Membresía
+              Membresía
             </Link>
           </div>
 

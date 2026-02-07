@@ -16,10 +16,9 @@
 - Rosa claro (fondos): `#f8f0f5`
 - Azul claro (fondos): `#eef1fa`
 
-### Colores de Membresía (triada análoga)
-Basados en una progresión armónica alrededor del violeta de marca:
+### Colores de Membresía
+Hay 2 niveles de membresía con colores diferenciados:
 - Rosa suave: `#C77DBA` (plan Esencia - accesible, cálido)
-- Violeta: `#8A4BAF` (plan Armonía - color de marca, anclaje)
 - Índigo profundo: `#5C4D9B` (plan Divinidad - premium, sofisticado)
 
 ## Tipografía
@@ -77,27 +76,32 @@ El violeta (`#8A4BAF`) se reserva para:
 
 ### Pasarelas de Pago
 
-| Pasarela | Monedas | Métodos | Comisión |
-|----------|---------|---------|----------|
-| **Nequi API** | Solo COP | Nequi (Push) | 1.5% + IVA |
-| **Wompi** | Solo COP | Tarjetas colombianas | 1.99% + IVA |
-| **ePayco** | COP, USD | PayPal, Tarjetas internacionales | 2.68% + IVA + $900 |
+| Pasarela | Monedas | Métodos | Comisión | Estado |
+|----------|---------|---------|----------|--------|
+| **Wompi** | Solo COP | Tarjetas colombianas | 1.99% + IVA | ✅ Activo |
+| **PayPal** | COP, USD | PayPal, Tarjetas internacionales | ~3.4% + comisión fija | ✅ Activo |
+| **Bre-B Manual** | Solo COP | Transferencia con llave Bancolombia | **0% (sin comisión)** | ✅ Activo |
+| **Nequi API** | Solo COP | Nequi (Push) | 1.5% + IVA | ⏳ Pendiente credenciales |
 
 ### Métodos por Región
 
 #### Colombia (COP)
-- **Nequi** → Nequi API (directo) - *Pendiente de integrar*
 - **Tarjeta de crédito** → Wompi
-- **PayPal** → ePayco
+- **Bre-B (Llave Bancolombia)** → Pago manual con confirmación admin
+- **PayPal** → PayPal Directo
+
+> **Nota**: Nequi no está disponible actualmente. Se habilitará cuando tengamos las credenciales de Nequi API.
 
 #### Internacional (USD)
-- **Tarjeta de crédito** → ePayco
-- **PayPal** → ePayco
+
+#### Internacional (USD)
+- **Tarjeta de crédito** → PayPal
+- **PayPal** → PayPal Directo
 
 ### Restricciones Técnicas
 
 - Wompi **solo opera en COP**
-- ePayco puede operar en **COP y USD**
+- PayPal opera en **COP y USD**
 - Next.js **no procesa pagos**, solo orquesta, redirige y valida vía webhooks
 - **NO exponer API keys** en el cliente
 - **NO confiar solo en redirecciones**, usar webhooks para validar pagos
@@ -115,7 +119,7 @@ Esta estrategia aplica a TODOS los productos de pago:
 
 1. Detectar país del usuario (por IP o selección manual)
 2. Mostrar solo los métodos de pago disponibles para su región
-3. Según método seleccionado, orquestar hacia Wompi o ePayco
+3. Según método seleccionado, orquestar hacia Wompi (COP) o PayPal (USD/COP)
 4. Validar pago mediante webhook antes de confirmar
 5. Redirigir a página de confirmación
 
@@ -124,20 +128,27 @@ Esta estrategia aplica a TODOS los productos de pago:
 | Archivo | Descripción |
 |---------|-------------|
 | `lib/wompi.ts` | Integración con Wompi (Colombia) |
-| `lib/epayco.ts` | Integración con ePayco (Internacional) |
+| `lib/paypal.ts` | Integración con PayPal (Internacional) |
+| `lib/payments/adapters/paypal-adapter.ts` | Adaptador PayPal para el sistema de gateways |
 | `lib/membership-access.ts` | Detección de región y métodos disponibles |
 | `components/pago/PaymentMethodSelector.tsx` | Modal de selección de método de pago |
+| `components/pago/PayPalCheckout.tsx` | Componente de checkout PayPal |
 | `app/api/checkout/wompi/route.ts` | API para crear pagos Wompi |
-| `app/api/checkout/epayco/route.ts` | API para crear pagos ePayco |
+| `app/api/checkout/paypal/route.ts` | API para crear órdenes PayPal |
+| `app/api/checkout/paypal/capture/route.ts` | API para capturar pagos PayPal |
 | `app/api/webhooks/wompi/route.ts` | Webhook de Wompi |
-| `app/api/webhooks/epayco/route.ts` | Webhook de ePayco |
+| `app/api/webhooks/paypal/route.ts` | Webhook de PayPal |
 | `app/pago/confirmacion/page.tsx` | Página de confirmación de pago |
 | `app/pago/nequi-pending/page.tsx` | Página de espera para Nequi |
+| `app/pago/breb-pending/page.tsx` | Página de instrucciones Bre-B |
+| `app/api/checkout/breb/route.ts` | API para crear órdenes Bre-B |
+| `components/pago/BrebPaymentInstructions.tsx` | Instrucciones de pago Bre-B |
+| `app/api/admin/orders/[id]/confirm-payment/route.ts` | API para confirmar pagos manuales |
 
 ### Variables de Entorno Requeridas
 
 ```bash
-# Nequi API Directa (Colombia - Pagos Nequi)
+# Nequi API Directa (Colombia - Pagos Nequi) - Pendiente
 # Pendiente: obtener credenciales en https://negocios.nequi.co/registro/api_push
 NEQUI_CLIENT_ID=
 NEQUI_CLIENT_SECRET=
@@ -148,41 +159,90 @@ NEQUI_API_BASE_PATH=https://api.sandbox.nequi.com
 # NEQUI_AUTH_URI=https://oauth.nequi.com/oauth2/token
 # NEQUI_API_BASE_PATH=https://api.nequi.com
 
-# Wompi (Colombia - Tarjetas)
+# Wompi (Colombia - Tarjetas, Nequi, PSE)
 NEXT_PUBLIC_WOMPI_PUBLIC_KEY=
 WOMPI_PRIVATE_KEY=
 WOMPI_EVENTS_SECRET=
 WOMPI_INTEGRITY_SECRET=
 WOMPI_ENVIRONMENT=sandbox
 
-# ePayco (Internacional)
-NEXT_PUBLIC_EPAYCO_PUBLIC_KEY=
-EPAYCO_PRIVATE_KEY=
-EPAYCO_P_KEY=
-EPAYCO_TEST_MODE=true
+# PayPal (Internacional - PayPal, Tarjetas)
+NEXT_PUBLIC_PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_WEBHOOK_ID=
+PAYPAL_ENVIRONMENT=sandbox
 
 # Notificaciones Admin (ventas)
 # Email donde se reciben las notificaciones de nuevas ventas
 ADMIN_NOTIFICATION_EMAIL=admin@energiaydivinidad.com
 ```
 
-### Integración ePayco
+### Integración PayPal
 
 #### URLs oficiales
 | Recurso | URL |
 |---------|-----|
-| Dashboard (Login) | https://dashboard.epayco.com/login |
-| Documentación API | https://docs.epayco.com/docs/api |
-| Documentación general | https://docs.epayco.com/ |
+| Dashboard Developer | https://developer.paypal.com/dashboard/ |
+| Documentación API | https://developer.paypal.com/docs/api/orders/v2/ |
+| Sandbox Accounts | https://developer.paypal.com/dashboard/accounts |
 
 #### Cómo obtener credenciales
-1. Iniciar sesión en https://dashboard.epayco.com/login
-2. Ir a **Integraciones** → **Llaves API** (o Settings → Customizations → Secret Keys)
+1. Iniciar sesión en https://developer.paypal.com/dashboard/
+2. Ir a **Apps & Credentials** → **Create App**
 3. Obtener las siguientes credenciales:
-   - **P_CUST_ID_CLIENTE** → `NEXT_PUBLIC_EPAYCO_PUBLIC_KEY`
-   - **PRIVATE_KEY** → `EPAYCO_PRIVATE_KEY`
-   - **P_KEY** → `EPAYCO_P_KEY`
-4. Para modo pruebas usar `EPAYCO_TEST_MODE=true` (no genera costos)
+   - **Client ID** → `NEXT_PUBLIC_PAYPAL_CLIENT_ID`
+   - **Secret** → `PAYPAL_CLIENT_SECRET`
+4. Configurar webhooks en **Webhooks** y obtener:
+   - **Webhook ID** → `PAYPAL_WEBHOOK_ID`
+5. Para modo pruebas usar `PAYPAL_ENVIRONMENT=sandbox`
+
+#### Eventos de Webhook configurados
+- `CHECKOUT.ORDER.APPROVED` - Orden aprobada por el usuario
+- `PAYMENT.CAPTURE.COMPLETED` - Pago capturado exitosamente
+- `PAYMENT.CAPTURE.DENIED` - Pago rechazado
+- `PAYMENT.CAPTURE.REFUNDED` - Pago reembolsado
+
+### Integración Bre-B Manual (Colombia)
+
+Bre-B es el sistema de pagos instantáneos del Banco de la República de Colombia. Esta integración permite a los clientes colombianos pagar usando su llave Bancolombia desde cualquier app bancaria compatible (Bancolombia, Nequi, Davivienda, etc.).
+
+#### Características
+- **Sin comisiones** - El cliente paga el monto exacto
+- **Solo para pagos no recurrentes** - Sesiones, eventos, cursos (NO membresías)
+- **Confirmación manual** - El admin confirma cuando verifica el pago
+- **Solo Colombia (COP)**
+
+#### Flujo de pago
+```
+1. Cliente selecciona "Bre-B (Llave Bancolombia)" en checkout
+2. Sistema crea orden con estado PENDING
+3. Cliente ve instrucciones con llave y monto a pagar
+4. Cliente realiza transferencia desde su app bancaria
+5. Admin verifica pago en extracto bancario
+6. Admin confirma pago desde panel de órdenes
+7. Sistema activa entitlement y envía confirmación por email
+```
+
+#### Variables de entorno requeridas
+```bash
+# Bre-B / Llave Bancolombia Negocios
+NEXT_PUBLIC_BANCOLOMBIA_BREB_KEY=  # Llave Bre-B del negocio (ej: celular registrado)
+NEXT_PUBLIC_BANCOLOMBIA_BUSINESS_NAME=Energía y Divinidad
+```
+
+#### Confirmación de pagos (Admin)
+Los pagos Bre-B se confirman manualmente desde:
+1. `/admin/orders` → Buscar orden pendiente con método "Bre-B (Manual)"
+2. Click en "Ver detalle" de la orden
+3. Click en botón "Confirmar Pago Manual"
+4. Ingresar referencia de transacción (opcional)
+5. Confirmar
+
+La confirmación:
+- Cambia el estado a COMPLETED
+- Crea el entitlement/booking correspondiente
+- Registra la acción en AuditLog
+- Envía email de confirmación al cliente
 
 ### Integración Nequi API (Pendiente)
 

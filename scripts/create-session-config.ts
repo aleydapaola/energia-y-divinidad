@@ -37,8 +37,9 @@ const sessionConfigData = {
   slug: { _type: 'slug', current: 'sesion-de-canalizacion' },
   duration: 90,
   deliveryMethod: 'video_call',
-  price: 303198,
+  price: 280000,
   priceUSD: 70,
+  priceEUR: 65,
   memberDiscount: 0,
 
   // Horarios semanales de Aleyda (hora Colombia GMT-5)
@@ -158,6 +159,7 @@ async function createSessionConfig() {
     console.log('   Duración:', result.duration, 'minutos')
     console.log('   Precio COP:', result.price?.toLocaleString('es-CO'))
     console.log('   Precio USD:', result.priceUSD)
+    console.log('   Precio EUR:', result.priceEUR)
     console.log('\n📅 Horarios configurados:')
     console.log('   Lunes:', result.weeklySchedule?.monday?.map((s: any) => `${s.start}-${s.end}`).join(', ') || 'No disponible')
     console.log('   Martes:', result.weeklySchedule?.tuesday?.map((s: any) => `${s.start}-${s.end}`).join(', ') || 'No disponible')

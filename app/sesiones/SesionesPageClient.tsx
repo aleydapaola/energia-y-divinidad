@@ -33,6 +33,7 @@ interface SessionDetails {
   availableDays: string
   price: number
   priceUSD: number
+  priceEUR: number
   formattedPrice: string
 }
 
@@ -78,10 +79,11 @@ export function SesionesPageClient({
   const [isValidatingCode, setIsValidatingCode] = useState(false)
   const [isRedeemingSession, setIsRedeemingSession] = useState(false)
 
-  // Precios del pack (fijos - precio de 7 sesiones, la 8va es gratis)
+  // Precios del pack (precio especial con descuento, la 8va sesion es gratis)
+  // Tasas aprox: 1 USD ≈ 4,100 COP | 1 EUR ≈ 4,400 COP
   const PRICES = {
-    single: { COP: sessionDetails.price, USD: sessionDetails.priceUSD },
-    pack: { COP: 1850000, USD: 500, EUR: 450 }, // Pack de 8 sesiones: 7+1 gratis
+    single: { COP: sessionDetails.price, USD: sessionDetails.priceUSD, EUR: sessionDetails.priceEUR },
+    pack: { COP: 1850000, USD: 450, EUR: 420 }, // Pack de 8 sesiones: 7+1 gratis
   }
 
   const handlePaymentClick = (type: 'single' | 'pack') => {
@@ -140,16 +142,30 @@ export function SesionesPageClient({
           sessionSlug: paymentType === 'single' ? session.slug.current : undefined,
           scheduledAt,
         }
+      } else if (method === 'breb_manual') {
+        // Pago manual via Bre-B (Colombia) - Transferencia con llave Bancolombia
+        endpoint = '/api/checkout/breb'
+        body = {
+          productType: paymentType === 'pack' ? 'pack' : 'session',
+          productId: 'session-canalizacion',
+          productName: paymentType === 'pack' ? 'Pack de 8 Sesiones' : 'Sesión de Canalización',
+          amount: sessionDetails.price, // Bre-B solo COP
+          guestEmail,
+          guestName,
+          scheduledAt,
+        }
       } else {
-        // Pago via ePayco (Internacional)
-        endpoint = '/api/checkout/epayco'
+        // Pago via PayPal (Internacional)
+        endpoint = '/api/checkout/paypal'
         body = {
           productType: paymentType === 'pack' ? 'pack' : 'session',
           productId: 'session-canalizacion',
           productName: paymentType === 'pack' ? 'Pack de 8 Sesiones' : 'Sesión de Canalización',
           amount: region === 'colombia' ? sessionDetails.price : sessionDetails.priceUSD,
           currency,
-          paymentMethod: method === 'epayco_paypal' ? 'paypal' : 'card',
+          guestEmail,
+          guestName,
+          sessionSlug: paymentType === 'single' ? session.slug.current : undefined,
           scheduledAt,
         }
       }
@@ -376,7 +392,7 @@ export function SesionesPageClient({
                       </span>
                     </div>
                     <p className="font-dm-sans text-sm text-gray-500">
-                      ~{sessionDetails.priceUSD} USD (precio internacional)
+                      ~${sessionDetails.priceUSD} USD | ~{sessionDetails.priceEUR} EUR
                     </p>
                   </div>
                 </div>
@@ -400,7 +416,7 @@ export function SesionesPageClient({
                     </span>
                   </div>
                   <p className="font-dm-sans text-xs text-white/60 mb-6">
-                    ${PRICES.pack.USD} USD | Valido por 1 ano
+                    ~${PRICES.pack.USD} USD | ~{PRICES.pack.EUR} EUR | Válido por 1 año
                   </p>
                   <button
                     onClick={() => handlePaymentClick('pack')}

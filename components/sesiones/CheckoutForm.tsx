@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Session } from '@/lib/sanity/queries/sessions'
-import { Mail, Phone, User, MapPin, CreditCard, AlertCircle, Smartphone, Loader2, Coins, CheckCircle } from 'lucide-react'
+import { Mail, Phone, User, MapPin, CreditCard, AlertCircle, Loader2, Coins, CheckCircle, Key } from 'lucide-react'
 import type { PaymentMethodType } from '@/lib/membership-access'
 
 interface CheckoutFormProps {
@@ -61,9 +61,9 @@ export function CheckoutForm({
   const handleCountryChange = (selectedCountry: Country) => {
     setCountry(selectedCountry)
     if (selectedCountry === 'colombia') {
-      setPaymentMethod('wompi_nequi')
+      setPaymentMethod('wompi_card')
     } else {
-      setPaymentMethod('epayco_card')
+      setPaymentMethod('paypal_card')
     }
     // Clear country error when selected
     if (errors.country) {
@@ -166,20 +166,29 @@ export function CheckoutForm({
           sessionSlug: session.slug.current,
           scheduledAt: scheduledDateTime.toISOString(),
         }
+      } else if (paymentMethod === 'breb_manual') {
+        // Pago manual via Bre-B (Colombia) - Transferencia con llave
+        endpoint = '/api/checkout/breb'
+        body = {
+          productType: 'session',
+          productId: session._id,
+          productName: session.title,
+          amount,
+          guestEmail: formData.email,
+          guestName: formData.name,
+          scheduledAt: scheduledDateTime.toISOString(),
+        }
       } else {
-        // Pago via ePayco (Internacional)
-        endpoint = '/api/checkout/epayco'
+        // Pago via PayPal (Internacional)
+        endpoint = '/api/checkout/paypal'
         body = {
           productType: 'session',
           productId: session._id,
           productName: session.title,
           amount,
           currency,
-          paymentMethod: paymentMethod === 'epayco_paypal' ? 'paypal' : 'card',
-          customerName: formData.name.split(' ')[0],
-          customerLastName: formData.name.split(' ').slice(1).join(' ') || 'Cliente',
-          customerPhone: formData.phone,
-          customerEmail: formData.email,
+          guestEmail: formData.email,
+          guestName: formData.name,
           sessionSlug: session.slug.current,
           scheduledAt: scheduledDateTime.toISOString(),
         }
@@ -215,13 +224,13 @@ export function CheckoutForm({
   // Opciones de pago según país
   const paymentOptions = country === 'colombia'
     ? [
-        { value: 'wompi_nequi' as PaymentMethodType, label: 'Nequi', description: 'Serás redirigido al botón Nequi', icon: <Smartphone className="w-5 h-5" /> },
         { value: 'wompi_card' as PaymentMethodType, label: 'Tarjeta de Crédito/Débito', description: 'Visa, Mastercard, American Express', icon: <CreditCard className="w-5 h-5" /> },
-        { value: 'epayco_paypal' as PaymentMethodType, label: 'PayPal', description: 'Paga con tu cuenta PayPal', icon: <PayPalIcon /> },
+        { value: 'breb_manual' as PaymentMethodType, label: 'Bre-B (Llave Bancolombia)', description: 'Transferencia instantánea sin comisión', icon: <Key className="w-5 h-5" /> },
+        { value: 'paypal_direct' as PaymentMethodType, label: 'PayPal', description: 'Paga con tu cuenta PayPal', icon: <PayPalIcon /> },
       ]
     : [
-        { value: 'epayco_card' as PaymentMethodType, label: 'Credit/Debit Card', description: 'Visa, Mastercard, American Express', icon: <CreditCard className="w-5 h-5" /> },
-        { value: 'epayco_paypal' as PaymentMethodType, label: 'PayPal', description: 'Pay with your PayPal account', icon: <PayPalIcon /> },
+        { value: 'paypal_card' as PaymentMethodType, label: 'Credit/Debit Card', description: 'Visa, Mastercard, American Express', icon: <CreditCard className="w-5 h-5" /> },
+        { value: 'paypal_direct' as PaymentMethodType, label: 'PayPal', description: 'Pay with your PayPal account', icon: <PayPalIcon /> },
       ]
 
   return (
@@ -364,7 +373,9 @@ export function CheckoutForm({
             <p className="mt-3 text-xs text-gray-500 text-center">
               {paymentMethod?.startsWith('wompi')
                 ? 'Pago procesado de forma segura por Wompi (Bancolombia)'
-                : 'Pago procesado de forma segura por ePayco'}
+                : paymentMethod === 'breb_manual'
+                  ? 'Transferencia directa con Bre-B - Sin comisiones'
+                  : 'Pago procesado de forma segura por PayPal'}
             </p>
           </div>
         )}

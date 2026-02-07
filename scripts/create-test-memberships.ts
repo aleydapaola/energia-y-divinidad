@@ -117,73 +117,13 @@ const membershipTiers: any[] = [
     featured: false,
   },
 
-  // NIVEL 2: Armonía - Plan intermedio (MÁS POPULAR)
-  {
-    _type: 'membershipTier',
-    _id: 'membership-armonia',
-    name: 'Armonía',
-    slug: { _type: 'slug', current: 'armonia' },
-    tierLevel: 2,
-    tagline: 'Profundiza en tu transformación',
-    description: [
-      createBlock('Lleva tu práctica al siguiente nivel con eventos en vivo, descuentos exclusivos y acceso a contenido premium. La opción favorita de nuestra comunidad.', 'd1'),
-    ],
-    color: '#8A4BAF',
-    pricing: {
-      monthlyPrice: 97000,
-      monthlyPriceUSD: 25,
-      yearlyPrice: 970000,
-      yearlyPriceUSD: 250,
-      yearlyDiscount: 17,
-    },
-    features: [
-      createFeature('Todo de Esencia', 'Incluye todos los beneficios del plan Esencia', true, 'f1'),
-      createFeature('Eventos en vivo mensuales', 'Círculos de meditación y ceremonias en vivo', true, 'f2'),
-      createFeature('Grabaciones de eventos', 'Acceso a todas las grabaciones pasadas', true, 'f3'),
-      createFeature('15% descuento en sesiones', 'Descuento en sesiones de canalización 1:1', true, 'f4'),
-      createFeature('Cursos de la Academia', 'Acceso a cursos seleccionados', true, 'f5'),
-      createFeature('Sesión grupal mensual', 'Sesión de Q&A con Aleyda cada mes', true, 'f6'),
-      createFeature('Soporte prioritario', 'Respuestas en menos de 24 horas', false, 'f7'),
-    ],
-    benefits: {
-      premiumContent: true,
-      liveEvents: true,
-      recordedEvents: true,
-      sessionDiscount: 15,
-      productDiscount: 10,
-      prioritySupport: false,
-      privateGroup: true,
-      monthlyLiveSession: true,
-      oneOnOneSessionsIncluded: 0,
-    },
-    limitations: {
-      maxDownloadsPerMonth: 0,
-      maxStorageGB: 0,
-    },
-    trialPeriod: {
-      enabled: true,
-      durationDays: 7,
-      requiresPaymentMethod: false,
-    },
-    recommendedFor: [
-      'Practicantes regulares de meditación',
-      'Quienes quieren conexión directa con Aleyda',
-      'Personas buscando comunidad y apoyo continuo',
-    ],
-    popularityBadge: 'popular',
-    displayOrder: 2,
-    ctaButtonText: 'Unirme Ahora',
-    active: true,
-    featured: true,
-  },
-
-  // NIVEL 3: Divinidad - Plan premium (azul profundo)
+  // NIVEL 2: Divinidad - Plan premium (azul profundo)
   {
     _type: 'membershipTier',
     _id: 'membership-divinidad',
     name: 'Divinidad',
     slug: { _type: 'slug', current: 'divinidad' },
-    tierLevel: 3,
+    tierLevel: 2,
     tagline: 'Tu transformación completa',
     description: [
       createBlock('La experiencia más completa y personalizada. Incluye sesiones 1:1 mensuales, acceso total a la Academia y los mayores descuentos. Para quienes buscan un acompañamiento profundo.', 'd1'),
@@ -197,7 +137,7 @@ const membershipTiers: any[] = [
       yearlyDiscount: 17,
     },
     features: [
-      createFeature('Todo de Armonía', 'Incluye todos los beneficios del plan Armonía', true, 'f1'),
+      createFeature('Todo de Esencia', 'Incluye todos los beneficios del plan Esencia', true, 'f1'),
       createFeature('1 sesión 1:1 mensual', 'Sesión de canalización individual incluida', true, 'f2'),
       createFeature('Todos los cursos', 'Acceso completo a la Academia sin costo adicional', true, 'f3'),
       createFeature('30% descuento en sesiones extra', 'El mayor descuento en sesiones adicionales', true, 'f4'),
@@ -231,7 +171,7 @@ const membershipTiers: any[] = [
       'Practicantes avanzados comprometidos con su evolución',
     ],
     popularityBadge: 'best_value',
-    displayOrder: 3,
+    displayOrder: 2,
     ctaButtonText: 'Transformarme Ahora',
     active: true,
     featured: false,
@@ -265,7 +205,6 @@ async function createTestMemberships() {
     console.log('   │ Plan        │ Mensual COP   │ Mensual USD  │ Insignia      │')
     console.log('   ├─────────────┼───────────────┼──────────────┼───────────────┤')
     console.log('   │ Esencia     │ $49.000       │ $12          │               │')
-    console.log('   │ Armonía     │ $97.000       │ $25          │ 🔥 Más Popular │')
     console.log('   │ Divinidad   │ $297.000      │ $75          │ 💎 Mejor Valor │')
     console.log('   └─────────────┴───────────────┴──────────────┴───────────────┘')
     console.log('')

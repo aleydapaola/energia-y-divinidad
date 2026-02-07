@@ -1703,8 +1703,8 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
   // Mapear método de pago a texto legible
   const paymentMethodText = paymentMethod === 'WOMPI_CARD' ? 'Tarjeta de crédito'
     : paymentMethod === 'WOMPI_NEQUI' ? 'Nequi'
-    : paymentMethod === 'EPAYCO_PAYPAL' ? 'PayPal'
-    : paymentMethod === 'EPAYCO_CARD' ? 'Tarjeta de crédito'
+    : paymentMethod === 'PAYPAL_DIRECT' ? 'PayPal'
+    : paymentMethod === 'PAYPAL_CARD' ? 'Tarjeta de crédito (PayPal)'
     : paymentMethod;
 
   if (DEV_MODE) {
@@ -2174,8 +2174,8 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
   // Mapear método de pago a texto legible
   const paymentMethodText = paymentMethod === 'WOMPI_CARD' ? 'Tarjeta (Wompi)'
     : paymentMethod === 'WOMPI_NEQUI' ? 'Nequi (Wompi)'
-    : paymentMethod === 'EPAYCO_PAYPAL' ? 'PayPal (ePayco)'
-    : paymentMethod === 'EPAYCO_CARD' ? 'Tarjeta (ePayco)'
+    : paymentMethod === 'PAYPAL_DIRECT' ? 'PayPal'
+    : paymentMethod === 'PAYPAL_CARD' ? 'Tarjeta (PayPal)'
     : paymentMethod === 'STRIPE' ? 'Stripe'
     : paymentMethod === 'NEQUI_PUSH' ? 'Nequi Push'
     : paymentMethod;

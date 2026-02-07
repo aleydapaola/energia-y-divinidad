@@ -180,11 +180,13 @@ export function verifyWompiWebhookSignature(
 
 /**
  * Generar referencia única para transacción
+ * Formato alfanumérico sin caracteres especiales (compatible con apps bancarias)
  */
 export function generateWompiReference(prefix: string = 'EYD'): string {
   const timestamp = Date.now().toString(36)
   const random = Math.random().toString(36).substring(2, 8)
-  return `${prefix}-${timestamp}-${random}`.toUpperCase()
+  // Sin guiones para compatibilidad con apps bancarias (Bre-B, Nequi, etc.)
+  return `${prefix}${timestamp}${random}`.toUpperCase()
 }
 
 // ============================================

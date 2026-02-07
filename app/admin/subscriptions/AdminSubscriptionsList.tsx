@@ -105,8 +105,6 @@ export function AdminSubscriptionsList({ initialSubscriptions }: AdminSubscripti
 
     if (lowerName.includes('esencia')) {
       style = 'bg-pink-100 text-pink-700'
-    } else if (lowerName.includes('armonía') || lowerName.includes('armonia')) {
-      style = 'bg-violet-100 text-violet-700'
     } else if (lowerName.includes('divinidad')) {
       style = 'bg-indigo-100 text-indigo-700'
     }

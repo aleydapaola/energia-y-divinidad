@@ -198,8 +198,9 @@ export function getPaymentRegion(countryCode?: string): 'colombia' | 'internatio
 export type PaymentMethodType =
   | 'wompi_nequi' // Nequi via Wompi (Colombia)
   | 'wompi_card' // Tarjeta colombiana via Wompi (Colombia)
-  | 'epayco_paypal' // PayPal via ePayco (Colombia + Internacional)
-  | 'epayco_card' // Tarjeta internacional via ePayco (Internacional)
+  | 'breb_manual' // Bre-B transferencia manual con llave (Colombia)
+  | 'paypal_direct' // PayPal directo (Colombia + Internacional)
+  | 'paypal_card' // Tarjeta internacional via PayPal (Internacional)
 
 export interface PaymentMethod {
   type: PaymentMethodType
@@ -207,7 +208,7 @@ export interface PaymentMethod {
   description: string
   available: boolean
   icon: string
-  gateway: 'wompi' | 'epayco'
+  gateway: 'wompi' | 'paypal' | 'breb'
   currency: 'COP' | 'USD'
   isRecurring: boolean
   recommended: boolean
@@ -217,11 +218,12 @@ export interface PaymentMethod {
  * Obtiene los métodos de pago disponibles para un usuario según su región
  *
  * ESTRATEGIA DE PAGOS:
- * - Colombia: Nequi (Wompi), Tarjeta (Wompi), PayPal (ePayco)
- * - Internacional: Tarjeta (ePayco), PayPal (ePayco)
+ * - Colombia: Nequi (Wompi), Tarjeta (Wompi), Bre-B (manual), PayPal (PayPal directo)
+ * - Internacional: PayPal (PayPal directo), Tarjeta (PayPal)
  *
  * Wompi solo opera en COP
- * ePayco puede operar en COP y USD
+ * PayPal puede operar en COP y USD
+ * Bre-B es pago manual con llave Bancolombia (sin comisiones)
  */
 export function getAvailablePaymentMethods(region: 'colombia' | 'international'): PaymentMethod[] {
   if (region === 'colombia') {
@@ -249,12 +251,23 @@ export function getAvailablePaymentMethods(region: 'colombia' | 'international')
         recommended: false,
       },
       {
-        type: 'epayco_paypal',
+        type: 'breb_manual',
+        label: 'Bre-B (Llave Bancolombia)',
+        description: 'Transferencia instantánea sin comisión desde tu app bancaria.',
+        available: true,
+        icon: '🔑',
+        gateway: 'breb',
+        currency: 'COP',
+        isRecurring: false, // Bre-B manual no soporta recurrencia
+        recommended: false,
+      },
+      {
+        type: 'paypal_direct',
         label: 'PayPal',
         description: 'Paga con tu cuenta PayPal de forma segura.',
         available: true,
         icon: '🅿️',
-        gateway: 'epayco',
+        gateway: 'paypal',
         currency: 'COP',
         isRecurring: false, // PayPal recurrente requiere configuración especial
         recommended: false,
@@ -265,25 +278,25 @@ export function getAvailablePaymentMethods(region: 'colombia' | 'international')
   // Internacional (USD)
   return [
     {
-      type: 'epayco_card',
-      label: 'Credit/Debit Card',
-      description: 'Pay with Visa, Mastercard, or American Express.',
-      available: true,
-      icon: '💳',
-      gateway: 'epayco',
-      currency: 'USD',
-      isRecurring: true,
-      recommended: true,
-    },
-    {
-      type: 'epayco_paypal',
+      type: 'paypal_direct',
       label: 'PayPal',
       description: 'Pay securely with your PayPal account.',
       available: true,
       icon: '🅿️',
-      gateway: 'epayco',
+      gateway: 'paypal',
       currency: 'USD',
       isRecurring: false,
+      recommended: true,
+    },
+    {
+      type: 'paypal_card',
+      label: 'Credit/Debit Card',
+      description: 'Pay with Visa, Mastercard, or American Express via PayPal.',
+      available: true,
+      icon: '💳',
+      gateway: 'paypal',
+      currency: 'USD',
+      isRecurring: true,
       recommended: false,
     },
   ]
@@ -294,11 +307,14 @@ export function getAvailablePaymentMethods(region: 'colombia' | 'international')
  */
 export function getPaymentGateway(
   methodType: PaymentMethodType
-): 'wompi' | 'epayco' {
+): 'wompi' | 'paypal' | 'breb' {
   if (methodType.startsWith('wompi_')) {
     return 'wompi'
   }
-  return 'epayco'
+  if (methodType === 'breb_manual') {
+    return 'breb'
+  }
+  return 'paypal'
 }
 
 /**

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CreditCard, Smartphone, Globe, Loader2 } from 'lucide-react'
+import { CreditCard, Globe, Loader2, Key } from 'lucide-react'
 import type { PaymentMethodType } from '@/lib/membership-access'
 
 export type PaymentRegion = 'colombia' | 'international'
@@ -64,20 +64,19 @@ export function PaymentMethodSelector({
   // Métodos de pago para Colombia (COP)
   const colombiaOptions: PaymentOption[] = [
     {
-      method: 'wompi_nequi',
-      label: 'Nequi',
-      description: 'Paga desde tu app Nequi',
-      icon: <Smartphone className="w-6 h-6" />,
-      requiresPhone: true,
-    },
-    {
       method: 'wompi_card',
       label: 'Tarjeta de Crédito/Débito',
       description: 'Visa, Mastercard, American Express',
       icon: <CreditCard className="w-6 h-6" />,
     },
     {
-      method: 'epayco_paypal',
+      method: 'breb_manual',
+      label: 'Bre-B (Llave Bancolombia)',
+      description: 'Transferencia instantánea sin comisión',
+      icon: <Key className="w-6 h-6" />,
+    },
+    {
+      method: 'paypal_direct',
       label: 'PayPal',
       description: 'Paga con tu cuenta PayPal',
       icon: <PayPalIcon />,
@@ -87,16 +86,16 @@ export function PaymentMethodSelector({
   // Métodos de pago internacionales (USD)
   const internationalOptions: PaymentOption[] = [
     {
-      method: 'epayco_card',
-      label: 'Credit/Debit Card',
-      description: 'Visa, Mastercard, American Express',
-      icon: <CreditCard className="w-6 h-6" />,
-    },
-    {
-      method: 'epayco_paypal',
+      method: 'paypal_direct',
       label: 'PayPal',
       description: 'Pay with your PayPal account',
       icon: <PayPalIcon />,
+    },
+    {
+      method: 'paypal_card',
+      label: 'Credit/Debit Card',
+      description: 'Visa, Mastercard, American Express (via PayPal)',
+      icon: <CreditCard className="w-6 h-6" />,
     },
   ]
 
@@ -153,9 +152,9 @@ export function PaymentMethodSelector({
     setSelectedRegion(region)
     // Auto-seleccionar el método recomendado
     if (region === 'colombia') {
-      setSelectedMethod('wompi_nequi')
+      setSelectedMethod('wompi_card')
     } else {
-      setSelectedMethod('epayco_card')
+      setSelectedMethod('paypal_direct')
     }
     setPhoneNumber('')
     setPhoneError('')
@@ -387,11 +386,13 @@ export function PaymentMethodSelector({
         {/* Gateway Info */}
         <div className="px-4 pb-4 sm:px-6 sm:pb-6">
           <p className="font-dm-sans text-xs text-center text-gray-400">
-            {selectedRegion === 'colombia' && selectedMethod?.startsWith('wompi')
+            {selectedMethod?.startsWith('wompi')
               ? 'Pago procesado de forma segura por Wompi (Bancolombia)'
-              : selectedMethod?.startsWith('epayco')
-                ? 'Pago procesado de forma segura por ePayco'
-                : 'Selecciona un método de pago para continuar'}
+              : selectedMethod?.startsWith('paypal')
+                ? 'Pago procesado de forma segura por PayPal'
+                : selectedMethod === 'breb_manual'
+                  ? 'Transferencia directa con Bre-B - Sin comisiones'
+                  : 'Selecciona un método de pago para continuar'}
           </p>
         </div>
       </div>

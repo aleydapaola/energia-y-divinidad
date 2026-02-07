@@ -4,6 +4,7 @@ import { Footer } from '@/components/layout/Footer'
 import BlogCard from '@/components/blog/BlogCard'
 import { getBlogPosts, getFeaturedBlogPosts } from '@/lib/sanity/queries/blog'
 import { BookOpen, Sparkles } from 'lucide-react'
+import { auth } from '@/lib/auth'
 
 export const metadata: Metadata = {
   title: 'Blog | Energía y Divinidad',
@@ -40,7 +41,8 @@ const categoryLabels: Record<string, string> = {
 }
 
 export default async function BlogPage() {
-  const [posts, featuredPosts] = await Promise.all([
+  const [session, posts, featuredPosts] = await Promise.all([
+    auth(),
     getBlogPosts(),
     getFeaturedBlogPosts(),
   ])
@@ -55,7 +57,7 @@ export default async function BlogPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <Header session={null} />
+      <Header session={session} />
 
       {/* Hero Section */}
       <section className="bg-gradient-to-b from-[#f8f0f5] to-white py-12 sm:py-16 md:py-20 lg:py-24">

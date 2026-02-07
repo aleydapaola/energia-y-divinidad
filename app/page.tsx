@@ -5,8 +5,12 @@ import Image from "next/image"
 import MeditationCard from "@/components/meditaciones/MeditationCard"
 import { getFeaturedFreeContent, type FreeContent } from "@/lib/sanity/queries/freeContent"
 import { NewsletterForm } from "@/components/newsletter"
+import { auth } from "@/lib/auth"
 
 export default async function HomePage() {
+  // Get user session
+  const session = await auth()
+
   // Try to fetch featured meditations, fallback to empty array if Sanity not configured
   let featuredMeditations: FreeContent[] = []
   try {
@@ -17,7 +21,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header session={null} />
+      <Header session={session} />
 
       {/* Hero Section with New Design */}
       <section className="relative min-h-[85vh] sm:min-h-[80vh] lg:min-h-[85vh] w-full overflow-hidden">

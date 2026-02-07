@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import {
-  createWompiPaymentLink,
-  generateWompiReference,
-} from '@/lib/wompi'
+import { createPayPalOrder, isPayPalConfigured } from '@/lib/paypal'
 import { getAppUrl } from '@/lib/utils'
-
-type WompiPaymentMethod = 'nequi' | 'card'
+import { nanoid } from 'nanoid'
 
 interface CheckoutBody {
   // Tipo de producto
@@ -15,9 +11,9 @@ interface CheckoutBody {
   productId: string
   productName: string
 
-  // Monto y método
-  amount: number // en COP (ej: 150000)
-  paymentMethod: WompiPaymentMethod
+  // Monto y moneda
+  amount: number
+  currency: 'USD' | 'COP'
 
   // Para membresías
   billingInterval?: 'monthly' | 'yearly'
@@ -34,15 +30,23 @@ interface CheckoutBody {
   // Para sesiones/eventos
   sessionSlug?: string
   eventId?: string
-  scheduledAt?: string // ISO date string para la fecha/hora de la sesión
+  scheduledAt?: string
 }
 
 /**
- * POST /api/checkout/wompi
- * Crear pago con Wompi (Nequi o Tarjeta) - Solo Colombia (COP)
+ * POST /api/checkout/paypal
+ * Crear orden de PayPal - Colombia e Internacional (USD/COP)
  */
 export async function POST(request: NextRequest) {
   try {
+    // Check if PayPal is configured
+    if (!isPayPalConfigured()) {
+      return NextResponse.json(
+        { error: 'PayPal no está configurado' },
+        { status: 500 }
+      )
+    }
+
     const session = await auth()
 
     const body: CheckoutBody = await request.json()
@@ -51,20 +55,20 @@ export async function POST(request: NextRequest) {
       productId,
       productName,
       amount,
-      paymentMethod,
+      currency,
       billingInterval,
       guestEmail,
       guestName,
       scheduledAt,
     } = body
 
-    // DEBUG: Log para rastrear scheduledAt
-    console.log('[CHECKOUT/WOMPI] Request body:', JSON.stringify({
+    console.log('[CHECKOUT/PAYPAL] Request body:', JSON.stringify({
       productType,
       productId,
       productName,
+      amount,
+      currency,
       scheduledAt,
-      hasScheduledAt: !!scheduledAt,
     }))
 
     // Determinar si es usuario autenticado o guest checkout
@@ -79,7 +83,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Membresías requieren cuenta (por acceso recurrente a contenido)
+    // Membresías requieren cuenta
     if (productType === 'membership' && !isAuthenticated) {
       return NextResponse.json(
         { error: 'Debes iniciar sesión para adquirir una membresía' },
@@ -88,11 +92,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Validaciones básicas
-    if (!productType || !productId || !productName || !amount || !paymentMethod) {
-      return NextResponse.json({ error: 'Faltan parámetros requeridos' }, { status: 400 })
+    if (!productType || !productId || !productName || !amount || !currency) {
+      return NextResponse.json(
+        { error: 'Faltan parámetros requeridos' },
+        { status: 400 }
+      )
     }
 
-    // Para membresías, verificar si es el mismo plan (bloquear) o un cambio de plan (permitir)
+    // Validar moneda
+    if (!['USD', 'COP'].includes(currency)) {
+      return NextResponse.json(
+        { error: 'Moneda no soportada. Use USD o COP.' },
+        { status: 400 }
+      )
+    }
+
+    // Para membresías, verificar duplicados
     if (productType === 'membership' && session?.user?.id) {
       const existingSubscription = await prisma.subscription.findFirst({
         where: {
@@ -102,18 +117,17 @@ export async function POST(request: NextRequest) {
       })
 
       if (existingSubscription) {
-        // Si es el mismo plan, bloquear
         if (existingSubscription.membershipTierId === productId) {
           return NextResponse.json(
             { error: 'Ya tienes este plan activo' },
             { status: 400 }
           )
         }
-        // Si es un plan diferente, es un upgrade/downgrade - permitir continuar
       }
     }
 
-    const reference = generateWompiReference('EYD')
+    // Generar referencia única
+    const reference = `PP-${nanoid(10).toUpperCase()}`
     const appUrl = getAppUrl()
 
     // Crear orden pendiente en la base de datos
@@ -124,10 +138,8 @@ export async function POST(request: NextRequest) {
       customerEmail: userEmail,
       customerName: guestName || session?.user?.name || null,
       scheduledAt: scheduledAt || null,
+      paypalOrderId: null, // Se actualizará después
     }
-
-    // DEBUG: Log metadata antes de guardar
-    console.log('[CHECKOUT/WOMPI] Order metadata:', JSON.stringify(orderMetadata))
 
     const order = await prisma.order.create({
       data: {
@@ -139,49 +151,64 @@ export async function POST(request: NextRequest) {
         itemId: productId,
         itemName: productName,
         amount: amount,
-        currency: 'COP',
-        paymentMethod: paymentMethod === 'nequi' ? 'WOMPI_NEQUI' : 'WOMPI_CARD',
+        currency: currency,
+        paymentMethod: 'PAYPAL_DIRECT',
         paymentStatus: 'PENDING',
         metadata: orderMetadata,
       },
     })
 
-    // DEBUG: Log orden creada
-    console.log('[CHECKOUT/WOMPI] Order created:', order.id, 'with scheduledAt:', (order.metadata as any)?.scheduledAt)
+    console.log('[CHECKOUT/PAYPAL] Order created:', order.id)
 
-    // Usar checkout hospedado de Wompi (Payment Links) para todos los métodos
-    // Wompi muestra tarjeta, Nequi, PSE, etc. automáticamente
-    const amountInCents = Math.round(amount * 100)
-
-    const { paymentLink, checkoutUrl } = await createWompiPaymentLink({
-      name: productName,
+    // Crear orden en PayPal
+    const paypalResult = await createPayPalOrder({
+      amount,
+      currency,
       description: `${productName} - Energía y Divinidad`,
-      amountInCents,
-      singleUse: true,
-      redirectUrl: `${appUrl}/pago/confirmacion?ref=${reference}`,
+      reference: reference,
+      returnUrl: `${appUrl}/pago/confirmacion?ref=${reference}`,
+      cancelUrl: `${appUrl}/pago/cancelado?ref=${reference}`,
+      customerEmail: userEmail,
     })
 
-    // Actualizar orden con ID del payment link
+    if (!paypalResult.success || !paypalResult.orderId || !paypalResult.approvalUrl) {
+      // Marcar orden como fallida
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { paymentStatus: 'FAILED' },
+      })
+
+      return NextResponse.json(
+        { error: paypalResult.error || 'Error al crear orden de PayPal' },
+        { status: 500 }
+      )
+    }
+
+    // Actualizar orden con ID de PayPal
     await prisma.order.update({
       where: { id: order.id },
       data: {
         metadata: {
           ...(order.metadata as object),
-          wompiPaymentLinkId: paymentLink.id,
-          preferredMethod: paymentMethod,
+          paypalOrderId: paypalResult.orderId,
         },
       },
     })
 
+    console.log('[CHECKOUT/PAYPAL] PayPal order created:', paypalResult.orderId)
+
     return NextResponse.json({
       success: true,
       reference,
-      checkoutUrl,
-      paymentLinkId: paymentLink.id,
+      paypalOrderId: paypalResult.orderId,
+      approvalUrl: paypalResult.approvalUrl,
     })
   } catch (error) {
-    console.error('Error creating Wompi checkout:', error)
-    return NextResponse.json({ error: 'Error al crear sesión de pago' }, { status: 500 })
+    console.error('[CHECKOUT/PAYPAL] Error:', error)
+    return NextResponse.json(
+      { error: 'Error al crear sesión de pago' },
+      { status: 500 }
+    )
   }
 }
 

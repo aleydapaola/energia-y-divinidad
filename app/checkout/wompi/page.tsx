@@ -218,7 +218,7 @@ function WompiCheckoutContent() {
           <p className="font-dm-sans text-sm text-gray-500">
             ¿Tienes algún problema?{' '}
             <a
-              href="https://wa.me/573001234567"
+              href="https://wa.me/573151165921"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[#8A4BAF] hover:underline"

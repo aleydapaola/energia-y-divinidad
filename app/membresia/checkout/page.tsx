@@ -3,14 +3,14 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Loader2, CreditCard, Smartphone, AlertCircle, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react'
+import { Loader2, CreditCard, AlertCircle, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react'
 import { PaymentMethodSelector, type PaymentRegion } from '@/components/pago/PaymentMethodSelector'
 import type { PaymentMethodType } from '@/lib/membership-access'
 
 function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { data: session, status } = useSession()
+  const { status } = useSession()
 
   const tierId = searchParams?.get('tier')
   const interval = searchParams?.get('interval') as 'monthly' | 'yearly' | null
@@ -221,18 +221,19 @@ function CheckoutContent() {
           billingInterval: interval,
           phoneNumber,
         }
-      } else {
-        // Pago via ePayco (Internacional o PayPal)
-        endpoint = '/api/checkout/epayco'
+      } else if (method === 'paypal_direct' || method === 'paypal_card') {
+        // Pago via PayPal (Internacional o Colombia)
+        endpoint = '/api/checkout/paypal'
         body = {
           productType: 'membership',
           productId: tierId,
           productName: tierData.name,
           amount,
           currency,
-          paymentMethod: method === 'epayco_paypal' ? 'paypal' : 'card',
           billingInterval: interval,
         }
+      } else {
+        throw new Error('Método de pago no soportado')
       }
 
       const response = await fetch(endpoint, {
@@ -248,9 +249,12 @@ function CheckoutContent() {
 
       const result = await response.json()
 
-      // Redirigir según respuesta
-      if (result.checkoutUrl) {
-        // ePayco o Wompi card - redirigir a checkout externo
+      // Manejar respuesta según tipo
+      if (result.approvalUrl) {
+        // PayPal - redirigir a checkout de PayPal
+        window.location.href = result.approvalUrl
+      } else if (result.checkoutUrl) {
+        // Wompi card - redirigir a checkout externo
         window.location.href = result.checkoutUrl
       } else if (result.redirectUrl) {
         // Nequi push - redirigir a página de espera
@@ -276,6 +280,7 @@ function CheckoutContent() {
 
   return (
     <div className="min-h-screen bg-[#f8f0f5] py-12 px-4">
+
       <div className="max-w-4xl mx-auto">
         <h1 className="font-gazeta text-3xl sm:text-4xl text-[#8A4BAF] text-center mb-8">
           {planChangeType ? 'Cambiar de Plan' : 'Finalizar Suscripción'}
@@ -351,7 +356,7 @@ function CheckoutContent() {
                     <div>
                       <p className="font-dm-sans font-medium text-gray-900">Colombia</p>
                       <p className="font-dm-sans text-sm text-gray-600">
-                        Nequi, Tarjeta de crédito/débito, PayPal
+                        Tarjeta de crédito/débito, PayPal
                       </p>
                     </div>
                   </div>

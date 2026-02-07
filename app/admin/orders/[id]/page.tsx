@@ -12,6 +12,7 @@ import {
   XCircle,
   AlertCircle,
 } from "lucide-react"
+import { ConfirmPaymentButton } from "./ConfirmPaymentButton"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -93,8 +94,12 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
       WOMPI_CARD: 'Tarjeta de crédito (Wompi)',
       WOMPI_NEQUI: 'Nequi',
       WOMPI_PSE: 'PSE',
+      PAYPAL_DIRECT: 'PayPal',
+      PAYPAL_CARD: 'Tarjeta de crédito (PayPal)',
+      BREB_MANUAL: 'Bre-B (Llave Bancolombia)',
+      // Legacy - para órdenes históricas
       EPAYCO_CARD: 'Tarjeta de crédito (ePayco)',
-      EPAYCO_PAYPAL: 'PayPal',
+      EPAYCO_PAYPAL: 'PayPal (ePayco)',
       EPAYCO_PSE: 'PSE (ePayco)',
       STRIPE: 'Stripe',
       MANUAL_NEQUI: 'Nequi (Manual)',
@@ -143,16 +148,25 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         <div className="lg:col-span-2 space-y-6">
           {/* Status Card */}
           <div className={`${statusConfig.bg} rounded-xl p-6`}>
-            <div className="flex items-center gap-3">
-              <div className={statusConfig.color}>{statusConfig.icon}</div>
-              <div>
-                <p className={`text-lg font-semibold ${statusConfig.color}`}>
-                  {statusConfig.label}
-                </p>
-                <p className="text-sm text-gray-600">
-                  Estado del pago
-                </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={statusConfig.color}>{statusConfig.icon}</div>
+                <div>
+                  <p className={`text-lg font-semibold ${statusConfig.color}`}>
+                    {statusConfig.label}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Estado del pago
+                  </p>
+                </div>
               </div>
+              {/* Botón de confirmar pago para pagos manuales pendientes */}
+              <ConfirmPaymentButton
+                orderId={order.id}
+                orderNumber={order.orderNumber}
+                paymentMethod={order.paymentMethod}
+                paymentStatus={order.paymentStatus}
+              />
             </div>
           </div>
 

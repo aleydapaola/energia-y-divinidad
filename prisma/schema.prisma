@@ -113,10 +113,12 @@ enum PaymentMethod {
   WOMPI_CARD
   WOMPI_PSE
 
-  // ePayco (Internacional - USD y COP)
-  EPAYCO_CARD
-  EPAYCO_PAYPAL
-  EPAYCO_PSE
+  // PayPal (Internacional y Colombia - USD y COP)
+  PAYPAL_DIRECT
+  PAYPAL_CARD
+
+  // Bre-B (Colombia - pago manual con QR/llave)
+  BREB_MANUAL
 
   // Gratis (descuento 100%)
   FREE
@@ -127,6 +129,9 @@ enum PaymentMethod {
   MANUAL_NEQUI
   MANUAL_DAVIPLATA
   MANUAL_BANCOLOMBIA
+  EPAYCO_CARD
+  EPAYCO_PAYPAL
+  EPAYCO_PSE
 }
 
 enum PaymentStatus {
