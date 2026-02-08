@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  CheckCircle,
 } from 'lucide-react'
 
 interface OrderData {
@@ -48,6 +49,7 @@ export function AdminOrdersList({ initialOrders }: AdminOrdersListProps) {
   const [currencyFilter, setCurrencyFilter] = useState<CurrencyFilter>('ALL')
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null)
   const [resendingEmail, setResendingEmail] = useState<string | null>(null)
+  const [confirmingPayment, setConfirmingPayment] = useState<string | null>(null)
 
   // Filter orders
   const filteredOrders = orders.filter((order) => {
@@ -173,6 +175,44 @@ export function AdminOrdersList({ initialOrders }: AdminOrdersListProps) {
     } finally {
       setResendingEmail(null)
     }
+  }
+
+  const handleConfirmPayment = async (orderId: string, orderNumber: string) => {
+    if (!confirm(`¿Confirmar el pago de la orden ${orderNumber}?\n\nEsto marcará la orden como completada, creará el booking y enviará el email de confirmación al cliente.`)) {
+      return
+    }
+
+    setConfirmingPayment(orderId)
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/confirm-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionReference: '' }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        alert(data.error || 'Error al confirmar pago')
+        return
+      }
+
+      alert('¡Pago confirmado exitosamente!')
+      router.refresh()
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error al confirmar pago')
+    } finally {
+      setConfirmingPayment(null)
+    }
+  }
+
+  // Check if order can be manually confirmed
+  const canConfirmManually = (order: OrderData) => {
+    return order.paymentStatus === 'PENDING' &&
+           (order.paymentMethod === 'BREB_MANUAL' ||
+            order.paymentMethod === 'MANUAL_NEQUI' ||
+            order.paymentMethod === 'MANUAL_TRANSFER')
   }
 
   return (
@@ -325,6 +365,21 @@ export function AdminOrdersList({ initialOrders }: AdminOrdersListProps) {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                        {/* Confirm Payment button for manual payments */}
+                        {canConfirmManually(order) && (
+                          <button
+                            onClick={() => handleConfirmPayment(order.id, order.orderNumber)}
+                            disabled={confirmingPayment === order.id}
+                            className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="Confirmar pago"
+                          >
+                            {confirmingPayment === order.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
                         <Link
                           href={`/admin/orders/${order.id}`}
                           className="p-2 text-gray-500 hover:text-[#8A4BAF] hover:bg-[#f8f0f5] rounded-lg transition-colors"

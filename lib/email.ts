@@ -331,7 +331,7 @@ export async function sendWelcomeEmail({ email, name }: SendWelcomeEmailParams) 
 
                         <p style="margin: 0; font-size: 14px; color: #999999; line-height: 1.6; text-align: center;">
                           Con amor y luz,<br>
-                          <strong style="color: #8A4BAF;">Aleyda</strong>
+                          <strong style="color: #8A4BAF;">Aleyda Paola</strong>
                         </p>
                       </td>
                     </tr>
@@ -612,7 +612,7 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
 
                         <p style="margin: 0; font-size: 14px; color: #999999; line-height: 1.6; text-align: center;">
                           Con amor y luz,<br>
-                          <strong style="color: #8A4BAF;">Aleyda</strong>
+                          <strong style="color: #8A4BAF;">Aleyda Paola</strong>
                         </p>
                       </td>
                     </tr>
@@ -779,7 +779,7 @@ export async function sendEventReminder(params: EventReminderEmailParams) {
 
                         <p style="margin: 30px 0 0; font-size: 14px; color: #999; text-align: center;">
                           ¡Te esperamos!<br>
-                          <strong style="color: #8A4BAF;">Aleyda</strong>
+                          <strong style="color: #8A4BAF;">Aleyda Paola</strong>
                         </p>
                       </td>
                     </tr>
@@ -973,7 +973,7 @@ export async function sendPackCodeEmail(params: SendPackCodeEmailParams) {
 
                         <p style="margin: 0; font-size: 14px; color: #999999; line-height: 1.6; text-align: center;">
                           Con amor y luz,<br>
-                          <strong style="color: #8A4BAF;">Aleyda</strong>
+                          <strong style="color: #8A4BAF;">Aleyda Paola</strong>
                         </p>
                       </td>
                     </tr>
@@ -1048,7 +1048,7 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
   const formattedNewDate = formatDate(newDate);
 
   const rescheduledByText = rescheduledBy === 'admin'
-    ? 'Tu sesión ha sido reprogramada por Aleyda.'
+    ? 'Tu sesión ha sido reprogramada por Aleyda Paola.'
     : 'Has reprogramado tu sesión exitosamente.';
 
   if (DEV_MODE) {
@@ -1172,7 +1172,7 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
 
                         <p style="margin: 0; font-size: 14px; color: #999999; line-height: 1.6; text-align: center;">
                           Con amor y luz,<br>
-                          <strong style="color: #8A4BAF;">Aleyda</strong>
+                          <strong style="color: #8A4BAF;">Aleyda Paola</strong>
                         </p>
                       </td>
                     </tr>
@@ -1534,7 +1534,7 @@ export async function sendBookingConfirmationEmail(params: SendBookingConfirmati
 
                         <p style="margin: 0; font-size: 14px; color: #999999; line-height: 1.6; text-align: center;">
                           Con amor y luz,<br>
-                          <strong style="color: #8A4BAF;">Aleyda</strong>
+                          <strong style="color: #8A4BAF;">Aleyda Paola</strong>
                         </p>
                       </td>
                     </tr>
@@ -1843,7 +1843,7 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
 
                         <p style="margin: 25px 0 0; font-size: 14px; color: #999999; line-height: 1.6; text-align: center;">
                           Con amor y luz,<br>
-                          <strong style="color: #8A4BAF;">Aleyda</strong>
+                          <strong style="color: #8A4BAF;">Aleyda Paola</strong>
                         </p>
                       </td>
                     </tr>
@@ -1919,7 +1919,7 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
     : 'No programada';
 
   const cancelledByText = cancelledBy === 'admin'
-    ? 'Tu sesión ha sido cancelada por Aleyda.'
+    ? 'Tu sesión ha sido cancelada por Aleyda Paola.'
     : 'Has cancelado tu sesión.';
 
   if (DEV_MODE) {
@@ -2052,7 +2052,7 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
 
                         <p style="margin: 0; font-size: 14px; color: #999999; line-height: 1.6; text-align: center;">
                           Con amor y luz,<br>
-                          <strong style="color: #8A4BAF;">Aleyda</strong>
+                          <strong style="color: #8A4BAF;">Aleyda Paola</strong>
                         </p>
                       </td>
                     </tr>
@@ -2549,7 +2549,7 @@ export async function sendWaitlistJoinedEmail(params: WaitlistJoinedEmailParams)
                   <tr>
                     <td style="background-color: #f9fafb; border-radius: 0 0 12px 12px; padding: 20px; text-align: center;">
                       <p style="margin: 0; font-size: 12px; color: #999;">
-                        Con amor y luz,<br>Aleyda y Energía y Divinidad
+                        Con amor y luz,<br>Aleyda Paola y Energía y Divinidad
                       </p>
                     </td>
                   </tr>
@@ -2694,7 +2694,7 @@ export async function sendWaitlistOfferEmail(params: WaitlistOfferEmailParams) {
                   <tr>
                     <td style="background-color: #f9fafb; border-radius: 0 0 12px 12px; padding: 20px; text-align: center;">
                       <p style="margin: 0; font-size: 12px; color: #999;">
-                        Con amor y luz,<br>Aleyda y Energía y Divinidad
+                        Con amor y luz,<br>Aleyda Paola y Energía y Divinidad
                       </p>
                     </td>
                   </tr>
@@ -2797,7 +2797,7 @@ export async function sendWaitlistOfferReminderEmail(params: WaitlistOfferRemind
                   <tr>
                     <td style="background-color: #f9fafb; border-radius: 0 0 12px 12px; padding: 20px; text-align: center;">
                       <p style="margin: 0; font-size: 12px; color: #999;">
-                        Con amor y luz,<br>Aleyda y Energía y Divinidad
+                        Con amor y luz,<br>Aleyda Paola y Energía y Divinidad
                       </p>
                     </td>
                   </tr>
@@ -2898,7 +2898,7 @@ export async function sendWaitlistOfferExpiredEmail(params: WaitlistOfferExpired
                   <tr>
                     <td style="background-color: #f9fafb; border-radius: 0 0 12px 12px; padding: 20px; text-align: center;">
                       <p style="margin: 0; font-size: 12px; color: #999;">
-                        Con amor y luz,<br>Aleyda y Energía y Divinidad
+                        Con amor y luz,<br>Aleyda Paola y Energía y Divinidad
                       </p>
                     </td>
                   </tr>
