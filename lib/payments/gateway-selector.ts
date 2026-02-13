@@ -10,11 +10,11 @@
  * - Tarjetas internacionales (USD) → PayPal
  */
 
+import { NequiAdapter } from './adapters/nequi-adapter'
+import { PayPalAdapter } from './adapters/paypal-adapter'
+import { WompiAdapter } from './adapters/wompi-adapter'
 import { PaymentGateway } from './gateway-interface'
 import { PaymentMethodType, Currency } from './types'
-import { WompiAdapter } from './adapters/wompi-adapter'
-import { PayPalAdapter } from './adapters/paypal-adapter'
-import { NequiAdapter } from './adapters/nequi-adapter'
 
 // Instancias singleton de cada adaptador
 const gateways = {

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+
 import { AdminUsersList } from "./AdminUsersList"
 
 export default async function AdminUsersPage() {

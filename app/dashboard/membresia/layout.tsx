@@ -1,9 +1,10 @@
-import { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
+import { ReactNode } from 'react'
+
+import { MembershipHeader } from '@/components/membership/membership-header'
+import { MembershipNav } from '@/components/membership/membership-nav'
 import { auth } from '@/lib/auth'
 import { hasActiveMembership, getActiveSubscription } from '@/lib/membership-access'
-import { MembershipNav } from '@/components/membership/membership-nav'
-import { MembershipHeader } from '@/components/membership/membership-header'
 
 interface MembershipLayoutProps {
   children: ReactNode

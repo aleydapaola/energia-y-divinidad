@@ -1,12 +1,14 @@
+import { ChevronLeft, CheckCircle } from 'lucide-react'
+import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
+
 import { auth } from '@/lib/auth'
+import { hasCertificate, canIssueCertificate } from '@/lib/certificates'
 import { canAccessCourse } from '@/lib/course-access'
 import { getQuizForAttempt, canTakeQuiz, hasPassedQuiz } from '@/lib/quizzes'
-import { hasCertificate, canIssueCertificate } from '@/lib/certificates'
 import { client } from '@/sanity/lib/client'
+
 import { QuizPageClient } from './QuizPageClient'
-import Link from 'next/link'
-import { ChevronLeft, CheckCircle } from 'lucide-react'
 
 interface QuizPageProps {
   params: Promise<{
@@ -36,7 +38,7 @@ export default async function QuizPage({ params, searchParams }: QuizPageProps) 
       `*[_type == "course" && slug.current == $slug][0] { _id }`,
       { slug }
     )
-    if (!course) notFound()
+    if (!course) {notFound()}
     resolvedCourseId = course._id
   }
 

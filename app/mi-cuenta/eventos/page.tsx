@@ -1,14 +1,3 @@
-import { Metadata } from 'next'
-import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
-import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { getEventById, formatEventDate } from '@/lib/sanity/queries/events'
-import { getReplayStatus, ReplayStatus } from '@/lib/events/replay-access'
-import { getPerksForBookings } from '@/lib/events/perks'
-import { BookingPerksCard } from '@/components/eventos/BookingPerksCard'
-import type { BookingPerks } from '@/types/events'
 import {
   Calendar,
   MapPin,
@@ -22,7 +11,21 @@ import {
   Play,
   Eye,
 } from 'lucide-react'
+import { Metadata } from 'next'
+import Image from 'next/image'
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
+
+import { BookingPerksCard } from '@/components/eventos/BookingPerksCard'
 import WaitlistEntryCard from '@/components/eventos/WaitlistEntryCard'
+import { auth } from '@/lib/auth'
+import { getPerksForBookings } from '@/lib/events/perks'
+import { getReplayStatus, ReplayStatus } from '@/lib/events/replay-access'
+import { prisma } from '@/lib/prisma'
+import { getEventById, formatEventDate } from '@/lib/sanity/queries/events'
+
+import type { BookingPerks } from '@/types/events'
+
 
 export const metadata: Metadata = {
   title: 'Mis Eventos | Mi Cuenta',

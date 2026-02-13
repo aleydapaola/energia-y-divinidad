@@ -1,4 +1,3 @@
-import Link from "next/link"
 import {
   Calendar,
   Users,
@@ -12,6 +11,8 @@ import {
   Ticket,
   CalendarDays,
 } from "lucide-react"
+import Link from "next/link"
+
 import { getDashboardSummary } from "@/lib/admin-stats"
 
 export default async function AdminDashboardPage() {
@@ -55,19 +56,19 @@ export default async function AdminDashboardPage() {
           <ul className="space-y-1 text-sm text-amber-700 font-dm-sans">
             {alerts.failedPayments > 0 && (
               <li className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                <span className="w-2 h-2 bg-red-500 rounded-full" />
                 {alerts.failedPayments} pago(s) fallido(s) en las últimas 24h
               </li>
             )}
             {alerts.recentCancellations > 0 && (
               <li className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                <span className="w-2 h-2 bg-orange-500 rounded-full" />
                 {alerts.recentCancellations} cancelación(es) en las últimas 24h
               </li>
             )}
             {alerts.pendingBookings > 0 && (
               <li className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                <span className="w-2 h-2 bg-yellow-500 rounded-full" />
                 {alerts.pendingBookings} sesión(es) pendiente(s) de confirmar
               </li>
             )}

@@ -1,18 +1,22 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
 import { Filter, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
-import type { Event } from '@/lib/sanity/queries/events'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { useState, useMemo } from 'react'
+
+
 import { isEventPast } from '@/lib/sanity/queries/events'
+
 import EventFilters, { type FilterState } from './EventFilters'
-import ViewSwitcher, { type ViewType } from './ViewSwitcher'
+import DayView from './views/DayView'
 import ListView from './views/ListView'
 import MonthView from './views/MonthView'
-import WeekView from './views/WeekView'
-import DayView from './views/DayView'
 import PhotoView from './views/PhotoView'
+import WeekView from './views/WeekView'
+import ViewSwitcher, { type ViewType } from './ViewSwitcher'
+
+import type { Event } from '@/lib/sanity/queries/events'
 
 interface EventsListContainerProps {
   events: Event[]
@@ -58,10 +62,10 @@ export default function EventsListContainer({ events }: EventsListContainerProps
     events.forEach((event) => {
       event.categories?.forEach((c) => categories.add(c))
       event.tags?.forEach((t) => tags.add(t))
-      if (event.venue?.name) venues.add(event.venue.name)
-      if (event.venue?.city) venues.add(event.venue.city)
-      if (event.eventSeries) series.add(event.eventSeries)
-      if (event.price && event.price > maxPrice) maxPrice = event.price
+      if (event.venue?.name) {venues.add(event.venue.name)}
+      if (event.venue?.city) {venues.add(event.venue.city)}
+      if (event.eventSeries) {series.add(event.eventSeries)}
+      if (event.price && event.price > maxPrice) {maxPrice = event.price}
     })
 
     return {
@@ -94,7 +98,7 @@ export default function EventsListContainer({ events }: EventsListContainerProps
           event.categories?.some((c) => c.toLowerCase().includes(keyword)) ||
           event.tags?.some((t) => t.toLowerCase().includes(keyword)) ||
           event.venue?.name?.toLowerCase().includes(keyword)
-        if (!matchesKeyword) return false
+        if (!matchesKeyword) {return false}
       }
 
       // Ubicación
@@ -104,7 +108,7 @@ export default function EventsListContainer({ events }: EventsListContainerProps
           event.venue?.city?.toLowerCase().includes(location) ||
           event.venue?.name?.toLowerCase().includes(location) ||
           event.venue?.country?.toLowerCase().includes(location)
-        if (!matchesLocation) return false
+        if (!matchesLocation) {return false}
       }
 
       // Categorías

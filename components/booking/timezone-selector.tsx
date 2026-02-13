@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Globe } from 'lucide-react'
+import { useState, useEffect } from 'react'
+
 import { type Timezone, convertTimeFromColombia, isNextDay, isPreviousDay } from '@/lib/sanity/queries/bookingSettings'
 
 interface TimezoneSelectorProps {
@@ -69,16 +70,16 @@ export function TimezoneSelector({
 
   // Calcular hora convertida si hay una hora seleccionada
   const getConvertedTimeDisplay = () => {
-    if (!selectedTimeColombia || !selectedTimezone) return null
-    if (selectedTimezone.offsetHours === 0) return null // Es Colombia, no mostrar
+    if (!selectedTimeColombia || !selectedTimezone) {return null}
+    if (selectedTimezone.offsetHours === 0) {return null} // Es Colombia, no mostrar
 
     const convertedTime = convertTimeFromColombia(selectedTimeColombia, selectedTimezone.offsetHours)
     const nextDay = isNextDay(selectedTimeColombia, selectedTimezone.offsetHours)
     const prevDay = isPreviousDay(selectedTimeColombia, selectedTimezone.offsetHours)
 
     let dayNote = ''
-    if (nextDay) dayNote = ' (dia siguiente)'
-    if (prevDay) dayNote = ' (dia anterior)'
+    if (nextDay) {dayNote = ' (dia siguiente)'}
+    if (prevDay) {dayNote = ' (dia anterior)'}
 
     return `${convertedTime}${dayNote} en ${selectedTimezone.label}`
   }

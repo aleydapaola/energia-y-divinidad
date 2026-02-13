@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { Clock, AlertTriangle } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 interface QuizTimerProps {
   timeLimit: number // in minutes

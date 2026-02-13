@@ -1,8 +1,8 @@
 'use client'
 
 import { PortableText, PortableTextComponents } from '@portabletext/react'
-import Image from 'next/image'
 import { Info, AlertTriangle, Lightbulb, AlertCircle, Play, Pause } from 'lucide-react'
+import Image from 'next/image'
 import { useRef, useState, useEffect } from 'react'
 
 // Video Embed Component
@@ -109,7 +109,7 @@ function BlogAudioPlayer({ value }: {
 
   useEffect(() => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) {return}
 
     const updateTime = () => setCurrentTime(audio.currentTime)
     const updateDuration = () => setAudioDuration(audio.duration)
@@ -128,7 +128,7 @@ function BlogAudioPlayer({ value }: {
 
   const togglePlay = () => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) {return}
 
     if (isPlaying) {
       audio.pause()
@@ -140,7 +140,7 @@ function BlogAudioPlayer({ value }: {
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) {return}
 
     const newTime = parseFloat(e.target.value)
     audio.currentTime = newTime
@@ -148,7 +148,7 @@ function BlogAudioPlayer({ value }: {
   }
 
   const formatTime = (time: number): string => {
-    if (!isFinite(time)) return '0:00'
+    if (!isFinite(time)) {return '0:00'}
     const minutes = Math.floor(time / 60)
     const seconds = Math.floor(time % 60)
     return `${minutes}:${seconds.toString().padStart(2, '0')}`

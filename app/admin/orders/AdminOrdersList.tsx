@@ -1,8 +1,5 @@
 'use client'
 
-import { useState, Fragment } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import {
   Search,
   Filter,
@@ -14,6 +11,9 @@ import {
   ExternalLink,
   CheckCircle,
 } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState, Fragment } from 'react'
 
 interface OrderData {
   id: string
@@ -133,7 +133,7 @@ export function AdminOrdersList({ initialOrders }: AdminOrdersListProps) {
   }
 
   const getPaymentMethodLabel = (method: string | null) => {
-    if (!method) return 'N/A'
+    if (!method) {return 'N/A'}
     const labels: Record<string, string> = {
       WOMPI_CARD: 'Tarjeta (Wompi)',
       WOMPI_NEQUI: 'Nequi',

@@ -1,11 +1,12 @@
-import { Metadata } from 'next'
-import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
 import { ArrowLeft, Calendar, Clock, AlertTriangle, Play } from 'lucide-react'
-import { auth } from '@/lib/auth'
-import { getEventBySlug, formatEventDate } from '@/lib/sanity/queries/events'
-import { canAccessReplay } from '@/lib/events/replay-access'
+import { Metadata } from 'next'
+import Link from 'next/link'
+import { notFound, redirect } from 'next/navigation'
+
 import { ReplayVideoPlayer } from '@/components/eventos/ReplayVideoPlayer'
+import { auth } from '@/lib/auth'
+import { canAccessReplay } from '@/lib/events/replay-access'
+import { getEventBySlug, formatEventDate } from '@/lib/sanity/queries/events'
 
 interface ReplayPageProps {
   params: Promise<{ slug: string }>

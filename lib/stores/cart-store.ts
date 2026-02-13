@@ -2,6 +2,7 @@
 
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+
 import type { SanityDiscountCode } from '@/lib/discount-codes'
 
 // Types
@@ -125,7 +126,7 @@ export const useCartStore = create<CartState>()(
 
       getDiscountAmount: () => {
         const { discount } = get()
-        if (!discount) return 0
+        if (!discount) {return 0}
         return discount.discountAmount
       },
 

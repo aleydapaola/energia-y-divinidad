@@ -1,8 +1,8 @@
 "use client"
 
+import { User, Calendar, ShoppingBag, Settings, Crown, GraduationCap, CalendarCheck } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { User, Calendar, ShoppingBag, Settings, Crown, GraduationCap, CalendarCheck } from "lucide-react"
 
 const navItems = [
   {

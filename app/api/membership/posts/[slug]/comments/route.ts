@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
-import { getMembershipPostBySlug } from '@/lib/sanity/queries/membership'
-import { getPostComments, createPostComment } from '@/lib/membership-posts'
 import { hasActiveMembership } from '@/lib/membership-access'
+import { getPostComments, createPostComment } from '@/lib/membership-posts'
+import { getMembershipPostBySlug } from '@/lib/sanity/queries/membership'
 
 /**
  * GET /api/membership/posts/[slug]/comments

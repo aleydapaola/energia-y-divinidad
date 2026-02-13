@@ -1,9 +1,8 @@
 'use client'
 
-import { Suspense } from 'react'
-import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { Smartphone, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense , useEffect, useState } from 'react'
 
 function NequiPendingContent() {
   const router = useRouter()
@@ -83,7 +82,7 @@ function NequiPendingContent() {
             Tu membresía ha sido activada exitosamente. Redirigiendo al dashboard...
           </p>
 
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto" />
         </div>
       </div>
     )
@@ -124,8 +123,8 @@ function NequiPendingContent() {
           <div className="relative">
             <Smartphone className="w-20 h-20 text-amber-600 dark:text-amber-400" />
             <div className="absolute -top-2 -right-2">
-              <div className="animate-ping absolute h-4 w-4 rounded-full bg-amber-400 opacity-75"></div>
-              <div className="relative h-4 w-4 rounded-full bg-amber-500"></div>
+              <div className="animate-ping absolute h-4 w-4 rounded-full bg-amber-400 opacity-75" />
+              <div className="relative h-4 w-4 rounded-full bg-amber-500" />
             </div>
           </div>
         </div>

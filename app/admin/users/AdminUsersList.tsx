@@ -1,9 +1,5 @@
 'use client'
 
-import { useState, Fragment } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
 import {
   Search,
   Filter,
@@ -16,6 +12,10 @@ import {
   ExternalLink,
   User,
 } from 'lucide-react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState, Fragment } from 'react'
 
 interface UserData {
   id: string
@@ -108,10 +108,10 @@ export function AdminUsersList({ initialUsers }: AdminUsersListProps) {
   }
 
   const handleChangeRole = async () => {
-    if (!showRoleModal) return
+    if (!showRoleModal) {return}
 
     const targetUser = users.find((u) => u.id === showRoleModal)
-    if (!targetUser) return
+    if (!targetUser) {return}
 
     const newRole = targetUser.role === 'ADMIN' ? 'USER' : 'ADMIN'
 

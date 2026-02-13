@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
+import { getNequiMode, generateTransactionCode } from '@/lib/nequi'
 import { prisma } from '@/lib/prisma'
 import { getSessionConfig } from '@/lib/sanity/queries/sessionConfig'
-import { getNequiMode, generateTransactionCode } from '@/lib/nequi'
 import { getAppUrl } from '@/lib/utils'
 
 interface CheckoutBody {

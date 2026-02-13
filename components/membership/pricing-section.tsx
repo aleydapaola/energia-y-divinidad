@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+
 import { PricingCard } from './pricing-card'
+
 import type { MembershipTier } from '@/types/membership'
 
 interface PricingSectionProps {

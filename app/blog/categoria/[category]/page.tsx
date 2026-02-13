@@ -1,11 +1,15 @@
-import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
-import BlogCard from '@/components/blog/BlogCard'
-import { getBlogPostsByCategory, getBlogCategories } from '@/lib/sanity/queries/blog'
 import { BookOpen, ArrowLeft, Tag } from 'lucide-react'
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+
+
+import BlogCard from '@/components/blog/BlogCard'
+import { Footer } from '@/components/layout/Footer'
+import { Header } from '@/components/layout/Header'
+import { getBlogPostsByCategory, getBlogCategories } from '@/lib/sanity/queries/blog'
+
+import type { Metadata } from 'next'
+
 
 interface PageProps {
   params: Promise<{ category: string }>

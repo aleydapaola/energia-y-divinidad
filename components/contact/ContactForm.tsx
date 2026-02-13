@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { Send, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { useState } from 'react'
 
 interface FormData {
   name: string
@@ -220,7 +220,7 @@ export function ContactForm() {
             disabled={status === 'loading'}
             className="w-full px-4 py-3 bg-white border border-[#8A4BAF]/20 rounded-xl text-[#4A4A4A] placeholder-[#9a9a9a] focus:outline-none focus:border-[#8A4BAF] focus:ring-2 focus:ring-[#8A4BAF]/20 transition-all font-dm-sans resize-none disabled:opacity-50 disabled:cursor-not-allowed"
             placeholder="Cuéntame en qué puedo ayudarte..."
-          ></textarea>
+           />
         </div>
 
         {/* Submit Button */}

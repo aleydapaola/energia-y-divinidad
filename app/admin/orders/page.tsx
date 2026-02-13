@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+
 import { AdminOrdersList } from "./AdminOrdersList"
 
 export default async function AdminOrdersPage() {

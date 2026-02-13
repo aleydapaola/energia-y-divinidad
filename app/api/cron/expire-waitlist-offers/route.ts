@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { processExpiredOffers } from '@/lib/events/seat-allocation'
 
 /**

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
 import { canAccessLesson, canAccessCourse, getCourseStartDate } from '@/lib/course-access'
 import { client } from '@/sanity/lib/client'
@@ -79,7 +80,7 @@ export async function GET(
             currentIndex++
           }
         }
-        if (lesson) break
+        if (lesson) {break}
       }
     }
 

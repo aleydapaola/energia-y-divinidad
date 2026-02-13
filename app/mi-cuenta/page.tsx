@@ -1,11 +1,13 @@
-import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
-import { redirect } from "next/navigation"
-import Link from "next/link"
 import { Calendar, ShoppingBag, Crown, ArrowRight, GraduationCap, CalendarCheck } from "lucide-react"
-import { hasActiveMembership } from "@/lib/membership-access"
-import { getUserCourses } from "@/lib/course-access"
+import Link from "next/link"
+import { redirect } from "next/navigation"
+
 import { CreditsCard } from "@/components/cuenta/CreditsCard"
+import { auth } from "@/lib/auth"
+import { getUserCourses } from "@/lib/course-access"
+import { hasActiveMembership } from "@/lib/membership-access"
+import { prisma } from "@/lib/prisma"
+
 
 export default async function MiCuentaPage() {
   const session = await auth()

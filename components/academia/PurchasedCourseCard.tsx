@@ -1,9 +1,11 @@
 'use client'
 
+import { Play, BookOpen } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Play, BookOpen } from 'lucide-react'
+
 import { urlFor } from '@/sanity/lib/image'
+
 import { CourseProgressBar } from './CourseProgressBar'
 
 interface PurchasedCourseCardProps {

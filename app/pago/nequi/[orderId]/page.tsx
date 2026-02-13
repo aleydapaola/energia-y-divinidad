@@ -1,9 +1,10 @@
-import { Metadata } from 'next'
-import { notFound } from 'next/navigation'
 import { ArrowLeft, Copy, CheckCircle, AlertCircle, CreditCard, Calendar } from 'lucide-react'
+import { Metadata } from 'next'
 import Link from 'next/link'
-import { prisma } from '@/lib/prisma'
+import { notFound } from 'next/navigation'
+
 import { CopyButton } from '@/components/pago/CopyButton'
+import { prisma } from '@/lib/prisma'
 
 interface NequiPaymentPageProps {
   params: Promise<{ orderId: string }>

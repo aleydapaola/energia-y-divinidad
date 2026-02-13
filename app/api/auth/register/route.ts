@@ -1,8 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcrypt';
-import { prisma } from '@/lib/prisma';
-import { sendVerificationEmail } from '@/lib/email';
 import { randomBytes } from 'crypto';
+
+import bcrypt from 'bcrypt';
+import { NextRequest, NextResponse } from 'next/server';
+
+import { sendVerificationEmail } from '@/lib/email';
+import { prisma } from '@/lib/prisma';
+
 
 export async function POST(request: NextRequest) {
   try {

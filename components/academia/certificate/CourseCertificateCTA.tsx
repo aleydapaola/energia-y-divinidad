@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { Award, Loader2, Check, FileText } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
 
 interface CourseCertificateCTAProps {
   courseId: string

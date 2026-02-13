@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
 import { cancelBooking } from '@/lib/services/booking-cancellation'
 

@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import {
   Search,
   ChevronDown,
@@ -8,6 +7,7 @@ import {
   MapPin,
   X
 } from 'lucide-react'
+import { useState } from 'react'
 
 export interface FilterState {
   keyword: string

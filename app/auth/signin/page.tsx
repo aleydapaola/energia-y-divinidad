@@ -1,10 +1,10 @@
 "use client"
 
-import { Suspense, useState } from "react"
-import { signIn } from "next-auth/react"
-import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
 import { Loader2, Eye, EyeOff } from "lucide-react"
+import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
+import { signIn } from "next-auth/react"
+import { Suspense, useState } from "react"
 
 function SignInForm() {
   const router = useRouter()
@@ -189,9 +189,9 @@ function SignInLoading() {
   return (
     <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6 border border-[#8A4BAF]/10">
       <div className="animate-pulse space-y-5">
-        <div className="h-12 bg-gray-200 rounded-lg"></div>
-        <div className="h-12 bg-gray-200 rounded-lg"></div>
-        <div className="h-12 bg-gray-200 rounded-lg"></div>
+        <div className="h-12 bg-gray-200 rounded-lg" />
+        <div className="h-12 bg-gray-200 rounded-lg" />
+        <div className="h-12 bg-gray-200 rounded-lg" />
       </div>
     </div>
   )

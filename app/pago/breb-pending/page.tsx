@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2, CheckCircle, RefreshCw, Home, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+
 import { BrebPaymentInstructions } from '@/components/pago/BrebPaymentInstructions'
 
 function BrebPendingContent() {

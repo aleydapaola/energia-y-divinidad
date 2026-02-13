@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useMemo } from 'react'
 import {
   ChevronDown,
   ChevronUp,
@@ -11,6 +10,8 @@ import {
   Eye,
   Clock,
 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+
 import { calculateDripAvailability, type DripMode } from '@/lib/course-access'
 
 interface Lesson {
@@ -51,9 +52,9 @@ function formatDaysUntil(date: Date): string {
   const diffTime = date.getTime() - now.getTime()
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
-  if (diffDays <= 0) return 'Disponible'
-  if (diffDays === 1) return 'Disponible mañana'
-  if (diffDays < 7) return `Disponible en ${diffDays} días`
+  if (diffDays <= 0) {return 'Disponible'}
+  if (diffDays === 1) {return 'Disponible mañana'}
+  if (diffDays < 7) {return `Disponible en ${diffDays} días`}
 
   return `Disponible el ${date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`
 }
@@ -101,11 +102,11 @@ export function CourseContent({
       availability.set(simpleLesson._id, availableAt)
     } else if (modules) {
       let globalIndex = 0
-      for (const module of modules) {
+      for (const courseModule of modules) {
         // Check module unlock date first
-        const moduleUnlockDate = module.unlockDate ? new Date(module.unlockDate) : null
+        const moduleUnlockDate = courseModule.unlockDate ? new Date(courseModule.unlockDate) : null
 
-        for (const lesson of module.lessons) {
+        for (const lesson of courseModule.lessons) {
           // If module is locked, use module unlock date
           if (moduleUnlockDate && moduleUnlockDate > new Date()) {
             availability.set(lesson._id, moduleUnlockDate)
@@ -141,7 +142,7 @@ export function CourseContent({
       return
     }
 
-    if (!hasAccess) return
+    if (!hasAccess) {return}
 
     // Check drip availability
     const availableAt = lessonAvailability.get(lesson._id)
@@ -155,7 +156,7 @@ export function CourseContent({
   }
 
   const isDripLocked = (lessonId: string): boolean => {
-    if (!hasAccess || !dripEnabled) return false
+    if (!hasAccess || !dripEnabled) {return false}
     const availableAt = lessonAvailability.get(lessonId)
     return availableAt !== null && availableAt !== undefined && availableAt > new Date()
   }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { createPackCode, getPackCodeByBookingId } from '@/lib/pack-codes'
+
 import { sendPackCodeEmail } from '@/lib/email'
+import { createPackCode, getPackCodeByBookingId } from '@/lib/pack-codes'
+import { prisma } from '@/lib/prisma'
 
 interface GeneratePackCodeBody {
   bookingId: string

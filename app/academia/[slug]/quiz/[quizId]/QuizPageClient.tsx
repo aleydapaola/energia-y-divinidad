@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { AlertCircle, Clock, RotateCcw } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
 import { QuizContainer } from '@/components/academia/quiz'
 
 interface QuizData {

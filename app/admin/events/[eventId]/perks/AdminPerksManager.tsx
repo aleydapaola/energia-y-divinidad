@@ -1,7 +1,5 @@
 'use client'
 
-import { useState, Fragment } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   Search,
   Filter,
@@ -17,13 +15,17 @@ import {
   Link as LinkIcon,
   Package,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState, Fragment } from 'react'
+
+import { PERK_TYPE_LABELS } from '@/types/events'
+
 import type {
   EventPerk,
   PerkStats,
   PerkAllocationWithUser,
   PerkAllocationStatus,
 } from '@/types/events'
-import { PERK_TYPE_LABELS } from '@/types/events'
 
 interface AdminPerksManagerProps {
   eventId: string
@@ -125,7 +127,7 @@ export function AdminPerksManager({
   }
 
   const handleDeliver = async () => {
-    if (!deliverModalData) return
+    if (!deliverModalData) {return}
 
     const isBulk = deliverModalData.type === 'bulk'
     const url = deliverUrl.trim()

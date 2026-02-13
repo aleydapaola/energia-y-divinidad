@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Loader2, CheckCircle } from "lucide-react"
+import { useState, useEffect } from "react"
 
 interface NewsletterFormProps {
   variant?: "footer" | "inline" | "card"

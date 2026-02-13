@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, Send } from 'lucide-react'
-import { QuizQuestion } from './QuizQuestion'
+import { useState, useCallback } from 'react'
+
 import { QuizProgress } from './QuizProgress'
-import { QuizTimer } from './QuizTimer'
+import { QuizQuestion } from './QuizQuestion'
 import { QuizResults } from './QuizResults'
+import { QuizTimer } from './QuizTimer'
 
 interface Question {
   text: string

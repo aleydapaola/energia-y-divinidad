@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
-import { getEventById } from '@/lib/sanity/queries/events'
+import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
 import { sendEventBookingConfirmation, sendWaitlistJoinedEmail } from '@/lib/email'
 import {
@@ -10,7 +9,9 @@ import {
   getWaitlistEntry,
 } from '@/lib/events/seat-allocation'
 import { generateOrderNumber } from '@/lib/order-utils'
+import { prisma } from '@/lib/prisma'
 import { applyRateLimit } from '@/lib/rate-limit'
+import { getEventById } from '@/lib/sanity/queries/events'
 
 export async function POST(request: NextRequest) {
   try {

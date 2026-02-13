@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import { Clock, Users, Loader2, CheckCircle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { useState, useEffect } from 'react'
 
 interface WaitlistButtonProps {
   eventId: string
@@ -40,7 +40,7 @@ export default function WaitlistButton({
   // Check current waitlist status
   useEffect(() => {
     async function checkWaitlistStatus() {
-      if (authStatus === 'loading') return
+      if (authStatus === 'loading') {return}
       if (!session?.user) {
         setCheckingStatus(false)
         return
@@ -105,7 +105,7 @@ export default function WaitlistButton({
   }
 
   const handleLeaveWaitlist = async () => {
-    if (!session?.user) return
+    if (!session?.user) {return}
 
     setLoading(true)
     setError(null)
@@ -131,7 +131,7 @@ export default function WaitlistButton({
   }
 
   const handleAcceptOffer = async () => {
-    if (!waitlistStatus?.entry?.id) return
+    if (!waitlistStatus?.entry?.id) {return}
 
     setLoading(true)
     setError(null)

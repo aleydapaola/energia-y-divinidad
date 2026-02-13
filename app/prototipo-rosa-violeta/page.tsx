@@ -1,6 +1,6 @@
-import Link from "next/link"
-import Image from "next/image"
 import { Sparkles, Heart, Users, Star, Zap } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
 
 export default async function HomePage() {
   return (
@@ -17,7 +17,7 @@ export default async function HomePage() {
                 </h1>
                 <div className="flex justify-center w-full">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-pink-300/20 to-purple-300/20 rounded-full blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-pink-300/20 to-purple-300/20 rounded-full blur-xl" />
                     <Image
                       src="/images/logo150x204marron.png"
                       alt="Energía y Divinidad"
@@ -71,12 +71,12 @@ export default async function HomePage() {
       <section className="relative min-h-[600px] lg:min-h-[700px] w-full overflow-hidden">
         {/* Fondo con gradiente suave */}
         <div className="absolute inset-0 bg-gradient-to-br from-pink-100/40 via-purple-100/30 to-violet-100/40">
-          <div className="absolute inset-0 bg-[url('/images/Aleyda-home-comprimida.jpeg')] bg-cover bg-center mix-blend-overlay opacity-20"></div>
+          <div className="absolute inset-0 bg-[url('/images/Aleyda-home-comprimida.jpeg')] bg-cover bg-center mix-blend-overlay opacity-20" />
         </div>
 
         {/* Efectos de luz suaves */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-pink-200/20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl"></div>
+        <div className="absolute top-20 left-10 w-72 h-72 bg-pink-200/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl" />
 
         {/* Contenido del Hero */}
         <div className="relative h-full flex items-center justify-center px-4 sm:px-6 lg:px-12 py-20">
@@ -84,7 +84,7 @@ export default async function HomePage() {
             {/* Icono decorativo */}
             <div className="flex justify-center mb-6">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-pink-300/30 to-purple-300/30 rounded-full blur-2xl"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-pink-300/30 to-purple-300/30 rounded-full blur-2xl" />
                 <div className="relative bg-white/95 backdrop-blur-sm p-6 rounded-full shadow-lg">
                   <Sparkles className="w-16 h-16 text-purple-400" />
                 </div>
@@ -147,7 +147,7 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {/* Card 1 */}
             <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-pink-200 to-purple-200 rounded-2xl blur-xl opacity-10 group-hover:opacity-20 transition-opacity"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-pink-200 to-purple-200 rounded-2xl blur-xl opacity-10 group-hover:opacity-20 transition-opacity" />
               <div className="relative bg-white rounded-2xl p-8 shadow-md hover:shadow-xl transition-all border border-purple-50">
                 <div className="flex justify-center mb-6">
                   <div className="p-4 bg-gradient-to-br from-pink-50 to-purple-50 rounded-full">
@@ -165,7 +165,7 @@ export default async function HomePage() {
 
             {/* Card 2 */}
             <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-200 to-violet-200 rounded-2xl blur-xl opacity-10 group-hover:opacity-20 transition-opacity"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-200 to-violet-200 rounded-2xl blur-xl opacity-10 group-hover:opacity-20 transition-opacity" />
               <div className="relative bg-white rounded-2xl p-8 shadow-md hover:shadow-xl transition-all border border-purple-50">
                 <div className="flex justify-center mb-6">
                   <div className="p-4 bg-gradient-to-br from-purple-50 to-violet-50 rounded-full">
@@ -183,7 +183,7 @@ export default async function HomePage() {
 
             {/* Card 3 */}
             <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-200 to-pink-200 rounded-2xl blur-xl opacity-10 group-hover:opacity-20 transition-opacity"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-200 to-pink-200 rounded-2xl blur-xl opacity-10 group-hover:opacity-20 transition-opacity" />
               <div className="relative bg-white rounded-2xl p-8 shadow-md hover:shadow-xl transition-all border border-purple-50">
                 <div className="flex justify-center mb-6">
                   <div className="p-4 bg-gradient-to-br from-violet-50 to-pink-50 rounded-full">
@@ -229,15 +229,15 @@ export default async function HomePage() {
                 </p>
                 <ul className="space-y-3 mb-8">
                   <li className="flex items-start gap-3">
-                    <div className="mt-1 w-2 h-2 bg-gradient-to-r from-pink-300 to-purple-400 rounded-full"></div>
+                    <div className="mt-1 w-2 h-2 bg-gradient-to-r from-pink-300 to-purple-400 rounded-full" />
                     <span className="text-purple-600">Canalización individual personalizada</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <div className="mt-1 w-2 h-2 bg-gradient-to-r from-pink-300 to-purple-400 rounded-full"></div>
+                    <div className="mt-1 w-2 h-2 bg-gradient-to-r from-pink-300 to-purple-400 rounded-full" />
                     <span className="text-purple-600">Mensajes de tus ángeles y guías</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <div className="mt-1 w-2 h-2 bg-gradient-to-r from-pink-300 to-purple-400 rounded-full"></div>
+                    <div className="mt-1 w-2 h-2 bg-gradient-to-r from-pink-300 to-purple-400 rounded-full" />
                     <span className="text-purple-600">Sanación energética profunda</span>
                   </li>
                 </ul>
@@ -252,8 +252,8 @@ export default async function HomePage() {
               {/* Membresía */}
               <div className="bg-gradient-to-br from-purple-400 to-violet-500 rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all text-white relative overflow-hidden">
                 {/* Efectos decorativos suaves */}
-                <div className="absolute top-0 right-0 w-40 h-40 bg-pink-300/10 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-violet-200/10 rounded-full blur-2xl"></div>
+                <div className="absolute top-0 right-0 w-40 h-40 bg-pink-300/10 rounded-full blur-3xl" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-violet-200/10 rounded-full blur-2xl" />
 
                 <div className="relative z-10">
                   <div className="flex items-center gap-4 mb-6">
@@ -269,19 +269,19 @@ export default async function HomePage() {
                   </p>
                   <ul className="space-y-3 mb-8">
                     <li className="flex items-start gap-3">
-                      <div className="mt-1 w-2 h-2 bg-pink-200 rounded-full"></div>
+                      <div className="mt-1 w-2 h-2 bg-pink-200 rounded-full" />
                       <span>Meditaciones guiadas exclusivas</span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <div className="mt-1 w-2 h-2 bg-pink-200 rounded-full"></div>
+                      <div className="mt-1 w-2 h-2 bg-pink-200 rounded-full" />
                       <span>Sesiones grupales mensuales</span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <div className="mt-1 w-2 h-2 bg-pink-200 rounded-full"></div>
+                      <div className="mt-1 w-2 h-2 bg-pink-200 rounded-full" />
                       <span>Comunidad privada de apoyo</span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <div className="mt-1 w-2 h-2 bg-pink-200 rounded-full"></div>
+                      <div className="mt-1 w-2 h-2 bg-pink-200 rounded-full" />
                       <span>Descuentos en todos los servicios</span>
                     </li>
                   </ul>
@@ -305,7 +305,7 @@ export default async function HomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               {/* Imagen */}
               <div className="relative">
-                <div className="absolute -inset-4 bg-gradient-to-br from-pink-200 to-purple-300 rounded-3xl blur-2xl opacity-20"></div>
+                <div className="absolute -inset-4 bg-gradient-to-br from-pink-200 to-purple-300 rounded-3xl blur-2xl opacity-20" />
                 <div className="relative">
                   <Image
                     src="/images/AleydaPirineo2-768x622.jpg.jpeg"
@@ -352,10 +352,10 @@ export default async function HomePage() {
 
       {/* CTA Final con gradiente suave */}
       <section className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-pink-300 via-purple-400 to-violet-500"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-pink-300 via-purple-400 to-violet-500" />
         <div className="absolute inset-0">
-          <div className="absolute top-10 left-10 w-72 h-72 bg-pink-200/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-10 right-10 w-96 h-96 bg-violet-300/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-10 left-10 w-72 h-72 bg-pink-200/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-10 right-10 w-96 h-96 bg-violet-300/20 rounded-full blur-3xl" />
         </div>
 
         <div className="relative container mx-auto px-4 text-center">

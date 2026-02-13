@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { getEventBySlug } from '@/lib/sanity/queries/events'
 
 export async function GET(

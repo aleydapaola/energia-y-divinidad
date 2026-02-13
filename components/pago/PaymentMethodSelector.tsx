@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { CreditCard, Globe, Loader2, Key } from 'lucide-react'
+import { useState, useEffect } from 'react'
+
 import type { PaymentMethodType } from '@/lib/membership-access'
 
 export type PaymentRegion = 'colombia' | 'international'
@@ -64,9 +65,9 @@ export function PaymentMethodSelector({
   // Métodos de pago para Colombia (COP)
   const colombiaOptions: PaymentOption[] = [
     {
-      method: 'wompi_card',
-      label: 'Tarjeta de Crédito/Débito',
-      description: 'Visa, Mastercard, American Express',
+      method: 'wompi_manual',
+      label: 'Wompi (Tarjeta, PSE, Nequi, etc.)',
+      description: 'Múltiples métodos de pago colombianos',
       icon: <CreditCard className="w-6 h-6" />,
     },
     {
@@ -83,19 +84,19 @@ export function PaymentMethodSelector({
     },
   ]
 
-  // Métodos de pago internacionales (USD)
+  // Métodos de pago internacionales
   const internationalOptions: PaymentOption[] = [
+    {
+      method: 'wompi_manual',
+      label: 'Wompi (Credit/Debit Card)',
+      description: 'Pay with Visa, Mastercard, American Express',
+      icon: <CreditCard className="w-6 h-6" />,
+    },
     {
       method: 'paypal_direct',
       label: 'PayPal',
       description: 'Pay with your PayPal account',
       icon: <PayPalIcon />,
-    },
-    {
-      method: 'paypal_card',
-      label: 'Credit/Debit Card',
-      description: 'Visa, Mastercard, American Express (via PayPal)',
-      icon: <CreditCard className="w-6 h-6" />,
     },
   ]
 
@@ -127,7 +128,7 @@ export function PaymentMethodSelector({
   const needsGuestEmail = !isAuthenticated && !userEmail
 
   const handleConfirm = () => {
-    if (!selectedMethod || !selectedRegion) return
+    if (!selectedMethod || !selectedRegion) {return}
 
     // Validar email si es guest checkout
     if (needsGuestEmail) {
@@ -135,12 +136,12 @@ export function PaymentMethodSelector({
         setEmailError('El email es requerido')
         return
       }
-      if (!validateEmail(guestEmail)) return
+      if (!validateEmail(guestEmail)) {return}
     }
 
     // Validar teléfono si es Nequi
     if (selectedOption?.requiresPhone) {
-      if (!validatePhoneNumber(phoneNumber)) return
+      if (!validatePhoneNumber(phoneNumber)) {return}
       const cleanPhone = phoneNumber.replace(/\s|-/g, '')
       onMethodSelect(selectedMethod, selectedRegion, cleanPhone, needsGuestEmail ? guestEmail : undefined, needsGuestEmail ? guestName : undefined)
     } else {
@@ -150,12 +151,8 @@ export function PaymentMethodSelector({
 
   const handleRegionSelect = (region: PaymentRegion) => {
     setSelectedRegion(region)
-    // Auto-seleccionar el método recomendado
-    if (region === 'colombia') {
-      setSelectedMethod('wompi_card')
-    } else {
-      setSelectedMethod('paypal_direct')
-    }
+    // Auto-seleccionar el método recomendado (Wompi manual para ambas regiones)
+    setSelectedMethod('wompi_manual')
     setPhoneNumber('')
     setPhoneError('')
   }
@@ -386,7 +383,7 @@ export function PaymentMethodSelector({
         {/* Gateway Info */}
         <div className="px-4 pb-4 sm:px-6 sm:pb-6">
           <p className="font-dm-sans text-xs text-center text-gray-400">
-            {selectedMethod?.startsWith('wompi')
+            {selectedMethod === 'wompi_manual'
               ? 'Pago procesado de forma segura por Wompi (Bancolombia)'
               : selectedMethod?.startsWith('paypal')
                 ? 'Pago procesado de forma segura por PayPal'

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
 import { getCreditsBalance, redeemCredit } from '@/lib/credits'
-import { getSessionBySlug } from '@/lib/sanity/queries/sessions'
 import { sendBookingConfirmationEmail } from '@/lib/email'
+import { prisma } from '@/lib/prisma'
+import { getSessionBySlug } from '@/lib/sanity/queries/sessions'
 
 export async function POST(request: NextRequest) {
   try {

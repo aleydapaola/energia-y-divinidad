@@ -1,19 +1,20 @@
+import { nanoid } from 'nanoid'
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { client } from '@/sanity/lib/client'
-import { COURSES_BY_IDS_QUERY } from '@/sanity/lib/queries'
-import { validateDiscountCode, recordDiscountUsage } from '@/lib/discount-codes'
 import { createCourseEntitlement } from '@/lib/course-access'
+import { validateDiscountCode, recordDiscountUsage } from '@/lib/discount-codes'
+import { createPayPalOrder } from '@/lib/paypal'
+import { prisma } from '@/lib/prisma'
+import { getAppUrl } from '@/lib/utils'
 import {
   createWompiPaymentLink,
   generateWompiReference,
 } from '@/lib/wompi'
-import { createPayPalOrder } from '@/lib/paypal'
-import { getAppUrl } from '@/lib/utils'
-import { nanoid } from 'nanoid'
+import { client } from '@/sanity/lib/client'
+import { COURSES_BY_IDS_QUERY } from '@/sanity/lib/queries'
 
-type PaymentMethod = 'wompi_nequi' | 'wompi_card' | 'paypal_direct' | 'paypal_card'
+type PaymentMethod = 'wompi_nequi' | 'wompi_card' | 'wompi_manual' | 'paypal_direct' | 'paypal_card'
 
 interface CartItem {
   courseId: string
@@ -226,8 +227,32 @@ export async function POST(request: NextRequest) {
     const appUrl = getAppUrl()
 
     // Procesar según método de pago
-    if (isWompi) {
-      // Wompi (Colombia - COP)
+    if (paymentMethod === 'wompi_manual') {
+      // Wompi Manual - Usar link de pago genérico desde dashboard de Wompi
+      // Buscar link por monto específico o usar default
+      const paymentLinkUrl =
+        process.env[`WOMPI_PAYMENT_LINK_${finalAmount}`] ||
+        process.env[`WOMPI_PAYMENT_LINK_COURSE`] ||
+        process.env.WOMPI_PAYMENT_LINK_DEFAULT
+
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          paymentMethod: 'WOMPI_MANUAL',
+          metadata: {
+            ...(order.metadata as object),
+            wompiPaymentLinkUrl: paymentLinkUrl || '',
+          },
+        },
+      })
+
+      return NextResponse.json({
+        success: true,
+        reference,
+        redirectUrl: `/pago/wompi-pending?ref=${reference}`,
+      })
+    } else if (isWompi) {
+      // Wompi automático (legacy - deshabilitado temporalmente)
       if (currency !== 'COP') {
         return NextResponse.json(
           { error: 'Wompi solo soporta pagos en COP' },
@@ -316,6 +341,8 @@ function getPaymentMethodEnum(method: PaymentMethod) {
       return 'WOMPI_NEQUI'
     case 'wompi_card':
       return 'WOMPI_CARD'
+    case 'wompi_manual':
+      return 'WOMPI_MANUAL'
     case 'paypal_direct':
       return 'PAYPAL_DIRECT'
     case 'paypal_card':

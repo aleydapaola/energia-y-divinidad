@@ -1,11 +1,12 @@
+import { Calendar, MapPin, Video, ExternalLink, Clock, CheckCircle, AlertCircle } from 'lucide-react'
 import { Metadata } from 'next'
+import Image from 'next/image'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
+
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getEventById } from '@/lib/sanity/queries/events'
-import Link from 'next/link'
-import Image from 'next/image'
-import { Calendar, MapPin, Video, ExternalLink, Clock, CheckCircle, AlertCircle } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Mis Eventos | Energía y Divinidad',

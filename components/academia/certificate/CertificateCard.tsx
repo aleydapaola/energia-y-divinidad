@@ -2,6 +2,7 @@
 
 import { Award, Download, ExternalLink, Calendar, Clock } from 'lucide-react'
 import Image from 'next/image'
+
 import { urlForImage } from '@/sanity/lib/image'
 
 interface CertificateCardProps {

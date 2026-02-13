@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
+import { useState } from 'react'
 
 interface CertificateDownloadButtonProps {
   certificateId: string
@@ -41,7 +41,7 @@ export function CertificateDownloadButton({
       let filename = 'Certificado.pdf'
       if (contentDisposition) {
         const match = contentDisposition.match(/filename="(.+)"/)
-        if (match) filename = match[1]
+        if (match) {filename = match[1]}
       } else if (courseName) {
         filename = `Certificado_${courseName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`
       }

@@ -3,9 +3,9 @@
  * Handles validation and usage tracking of discount codes managed in Sanity
  */
 
+import { prisma } from '@/lib/prisma'
 import { client } from '@/sanity/lib/client'
 import { DISCOUNT_CODE_BY_CODE_QUERY } from '@/sanity/lib/queries'
-import { prisma } from '@/lib/prisma'
 
 // Types for discount codes from Sanity
 export interface SanityDiscountCode {

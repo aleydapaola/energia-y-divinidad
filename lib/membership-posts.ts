@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+
 import type { MembershipPostWithEngagement, PostType, CommentWithAuthor } from '@/types/membership'
 
 /**
@@ -155,7 +156,7 @@ export async function getPostComments(
     where: { sanityId },
   })
 
-  if (!post) return []
+  if (!post) {return []}
 
   const comments = await prisma.membershipPostComment.findMany({
     where: { postId: post.id },
@@ -366,7 +367,7 @@ export async function getUserPollVote(sanityId: string, userId: string): Promise
     where: { sanityId },
   })
 
-  if (!post) return null
+  if (!post) {return null}
 
   const vote = await prisma.pollVote.findUnique({
     where: {

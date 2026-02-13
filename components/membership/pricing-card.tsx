@@ -1,6 +1,7 @@
 'use client'
 
 import { Check, Crown, ArrowUp, Sparkles } from 'lucide-react'
+
 import type { MembershipTier } from '@/types/membership'
 
 interface PricingCardProps {
@@ -44,7 +45,7 @@ export function PricingCard({
   const discount = billingInterval === 'yearly' ? tier.pricing.yearlyDiscount : null
 
   const formatPrice = (amount: number | undefined) => {
-    if (!amount) return 'Gratis'
+    if (!amount) {return 'Gratis'}
 
     if (currency === 'COP') {
       return new Intl.NumberFormat('es-CO', {

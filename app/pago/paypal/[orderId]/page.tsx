@@ -1,7 +1,8 @@
-import { Metadata } from 'next'
-import { notFound } from 'next/navigation'
 import { ArrowLeft, CreditCard } from 'lucide-react'
+import { Metadata } from 'next'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
+
 import { prisma } from '@/lib/prisma'
 
 interface PayPalPaymentPageProps {

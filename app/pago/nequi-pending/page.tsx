@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
 import { Smartphone, Loader2, CheckCircle, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
 
 function NequiPendingContent() {
   const searchParams = useSearchParams()
@@ -17,7 +17,7 @@ function NequiPendingContent() {
 
   // Countdown timer
   useEffect(() => {
-    if (status !== 'pending') return
+    if (status !== 'pending') {return}
 
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -34,7 +34,7 @@ function NequiPendingContent() {
 
   // Auto-check status every 10 seconds
   useEffect(() => {
-    if (status !== 'pending') return
+    if (status !== 'pending') {return}
 
     const checkStatus = async () => {
       try {

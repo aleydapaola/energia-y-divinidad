@@ -1,16 +1,16 @@
+import { ArrowLeft, Calendar, Clock, MapPin } from 'lucide-react'
 import { Metadata } from 'next'
-import { notFound, redirect } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, Clock, MapPin } from 'lucide-react'
-import { getSessionBySlug } from '@/lib/sanity/queries/sessions'
-import {
+import { notFound, redirect } from 'next/navigation'
+
+import { Footer } from '@/components/layout/Footer'
+import { Header } from '@/components/layout/Header'
+import { CheckoutForm } from '@/components/sesiones/CheckoutForm'
+import { getSessionBySlug ,
   getSessionTypeLabel,
   formatDuration,
 } from '@/lib/sanity/queries/sessions'
-import { CheckoutForm } from '@/components/sesiones/CheckoutForm'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
 
 interface ReservarPageProps {
   params: Promise<{ slug: string }>

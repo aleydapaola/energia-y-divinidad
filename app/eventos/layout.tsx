@@ -1,7 +1,8 @@
 import { ReactNode } from 'react'
-import { auth } from '@/lib/auth'
-import { Header } from '@/components/layout/Header'
+
 import { Footer } from '@/components/layout/Footer'
+import { Header } from '@/components/layout/Header'
+import { auth } from '@/lib/auth'
 
 interface EventosLayoutProps {
   children: ReactNode

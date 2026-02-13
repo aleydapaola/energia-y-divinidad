@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Sparkles, Heart, Users, LogIn, Crown, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import Link from 'next/link'
-import { Sparkles, Heart, Users, LogIn, Crown, ArrowLeft } from 'lucide-react'
-import { Header } from '@/components/layout/Header'
+import { useEffect, useState } from 'react'
+
 import { Footer } from '@/components/layout/Footer'
+import { Header } from '@/components/layout/Header'
 import { PricingSection } from '@/components/membership/pricing-section'
+
 import type { MembershipTier } from '@/types/membership'
 
 export default function MembresiaPage() {
@@ -208,7 +210,7 @@ export default function MembresiaPage() {
 
           {loadingTiers ? (
             <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8A4BAF]"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8A4BAF]" />
             </div>
           ) : tiers.length > 0 ? (
             <PricingSection

@@ -1,4 +1,5 @@
 import { sanityFetch } from '@/sanity/lib/fetch'
+
 import type { MembershipTier, MembershipPostSanity } from '@/types/membership'
 // Nota: Las proyecciones de membership son específicas y no usan las genéricas
 // porque los schemas de membershipTier y membershipPost tienen campos propios

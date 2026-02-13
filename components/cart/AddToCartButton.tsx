@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { ShoppingCart, Check, Play } from 'lucide-react'
-import { useCartStore, type CartItem } from '@/lib/stores/cart-store'
-import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+import { useState, useEffect } from 'react'
+
+import { useCartStore, type CartItem } from '@/lib/stores/cart-store'
+
 
 interface AddToCartButtonProps {
   course: {
@@ -67,7 +69,7 @@ export function AddToCartButton({
 
   const handleClick = () => {
     // Si ya posee el curso, no hacer nada
-    if (isOwned) return
+    if (isOwned) {return}
 
     if (inCart) {
       openCart()

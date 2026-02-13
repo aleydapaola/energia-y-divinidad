@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+
 import { TimeSlot } from '@/lib/availability/time-slots';
 
 interface TimeSlotPickerProps {
@@ -32,7 +33,7 @@ export default function TimeSlotPicker({
 
   // Función para formatear el label según el formato seleccionado
   const formatTimeLabel = (label: string): string => {
-    if (is24Hour) return label;
+    if (is24Hour) {return label;}
 
     // Convertir "17:00 - 18:00" a "5:00pm - 6:00pm"
     const [start, end] = label.split(' - ');
@@ -110,19 +111,25 @@ export default function TimeSlotPicker({
               key={slot.time}
               onClick={() => onSelectTime(slot.time)}
               disabled={!hasDateSelected}
+              style={{
+                WebkitTapHighlightColor: 'rgba(138, 75, 175, 0.3)',
+                touchAction: 'manipulation',
+              }}
               className={`
-                w-full px-4 py-3 rounded-lg font-medium transition-all font-dm-sans
-                flex items-center justify-center
+                w-full px-4 py-4 rounded-lg font-medium transition-all font-dm-sans
+                flex items-center justify-center select-none
+                min-h-[52px]
+                active:scale-[0.98]
                 ${
                   !hasDateSelected
                     ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
                     : selectedTime === slot.time
                     ? 'bg-[#8A4BAF] text-white shadow-md ring-2 ring-[#8A4BAF] ring-offset-2'
-                    : 'bg-[#f8f0f5] text-[#654177] border border-[#8A4BAF]/30 shadow-sm hover:border-[#8A4BAF] hover:bg-[#efe3ed]'
+                    : 'bg-[#f8f0f5] text-[#654177] border border-[#8A4BAF]/30 shadow-sm hover:border-[#8A4BAF] hover:bg-[#efe3ed] active:bg-[#efe3ed]'
                 }
               `}
             >
-              <span className="text-sm">{formatTimeLabel(slot.label)}</span>
+              <span className="text-base">{formatTimeLabel(slot.label)}</span>
             </button>
           ))
         )}

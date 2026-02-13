@@ -1,7 +1,3 @@
-import { prisma } from "@/lib/prisma"
-import { notFound } from "next/navigation"
-import Link from "next/link"
-import Image from "next/image"
 import {
   ArrowLeft,
   User,
@@ -13,6 +9,11 @@ import {
   CreditCard,
   CalendarCheck,
 } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+
+import { prisma } from "@/lib/prisma"
 
 interface UserDetailPageProps {
   params: Promise<{ id: string }>

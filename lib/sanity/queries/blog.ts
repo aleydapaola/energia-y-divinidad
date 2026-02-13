@@ -1,4 +1,5 @@
 import { groq } from 'next-sanity'
+
 import { sanityFetch } from '@/sanity/lib/fetch'
 import { mainImageProjection, seoProjection } from '@/sanity/lib/projections'
 

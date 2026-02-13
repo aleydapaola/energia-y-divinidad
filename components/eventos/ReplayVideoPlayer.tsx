@@ -18,7 +18,7 @@ function extractYouTubeId(url: string): string | null {
   ]
   for (const pattern of patterns) {
     const match = url.match(pattern)
-    if (match) return match[1]
+    if (match) {return match[1]}
   }
   return null
 }
@@ -30,8 +30,8 @@ function extractVimeoId(url: string): string | null {
 }
 
 function getVideoType(url: string): 'youtube' | 'vimeo' | 'native' {
-  if (extractYouTubeId(url)) return 'youtube'
-  if (extractVimeoId(url)) return 'vimeo'
+  if (extractYouTubeId(url)) {return 'youtube'}
+  if (extractVimeoId(url)) {return 'vimeo'}
   return 'native'
 }
 
@@ -56,7 +56,7 @@ export function ReplayVideoPlayer({
   const reportProgress = useCallback(
     async (seconds: number, position: number) => {
       // Only report if significant change (at least 5 seconds)
-      if (Math.abs(seconds - lastReportedRef.current) < 5) return
+      if (Math.abs(seconds - lastReportedRef.current) < 5) {return}
       lastReportedRef.current = seconds
 
       try {
@@ -78,7 +78,7 @@ export function ReplayVideoPlayer({
 
   // YouTube Player
   useEffect(() => {
-    if (videoType !== 'youtube' || !youtubeId) return
+    if (videoType !== 'youtube' || !youtubeId) {return}
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const win = window as any

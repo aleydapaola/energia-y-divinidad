@@ -1,8 +1,8 @@
 "use client"
 
+import { User, LogOut, ChevronLeft } from "lucide-react"
 import Link from "next/link"
 import { signOut } from "next-auth/react"
-import { User, LogOut, ChevronLeft } from "lucide-react"
 
 interface DashboardHeaderProps {
   user: {

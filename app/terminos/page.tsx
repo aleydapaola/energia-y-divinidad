@@ -1,7 +1,8 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { Header } from '@/components/layout/Header'
+
 import { Footer } from '@/components/layout/Footer'
+import { Header } from '@/components/layout/Header'
 import LegalPageContent from '@/components/legal/LegalPageContent'
 import { sanityFetch } from '@/sanity/lib/fetch'
 import { LEGAL_PAGE_BY_SLUG_QUERY } from '@/sanity/lib/queries'

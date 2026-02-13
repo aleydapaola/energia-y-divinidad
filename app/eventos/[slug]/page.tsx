@@ -1,11 +1,14 @@
+import { PortableText } from '@portabletext/react'
+import { Calendar, MapPin, Users, Video, ArrowLeft, Clock, CheckCircle } from 'lucide-react'
 import { Metadata } from 'next'
-import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Calendar, MapPin, Users, Video, ArrowLeft, Clock, CheckCircle } from 'lucide-react'
-import { PortableText } from '@portabletext/react'
-import { getEventBySlug } from '@/lib/sanity/queries/events'
-import {
+import { notFound } from 'next/navigation'
+
+import { EventPerksSection } from '@/components/eventos/EventPerksSection'
+import WaitlistButton from '@/components/eventos/WaitlistButton'
+import { features } from '@/lib/config/features'
+import { getEventBySlug ,
   formatEventDate,
   getEventTypeLabel,
   getLocationTypeLabel,
@@ -16,9 +19,7 @@ import {
   canBookEvent,
   getTimeUntilEvent,
 } from '@/lib/sanity/queries/events'
-import { features } from '@/lib/config/features'
-import WaitlistButton from '@/components/eventos/WaitlistButton'
-import { EventPerksSection } from '@/components/eventos/EventPerksSection'
+
 import type { EventPerk } from '@/types/events'
 
 interface EventPageProps {

@@ -1,9 +1,10 @@
-import { ReactNode } from "react"
 import { redirect } from "next/navigation"
-import { auth } from "@/lib/auth"
+import { ReactNode } from "react"
+
 import { DashboardNav } from "@/components/dashboard/dashboard-nav"
-import { Header } from "@/components/layout/Header"
 import { Footer } from "@/components/layout/Footer"
+import { Header } from "@/components/layout/Header"
+import { auth } from "@/lib/auth"
 import { hasActiveMembership } from "@/lib/membership-access"
 
 interface MiCuentaLayoutProps {

@@ -1,14 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { ArrowLeft, Heart, MessageCircle, Eye, Calendar, Clock, Download, Headphones } from 'lucide-react'
 import { PortableText } from '@portabletext/react'
+import { ArrowLeft, Heart, MessageCircle, Eye, Calendar, Clock, Download, Headphones } from 'lucide-react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { useState, useEffect } from 'react'
+
 import { POST_TYPE_ICONS, POST_TYPE_LABELS } from '@/types/membership'
-import type { MembershipPostSanity, MembershipTier } from '@/types/membership'
-import { PollVoting } from './poll-voting'
+
 import { CommentSection } from './comment-section'
+import { PollVoting } from './poll-voting'
+
+import type { MembershipPostSanity, MembershipTier } from '@/types/membership'
 
 // Extended type that includes resolved tier data
 interface PostWithTierData extends MembershipPostSanity {
@@ -58,7 +61,7 @@ export function PostDetailView({ post, engagement: initialEngagement, userId }: 
   }, [post.slug.current])
 
   const handleLike = async () => {
-    if (isLiking || !post.allowLikes) return
+    if (isLiking || !post.allowLikes) {return}
 
     setIsLiking(true)
 

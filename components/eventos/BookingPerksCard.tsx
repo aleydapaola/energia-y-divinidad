@@ -13,6 +13,7 @@ import {
   MessageCircle,
   HelpCircle,
 } from 'lucide-react'
+
 import type { BookingPerks, PerkType, PerkAllocationStatus } from '@/types/events'
 
 interface BookingPerksCardProps {
@@ -50,7 +51,7 @@ const statusConfig: Record<
 }
 
 export function BookingPerksCard({ perks }: BookingPerksCardProps) {
-  if (!perks || perks.allocations.length === 0) return null
+  if (!perks || perks.allocations.length === 0) {return null}
 
   return (
     <div className="mt-4 p-4 bg-[#f8f0f5] rounded-lg">

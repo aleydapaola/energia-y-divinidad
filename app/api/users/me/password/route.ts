@@ -1,7 +1,8 @@
+import bcrypt from 'bcrypt';
 import { NextRequest, NextResponse } from 'next/server';
+
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import bcrypt from 'bcrypt';
 
 // PUT /api/users/me/password - Cambiar contraseña
 export async function PUT(request: NextRequest) {

@@ -1,9 +1,11 @@
 import { Metadata } from 'next'
 import { redirect, notFound } from 'next/navigation'
+
 import { auth } from '@/lib/auth'
+import { canAccessCourse, getCourseStartDate, calculateDripAvailability } from '@/lib/course-access'
 import { sanityFetch } from '@/sanity/lib/fetch'
 import { COURSE_BY_SLUG_QUERY, LESSON_BY_ID_QUERY } from '@/sanity/lib/queries'
-import { canAccessCourse, getCourseStartDate, calculateDripAvailability } from '@/lib/course-access'
+
 import { CoursePlayerClient } from './CoursePlayerClient'
 
 interface ReproducirPageProps {
@@ -92,8 +94,8 @@ export default async function ReproducirPage({
 
   // Helper function to check if a lesson is drip locked
   const isLessonDripLocked = (lesson: any, globalIndex: number): boolean => {
-    if (!course.dripEnabled) return false
-    if (lesson.isFreePreview) return false
+    if (!course.dripEnabled) {return false}
+    if (lesson.isFreePreview) {return false}
 
     const availableAt = calculateDripAvailability(
       lesson,
@@ -138,7 +140,7 @@ export default async function ReproducirPage({
         }
         globalIndex++
       }
-      if (foundLesson) break
+      if (foundLesson) {break}
     }
 
     if (foundLesson && isLessonDripLocked(foundLesson.lesson, foundLesson.globalIndex)) {

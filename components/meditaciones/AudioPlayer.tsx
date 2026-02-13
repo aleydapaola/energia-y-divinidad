@@ -17,7 +17,7 @@ export default function AudioPlayer({ audioUrl, title, coverImage }: AudioPlayer
 
   useEffect(() => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) {return}
 
     const updateTime = () => setCurrentTime(audio.currentTime)
     const updateDuration = () => setDuration(audio.duration)
@@ -36,7 +36,7 @@ export default function AudioPlayer({ audioUrl, title, coverImage }: AudioPlayer
 
   const togglePlay = () => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) {return}
 
     if (isPlaying) {
       audio.pause()
@@ -48,7 +48,7 @@ export default function AudioPlayer({ audioUrl, title, coverImage }: AudioPlayer
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) {return}
 
     const newTime = parseFloat(e.target.value)
     audio.currentTime = newTime
@@ -57,7 +57,7 @@ export default function AudioPlayer({ audioUrl, title, coverImage }: AudioPlayer
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) {return}
 
     const newVolume = parseFloat(e.target.value)
     audio.volume = newVolume
@@ -65,7 +65,7 @@ export default function AudioPlayer({ audioUrl, title, coverImage }: AudioPlayer
   }
 
   const formatTime = (time: number): string => {
-    if (!isFinite(time)) return '0:00'
+    if (!isFinite(time)) {return '0:00'}
     const minutes = Math.floor(time / 60)
     const seconds = Math.floor(time % 60)
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
@@ -128,11 +128,11 @@ export default function AudioPlayer({ audioUrl, title, coverImage }: AudioPlayer
           title={isPlaying ? 'Pausar' : 'Reproducir'}
         >
           {isPlaying ? (
-            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-8 h-8" width="32" height="32" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
             </svg>
           ) : (
-            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-8 h-8" width="32" height="32" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
           )}
@@ -156,7 +156,7 @@ export default function AudioPlayer({ audioUrl, title, coverImage }: AudioPlayer
 
       {/* Volume Control */}
       <div className="flex items-center gap-3">
-        <svg className="w-5 h-5 text-[#a87819]" fill="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-[#a87819]" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
           <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z" />
         </svg>
         <input

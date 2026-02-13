@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
 import { declineWaitlistOffer } from '@/lib/events/seat-allocation'
 

@@ -1,6 +1,6 @@
 import { prisma } from './prisma'
-import type { MembershipStatus, PremiumContentAccess, UserSubscription } from '@/types/membership'
-import type { MembershipTier } from '@/types/membership'
+
+import type { MembershipStatus, PremiumContentAccess, UserSubscription , MembershipTier } from '@/types/membership'
 
 /**
  * Verifica si un usuario tiene una membresía activa
@@ -40,7 +40,7 @@ export async function getActiveSubscription(userId: string): Promise<UserSubscri
     },
   })
 
-  if (!subscription) return null
+  if (!subscription) {return null}
 
   // Convertir Decimal a number y asegurar todos los campos
   return {
@@ -75,7 +75,7 @@ export async function getUserMembershipTier(
   userId: string
 ): Promise<{ tierId: string; tierLevel: number } | null> {
   const subscription = await getActiveSubscription(userId)
-  if (!subscription) return null
+  if (!subscription) {return null}
 
   // Aquí necesitarás hacer un fetch a Sanity para obtener el tierLevel
   // Por ahora retornamos solo el ID
@@ -142,7 +142,7 @@ export async function canAccessMembershipPost(
   requiredTierId: string
 ): Promise<boolean> {
   const subscription = await getActiveSubscription(userId)
-  if (!subscription) return false
+  if (!subscription) {return false}
 
   // Aquí necesitarás comparar tierLevel del usuario vs tierLevel requerido
   // desde Sanity. Por ahora verificamos solo que tenga membresía activa
@@ -197,10 +197,11 @@ export function getPaymentRegion(countryCode?: string): 'colombia' | 'internatio
  */
 export type PaymentMethodType =
   | 'wompi_nequi' // Nequi via Wompi (Colombia)
-  | 'wompi_card' // Tarjeta colombiana via Wompi (Colombia)
+  | 'wompi_card' // Tarjeta via Wompi automático (deshabilitado temporalmente)
+  | 'wompi_manual' // Wompi con link de pago genérico (Colombia + Internacional)
   | 'breb_manual' // Bre-B transferencia manual con llave (Colombia)
   | 'paypal_direct' // PayPal directo (Colombia + Internacional)
-  | 'paypal_card' // Tarjeta internacional via PayPal (Internacional)
+  | 'paypal_card' // Tarjeta via PayPal (Internacional)
 
 export interface PaymentMethod {
   type: PaymentMethodType
@@ -218,12 +219,12 @@ export interface PaymentMethod {
  * Obtiene los métodos de pago disponibles para un usuario según su región
  *
  * ESTRATEGIA DE PAGOS:
- * - Colombia: Nequi (Wompi), Tarjeta (Wompi), Bre-B (manual), PayPal (PayPal directo)
- * - Internacional: PayPal (PayPal directo), Tarjeta (PayPal)
+ * - Colombia: Tarjeta (Wompi), Bre-B (manual), PayPal (directo)
+ * - Internacional: Tarjeta (Wompi en COP, conversión automática), PayPal (directo en USD)
  *
- * Wompi solo opera en COP
- * PayPal puede operar en COP y USD
- * Bre-B es pago manual con llave Bancolombia (sin comisiones)
+ * Wompi procesa en COP - tarjetas internacionales son aceptadas, el banco del cliente hace la conversión
+ * PayPal procesa en USD
+ * Bre-B es pago manual con llave Bancolombia (sin comisiones, solo Colombia)
  */
 export function getAvailablePaymentMethods(region: 'colombia' | 'international'): PaymentMethod[] {
   if (region === 'colombia') {
@@ -275,28 +276,28 @@ export function getAvailablePaymentMethods(region: 'colombia' | 'international')
     ]
   }
 
-  // Internacional (USD)
+  // Internacional (cobro en COP para tarjetas, USD para PayPal)
   return [
+    {
+      type: 'wompi_card',
+      label: 'Credit/Debit Card',
+      description: 'Pay with Visa, Mastercard, or American Express. Charged in COP, your bank converts automatically.',
+      available: true,
+      icon: '💳',
+      gateway: 'wompi',
+      currency: 'COP',
+      isRecurring: true,
+      recommended: true,
+    },
     {
       type: 'paypal_direct',
       label: 'PayPal',
-      description: 'Pay securely with your PayPal account.',
+      description: 'Pay securely with your PayPal account (USD).',
       available: true,
       icon: '🅿️',
       gateway: 'paypal',
       currency: 'USD',
       isRecurring: false,
-      recommended: true,
-    },
-    {
-      type: 'paypal_card',
-      label: 'Credit/Debit Card',
-      description: 'Pay with Visa, Mastercard, or American Express via PayPal.',
-      available: true,
-      icon: '💳',
-      gateway: 'paypal',
-      currency: 'USD',
-      isRecurring: true,
       recommended: false,
     },
   ]

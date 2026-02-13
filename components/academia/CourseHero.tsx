@@ -1,7 +1,8 @@
 'use client'
 
-import Image from 'next/image'
 import { Clock, BookOpen, BarChart3, Play, CheckCircle } from 'lucide-react'
+import Image from 'next/image'
+
 import { urlFor } from '@/sanity/lib/image'
 
 interface CourseHeroProps {

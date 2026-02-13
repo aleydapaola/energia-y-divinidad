@@ -13,6 +13,7 @@ import {
   MessageCircle,
   HelpCircle,
 } from 'lucide-react'
+
 import type { EventPerk, PerkType } from '@/types/events'
 
 interface EventPerksSectionProps {
@@ -38,7 +39,7 @@ const perkTypeConfig: Record<
 }
 
 export function EventPerksSection({ perks }: EventPerksSectionProps) {
-  if (!perks || perks.length === 0) return null
+  if (!perks || perks.length === 0) {return null}
 
   return (
     <section className="py-12 bg-[#f8f0f5]">

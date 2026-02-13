@@ -3,7 +3,7 @@
  * Servicio centralizado para procesar checkouts
  */
 
-import { prisma } from '@/lib/prisma'
+import { validateDiscountCode, calculateDiscount } from '@/lib/discount-codes'
 import { generateOrderNumber, type OrderPrefix } from '@/lib/order-utils'
 import {
   getGatewayForPayment,
@@ -11,7 +11,8 @@ import {
   type PaymentMethodType,
   type Currency,
 } from '@/lib/payments'
-import { validateDiscountCode, calculateDiscount } from '@/lib/discount-codes'
+import { prisma } from '@/lib/prisma'
+
 import type { CheckoutInput } from './validation'
 
 export interface CheckoutOptions {
@@ -294,10 +295,10 @@ async function checkExistingMembership(userId: string, tierId?: string): Promise
   })
 
   // Si no tiene membresía activa, permitir
-  if (!existing) return false
+  if (!existing) {return false}
 
   // Si tiene membresía pero es diferente tier, permitir (upgrade/downgrade)
-  if (tierId && existing.membershipTierId !== tierId) return false
+  if (tierId && existing.membershipTierId !== tierId) {return false}
 
   // Mismo tier - bloquear
   return true

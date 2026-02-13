@@ -62,7 +62,7 @@ export function LessonResources({ resources }: LessonResourcesProps) {
           const url = resource.file?.asset?.url || resource.externalUrl
           const isExternal = !resource.file?.asset?.url && resource.externalUrl
 
-          if (!url) return null
+          if (!url) {return null}
 
           return (
             <a

@@ -1,9 +1,10 @@
+import { Calendar } from 'lucide-react'
 import { Metadata } from 'next'
 import { Suspense } from 'react'
-import { Calendar } from 'lucide-react'
-import { getAllEvents } from '@/lib/sanity/queries/events'
-import { features } from '@/lib/config/features'
+
 import EventsListContainer from '@/components/eventos/EventsListContainer'
+import { features } from '@/lib/config/features'
+import { getAllEvents } from '@/lib/sanity/queries/events'
 
 export const metadata: Metadata = {
   title: 'Calendario de Eventos | Energía y Divinidad',

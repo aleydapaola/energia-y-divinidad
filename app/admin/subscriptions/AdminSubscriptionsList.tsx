@@ -1,8 +1,5 @@
 'use client'
 
-import { useState, Fragment } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import {
   Search,
   Filter,
@@ -14,6 +11,9 @@ import {
   ExternalLink,
   AlertTriangle,
 } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState, Fragment } from 'react'
 
 interface SubscriptionData {
   id: string
@@ -124,7 +124,7 @@ export function AdminSubscriptionsList({ initialSubscriptions }: AdminSubscripti
   }
 
   const handleCancelSubscription = async () => {
-    if (!showCancelModal) return
+    if (!showCancelModal) {return}
 
     setCancellingId(showCancelModal)
     try {

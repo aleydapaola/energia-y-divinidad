@@ -1,12 +1,15 @@
-import { client } from '../client'
 import { sanityFetch } from '@/sanity/lib/fetch'
-import type { EventPerk } from '@/types/events'
 import {
   pricingProjection,
   membershipAccessProjection,
   seoProjection,
   mainImageProjection,
 } from '@/sanity/lib/projections'
+
+import { client } from '../client'
+
+import type { EventPerk } from '@/types/events'
+
 
 // Interface para Event (actualizada con objetos reutilizables)
 export interface Event {
@@ -354,7 +357,7 @@ export async function getEventsWithRecordings(limit?: number): Promise<Event[]> 
  * Check if event has available spots
  */
 export function hasAvailableSpots(event: Event): boolean {
-  if (!event.capacity) return true // Sin límite de capacidad
+  if (!event.capacity) {return true} // Sin límite de capacidad
   if (event.availableSpots === undefined || event.availableSpots === null) {
     return true // Si no está definido, asumimos que hay cupos
   }
@@ -365,7 +368,7 @@ export function hasAvailableSpots(event: Event): boolean {
  * Check if early bird pricing is active
  */
 export function isEarlyBirdActive(event: Event): boolean {
-  if (!event.earlyBirdPrice || !event.earlyBirdDeadline) return false
+  if (!event.earlyBirdPrice || !event.earlyBirdDeadline) {return false}
   const deadline = new Date(event.earlyBirdDeadline)
   return new Date() <= deadline
 }
@@ -461,9 +464,9 @@ export function isEventPast(event: Event): boolean {
  * Check if event can be booked
  */
 export function canBookEvent(event: Event): boolean {
-  if (event.status !== 'upcoming') return false
-  if (isEventPast(event)) return false
-  if (!hasAvailableSpots(event)) return false
+  if (event.status !== 'upcoming') {return false}
+  if (isEventPast(event)) {return false}
+  if (!hasAvailableSpots(event)) {return false}
   return true
 }
 
@@ -475,7 +478,7 @@ export function getTimeUntilEvent(event: Event): string {
   const eventDate = new Date(event.eventDate)
   const diff = eventDate.getTime() - now.getTime()
 
-  if (diff < 0) return 'Evento pasado'
+  if (diff < 0) {return 'Evento pasado'}
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))

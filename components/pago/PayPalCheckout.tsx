@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
 import { Loader2 } from 'lucide-react'
+import { useState, useCallback } from 'react'
 
 interface PayPalCheckoutProps {
   // Product info
@@ -53,14 +53,7 @@ export function PayPalCheckout({
 
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
 
-  if (!clientId) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-        PayPal no está configurado. Por favor contacta soporte.
-      </div>
-    )
-  }
-
+  // Todos los hooks deben estar antes de cualquier return condicional
   const createOrder = useCallback(async (): Promise<string> => {
     setIsLoading(true)
     setError(null)
@@ -149,6 +142,15 @@ export function PayPalCheckout({
     setError(errorMessage)
     onError?.(new Error(errorMessage))
   }, [onError])
+
+  // Early return después de todos los hooks
+  if (!clientId) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        PayPal no está configurado. Por favor contacta soporte.
+      </div>
+    )
+  }
 
   return (
     <div className="w-full">

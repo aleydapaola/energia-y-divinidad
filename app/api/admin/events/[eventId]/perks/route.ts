@@ -1,13 +1,14 @@
+import { PerkAllocationStatus } from '@prisma/client'
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
 import {
   getEventPerkStats,
   getEventAllocations,
   deliverPerk,
   bulkDeliverPerks,
 } from '@/lib/events/perks'
-import { PerkAllocationStatus } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 /**
  * Check if user is admin

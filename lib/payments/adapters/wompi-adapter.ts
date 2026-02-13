@@ -5,6 +5,14 @@
  * Solo opera en COP (pesos colombianos).
  */
 
+import {
+  WOMPI_CONFIG,
+  createWompiPaymentLink,
+  verifyWompiWebhookSignature,
+  getWompiTransaction,
+  type WompiTransactionStatus,
+} from '@/lib/wompi'
+
 import { BasePaymentGateway } from '../gateway-interface'
 import {
   PaymentGatewayName,
@@ -16,13 +24,6 @@ import {
   TransactionStatusResult,
   TransactionStatus,
 } from '../types'
-import {
-  WOMPI_CONFIG,
-  createWompiPaymentLink,
-  verifyWompiWebhookSignature,
-  getWompiTransaction,
-  type WompiTransactionStatus,
-} from '@/lib/wompi'
 
 export class WompiAdapter extends BasePaymentGateway {
   readonly name: PaymentGatewayName = 'wompi'

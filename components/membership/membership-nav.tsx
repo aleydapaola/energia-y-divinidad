@@ -1,7 +1,5 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import {
   Home,
   GraduationCap,
@@ -13,6 +11,9 @@ import {
   BarChart3,
   LogOut
 } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+
 import type { UserSubscription } from '@/types/membership'
 
 interface MembershipNavProps {

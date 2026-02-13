@@ -1,10 +1,13 @@
-import type { Metadata } from 'next'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
-import BlogCard from '@/components/blog/BlogCard'
-import { getBlogPosts, getFeaturedBlogPosts } from '@/lib/sanity/queries/blog'
 import { BookOpen, Sparkles } from 'lucide-react'
+
+import BlogCard from '@/components/blog/BlogCard'
+import { Footer } from '@/components/layout/Footer'
+import { Header } from '@/components/layout/Header'
 import { auth } from '@/lib/auth'
+import { getBlogPosts, getFeaturedBlogPosts } from '@/lib/sanity/queries/blog'
+
+
+import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Blog | Energía y Divinidad',

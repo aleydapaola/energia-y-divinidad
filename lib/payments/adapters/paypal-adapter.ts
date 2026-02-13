@@ -5,6 +5,18 @@
  * Soporta USD y COP.
  */
 
+import {
+  PAYPAL_CONFIG,
+  isPayPalConfigured,
+  createPayPalOrder,
+  getPayPalOrder,
+  verifyPayPalWebhook,
+  refundPayPalCapture,
+  mapPayPalStatus,
+  mapPayPalCaptureStatus,
+  type PayPalWebhookEvent,
+} from '@/lib/paypal'
+
 import { BasePaymentGateway } from '../gateway-interface'
 import {
   PaymentGatewayName,
@@ -18,17 +30,6 @@ import {
   RefundParams,
   RefundResult,
 } from '../types'
-import {
-  PAYPAL_CONFIG,
-  isPayPalConfigured,
-  createPayPalOrder,
-  getPayPalOrder,
-  verifyPayPalWebhook,
-  refundPayPalCapture,
-  mapPayPalStatus,
-  mapPayPalCaptureStatus,
-  type PayPalWebhookEvent,
-} from '@/lib/paypal'
 
 export class PayPalAdapter extends BasePaymentGateway {
   readonly name: PaymentGatewayName = 'paypal'

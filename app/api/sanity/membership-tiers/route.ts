@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+
 import { getAllMembershipTiers } from '@/lib/sanity/queries/membership'
 
 /**

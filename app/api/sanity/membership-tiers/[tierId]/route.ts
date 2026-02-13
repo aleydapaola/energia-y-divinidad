@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { client } from '@/lib/sanity/client'
 
 /**

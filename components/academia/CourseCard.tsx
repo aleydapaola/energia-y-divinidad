@@ -1,11 +1,12 @@
 'use client'
 
+import { Clock, BookOpen, Users } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Clock, BookOpen, Users } from 'lucide-react'
-import { urlFor } from '@/sanity/lib/image'
+
 import { AddToCartButton } from '@/components/cart/AddToCartButton'
 import { formatPrice } from '@/lib/stores/cart-store'
+import { urlFor } from '@/sanity/lib/image'
 
 interface CourseCardProps {
   course: {

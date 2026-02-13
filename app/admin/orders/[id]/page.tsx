@@ -1,6 +1,3 @@
-import { prisma } from "@/lib/prisma"
-import { notFound } from "next/navigation"
-import Link from "next/link"
 import {
   ArrowLeft,
   User,
@@ -12,6 +9,11 @@ import {
   XCircle,
   AlertCircle,
 } from "lucide-react"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+
+import { prisma } from "@/lib/prisma"
+
 import { ConfirmPaymentButton } from "./ConfirmPaymentButton"
 
 interface PageProps {
@@ -89,7 +91,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
   }
 
   const getPaymentMethodLabel = (method: string | null) => {
-    if (!method) return 'N/A'
+    if (!method) {return 'N/A'}
     const labels: Record<string, string> = {
       WOMPI_CARD: 'Tarjeta de crédito (Wompi)',
       WOMPI_NEQUI: 'Nequi',
@@ -208,7 +210,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                 {(() => {
                   const meta = order.metadata as Record<string, unknown> | null
                   const txId = meta?.transactionId as string | undefined
-                  if (!txId) return null
+                  if (!txId) {return null}
                   return (
                     <div className="col-span-2">
                       <p className="text-sm text-gray-500 font-dm-sans">ID Transacción</p>
@@ -228,7 +230,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
               <div className="space-y-3">
                 {auditLogs.map((log) => (
                   <div key={log.id} className="flex items-start gap-3 text-sm">
-                    <div className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2"></div>
+                    <div className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2" />
                     <div>
                       <p className="font-medium text-gray-900 font-dm-sans">
                         {log.action} por {log.actorEmail}

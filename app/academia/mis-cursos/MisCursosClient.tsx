@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { Search } from 'lucide-react'
+import { useState } from 'react'
+
 import { PurchasedCourseCard } from '@/components/academia'
 
 interface CourseWithProgress {
@@ -64,8 +65,8 @@ export function MisCursosClient({ courses }: MisCursosClientProps) {
     const bInProgress =
       b.progress.completionPercentage > 0 && b.progress.completionPercentage < 100
 
-    if (aInProgress && !bInProgress) return -1
-    if (!aInProgress && bInProgress) return 1
+    if (aInProgress && !bInProgress) {return -1}
+    if (!aInProgress && bInProgress) {return 1}
 
     // Then by last accessed
     if (a.progress.lastAccessedAt && b.progress.lastAccessedAt) {

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { Calendar, Clock, Video, AlertCircle, RefreshCw, X, Loader2 } from 'lucide-react'
+import { useState } from 'react'
 
 interface BookingData {
   id: string
@@ -61,17 +61,17 @@ export function BookingCard({ booking, onUpdate }: BookingCardProps) {
 
   // Check if can be rescheduled (at least 24h before, less than 2 reschedules)
   const canReschedule = () => {
-    if (!['CONFIRMED', 'PENDING'].includes(booking.status)) return false
-    if (booking.rescheduleCount >= 2) return false
-    if (!booking.scheduledAt) return true
+    if (!['CONFIRMED', 'PENDING'].includes(booking.status)) {return false}
+    if (booking.rescheduleCount >= 2) {return false}
+    if (!booking.scheduledAt) {return true}
     const hoursUntil = (new Date(booking.scheduledAt).getTime() - Date.now()) / (1000 * 60 * 60)
     return hoursUntil >= 24
   }
 
   // Check if can be cancelled (at least 24h before)
   const canCancel = () => {
-    if (!['CONFIRMED', 'PENDING'].includes(booking.status)) return false
-    if (!booking.scheduledAt) return true
+    if (!['CONFIRMED', 'PENDING'].includes(booking.status)) {return false}
+    if (!booking.scheduledAt) {return true}
     const hoursUntil = (new Date(booking.scheduledAt).getTime() - Date.now()) / (1000 * 60 * 60)
     return hoursUntil >= 24
   }

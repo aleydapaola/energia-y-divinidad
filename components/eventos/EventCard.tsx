@@ -1,7 +1,7 @@
-import Link from "next/link"
-import Image from "next/image"
 import { Calendar, MapPin, Users, Video } from "lucide-react"
-import type { Event } from "@/lib/sanity/queries/events"
+import Image from "next/image"
+import Link from "next/link"
+
 import {
   getEventTypeLabel,
   formatEventDate,
@@ -10,6 +10,8 @@ import {
   formatPrice,
   getTimeUntilEvent,
 } from "@/lib/sanity/queries/events"
+
+import type { Event } from "@/lib/sanity/queries/events"
 
 interface EventCardProps {
   event: Event

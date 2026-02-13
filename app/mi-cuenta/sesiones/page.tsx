@@ -1,8 +1,10 @@
+import { Calendar, Clock, Video } from "lucide-react"
+import Link from "next/link"
+import { redirect } from "next/navigation"
+
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { redirect } from "next/navigation"
-import Link from "next/link"
-import { Calendar, Clock, Video } from "lucide-react"
+
 import { BookingsList } from "./BookingsList"
 
 export default async function MisSesionesPage() {

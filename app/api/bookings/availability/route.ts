@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSessionBySlug } from '@/lib/sanity/queries/sessions'
+
+import { prisma } from '@/lib/prisma'
 import {
   getBookingSettings,
   isHoliday,
   isInBlockedRange,
   getTimeSlotsForDayOfWeek
 } from '@/lib/sanity/queries/bookingSettings'
-import { prisma } from '@/lib/prisma'
+import { getSessionBySlug } from '@/lib/sanity/queries/sessions'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

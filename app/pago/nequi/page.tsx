@@ -1,10 +1,9 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
 import { ArrowLeft, Copy, AlertCircle, CreditCard, Calendar, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense , useState } from 'react'
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
@@ -271,7 +270,7 @@ export default function NequiPaymentPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8A4BAF]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8A4BAF]" />
       </div>
     }>
       <NequiPaymentContent />

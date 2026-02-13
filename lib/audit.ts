@@ -1,5 +1,6 @@
-import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
+
+import { prisma } from '@/lib/prisma'
 
 // Tipos para el sistema de auditoría
 export type AuditEntityType = 'booking' | 'order' | 'subscription' | 'user'
@@ -65,15 +66,15 @@ interface GetAuditLogsParams {
 export async function getAuditLogs(params: GetAuditLogsParams = {}) {
   const where: Record<string, unknown> = {}
 
-  if (params.entityType) where.entityType = params.entityType
-  if (params.entityId) where.entityId = params.entityId
-  if (params.actorId) where.actorId = params.actorId
-  if (params.action) where.action = params.action
+  if (params.entityType) {where.entityType = params.entityType}
+  if (params.entityId) {where.entityId = params.entityId}
+  if (params.actorId) {where.actorId = params.actorId}
+  if (params.action) {where.action = params.action}
 
   if (params.from || params.to) {
     where.createdAt = {}
-    if (params.from) (where.createdAt as Record<string, Date>).gte = params.from
-    if (params.to) (where.createdAt as Record<string, Date>).lte = params.to
+    if (params.from) {(where.createdAt as Record<string, Date>).gte = params.from}
+    if (params.to) {(where.createdAt as Record<string, Date>).lte = params.to}
   }
 
   return prisma.auditLog.findMany({
@@ -106,15 +107,15 @@ export async function getEntityAuditHistory(
 export async function countAuditLogs(params: Omit<GetAuditLogsParams, 'limit' | 'offset'> = {}) {
   const where: Record<string, unknown> = {}
 
-  if (params.entityType) where.entityType = params.entityType
-  if (params.entityId) where.entityId = params.entityId
-  if (params.actorId) where.actorId = params.actorId
-  if (params.action) where.action = params.action
+  if (params.entityType) {where.entityType = params.entityType}
+  if (params.entityId) {where.entityId = params.entityId}
+  if (params.actorId) {where.actorId = params.actorId}
+  if (params.action) {where.action = params.action}
 
   if (params.from || params.to) {
     where.createdAt = {}
-    if (params.from) (where.createdAt as Record<string, Date>).gte = params.from
-    if (params.to) (where.createdAt as Record<string, Date>).lte = params.to
+    if (params.from) {(where.createdAt as Record<string, Date>).gte = params.from}
+    if (params.to) {(where.createdAt as Record<string, Date>).lte = params.to}
   }
 
   return prisma.auditLog.count({ where })

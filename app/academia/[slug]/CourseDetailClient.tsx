@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { PortableText } from '@portabletext/react'
 import { useSession } from 'next-auth/react'
+import { useState, useEffect } from 'react'
+
 import { CourseHero, CourseContent, CourseSidebar } from '@/components/academia'
 import { useCartStore } from '@/lib/stores/cart-store'
-import { PortableText } from '@portabletext/react'
+
 
 interface Lesson {
   _id: string
@@ -60,7 +62,7 @@ export function CourseDetailClient({ course }: CourseDetailClientProps) {
   // Check user access
   useEffect(() => {
     async function checkAccess() {
-      if (status === 'loading') return
+      if (status === 'loading') {return}
 
       if (!session?.user?.id) {
         setLoading(false)

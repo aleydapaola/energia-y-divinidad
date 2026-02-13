@@ -1,10 +1,12 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+
+import { Footer } from '@/components/layout/Footer'
+import { Header } from '@/components/layout/Header'
 import { auth } from '@/lib/auth'
 import { sanityFetch } from '@/sanity/lib/fetch'
 import { COURSE_BY_SLUG_QUERY, COURSES_QUERY } from '@/sanity/lib/queries'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
+
 import { CourseDetailClient } from './CourseDetailClient'
 
 interface CoursePageProps {

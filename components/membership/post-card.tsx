@@ -1,9 +1,11 @@
 'use client'
 
-import Link from 'next/link'
-import { POST_TYPE_ICONS, POST_TYPE_LABELS } from '@/types/membership'
-import type { MembershipPostWithEngagement } from '@/types/membership'
 import { Heart, MessageCircle, Eye } from 'lucide-react'
+import Link from 'next/link'
+
+import { POST_TYPE_ICONS, POST_TYPE_LABELS } from '@/types/membership'
+
+import type { MembershipPostWithEngagement } from '@/types/membership'
 
 interface PostCardProps {
   post: MembershipPostWithEngagement

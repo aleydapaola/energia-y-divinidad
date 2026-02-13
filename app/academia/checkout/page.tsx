@@ -1,4 +1,5 @@
 import { Metadata } from 'next'
+
 import { AcademiaCheckoutClient } from './AcademiaCheckoutClient'
 
 export const metadata: Metadata = {

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+
 import { AdminSubscriptionsList } from "./AdminSubscriptionsList"
 
 export default async function AdminSubscriptionsPage() {

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
+import { sendEventBookingConfirmation } from '@/lib/email'
 import { acceptWaitlistOffer } from '@/lib/events/seat-allocation'
 import { prisma } from '@/lib/prisma'
 import { getEventById } from '@/lib/sanity/queries/events'
-import { sendEventBookingConfirmation } from '@/lib/email'
 
 interface RouteParams {
   params: Promise<{ entryId: string }>

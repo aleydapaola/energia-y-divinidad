@@ -1,9 +1,9 @@
 "use client"
 
-import { signOut, useSession } from "next-auth/react"
-import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { signOut, useSession } from "next-auth/react"
+import { useState, useRef, useEffect } from "react"
 
 export function UserMenu() {
   const { data: session } = useSession()

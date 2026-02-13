@@ -91,7 +91,7 @@ export async function getBookingSettings(): Promise<BookingSettings | null> {
   }`
   const result = await client.fetch(query)
 
-  if (!result) return null
+  if (!result) {return null}
 
   // Map to BookingSettings interface for compatibility
   return {
@@ -284,10 +284,10 @@ export function getTimeSlotsForDayOfWeek(
   weeklySchedule: WeeklySchedule | undefined,
   dayOfWeek: number
 ): TimeSlotRange[] {
-  if (!weeklySchedule) return []
+  if (!weeklySchedule) {return []}
 
   const dayName = dayOfWeekMap[dayOfWeek]
-  if (!dayName) return []
+  if (!dayName) {return []}
 
   return weeklySchedule[dayName] || []
 }
@@ -298,7 +298,7 @@ export function getTimeSlotsForDayOfWeek(
  * @returns Array de números de días (0 = domingo, 1 = lunes, ..., 6 = sábado)
  */
 export function getAvailableDaysOfWeek(weeklySchedule: WeeklySchedule | undefined): number[] {
-  if (!weeklySchedule) return []
+  if (!weeklySchedule) {return []}
 
   const availableDays: number[] = []
 

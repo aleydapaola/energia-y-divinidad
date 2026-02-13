@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2, ArrowLeft, CheckCircle, XCircle } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+
 import { WompiCheckout } from '@/components/pago/WompiCheckout'
 
 type CheckoutState = 'loading' | 'ready' | 'success' | 'error'

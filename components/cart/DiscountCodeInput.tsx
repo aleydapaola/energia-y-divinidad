@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { Tag, Loader2, Check, X, AlertCircle } from 'lucide-react'
+import { useState } from 'react'
+
 import { useCartStore, useCartSummary } from '@/lib/stores/cart-store'
 
 export function DiscountCodeInput() {

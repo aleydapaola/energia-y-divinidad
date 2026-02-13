@@ -1,13 +1,16 @@
-import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { Calendar, Clock, ArrowLeft, Tag, User, Lock, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
-import PortableTextRenderer from '@/components/blog/PortableTextRenderer'
+import { notFound } from 'next/navigation'
+
 import BlogCard from '@/components/blog/BlogCard'
+import PortableTextRenderer from '@/components/blog/PortableTextRenderer'
+import { Footer } from '@/components/layout/Footer'
+import { Header } from '@/components/layout/Header'
 import { getBlogPostBySlug, getBlogPosts } from '@/lib/sanity/queries/blog'
-import { Calendar, Clock, ArrowLeft, Tag, User, Lock, ChevronRight } from 'lucide-react'
+
+import type { Metadata } from 'next'
+
 
 interface PageProps {
   params: Promise<{ slug: string }>

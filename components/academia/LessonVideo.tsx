@@ -89,7 +89,7 @@ export function LessonVideo({
   const videoId = extractYouTubeId(videoUrl)
 
   useEffect(() => {
-    if (!videoId) return
+    if (!videoId) {return}
 
     // Load YouTube IFrame API
     if (!window.YT) {

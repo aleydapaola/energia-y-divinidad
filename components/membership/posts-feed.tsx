@@ -1,10 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { PostCard } from './post-card'
-import { POST_TYPE_ICONS, POST_TYPE_LABELS } from '@/types/membership'
-import type { MembershipPostWithEngagement, PostType } from '@/types/membership'
 import { Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+
+import { POST_TYPE_ICONS, POST_TYPE_LABELS } from '@/types/membership'
+
+import { PostCard } from './post-card'
+
+import type { MembershipPostWithEngagement, PostType } from '@/types/membership'
 
 interface PostsFeedProps {
   userId: string

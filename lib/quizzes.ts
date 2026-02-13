@@ -3,10 +3,11 @@
  * Handles quiz logic, grading, and attempt management
  */
 
+import { Prisma } from '@prisma/client'
+import { Decimal } from '@prisma/client/runtime/library'
+
 import { prisma } from '@/lib/prisma'
 import { client } from '@/sanity/lib/client'
-import { Decimal } from '@prisma/client/runtime/library'
-import { Prisma } from '@prisma/client'
 
 // Types
 export interface QuizQuestion {
@@ -133,7 +134,7 @@ export async function getQuizById(quizId: string): Promise<Quiz | null> {
 export async function getQuizForStudent(quizId: string): Promise<QuizForStudent | null> {
   const quiz = await client.fetch(QUIZ_FOR_STUDENT_QUERY, { id: quizId })
 
-  if (!quiz) return null
+  if (!quiz) {return null}
 
   const totalPoints = quiz.questions?.reduce(
     (sum: number, q: { points: number }) => sum + (q.points || 1),
@@ -164,7 +165,7 @@ function shuffleArray<T>(array: T[]): T[] {
  */
 export async function getQuizForAttempt(quizId: string): Promise<QuizForStudent | null> {
   const quiz = await getQuizForStudent(quizId)
-  if (!quiz) return null
+  if (!quiz) {return null}
 
   let questions = quiz.questions
 
@@ -438,7 +439,7 @@ export async function getQuizAttemptResults(attemptId: string, userId: string) {
     },
   })
 
-  if (!attempt) return null
+  if (!attempt) {return null}
 
   // Get quiz info for context
   const quiz = await client.fetch<Pick<Quiz, '_id' | 'title' | 'passingScore'>>(

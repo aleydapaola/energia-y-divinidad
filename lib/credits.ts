@@ -5,8 +5,9 @@
  * Credits are granted monthly and can be redeemed when booking 1:1 sessions.
  */
 
-import { prisma } from '@/lib/prisma'
 import { CreditReason } from '@prisma/client'
+
+import { prisma } from '@/lib/prisma'
 import { getMembershipTierById } from '@/lib/sanity/queries/membership'
 
 // ============================================

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
 import { Search, Filter, X } from 'lucide-react'
+import { useState, useMemo } from 'react'
+
 import { CourseCard } from './CourseCard'
 
 interface Course {
@@ -62,7 +63,7 @@ export function CourseCatalog({ courses, currency = 'COP' }: CourseCatalogProps)
           course.shortDescription?.toLowerCase().includes(query) ||
           course.topics?.some((t) => t.toLowerCase().includes(query))
 
-        if (!matchesSearch) return false
+        if (!matchesSearch) {return false}
       }
 
       // Difficulty filter
@@ -85,8 +86,8 @@ export function CourseCatalog({ courses, currency = 'COP' }: CourseCatalogProps)
   // Sort: featured first, then by displayOrder
   const sortedCourses = useMemo(() => {
     return [...filteredCourses].sort((a, b) => {
-      if (a.featured && !b.featured) return -1
-      if (!a.featured && b.featured) return 1
+      if (a.featured && !b.featured) {return -1}
+      if (!a.featured && b.featured) {return 1}
       return 0
     })
   }, [filteredCourses])

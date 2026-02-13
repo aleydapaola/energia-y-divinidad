@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from 'react'
-import { BookingCalendar } from '@/components/booking/booking-calendar'
-import type { Session } from '@/lib/sanity/queries/sessions'
-import type { Holiday, BlockedDateRange, Timezone, WeeklySchedule } from '@/lib/sanity/queries/bookingSettings'
 import { Calendar, Clock } from 'lucide-react'
+import { useState } from 'react'
+
+import { BookingCalendar } from '@/components/booking/booking-calendar'
+
+import type { Holiday, BlockedDateRange, Timezone, WeeklySchedule } from '@/lib/sanity/queries/bookingSettings'
+import type { Session } from '@/lib/sanity/queries/sessions'
 
 interface SessionBookingSectionProps {
   session: Session
@@ -35,7 +37,7 @@ export function SessionBookingSection({
   }
 
   const handleContinue = () => {
-    if (!selectedDate || !selectedTime) return
+    if (!selectedDate || !selectedTime) {return}
 
     // Format date as YYYY-MM-DD
     const dateString = selectedDate.toISOString().split('T')[0]

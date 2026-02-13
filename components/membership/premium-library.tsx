@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import Image from 'next/image'
 import { Play, Headphones, FileText, Download, X, Clock, Sparkles } from 'lucide-react'
+import Image from 'next/image'
+import { useState } from 'react'
 
 interface PremiumContent {
   _id: string
@@ -111,7 +111,7 @@ export function PremiumLibrary({ content }: PremiumLibraryProps) {
                 ? content.length
                 : content.filter((item) => item.contentType === filter.value).length
 
-            if (count === 0 && filter.value !== 'all') return null
+            if (count === 0 && filter.value !== 'all') {return null}
 
             return (
               <button

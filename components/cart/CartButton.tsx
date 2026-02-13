@@ -1,6 +1,7 @@
 'use client'
 
 import { ShoppingCart } from 'lucide-react'
+
 import { useCartStore } from '@/lib/stores/cart-store'
 
 export function CartButton() {

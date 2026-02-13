@@ -3,10 +3,12 @@
  * Handles certificate issuance, verification, and management
  */
 
+import { Decimal } from '@prisma/client/runtime/library'
+
 import { prisma } from '@/lib/prisma'
 import { client } from '@/sanity/lib/client'
+
 import { hasPassedFinalQuiz } from './quizzes'
-import { Decimal } from '@prisma/client/runtime/library'
 
 // Types
 export interface CertificateTemplate {
@@ -306,14 +308,14 @@ export async function getCertificateData(
     },
   })
 
-  if (!certificate) return null
+  if (!certificate) {return null}
 
   // Get course with certificate template
   const course = await client.fetch<CourseForCertificate>(COURSE_FOR_CERTIFICATE_QUERY, {
     id: certificate.courseId,
   })
 
-  if (!course?.certificate) return null
+  if (!course?.certificate) {return null}
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://energiaydivinidad.com'
   const verificationUrl = `${baseUrl}/certificados/verificar/${certificate.certificateNumber}`
@@ -389,7 +391,7 @@ export async function getUserCertificates(userId: string) {
   })
 
   // Enhance with course images
-  if (certificates.length === 0) return []
+  if (certificates.length === 0) {return []}
 
   const courseIds = certificates.map((c) => c.courseId)
   const courses = await client.fetch<Array<{ _id: string; coverImage?: any }>>(

@@ -1,9 +1,12 @@
 "use client"
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Session } from '@/lib/sanity/queries/sessions'
 import { Mail, Phone, User, MapPin, CreditCard, AlertCircle, Loader2, Coins, CheckCircle, Key } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+
+import { Session } from '@/lib/sanity/queries/sessions'
+
+
 import type { PaymentMethodType } from '@/lib/membership-access'
 
 interface CheckoutFormProps {
@@ -61,9 +64,9 @@ export function CheckoutForm({
   const handleCountryChange = (selectedCountry: Country) => {
     setCountry(selectedCountry)
     if (selectedCountry === 'colombia') {
-      setPaymentMethod('wompi_card')
+      setPaymentMethod('wompi_manual')
     } else {
-      setPaymentMethod('paypal_card')
+      setPaymentMethod('wompi_manual')
     }
     // Clear country error when selected
     if (errors.country) {
@@ -151,18 +154,18 @@ export function CheckoutForm({
       let endpoint: string
       let body: any
 
-      if (paymentMethod === 'wompi_nequi' || paymentMethod === 'wompi_card') {
-        // Pago via Wompi (Colombia) - Botón Nequi o Tarjeta
-        endpoint = '/api/checkout/wompi'
+      if (paymentMethod === 'wompi_manual') {
+        // Pago manual via Wompi - Link de pago genérico
+        endpoint = '/api/checkout/wompi-manual'
         body = {
           productType: 'session',
           productId: session._id,
           productName: session.title,
           amount,
-          paymentMethod: paymentMethod === 'wompi_nequi' ? 'nequi' : 'card',
-          customerName: formData.name,
-          customerEmail: formData.email,
-          customerPhone: formData.phone,
+          currency,
+          guestEmail: formData.email,
+          guestName: formData.name,
+          guestPhone: formData.phone,
           sessionSlug: session.slug.current,
           scheduledAt: scheduledDateTime.toISOString(),
         }
@@ -224,11 +227,12 @@ export function CheckoutForm({
   // Opciones de pago según país
   const paymentOptions = country === 'colombia'
     ? [
-        { value: 'wompi_card' as PaymentMethodType, label: 'Tarjeta de Crédito/Débito', description: 'Visa, Mastercard, American Express', icon: <CreditCard className="w-5 h-5" /> },
+        { value: 'wompi_manual' as PaymentMethodType, label: 'Wompi (Tarjeta, PSE, Nequi, etc.)', description: 'Todos los métodos de pago colombianos', icon: <CreditCard className="w-5 h-5" /> },
         { value: 'breb_manual' as PaymentMethodType, label: 'Bre-B (Llave Bancolombia)', description: 'Transferencia instantánea sin comisión', icon: <Key className="w-5 h-5" /> },
         { value: 'paypal_direct' as PaymentMethodType, label: 'PayPal', description: 'Paga con tu cuenta PayPal', icon: <PayPalIcon /> },
       ]
     : [
+        { value: 'wompi_manual' as PaymentMethodType, label: 'Wompi (Tarjeta, PSE, Nequi, etc.)', description: 'Pagos con tarjeta o desde Colombia', icon: <CreditCard className="w-5 h-5" /> },
         { value: 'paypal_card' as PaymentMethodType, label: 'Credit/Debit Card', description: 'Visa, Mastercard, American Express', icon: <CreditCard className="w-5 h-5" /> },
         { value: 'paypal_direct' as PaymentMethodType, label: 'PayPal', description: 'Pay with your PayPal account', icon: <PayPalIcon /> },
       ]
@@ -371,8 +375,8 @@ export function CheckoutForm({
 
             {/* Info de pasarela */}
             <p className="mt-3 text-xs text-gray-500 text-center">
-              {paymentMethod?.startsWith('wompi')
-                ? 'Pago procesado de forma segura por Wompi (Bancolombia)'
+              {paymentMethod === 'wompi_manual'
+                ? 'Link de pago seguro de Wompi - Tarjeta, PSE, Nequi, Daviplata y más'
                 : paymentMethod === 'breb_manual'
                   ? 'Transferencia directa con Bre-B - Sin comisiones'
                   : 'Pago procesado de forma segura por PayPal'}

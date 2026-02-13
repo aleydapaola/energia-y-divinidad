@@ -1,9 +1,9 @@
 'use client'
 
-import { useSearchParams, useRouter } from 'next/navigation'
-import { Suspense, useState, useEffect, useCallback } from 'react'
 import { ArrowLeft, Smartphone, CheckCircle, XCircle, Loader2, RefreshCw, Bell } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { Suspense, useState, useEffect, useCallback } from 'react'
 
 type PaymentStatus = 'idle' | 'sending' | 'waiting' | 'success' | 'failed' | 'expired'
 
@@ -28,7 +28,7 @@ function NequiPushContent() {
 
   // Send push notification
   const sendPushNotification = async () => {
-    if (!isValidPhone || !bookingId) return
+    if (!isValidPhone || !bookingId) {return}
 
     setStatus('sending')
     setMessage('')
@@ -62,7 +62,7 @@ function NequiPushContent() {
 
   // Poll for payment status
   const checkPaymentStatus = useCallback(async () => {
-    if (!bookingId || !polling) return
+    if (!bookingId || !polling) {return}
 
     try {
       const response = await fetch(`/api/pago/nequi/status?booking_id=${bookingId}`)
@@ -88,7 +88,7 @@ function NequiPushContent() {
 
   // Polling interval
   useEffect(() => {
-    if (!polling) return
+    if (!polling) {return}
 
     const interval = setInterval(checkPaymentStatus, 5000) // Check every 5 seconds
     return () => clearInterval(interval)
@@ -96,7 +96,7 @@ function NequiPushContent() {
 
   // Countdown timer
   useEffect(() => {
-    if (!polling || timeLeft <= 0) return
+    if (!polling || timeLeft <= 0) {return}
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -353,7 +353,7 @@ export default function NequiPushPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8A4BAF]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8A4BAF]" />
       </div>
     }>
       <NequiPushContent />

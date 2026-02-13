@@ -3,10 +3,11 @@
  * Handles access control and entitlements for academy courses
  */
 
+import { EntitlementType } from '@prisma/client'
+
 import { prisma } from '@/lib/prisma'
 import { client } from '@/sanity/lib/client'
 import { COURSE_BY_SLUG_QUERY, COURSES_BY_IDS_QUERY } from '@/sanity/lib/queries'
-import { EntitlementType } from '@prisma/client'
 
 // Types
 export interface CourseAccessResult {
@@ -327,15 +328,15 @@ async function recalculateCourseProgress(userId: string, courseId: string): Prom
     totalLessons = 1
     lessonIds.push(course.simpleLesson._id)
   } else if (course.modules) {
-    for (const module of course.modules) {
-      if (module.lessons) {
-        totalLessons += module.lessons.length
-        lessonIds.push(...module.lessons.map((l: { _id: string }) => l._id))
+    for (const courseModule of course.modules) {
+      if (courseModule.lessons) {
+        totalLessons += courseModule.lessons.length
+        lessonIds.push(...courseModule.lessons.map((l: { _id: string }) => l._id))
       }
     }
   }
 
-  if (totalLessons === 0) return
+  if (totalLessons === 0) {return}
 
   // Get completed lessons count
   const courseProgress = await prisma.courseProgress.findUnique({
@@ -352,7 +353,7 @@ async function recalculateCourseProgress(userId: string, courseId: string): Prom
     },
   })
 
-  if (!courseProgress) return
+  if (!courseProgress) {return}
 
   const completedLessons = courseProgress.lessonProgress.length
   const percentage = Math.round((completedLessons / totalLessons) * 100)

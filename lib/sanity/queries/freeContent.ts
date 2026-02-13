@@ -1,6 +1,7 @@
-import { client } from '../client'
 import { sanityFetch } from '@/sanity/lib/fetch'
 import { coverImageProjection, seoProjection } from '@/sanity/lib/projections'
+
+import { client } from '../client'
 
 // Interface para Free Content
 export interface FreeContent {

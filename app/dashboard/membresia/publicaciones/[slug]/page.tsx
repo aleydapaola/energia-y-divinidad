@@ -1,10 +1,12 @@
-import { Suspense } from 'react'
-import { notFound } from 'next/navigation'
-import { auth } from '@/lib/auth'
-import { getMembershipPostBySlug } from '@/lib/sanity/queries/membership'
-import { getPostEngagement } from '@/lib/membership-posts'
-import { PostDetailView } from '@/components/membership/post-detail-view'
 import { Loader2 } from 'lucide-react'
+import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
+
+import { PostDetailView } from '@/components/membership/post-detail-view'
+import { auth } from '@/lib/auth'
+import { getPostEngagement } from '@/lib/membership-posts'
+import { getMembershipPostBySlug } from '@/lib/sanity/queries/membership'
+
 
 interface PageProps {
   params: Promise<{ slug: string }>

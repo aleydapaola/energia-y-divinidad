@@ -1,6 +1,7 @@
-import { Resend } from 'resend';
-import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { Resend } from 'resend';
+
+import { prisma } from '@/lib/prisma';
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'Energía y Divinidad <noreply@energiaydivinidad.com>';
 const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
@@ -368,6 +369,135 @@ export async function sendWelcomeEmail({ email, name }: SendWelcomeEmailParams) 
 }
 
 // ============================================
+// EMAILS DE RECUPERACIÓN DE CONTRASEÑA
+// ============================================
+
+interface SendPasswordResetEmailParams {
+  email: string;
+  name: string;
+  token: string;
+}
+
+export async function sendPasswordResetEmail({ email, name, token }: SendPasswordResetEmailParams) {
+  const resetLink = `${APP_URL}/auth/set-password?token=${token}`;
+
+  if (DEV_MODE) {
+    console.log('\n========================================');
+    console.log('📧 EMAIL DE RECUPERACIÓN DE CONTRASEÑA (Modo Desarrollo)');
+    console.log('========================================');
+    console.log(`Para: ${email}`);
+    console.log(`Nombre: ${name}`);
+    console.log(`\n🔐 ENLACE DE RECUPERACIÓN:`);
+    console.log(resetLink);
+    console.log('\nExpira en 1 hora');
+    console.log('========================================\n');
+
+    if (DEV_AUTO_VERIFY) {
+      return { success: true, data: { id: 'dev-mode-simulated' } };
+    }
+  }
+
+  try {
+    const { data, error } = await getResendClient().emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: 'Recupera tu contraseña - Energía y Divinidad',
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Recuperar Contraseña</title>
+          </head>
+          <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f0f5;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td align="center" style="padding: 40px 20px;">
+                  <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
+                    <!-- Header with Logo -->
+                    <tr>
+                      <td align="center" style="padding: 30px 0;">
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
+                      </td>
+                    </tr>
+
+                    <!-- Main Content -->
+                    <tr>
+                      <td style="background-color: #ffffff; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px rgba(138, 75, 175, 0.1);">
+                        <h2 style="margin: 0 0 20px; font-size: 24px; color: #654177; font-weight: 600; text-align: center;">
+                          Recupera tu contraseña
+                        </h2>
+                        <p style="margin: 0 0 20px; font-size: 16px; color: #666666; line-height: 1.6;">
+                          Hola ${name},
+                        </p>
+                        <p style="margin: 0 0 20px; font-size: 16px; color: #666666; line-height: 1.6;">
+                          Recibimos una solicitud para restablecer la contraseña de tu cuenta. Haz clic en el botón de abajo para crear una nueva contraseña:
+                        </p>
+
+                        <!-- Button -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td align="center" style="padding: 30px 0;">
+                              <a href="${resetLink}" style="display: inline-block; padding: 16px 40px; background-color: #4944a4; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                                Restablecer contraseña
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <p style="margin: 0 0 15px; font-size: 14px; color: #999999; line-height: 1.6;">
+                          Este enlace expira en <strong>1 hora</strong>.
+                        </p>
+
+                        <p style="margin: 0 0 20px; font-size: 14px; color: #999999; line-height: 1.6;">
+                          Si no solicitaste restablecer tu contraseña, puedes ignorar este email. Tu contraseña actual seguirá siendo válida.
+                        </p>
+
+                        <hr style="border: none; border-top: 1px solid #eee; margin: 25px 0;" />
+
+                        <p style="margin: 0; font-size: 12px; color: #999999; line-height: 1.6;">
+                          Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+                          <a href="${resetLink}" style="color: #8A4BAF; word-break: break-all;">${resetLink}</a>
+                        </p>
+                      </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                      <td align="center" style="padding: 30px 0;">
+                        <p style="margin: 0; font-size: 12px; color: #999999;">
+                          © ${new Date().getFullYear()} Energía y Divinidad. Todos los derechos reservados.
+                        </p>
+                        <p style="margin: 10px 0 0; font-size: 12px; color: #999999;">
+                          ¿Preguntas? <a href="mailto:contacto@energiaydivinidad.com" style="color: #8A4BAF;">contacto@energiaydivinidad.com</a>
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error('Error sending password reset email:', error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    return { success: false, error };
+  }
+}
+
+// ============================================
 // EMAILS DE EVENTOS
 // ============================================
 
@@ -507,7 +637,7 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
     console.log(`Cupos: ${seats}`);
     console.log(`Total: ${formattedAmount}`);
     console.log(`Estado: ${isPending ? 'Pendiente de pago' : 'Confirmado'}`);
-    if (zoomUrl) console.log(`Zoom: ${zoomUrl}`);
+    if (zoomUrl) {console.log(`Zoom: ${zoomUrl}`);}
     console.log('========================================\n');
 
     if (DEV_AUTO_VERIFY) {
@@ -1061,7 +1191,7 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
     console.log(`Fecha anterior: ${formattedPreviousDate}`);
     console.log(`Nueva fecha: ${formattedNewDate}`);
     console.log(`Reprogramado por: ${rescheduledBy}`);
-    if (reason) console.log(`Motivo: ${reason}`);
+    if (reason) {console.log(`Motivo: ${reason}`);}
     console.log('========================================\n');
 
     if (DEV_AUTO_VERIFY) {
@@ -1429,7 +1559,7 @@ export async function sendBookingConfirmationEmail(params: SendBookingConfirmati
     console.log(`Duración: ${duration} minutos`);
     console.log(`Método: ${deliveryMethod}`);
     console.log(`ID Reserva: ${bookingId}`);
-    if (paidWithCredit) console.log(`Pagado con crédito: Sí`);
+    if (paidWithCredit) {console.log(`Pagado con crédito: Sí`);}
     console.log('========================================\n');
 
     if (DEV_AUTO_VERIFY) {
@@ -1591,6 +1721,8 @@ interface SendPaymentConfirmationEmailParams {
   sessionDate?: Date;
   membershipPlan?: string;
   eventDate?: Date;
+  // Token para establecer contraseña (solo para nuevos usuarios de guest checkout)
+  setPasswordToken?: string;
 }
 
 export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmationEmailParams) {
@@ -1608,6 +1740,7 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
     sessionDate,
     membershipPlan,
     eventDate,
+    setPasswordToken,
   } = params;
 
   const formattedAmount = currency === 'COP'
@@ -1718,8 +1851,12 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
     console.log(`Producto: ${itemName}`);
     console.log(`Total: ${formattedAmount}`);
     console.log(`Método: ${paymentMethodText}`);
-    if (transactionId) console.log(`Transacción: ${transactionId}`);
+    if (transactionId) {console.log(`Transacción: ${transactionId}`);}
     console.log(`Link: ${ctaLink}`);
+    if (setPasswordToken) {
+      console.log(`\n🔐 SET PASSWORD LINK:`);
+      console.log(`${APP_URL}/auth/set-password?token=${setPasswordToken}`);
+    }
     console.log('========================================\n');
 
     if (DEV_AUTO_VERIFY) {
@@ -1841,6 +1978,28 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
                           </tr>
                         </table>
 
+                        ${setPasswordToken ? `
+                        <!-- Set Password Section -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin-top: 25px;">
+                          <tr>
+                            <td style="background-color: #eef1fa; border-radius: 12px; padding: 20px; border-left: 4px solid #8A4BAF;">
+                              <h4 style="margin: 0 0 12px; font-size: 16px; color: #654177; font-weight: 600;">
+                                🔐 Establece tu contraseña
+                              </h4>
+                              <p style="margin: 0 0 15px; font-size: 14px; color: #666666; line-height: 1.5;">
+                                Hemos creado una cuenta para ti con este email. Para acceder a tus compras y gestionar tu cuenta, establece tu contraseña:
+                              </p>
+                              <a href="${APP_URL}/auth/set-password?token=${setPasswordToken}" style="display: inline-block; padding: 12px 24px; background-color: #8A4BAF; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 600;">
+                                Crear mi contraseña
+                              </a>
+                              <p style="margin: 12px 0 0; font-size: 12px; color: #999999;">
+                                Este enlace expira en 7 días.
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+                        ` : ''}
+
                         <p style="margin: 25px 0 0; font-size: 14px; color: #999999; line-height: 1.6; text-align: center;">
                           Con amor y luz,<br>
                           <strong style="color: #8A4BAF;">Aleyda Paola</strong>
@@ -1931,9 +2090,9 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
     console.log(`Sesión: ${sessionName}`);
     console.log(`Fecha: ${formattedDate}`);
     console.log(`Cancelado por: ${cancelledBy}`);
-    if (reason) console.log(`Motivo: ${reason}`);
-    if (packSessionReturned) console.log(`Sesión devuelta al pack: Sí`);
-    if (creditRefunded) console.log(`Crédito reembolsado: Sí`);
+    if (reason) {console.log(`Motivo: ${reason}`);}
+    if (packSessionReturned) {console.log(`Sesión devuelta al pack: Sí`);}
+    if (creditRefunded) {console.log(`Crédito reembolsado: Sí`);}
     console.log('========================================\n');
 
     if (DEV_AUTO_VERIFY) {
@@ -2254,12 +2413,12 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
     console.log(`Para: ${ADMIN_EMAIL}`);
     console.log(`Tipo: ${config.label}`);
     console.log(`Cliente: ${customerName} <${customerEmail}>`);
-    if (customerPhone) console.log(`Teléfono: ${customerPhone}`);
+    if (customerPhone) {console.log(`Teléfono: ${customerPhone}`);}
     console.log(`Producto: ${itemName}`);
     console.log(`Total: ${formattedAmount}`);
     console.log(`Método: ${paymentMethodText}`);
     console.log(`Orden: ${orderNumber}`);
-    if (transactionId) console.log(`Transacción: ${transactionId}`);
+    if (transactionId) {console.log(`Transacción: ${transactionId}`);}
     console.log('========================================\n');
 
     if (DEV_AUTO_VERIFY) {

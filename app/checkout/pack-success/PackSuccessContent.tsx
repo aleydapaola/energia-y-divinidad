@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import { CheckCircle, Copy, Check, Sparkles, Calendar } from 'lucide-react'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 interface PackCodeData {
   code: string
@@ -51,7 +51,7 @@ export default function PackSuccessContent() {
   }, [sessionId])
 
   const handleCopyCode = async () => {
-    if (!packData?.code) return
+    if (!packData?.code) {return}
 
     try {
       await navigator.clipboard.writeText(packData.code)
@@ -83,7 +83,7 @@ export default function PackSuccessContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8f0f5] px-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8A4BAF] mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#8A4BAF] mx-auto mb-4" />
           <p className="text-[#654177]">
             Procesando tu compra...
           </p>

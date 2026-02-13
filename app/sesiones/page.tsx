@@ -1,10 +1,13 @@
 import { Suspense } from 'react'
-import { Header } from '@/components/layout/Header'
+
 import { Footer } from '@/components/layout/Footer'
-import { SesionesPageClient } from './SesionesPageClient'
-import { getFeaturedSessions, getSessionBySlug, getDeliveryMethodLabel } from '@/lib/sanity/queries/sessions'
-import { getBookingSettings } from '@/lib/sanity/queries/bookingSettings'
+import { Header } from '@/components/layout/Header'
 import { auth } from '@/lib/auth'
+import { getBookingSettings } from '@/lib/sanity/queries/bookingSettings'
+import { getFeaturedSessions, getSessionBySlug, getDeliveryMethodLabel } from '@/lib/sanity/queries/sessions'
+
+import { SesionesPageClient } from './SesionesPageClient'
+
 
 // Datos por defecto si no hay sesion configurada en Sanity
 const DEFAULT_SESSION = {

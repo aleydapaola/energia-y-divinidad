@@ -1,9 +1,11 @@
 import { Metadata } from 'next'
+
+import { Footer } from '@/components/layout/Footer'
+import { Header } from '@/components/layout/Header'
 import { auth } from '@/lib/auth'
 import { sanityFetch } from '@/sanity/lib/fetch'
 import { COURSES_QUERY } from '@/sanity/lib/queries'
-import { Header } from '@/components/layout/Header'
-import { Footer } from '@/components/layout/Footer'
+
 import { AcademiaPageClient } from './AcademiaPageClient'
 
 export const metadata: Metadata = {

@@ -1,6 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata , Viewport } from "next";
+
 import { Open_Sans, Roboto_Slab, Playfair_Display, DM_Sans } from "next/font/google";
 import localFont from "next/font/local";
+
 import "./globals.css";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 
@@ -47,6 +49,14 @@ const ukijDiwani = localFont({
   variable: "--font-ukij-diwani",
   display: "swap",
 });
+
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+};
 
 export const metadata: Metadata = {
   title: "Energía y Divinidad - Canalización y Sanación",

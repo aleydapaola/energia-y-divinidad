@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, Suspense, useRef } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
 import { CheckCircle, XCircle, Clock, Loader2, Home, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense, useRef } from 'react'
+
 import { useCartStore } from '@/lib/stores/cart-store'
 
 type PaymentStatus = 'success' | 'pending' | 'failed' | 'loading'
@@ -19,11 +20,16 @@ function ConfirmacionContent() {
   const refPayco = searchParams?.get('ref_payco') || ''
   // Wompi redirige con el ID de la transacción
   const wompiTransactionId = searchParams?.get('id') || ''
+  // PayPal redirige con token (PayPal order ID) y PayerID
+  const paypalToken = searchParams?.get('token') || ''
+  const paypalPayerId = searchParams?.get('PayerID') || ''
 
   const [status, setStatus] = useState<PaymentStatus>('loading')
   const [orderData, setOrderData] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null)
+  const [isGuestCheckout, setIsGuestCheckout] = useState<boolean>(false)
+  const [userWasCreated, setUserWasCreated] = useState<boolean>(false)
 
   // Limpiar carrito cuando el pago es exitoso (solo para cursos)
   useEffect(() => {
@@ -40,11 +46,58 @@ function ConfirmacionContent() {
       console.log('[CONFIRMACION] reference:', reference)
       console.log('[CONFIRMACION] wompiTransactionId:', wompiTransactionId)
       console.log('[CONFIRMACION] refPayco:', refPayco)
+      console.log('[CONFIRMACION] paypalToken:', paypalToken)
+      console.log('[CONFIRMACION] paypalPayerId:', paypalPayerId)
       console.log('[CONFIRMACION] Full URL params:', window.location.search)
 
       if (!reference) {
         setStatus('failed')
         setError('No se encontró referencia de pago')
+        return
+      }
+
+      // Si viene de PayPal, capturar el pago automáticamente
+      if (paypalToken) {
+        console.log('[CONFIRMACION] PayPal return detected, capturing payment...')
+        console.log('[CONFIRMACION] PayPal token:', paypalToken)
+        console.log('[CONFIRMACION] PayPal PayerID:', paypalPayerId)
+
+        try {
+          const captureResponse = await fetch('/api/checkout/paypal/capture', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paypalOrderId: paypalToken,
+              reference: reference,
+            }),
+          })
+
+          const captureData = await captureResponse.json()
+
+          if (!captureResponse.ok) {
+            throw new Error(captureData.error || 'Error al capturar el pago')
+          }
+
+          console.log('[CONFIRMACION] PayPal capture successful:', captureData)
+
+          // Cargar datos de la orden actualizados
+          const orderResponse = await fetch(`/api/orders/${reference}/status`)
+          if (orderResponse.ok) {
+            const orderDataResponse = await orderResponse.json()
+            setOrderData(orderDataResponse)
+            setPaymentMethod(orderDataResponse.paymentMethod || 'PAYPAL_DIRECT')
+            // Detectar si fue guest checkout y si se creó un usuario nuevo
+            const metadata = orderDataResponse.metadata || {}
+            setIsGuestCheckout(metadata.isGuestCheckout || metadata.convertedFromGuest || false)
+            setUserWasCreated(metadata.userWasCreated || false)
+          }
+
+          setStatus('success')
+        } catch (err: any) {
+          console.error('[CONFIRMACION] PayPal capture error:', err)
+          setStatus('failed')
+          setError(err.message || 'Error al procesar el pago de PayPal')
+        }
         return
       }
 
@@ -67,6 +120,10 @@ function ConfirmacionContent() {
           if (verifyData.order) {
             setOrderData(verifyData.order)
             setPaymentMethod(verifyData.order.paymentMethod || null)
+            // Detectar si fue guest checkout y si se creó un usuario nuevo
+            const metadata = verifyData.order.metadata || {}
+            setIsGuestCheckout(metadata.isGuestCheckout || metadata.convertedFromGuest || false)
+            setUserWasCreated(metadata.userWasCreated || false)
           }
 
           // Mostrar resultado real de la transacción
@@ -125,6 +182,10 @@ function ConfirmacionContent() {
         const data = await response.json()
         setOrderData(data)
         setPaymentMethod(data.paymentMethod || null)
+        // Detectar si fue guest checkout y si se creó un usuario nuevo
+        const metadata = data.metadata || {}
+        setIsGuestCheckout(metadata.isGuestCheckout || metadata.convertedFromGuest || false)
+        setUserWasCreated(metadata.userWasCreated || false)
 
         // Si la orden está PENDING y es de Wompi, intentar verificar con la API de Wompi
         // usando el endpoint de búsqueda por referencia
@@ -139,6 +200,10 @@ function ConfirmacionContent() {
               console.log('[CONFIRMACION] Verify by reference result:', verifyData)
               if (verifyData.order) {
                 setOrderData(verifyData.order)
+                // Actualizar metadata si está disponible
+                const verifyMetadata = verifyData.order.metadata || {}
+                setIsGuestCheckout(verifyMetadata.isGuestCheckout || verifyMetadata.convertedFromGuest || false)
+                setUserWasCreated(verifyMetadata.userWasCreated || false)
               }
               switch (verifyData.transactionStatus) {
                 case 'APPROVED':
@@ -179,7 +244,7 @@ function ConfirmacionContent() {
     }
 
     checkPaymentStatus()
-  }, [reference, refPayco, wompiTransactionId])
+  }, [reference, refPayco, wompiTransactionId, paypalToken, paypalPayerId])
 
   if (status === 'loading') {
     return (
@@ -284,7 +349,7 @@ function ConfirmacionContent() {
 
           {/* Acciones */}
           <div className="space-y-3">
-            {status === 'success' && orderData?.orderType === 'MEMBERSHIP' && (
+            {status === 'success' && orderData?.orderType === 'MEMBERSHIP' && !isGuestCheckout && (
               <Link
                 href="/mi-cuenta"
                 className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -294,7 +359,7 @@ function ConfirmacionContent() {
               </Link>
             )}
 
-            {status === 'success' && orderData?.orderType === 'SESSION' && (
+            {status === 'success' && orderData?.orderType === 'SESSION' && !isGuestCheckout && (
               <Link
                 href="/mi-cuenta?tab=sesiones"
                 className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -304,7 +369,49 @@ function ConfirmacionContent() {
               </Link>
             )}
 
-            {status === 'success' && orderData?.orderType === 'COURSE' && (
+            {status === 'success' && isGuestCheckout && (
+              <>
+                <div className="bg-[#eef1fa] rounded-lg p-4 mb-4 text-left">
+                  <p className="font-dm-sans text-sm text-[#654177]">
+                    {userWasCreated ? (
+                      <>
+                        <span className="font-semibold">¡Cuenta creada!</span> Hemos creado una cuenta con tu email.
+                        Revisa tu correo de confirmación donde encontrarás un enlace para establecer tu contraseña.
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-semibold">¡Compra asociada!</span> Tu compra ha sido asociada a tu cuenta existente.
+                        Inicia sesión para ver los detalles de tu reserva.
+                      </>
+                    )}
+                  </p>
+                </div>
+                {userWasCreated ? (
+                  <Link
+                    href="/auth/forgot-password"
+                    className="w-full border border-[#4944a4] text-[#4944a4] hover:bg-[#4944a4] hover:text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    ¿No recibiste el correo? Solicitar nuevo enlace
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/auth/signin?callbackUrl=${encodeURIComponent(
+                      orderData?.orderType === 'SESSION' ? '/mi-cuenta?tab=sesiones' :
+                      orderData?.orderType === 'MEMBERSHIP' ? '/mi-cuenta' :
+                      orderData?.orderType === 'COURSE' ? '/mi-cuenta/cursos' :
+                      orderData?.orderType === 'EVENT' ? '/mi-cuenta?tab=eventos' :
+                      '/mi-cuenta'
+                    )}`}
+                    className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    Iniciar Sesión
+                    <ArrowRight className="w-5 h-5" />
+                  </Link>
+                )}
+              </>
+            )}
+
+            {status === 'success' && orderData?.orderType === 'COURSE' && !isGuestCheckout && (
               <Link
                 href="/mi-cuenta/cursos"
                 className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"

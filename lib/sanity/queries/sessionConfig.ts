@@ -1,6 +1,7 @@
-import { client } from '../client'
 import { sanityFetch } from '@/sanity/lib/fetch'
 import { mainImageProjection, seoProjection } from '@/sanity/lib/projections'
+
+import { client } from '../client'
 
 // ==========================================
 // INTERFACES
@@ -375,10 +376,10 @@ export function getTimeSlotsForDayOfWeek(
   weeklySchedule: WeeklySchedule | undefined,
   dayOfWeek: number
 ): TimeSlotRange[] {
-  if (!weeklySchedule) return []
+  if (!weeklySchedule) {return []}
 
   const dayName = dayOfWeekMap[dayOfWeek]
-  if (!dayName) return []
+  if (!dayName) {return []}
 
   return weeklySchedule[dayName] || []
 }
@@ -389,7 +390,7 @@ export function getTimeSlotsForDayOfWeek(
  * @returns Array de números de días (0 = domingo, 1 = lunes, ..., 6 = sábado)
  */
 export function getAvailableDaysOfWeek(weeklySchedule: WeeklySchedule | undefined): number[] {
-  if (!weeklySchedule) return []
+  if (!weeklySchedule) {return []}
 
   const availableDays: number[] = []
 
@@ -455,7 +456,7 @@ export function getMemberPrice(session: SessionConfig, currency: 'COP' | 'USD' =
   const basePrice = currency === 'USD' ? (session.priceUSD || session.price) : session.price
   const discount = session.memberDiscount || 0
 
-  if (discount === 0) return basePrice
+  if (discount === 0) {return basePrice}
 
   return Math.round(basePrice * (1 - discount / 100))
 }

@@ -1,9 +1,11 @@
 'use client';
 
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
+import { es as esRdp } from 'react-day-picker/locale';
+
 import { Calendar } from '@/components/ui/calendar';
-import TimeSlotPicker from './time-slot-picker';
-import { TimezoneSelector } from './timezone-selector';
 import { isPastDate } from '@/lib/availability/blocked-dates';
 import { TimeSlot } from '@/lib/availability/time-slots';
 import {
@@ -16,9 +18,9 @@ import {
   convertTimeFromColombia,
   isDayAvailable,
 } from '@/lib/sanity/queries/bookingSettings';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { es as esRdp } from 'react-day-picker/locale';
+
+import TimeSlotPicker from './time-slot-picker';
+import { TimezoneSelector } from './timezone-selector';
 
 interface Session {
   _id: string;
@@ -152,6 +154,13 @@ export function BookingCalendar({
   }, [date, session.slug.current]);
 
   const handleDateSelect = (newDate: Date | undefined) => {
+    // Debug log para móvil
+    console.log('[BookingCalendar] handleDateSelect:', {
+      newDate: newDate?.toISOString(),
+      currentDate: date?.toISOString(),
+    });
+
+    // Actualizar el estado inmediatamente
     setDate(newDate);
     onDateChange(newDate || null);
     // Reset time when date changes
@@ -200,7 +209,7 @@ export function BookingCalendar({
   // Deshabilitar días no disponibles
   const disabledDays = (checkDate: Date) => {
     // Check if in the past
-    if (isPastDate(checkDate)) return true;
+    if (isPastDate(checkDate)) {return true;}
 
     // Check max advance booking
     const maxDate = new Date();
@@ -208,10 +217,10 @@ export function BookingCalendar({
     maxDate.setHours(23, 59, 59, 999);
     const dateToCheck = new Date(checkDate);
     dateToCheck.setHours(0, 0, 0, 0);
-    if (dateToCheck > maxDate) return true;
+    if (dateToCheck > maxDate) {return true;}
 
     // Check if date is available (weekdays, no holidays, no blocked)
-    if (!isDateAvailableLocal(checkDate)) return true;
+    if (!isDateAvailableLocal(checkDate)) {return true;}
 
     return false;
   };
@@ -330,22 +339,36 @@ export function BookingCalendar({
             .booking-calendar .rdp-day button {
               width: 100%;
               height: 100%;
-              min-height: 2.5rem;
+              min-height: 2.75rem;
+              min-width: 2.75rem;
               display: flex;
               align-items: center;
               justify-content: center;
-              font-size: 0.875rem;
+              font-size: 0.9375rem;
               font-weight: 500;
-              border-radius: 0.3rem;
-              transition: all 0.2s;
+              border-radius: 0.375rem;
+              transition: all 0.15s ease-out;
               background-color: #f7f7f7;
               color: #8A4BAF;
               border: 1px solid #8A4BAF;
+              /* Mejoras para móvil - touch events */
+              -webkit-tap-highlight-color: rgba(138, 75, 175, 0.3);
+              touch-action: manipulation;
+              cursor: pointer;
+              -webkit-user-select: none;
+              user-select: none;
+            }
+
+            /* Active state para feedback táctil inmediato */
+            .booking-calendar .rdp-day button:active:not(:disabled) {
+              transform: scale(0.95);
+              background-color: #efe3ed;
             }
 
             @media (min-width: 640px) {
               .booking-calendar .rdp-day button {
                 min-height: 3rem;
+                min-width: 3rem;
                 font-size: 1rem;
               }
             }
@@ -353,6 +376,7 @@ export function BookingCalendar({
             @media (min-width: 768px) {
               .booking-calendar .rdp-day button {
                 min-height: 3.5rem;
+                min-width: 3.5rem;
                 font-size: 1.0625rem;
               }
             }
@@ -375,19 +399,24 @@ export function BookingCalendar({
             /* Día seleccionado - fondo violeta (react-day-picker v9 usa data-selected-single) */
             .booking-calendar .rdp-day button[data-selected-single="true"],
             .booking-calendar .rdp-day.rdp-selected button,
-            .booking-calendar .rdp-selected button {
+            .booking-calendar .rdp-selected button,
+            .booking-calendar button[data-selected="true"],
+            .booking-calendar .rdp-day button[aria-selected="true"] {
               background-color: #8A4BAF !important;
               color: white !important;
-              border: 1px solid transparent !important;
+              border: 1px solid #8A4BAF !important;
               outline: none !important;
-              box-shadow: none !important;
+              box-shadow: 0 0 0 2px rgba(138, 75, 175, 0.3) !important;
+              transform: scale(1.02);
             }
 
             .booking-calendar .rdp-day button[data-selected-single="true"]:hover,
             .booking-calendar .rdp-day.rdp-selected button:hover,
-            .booking-calendar .rdp-selected button:hover {
+            .booking-calendar .rdp-selected button:hover,
+            .booking-calendar button[data-selected="true"]:hover,
+            .booking-calendar .rdp-day button[aria-selected="true"]:hover {
               background-color: #7a3d9f !important;
-              border: 1px solid transparent !important;
+              border: 1px solid #7a3d9f !important;
             }
 
             /* Días no disponibles (fines de semana, festivos) - sin recuadro, solo texto gris */

@@ -1,8 +1,9 @@
+import { Settings, Loader2 } from 'lucide-react'
 import { Suspense } from 'react'
+
+import { SubscriptionManager } from '@/components/membership/subscription-manager'
 import { auth } from '@/lib/auth'
 import { getActiveSubscription } from '@/lib/membership-access'
-import { SubscriptionManager } from '@/components/membership/subscription-manager'
-import { Settings, Loader2 } from 'lucide-react'
 
 export const metadata = {
   title: 'Configuración | Membresía',

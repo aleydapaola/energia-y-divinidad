@@ -1,7 +1,5 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   Calendar,
   Clock,
@@ -17,6 +15,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 
 interface BookingData {
   id: string
@@ -200,7 +200,7 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
   }
 
   const handleCancel = async () => {
-    if (!selectedBooking) return
+    if (!selectedBooking) {return}
 
     setLoading(true)
     setError(null)
@@ -230,7 +230,7 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
   }
 
   const handleStatusChange = async () => {
-    if (!selectedBooking || !newStatus) return
+    if (!selectedBooking || !newStatus) {return}
 
     setLoading(true)
     setError(null)

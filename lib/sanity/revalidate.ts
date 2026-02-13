@@ -1,4 +1,5 @@
 import { revalidateTag, revalidatePath } from 'next/cache'
+
 import { syncMembershipPost } from '@/lib/membership-posts'
 
 export interface RevalidateParams {

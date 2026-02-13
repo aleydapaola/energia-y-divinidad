@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import Link from 'next/link'
 import { ChevronLeft, ChevronRight, MapPin, Video } from 'lucide-react'
+import Link from 'next/link'
+import { useState, useMemo } from 'react'
+
 import type { Event } from '@/lib/sanity/queries/events'
 
 interface DayViewProps {

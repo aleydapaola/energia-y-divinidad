@@ -1,9 +1,9 @@
 "use client"
 
-import { Suspense, useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
-import Link from "next/link"
 import { Loader2, Mail, CheckCircle, XCircle } from "lucide-react"
+import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+import { Suspense, useState, useEffect } from "react"
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
@@ -40,7 +40,7 @@ function VerifyEmailContent() {
   }
 
   const handleResendEmail = async () => {
-    if (!email || resendCooldown > 0) return
+    if (!email || resendCooldown > 0) {return}
 
     setIsResending(true)
     try {

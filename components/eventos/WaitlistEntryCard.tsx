@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { Calendar, MapPin, Video, Clock, Users, Loader2, CheckCircle, X } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Calendar, MapPin, Video, Clock, Users, Loader2, CheckCircle, X } from 'lucide-react'
+import { useState } from 'react'
 
 interface WaitlistEntryWithEvent {
   id: string
@@ -44,12 +44,12 @@ export default function WaitlistEntryCard({ entry, onUpdate }: WaitlistEntryCard
 
   // Calculate time remaining for offers
   const getTimeRemaining = () => {
-    if (!entry.offerExpiresAt) return null
+    if (!entry.offerExpiresAt) {return null}
     const expiresAt = new Date(entry.offerExpiresAt)
     const now = new Date()
     const diffMs = expiresAt.getTime() - now.getTime()
 
-    if (diffMs <= 0) return 'Expirado'
+    if (diffMs <= 0) {return 'Expirado'}
 
     const hours = Math.floor(diffMs / (1000 * 60 * 60))
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
@@ -116,7 +116,7 @@ export default function WaitlistEntryCard({ entry, onUpdate }: WaitlistEntryCard
   }
 
   const handleLeave = async () => {
-    if (!entry.event) return
+    if (!entry.event) {return}
 
     setLoading(true)
     setError(null)

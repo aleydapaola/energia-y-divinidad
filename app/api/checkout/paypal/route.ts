@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { createPayPalOrder, isPayPalConfigured } from '@/lib/paypal'
-import { getAppUrl } from '@/lib/utils'
 import { nanoid } from 'nanoid'
+import { NextRequest, NextResponse } from 'next/server'
+
+import { auth } from '@/lib/auth'
+import { createPayPalOrder, isPayPalConfigured } from '@/lib/paypal'
+import { prisma } from '@/lib/prisma'
+import { getAppUrl } from '@/lib/utils'
 
 interface CheckoutBody {
   // Tipo de producto
@@ -176,6 +177,13 @@ export async function POST(request: NextRequest) {
       await prisma.order.update({
         where: { id: order.id },
         data: { paymentStatus: 'FAILED' },
+      })
+
+      console.error('[CHECKOUT/PAYPAL] Failed to create PayPal order:', {
+        error: paypalResult.error,
+        amount,
+        currency,
+        productName,
       })
 
       return NextResponse.json(

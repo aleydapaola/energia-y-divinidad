@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+
 import { AdminEventsList } from "./AdminEventsList"
 
 export default async function AdminEventsPage() {

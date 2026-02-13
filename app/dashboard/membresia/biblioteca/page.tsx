@@ -1,9 +1,10 @@
+import { Loader2, Crown } from 'lucide-react'
 import { Suspense } from 'react'
+
+import { PremiumLibrary } from '@/components/membership/premium-library'
 import { auth } from '@/lib/auth'
 import { getActiveSubscription } from '@/lib/membership-access'
 import { getPremiumContentForTier } from '@/lib/sanity/queries/membership'
-import { PremiumLibrary } from '@/components/membership/premium-library'
-import { Loader2, Crown } from 'lucide-react'
 
 export const metadata = {
   title: 'Biblioteca Premium | Membresía',

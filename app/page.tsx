@@ -1,11 +1,12 @@
-import { Header } from "@/components/layout/Header"
-import { Footer } from "@/components/layout/Footer"
-import Link from "next/link"
 import Image from "next/image"
+import Link from "next/link"
+
+import { Footer } from "@/components/layout/Footer"
+import { Header } from "@/components/layout/Header"
 import MeditationCard from "@/components/meditaciones/MeditationCard"
-import { getFeaturedFreeContent, type FreeContent } from "@/lib/sanity/queries/freeContent"
 import { NewsletterForm } from "@/components/newsletter"
 import { auth } from "@/lib/auth"
+import { getFeaturedFreeContent, type FreeContent } from "@/lib/sanity/queries/freeContent"
 
 export default async function HomePage() {
   // Get user session
@@ -36,7 +37,7 @@ export default async function HomePage() {
         />
 
         {/* Overlay gradient for better text readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white/30 via-transparent to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-white/30 via-transparent to-transparent" />
 
         {/* Hero Content Grid */}
         <div className="relative container mx-auto px-4 sm:px-6 lg:px-12 h-full min-h-[85vh] sm:min-h-[80vh] lg:min-h-[85vh]">
@@ -129,7 +130,7 @@ export default async function HomePage() {
             </div>
 
             {/* Right Side - Empty space for image that's positioned absolutely */}
-            <div className="hidden lg:block"></div>
+            <div className="hidden lg:block" />
           </div>
         </div>
       </section>
@@ -137,22 +138,22 @@ export default async function HomePage() {
       {/* ¿Te resuena esto? Section */}
       <section className="relative py-16 sm:py-20 md:py-24 lg:py-28 overflow-hidden">
         {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#f8f0f5] via-[#f5eaf2] to-[#f0e5ef]"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#f8f0f5] via-[#f5eaf2] to-[#f0e5ef]" />
 
         {/* Decorative sparkles/stars */}
-        <div className="absolute top-10 left-10 w-2 h-2 bg-white/60 rounded-full blur-[1px]"></div>
-        <div className="absolute top-20 right-20 w-1.5 h-1.5 bg-white/50 rounded-full blur-[1px]"></div>
-        <div className="absolute bottom-20 left-1/4 w-2 h-2 bg-white/40 rounded-full blur-[1px]"></div>
-        <div className="absolute bottom-10 right-1/3 w-1.5 h-1.5 bg-white/50 rounded-full blur-[1px]"></div>
+        <div className="absolute top-10 left-10 w-2 h-2 bg-white/60 rounded-full blur-[1px]" />
+        <div className="absolute top-20 right-20 w-1.5 h-1.5 bg-white/50 rounded-full blur-[1px]" />
+        <div className="absolute bottom-20 left-1/4 w-2 h-2 bg-white/40 rounded-full blur-[1px]" />
+        <div className="absolute bottom-10 right-1/3 w-1.5 h-1.5 bg-white/50 rounded-full blur-[1px]" />
 
         <div className="relative container mx-auto px-4">
           {/* Title with decorative lines */}
           <div className="flex items-center justify-center gap-4 mb-12 sm:mb-14 md:mb-16">
-            <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-r from-transparent to-[#8A4BAF]"></div>
+            <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-r from-transparent to-[#8A4BAF]" />
             <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl lg:text-5xl text-[#8A4BAF] text-center">
               ¿Te resuena esto?
             </h2>
-            <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-l from-transparent to-[#8A4BAF]"></div>
+            <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-l from-transparent to-[#8A4BAF]" />
           </div>
 
           {/* Cards Grid */}
@@ -164,15 +165,15 @@ export default async function HomePage() {
               </h3>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
-                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0" />
                   <span className="font-dm-sans text-base text-[#4A4A4A]">Sincronicidades e intuiciones</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0" />
                   <span className="font-dm-sans text-base text-[#4A4A4A]">Señales repetidas</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0" />
                   <span className="font-dm-sans text-base text-[#4A4A4A]">Intuición más activa</span>
                 </li>
               </ul>
@@ -185,15 +186,15 @@ export default async function HomePage() {
               </h3>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
-                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0" />
                   <span className="font-dm-sans text-base text-[#4A4A4A]">Entender lo que estás viviendo</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0" />
                   <span className="font-dm-sans text-base text-[#4A4A4A]">Tomar decisiones con calma</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0" />
                   <span className="font-dm-sans text-base text-[#4A4A4A]">Comprender tu proceso de cambio</span>
                 </li>
               </ul>
@@ -206,15 +207,15 @@ export default async function HomePage() {
               </h3>
               <ul className="space-y-3">
                 <li className="flex items-start gap-3">
-                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0" />
                   <span className="font-dm-sans text-base text-[#4A4A4A]">Canalización personalizada</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0" />
                   <span className="font-dm-sans text-base text-[#4A4A4A]">Escucha y guía consciente</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0"></span>
+                  <span className="w-2 h-2 bg-[#8A4BAF] rounded-full mt-2 flex-shrink-0" />
                   <span className="font-dm-sans text-base text-[#4A4A4A]">Sentirte acompañado</span>
                 </li>
               </ul>
@@ -236,19 +237,19 @@ export default async function HomePage() {
       {/* Testimonios Section - Prueba social temprana */}
       <section className="relative bg-white py-16 sm:py-20 md:py-24 overflow-hidden">
         {/* Decorative elements */}
-        <div className="absolute top-0 left-1/4 w-64 h-64 bg-[#f8f0f5]/50 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-[#eef1fa]/50 rounded-full blur-3xl"></div>
+        <div className="absolute top-0 left-1/4 w-64 h-64 bg-[#f8f0f5]/50 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-[#eef1fa]/50 rounded-full blur-3xl" />
 
         <div className="relative container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             {/* Header */}
             <div className="text-center mb-12 sm:mb-14 md:mb-16">
               <div className="flex items-center justify-center gap-4 mb-4">
-                <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-r from-transparent to-[#8A4BAF]"></div>
+                <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-r from-transparent to-[#8A4BAF]" />
                 <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF]">
                   Lo que dicen quienes han vivido la experiencia
                 </h2>
-                <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-l from-transparent to-[#8A4BAF]"></div>
+                <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-l from-transparent to-[#8A4BAF]" />
               </div>
             </div>
 
@@ -258,7 +259,7 @@ export default async function HomePage() {
               <div className="bg-gradient-to-b from-[#f8f0f5]/50 to-white rounded-2xl p-6 sm:p-8 shadow-lg border border-[#8A4BAF]/5 hover:shadow-xl transition-all">
                 {/* Quote icon */}
                 <div className="mb-4">
-                  <svg className="w-8 h-8 text-[#8A4BAF]/30" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-8 h-8 text-[#8A4BAF]/30" width="32" height="32" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
                   </svg>
                 </div>
@@ -282,7 +283,7 @@ export default async function HomePage() {
               <div className="bg-gradient-to-b from-[#eef1fa]/50 to-white rounded-2xl p-6 sm:p-8 shadow-lg border border-[#2D4CC7]/5 hover:shadow-xl transition-all">
                 {/* Quote icon */}
                 <div className="mb-4">
-                  <svg className="w-8 h-8 text-[#2D4CC7]/30" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-8 h-8 text-[#2D4CC7]/30" width="32" height="32" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
                   </svg>
                 </div>
@@ -306,7 +307,7 @@ export default async function HomePage() {
               <div className="bg-gradient-to-b from-[#f8f0f5]/50 to-white rounded-2xl p-6 sm:p-8 shadow-lg border border-[#8A4BAF]/5 hover:shadow-xl transition-all md:col-span-2 lg:col-span-1">
                 {/* Quote icon */}
                 <div className="mb-4">
-                  <svg className="w-8 h-8 text-[#8A4BAF]/30" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-8 h-8 text-[#8A4BAF]/30" width="32" height="32" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
                   </svg>
                 </div>
@@ -333,8 +334,8 @@ export default async function HomePage() {
       {/* ¿Cómo quieres comenzar? - Servicios principales */}
       <section className="relative py-16 sm:py-20 md:py-24 bg-gradient-to-b from-[#f8f0f5] via-[#f5eaf2] to-white overflow-hidden">
         {/* Decorative background elements */}
-        <div className="absolute top-0 left-0 w-72 h-72 bg-[#8A4BAF]/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#2D4CC7]/5 rounded-full blur-3xl translate-x-1/3 translate-y-1/3"></div>
+        <div className="absolute top-0 left-0 w-72 h-72 bg-[#8A4BAF]/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#2D4CC7]/5 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
 
         <div className="relative container mx-auto px-4">
           {/* Title */}
@@ -497,11 +498,11 @@ export default async function HomePage() {
             {/* Header */}
             <div className="text-center mb-12 md:mb-16">
               <div className="flex items-center justify-center gap-4 mb-4">
-                <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-r from-transparent to-[#8A4BAF]"></div>
+                <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-r from-transparent to-[#8A4BAF]" />
                 <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF]">
                   Sobre mí
                 </h2>
-                <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-l from-transparent to-[#8A4BAF]"></div>
+                <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-l from-transparent to-[#8A4BAF]" />
               </div>
             </div>
 
@@ -511,7 +512,7 @@ export default async function HomePage() {
               <div className="lg:col-span-2 order-1">
                 <div className="relative max-w-md mx-auto lg:max-w-none">
                   {/* Glow effect */}
-                  <div className="absolute -inset-6 bg-gradient-to-br from-[#8A4BAF]/20 via-[#654177]/15 to-transparent rounded-3xl blur-3xl opacity-60"></div>
+                  <div className="absolute -inset-6 bg-gradient-to-br from-[#8A4BAF]/20 via-[#654177]/15 to-transparent rounded-3xl blur-3xl opacity-60" />
 
                   {/* Image container */}
                   <div className="relative">
@@ -525,7 +526,7 @@ export default async function HomePage() {
                     />
 
                     {/* Decorative corner accent */}
-                    <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-gradient-to-br from-[#8A4BAF] to-[#654177] rounded-2xl opacity-20 -z-10"></div>
+                    <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-gradient-to-br from-[#8A4BAF] to-[#654177] rounded-2xl opacity-20 -z-10" />
                   </div>
                 </div>
               </div>
@@ -575,26 +576,26 @@ export default async function HomePage() {
         </div>
 
         {/* Decorative background elements */}
-        <div className="absolute top-20 right-0 w-64 h-64 bg-[#8A4BAF]/5 rounded-full blur-3xl -z-10"></div>
-        <div className="absolute bottom-20 left-0 w-96 h-96 bg-[#654177]/5 rounded-full blur-3xl -z-10"></div>
+        <div className="absolute top-20 right-0 w-64 h-64 bg-[#8A4BAF]/5 rounded-full blur-3xl -z-10" />
+        <div className="absolute bottom-20 left-0 w-96 h-96 bg-[#654177]/5 rounded-full blur-3xl -z-10" />
       </section>
 
       {/* Academia Section */}
       <section className="relative bg-white py-16 sm:py-20 md:py-24 overflow-hidden">
         {/* Decorative background elements */}
-        <div className="absolute top-0 right-0 w-72 h-72 bg-[#eef1fa]/50 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#f8f0f5]/50 rounded-full blur-3xl -translate-x-1/3 translate-y-1/3"></div>
+        <div className="absolute top-0 right-0 w-72 h-72 bg-[#eef1fa]/50 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#f8f0f5]/50 rounded-full blur-3xl -translate-x-1/3 translate-y-1/3" />
 
         <div className="relative container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             {/* Header */}
             <div className="text-center mb-12 sm:mb-14 md:mb-16">
               <div className="flex items-center justify-center gap-4 mb-4">
-                <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-r from-transparent to-[#2D4CC7]"></div>
+                <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-r from-transparent to-[#2D4CC7]" />
                 <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#2D4CC7]">
                   Academia de Formación
                 </h2>
-                <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-l from-transparent to-[#2D4CC7]"></div>
+                <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-l from-transparent to-[#2D4CC7]" />
               </div>
               <p className="font-dm-sans text-base sm:text-lg text-[#4a5a7a] max-w-3xl mx-auto">
                 Aprende, desarrolla y profundiza en tu camino espiritual con nuestros cursos y talleres
@@ -708,9 +709,9 @@ export default async function HomePage() {
       {featuredMeditations.length > 0 && (
         <section className="relative bg-gradient-to-b from-[#f8f0f5] via-[#f5eaf2] to-white py-16 sm:py-20 md:py-24 overflow-hidden">
           {/* Decorative elements */}
-          <div className="absolute top-10 left-10 w-2 h-2 bg-white/60 rounded-full blur-[1px]"></div>
-          <div className="absolute top-20 right-20 w-1.5 h-1.5 bg-white/50 rounded-full blur-[1px]"></div>
-          <div className="absolute bottom-20 left-1/4 w-2 h-2 bg-white/40 rounded-full blur-[1px]"></div>
+          <div className="absolute top-10 left-10 w-2 h-2 bg-white/60 rounded-full blur-[1px]" />
+          <div className="absolute top-20 right-20 w-1.5 h-1.5 bg-white/50 rounded-full blur-[1px]" />
+          <div className="absolute bottom-20 left-1/4 w-2 h-2 bg-white/40 rounded-full blur-[1px]" />
 
           <div className="relative container mx-auto px-4">
             <div className="max-w-6xl mx-auto">
@@ -724,11 +725,11 @@ export default async function HomePage() {
                   </div>
                 </div>
                 <div className="flex items-center justify-center gap-4 mb-4">
-                  <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-r from-transparent to-[#8A4BAF]"></div>
+                  <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-r from-transparent to-[#8A4BAF]" />
                   <h2 className="font-gazeta text-3xl sm:text-4xl md:text-5xl text-[#8A4BAF]">
                     Meditaciones Gratis
                   </h2>
-                  <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-l from-transparent to-[#8A4BAF]"></div>
+                  <div className="hidden sm:block h-[1px] w-16 md:w-24 bg-gradient-to-l from-transparent to-[#8A4BAF]" />
                 </div>
                 <p className="font-dm-sans text-base sm:text-lg text-[#674c6a] max-w-3xl mx-auto">
                   Descubre nuestras meditaciones guiadas gratuitas para tu crecimiento espiritual
@@ -762,13 +763,13 @@ export default async function HomePage() {
       {/* Newsletter Section */}
       <section className="relative bg-gradient-to-b from-[#f8f0f5] via-[#efe8f2] to-[#e8e0eb] py-16 sm:py-20 md:py-24 overflow-hidden">
         {/* Decorative blurred elements */}
-        <div className="absolute top-0 left-0 w-96 h-96 bg-[#8A4BAF]/10 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[#654177]/8 rounded-full blur-[120px] translate-x-1/3 translate-y-1/3"></div>
-        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-[#8A4BAF]/5 rounded-full blur-[80px] -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute top-0 left-0 w-96 h-96 bg-[#8A4BAF]/10 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[#654177]/8 rounded-full blur-[120px] translate-x-1/3 translate-y-1/3" />
+        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-[#8A4BAF]/5 rounded-full blur-[80px] -translate-x-1/2 -translate-y-1/2" />
         {/* Small sparkles */}
-        <div className="absolute top-1/4 left-1/5 w-1.5 h-1.5 bg-[#8A4BAF]/20 rounded-full blur-[1px]"></div>
-        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-[#654177]/15 rounded-full blur-[1px]"></div>
-        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-[#8A4BAF]/15 rounded-full blur-[1px]"></div>
+        <div className="absolute top-1/4 left-1/5 w-1.5 h-1.5 bg-[#8A4BAF]/20 rounded-full blur-[1px]" />
+        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-[#654177]/15 rounded-full blur-[1px]" />
+        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-[#8A4BAF]/15 rounded-full blur-[1px]" />
 
         <div className="relative container mx-auto px-4">
           <div className="max-w-2xl mx-auto text-center">

@@ -1,6 +1,7 @@
-import Link from "next/link"
-import Image from "next/image"
 import { Calendar, Clock, Lock } from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+
 import type { BlogPostPreview } from "@/lib/sanity/queries/blog"
 
 interface BlogCardProps {

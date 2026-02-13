@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {}
 
-    if (status) where.status = status
+    if (status) {where.status = status}
 
     if (q) {
       where.OR = [

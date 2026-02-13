@@ -14,13 +14,15 @@
  * - Endpoints de verificación manual
  */
 
-import { prisma } from '@/lib/prisma'
+import { randomBytes } from 'crypto'
+
+import { PaymentMethod } from '@prisma/client'
+
 import { createCourseEntitlement } from '@/lib/course-access'
 import { grantMonthlyCredits } from '@/lib/credits'
 import { recordDiscountUsage } from '@/lib/discount-codes'
 import { sendPaymentConfirmationEmail, sendAdminNotificationEmail } from '@/lib/email'
-import { randomBytes } from 'crypto'
-import { PaymentMethod } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 // Tipos
 export interface OrderWithUser {
@@ -76,11 +78,14 @@ export async function processApprovedPayment(
     // 1. Manejar guest checkout: crear/encontrar usuario si no hay userId
     let userId = order.userId
     const isGuestCheckout = metadata?.isGuestCheckout || (!userId && order.guestEmail)
+    let setPasswordToken: string | undefined
 
     if (isGuestCheckout && order.guestEmail) {
-      userId = await findOrCreateUserForGuest(order.guestEmail, order.guestName)
+      const result = await findOrCreateUserForGuest(order.guestEmail, order.guestName)
+      userId = result.userId
+      setPasswordToken = result.setPasswordToken
 
-      // Actualizar orden con el userId
+      // Actualizar orden con el userId y metadata
       await prisma.order.update({
         where: { id: order.id },
         data: {
@@ -88,6 +93,7 @@ export async function processApprovedPayment(
           metadata: {
             ...metadata,
             convertedFromGuest: true,
+            userWasCreated: result.wasCreated,
             convertedAt: new Date().toISOString(),
           },
         },
@@ -154,7 +160,7 @@ export async function processApprovedPayment(
 
     // 5. Enviar email de confirmación al cliente
     if (!skipEmail) {
-      await sendConfirmationEmail(order, userId, transactionId)
+      await sendConfirmationEmail(order, userId, transactionId, setPasswordToken)
     }
 
     // 6. Enviar notificación al administrador
@@ -205,7 +211,7 @@ async function checkForDuplicateProcessing(order: OrderWithUser, userId: string)
     case 'COURSE': {
       const metadata = order.metadata || {}
       const courseIds = metadata.courseIds as string[] | undefined
-      if (!courseIds || courseIds.length === 0) return false
+      if (!courseIds || courseIds.length === 0) {return false}
 
       const existingEntitlements = await prisma.entitlement.findMany({
         where: {
@@ -451,7 +457,8 @@ async function createCourseEntitlementsFromOrder(
 async function sendConfirmationEmail(
   order: OrderWithUser,
   userId: string,
-  transactionId?: string
+  transactionId?: string,
+  setPasswordToken?: string
 ): Promise<void> {
   // Obtener email del usuario
   let customerEmail: string | null = null
@@ -494,6 +501,7 @@ async function sendConfirmationEmail(
       currency: order.currency as 'COP' | 'USD' | 'EUR',
       paymentMethod: order.paymentMethod || 'Tarjeta',
       transactionId,
+      setPasswordToken,
     })
     console.log(`[PAYMENT-PROCESSOR] Email de confirmación enviado a ${customerEmail}`)
   } catch (error) {
@@ -503,16 +511,26 @@ async function sendConfirmationEmail(
 }
 
 /**
+ * Resultado de buscar o crear usuario para guest checkout
+ */
+interface FindOrCreateUserResult {
+  userId: string
+  wasCreated: boolean
+  setPasswordToken?: string
+}
+
+/**
  * Encontrar o crear usuario para guest checkout
  */
-async function findOrCreateUserForGuest(email: string, name?: string | null): Promise<string> {
+async function findOrCreateUserForGuest(email: string, name?: string | null): Promise<FindOrCreateUserResult> {
   // Buscar usuario existente por email
   const existingUser = await prisma.user.findUnique({
     where: { email: email.toLowerCase() },
   })
 
   if (existingUser) {
-    return existingUser.id
+    console.log(`[PAYMENT-PROCESSOR] Usuario existente encontrado para guest checkout: ${existingUser.id} (${email})`)
+    return { userId: existingUser.id, wasCreated: false }
   }
 
   // Crear usuario nuevo sin contraseña
@@ -539,7 +557,7 @@ async function findOrCreateUserForGuest(email: string, name?: string | null): Pr
 
   console.log(`[PAYMENT-PROCESSOR] Usuario creado para guest checkout: ${newUser.id} (${email})`)
 
-  return newUser.id
+  return { userId: newUser.id, wasCreated: true, setPasswordToken }
 }
 
 /**

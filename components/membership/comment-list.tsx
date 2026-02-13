@@ -1,9 +1,9 @@
 'use client'
 
-import Image from 'next/image'
-import { Heart, Trash2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { Heart, Trash2 } from 'lucide-react'
+import Image from 'next/image'
 
 interface Comment {
   id: string

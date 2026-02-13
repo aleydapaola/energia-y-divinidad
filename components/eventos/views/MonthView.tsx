@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
+import { useState, useMemo } from 'react'
+
 import type { Event } from '@/lib/sanity/queries/events'
 
 interface MonthViewProps {
@@ -29,7 +30,7 @@ export default function MonthView({ events }: MonthViewProps) {
 
     // Ajustar para que la semana empiece en lunes
     let startOffset = firstDay.getDay() - 1
-    if (startOffset < 0) startOffset = 6
+    if (startOffset < 0) {startOffset = 6}
 
     const days: { date: Date; isCurrentMonth: boolean; events: Event[] }[] = []
 

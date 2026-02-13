@@ -9,6 +9,16 @@
  * - "push": Pago automático via Push Notification de Nequi API
  */
 
+import {
+  getNequiMode,
+  isNequiPushConfigured,
+  createNequiPushPayment,
+  checkNequiPaymentStatus,
+  verifyNequiWebhookSignature,
+  formatNequiAmount,
+  generateTransactionCode,
+} from '@/lib/nequi'
+
 import { BasePaymentGateway } from '../gateway-interface'
 import {
   PaymentGatewayName,
@@ -20,15 +30,6 @@ import {
   TransactionStatusResult,
   TransactionStatus,
 } from '../types'
-import {
-  getNequiMode,
-  isNequiPushConfigured,
-  createNequiPushPayment,
-  checkNequiPaymentStatus,
-  verifyNequiWebhookSignature,
-  formatNequiAmount,
-  generateTransactionCode,
-} from '@/lib/nequi'
 
 export class NequiAdapter extends BasePaymentGateway {
   readonly name: PaymentGatewayName = 'nequi'

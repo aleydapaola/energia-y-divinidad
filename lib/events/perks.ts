@@ -8,9 +8,11 @@
  * - Delivery tracking
  */
 
+import { PerkAllocationStatus } from '@prisma/client'
+
 import { prisma } from '@/lib/prisma'
 import { getEventById } from '@/lib/sanity/queries/events'
-import { PerkAllocationStatus } from '@prisma/client'
+
 import type {
   EventPerk,
   PerkAllocationResult,

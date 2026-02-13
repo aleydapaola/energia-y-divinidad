@@ -36,7 +36,7 @@ export function parseOrderNumber(orderNumber: string): {
   random: string
 } | null {
   const match = orderNumber.match(/^([A-Z]+)-(\d{8})-(\d{4})$/)
-  if (!match) return null
+  if (!match) {return null}
 
   const [, prefix, dateStr, random] = match
   const year = parseInt(dateStr.slice(0, 4))

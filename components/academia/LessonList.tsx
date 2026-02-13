@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
 import { PlayCircle, FileText, Video, Check, Clock, Lock, ClipboardList } from 'lucide-react'
+import { useMemo } from 'react'
+
 import { calculateDripAvailability, type DripMode } from '@/lib/course-access'
 
 interface Lesson {
@@ -41,9 +42,9 @@ function formatDaysUntil(date: Date): string {
   const diffTime = date.getTime() - now.getTime()
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
-  if (diffDays <= 0) return 'Disponible'
-  if (diffDays === 1) return 'Mañana'
-  if (diffDays < 7) return `${diffDays} días`
+  if (diffDays <= 0) {return 'Disponible'}
+  if (diffDays === 1) {return 'Mañana'}
+  if (diffDays < 7) {return `${diffDays} días`}
 
   return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
 }
@@ -76,10 +77,10 @@ export function LessonList({
     const effectiveStartedAt = startedAt || new Date()
 
     let globalIndex = 0
-    for (const module of modules) {
-      const moduleUnlockDate = module.unlockDate ? new Date(module.unlockDate) : null
+    for (const courseModule of modules) {
+      const moduleUnlockDate = courseModule.unlockDate ? new Date(courseModule.unlockDate) : null
 
-      for (const lesson of module.lessons) {
+      for (const lesson of courseModule.lessons) {
         if (moduleUnlockDate && moduleUnlockDate > new Date()) {
           availability.set(lesson._id, moduleUnlockDate)
         } else {
@@ -99,8 +100,8 @@ export function LessonList({
   }, [dripEnabled, courseId, defaultDripDays, startedAt, modules])
 
   const isDripLocked = (lessonId: string, isFreePreview?: boolean): boolean => {
-    if (isFreePreview) return false
-    if (!dripEnabled) return false
+    if (isFreePreview) {return false}
+    if (!dripEnabled) {return false}
     const availableAt = lessonAvailability.get(lessonId)
     return availableAt !== null && availableAt !== undefined && availableAt > new Date()
   }
@@ -122,18 +123,18 @@ export function LessonList({
 
   return (
     <div className="divide-y divide-gray-100">
-      {modules.map((module, moduleIndex) => (
-        <div key={module._id}>
+      {modules.map((courseModule, moduleIndex) => (
+        <div key={courseModule._id}>
           {/* Module Header */}
           <div className="px-4 py-3 bg-gray-50">
             <h3 className="font-dm-sans font-semibold text-sm text-gray-700">
-              {moduleIndex + 1}. {module.title}
+              {moduleIndex + 1}. {courseModule.title}
             </h3>
           </div>
 
           {/* Lessons */}
           <div>
-            {module.lessons.map((lesson, lessonIndex) => {
+            {courseModule.lessons.map((lesson, lessonIndex) => {
               const Icon = lessonTypeIcons[lesson.lessonType]
               const isActive = lesson._id === currentLessonId
               const isCompleted = completedLessons.includes(lesson._id)

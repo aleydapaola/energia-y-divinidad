@@ -3,9 +3,9 @@
  * Handles access control and view tracking for event replays
  */
 
+import { getActiveSubscription } from '@/lib/membership-access'
 import { prisma } from '@/lib/prisma'
 import { getEventById, Event } from '@/lib/sanity/queries/events'
-import { getActiveSubscription } from '@/lib/membership-access'
 
 // Types
 export interface ReplayAccessResult {

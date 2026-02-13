@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { capturePayPalOrder, isPayPalConfigured } from '@/lib/paypal'
+
 import { processApprovedPayment } from '@/lib/payment-processor'
+import { capturePayPalOrder, isPayPalConfigured } from '@/lib/paypal'
+import { prisma } from '@/lib/prisma'
 
 interface CaptureBody {
   paypalOrderId: string

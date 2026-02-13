@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { getEventById } from '@/lib/sanity/queries/events'
+import { sendWaitlistJoinedEmail } from '@/lib/email'
 import {
   addToWaitlist,
   getWaitlistEntry,
   cancelWaitlistEntry,
   hasAvailableSpots,
 } from '@/lib/events/seat-allocation'
-import { sendWaitlistJoinedEmail } from '@/lib/email'
+import { prisma } from '@/lib/prisma'
+import { getEventById } from '@/lib/sanity/queries/events'
 
 interface RouteParams {
   params: Promise<{ eventId: string }>

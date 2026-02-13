@@ -1,9 +1,10 @@
-import type { Metadata } from 'next'
-import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { Header } from '@/components/layout/Header'
 import MeditationCard from '@/components/meditaciones/MeditationCard'
-import { getAllFreeContent } from '@/lib/sanity/queries/freeContent'
 import { auth } from '@/lib/auth'
+import { getAllFreeContent } from '@/lib/sanity/queries/freeContent'
+
+import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Meditaciones Gratis | Energía y Divinidad',

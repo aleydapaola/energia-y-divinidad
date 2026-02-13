@@ -1,7 +1,8 @@
-import { Suspense } from 'react'
-import { auth } from '@/lib/auth'
-import { PostsFeed } from '@/components/membership/posts-feed'
 import { Loader2 } from 'lucide-react'
+import { Suspense } from 'react'
+
+import { PostsFeed } from '@/components/membership/posts-feed'
+import { auth } from '@/lib/auth'
 
 export const metadata = {
   title: 'Publicaciones | Membresía',

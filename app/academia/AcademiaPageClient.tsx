@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+
 import { CourseCatalog } from '@/components/academia'
 import { useCartStore } from '@/lib/stores/cart-store'
 

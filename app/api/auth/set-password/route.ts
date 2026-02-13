@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { NextRequest, NextResponse } from 'next/server'
+
+import { prisma } from '@/lib/prisma'
 
 /**
  * POST /api/auth/set-password

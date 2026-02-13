@@ -63,7 +63,7 @@ export { getDeliveryMethodLabel, formatDuration, getMemberPrice, isDateAvailable
 // Legacy query functions that now use the unified schema
 export async function getAllSessions(): Promise<Session[]> {
   const session = await getActiveSession()
-  if (!session) return []
+  if (!session) {return []}
 
   // Map to legacy format
   return [{
@@ -83,7 +83,7 @@ export async function getFeaturedSessions(limit: number = 3): Promise<Session[]>
 export async function getSessionBySlug(slug: string): Promise<Session | null> {
   // Since there's only one session now, just return it
   const session = await getActiveSession()
-  if (!session) return null
+  if (!session) {return null}
 
   // Map to legacy format
   return {

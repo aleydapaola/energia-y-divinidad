@@ -1,4 +1,5 @@
 import { Crown, Calendar, Sparkles } from 'lucide-react'
+
 import type { UserSubscription } from '@/types/membership'
 
 interface MembershipHeaderProps {
@@ -10,7 +11,7 @@ interface MembershipHeaderProps {
 }
 
 export function MembershipHeader({ subscription, user }: MembershipHeaderProps) {
-  if (!subscription) return null
+  if (!subscription) {return null}
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('es-ES', {

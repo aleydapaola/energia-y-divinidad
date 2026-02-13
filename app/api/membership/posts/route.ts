@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
-import { getRecentMembershipPosts, getAllMembershipPosts } from '@/lib/sanity/queries/membership'
-import { getPostEngagement } from '@/lib/membership-posts'
 import { hasActiveMembership } from '@/lib/membership-access'
+import { getPostEngagement } from '@/lib/membership-posts'
+import { getRecentMembershipPosts, getAllMembershipPosts } from '@/lib/sanity/queries/membership'
+
 import type { MembershipPostWithEngagement } from '@/types/membership'
 
 /**

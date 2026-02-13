@@ -169,11 +169,45 @@ export async function createPayPalOrder(
       orderId: order.id,
       approvalUrl: approvalLink.href,
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[PAYPAL] Error creating order:', error)
+
+    // Extract detailed error info from PayPal SDK
+    let errorMessage = 'Error desconocido'
+    if (error instanceof Error) {
+      errorMessage = error.message
+    }
+
+    // PayPal SDK errors often have additional details
+    const errorDetails = error as {
+      statusCode?: number;
+      body?: string;
+      result?: { details?: Array<{ issue?: string; description?: string }> }
+    }
+
+    if (errorDetails.statusCode) {
+      console.error('[PAYPAL] Status code:', errorDetails.statusCode)
+    }
+    if (errorDetails.body) {
+      console.error('[PAYPAL] Error body:', errorDetails.body)
+      try {
+        const bodyParsed = JSON.parse(errorDetails.body)
+        if (bodyParsed.details?.[0]?.description) {
+          errorMessage = bodyParsed.details[0].description
+        } else if (bodyParsed.message) {
+          errorMessage = bodyParsed.message
+        }
+      } catch {
+        // Body is not JSON, use as-is
+      }
+    }
+    if (errorDetails.result?.details) {
+      console.error('[PAYPAL] Error details:', JSON.stringify(errorDetails.result.details))
+    }
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
+      error: errorMessage,
     }
   }
 }

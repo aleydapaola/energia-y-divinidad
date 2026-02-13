@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { Send, Loader2 } from 'lucide-react'
+import { useState } from 'react'
 
 interface CommentFormProps {
   onSubmit: (content: string) => Promise<void>

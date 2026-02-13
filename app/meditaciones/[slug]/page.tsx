@@ -1,16 +1,19 @@
-import type { Metadata } from 'next'
+import { PortableText } from '@portabletext/react'
 import { notFound } from 'next/navigation'
-import { Header } from '@/components/layout/Header'
+
 import { Footer } from '@/components/layout/Footer'
-import YouTubePlayer from '@/components/meditaciones/YouTubePlayer'
+import { Header } from '@/components/layout/Header'
 import AudioPlayer from '@/components/meditaciones/AudioPlayer'
 import MeditationCard from '@/components/meditaciones/MeditationCard'
+import YouTubePlayer from '@/components/meditaciones/YouTubePlayer'
 import {
   getFreeContentBySlug,
   getRelatedFreeContent,
   incrementViewCount,
 } from '@/lib/sanity/queries/freeContent'
-import { PortableText } from '@portabletext/react'
+
+import type { Metadata } from 'next'
+
 
 interface MeditationPageProps {
   params: Promise<{

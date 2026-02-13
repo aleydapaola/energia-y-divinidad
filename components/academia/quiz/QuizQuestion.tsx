@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { Check, X } from 'lucide-react'
+import { useState } from 'react'
 
 interface QuizQuestionProps {
   questionNumber: number
@@ -39,7 +39,7 @@ export function QuizQuestion({
 
   // Handle answer selection
   const handleSelect = (option: string) => {
-    if (showResult) return // Don't allow changes after showing result
+    if (showResult) {return} // Don't allow changes after showing result
 
     if (question.type === 'multiple_select') {
       const currentAnswers = Array.isArray(selectedAnswer) ? selectedAnswer : []
@@ -72,7 +72,7 @@ export function QuizQuestion({
 
   // Check if an option is the correct answer
   const isCorrectOption = (option: string) => {
-    if (!showResult || !correctAnswer) return false
+    if (!showResult || !correctAnswer) {return false}
     if (question.type === 'true_false') {
       const boolValue = option === 'Verdadero' ? 'true' : 'false'
       return correctAnswer === boolValue

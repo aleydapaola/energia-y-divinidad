@@ -1,20 +1,20 @@
+import { PortableText } from '@portabletext/react'
+import { Clock, MapPin, Video, Phone, ArrowLeft, Calendar as CalendarIcon, CheckCircle } from 'lucide-react'
 import { Metadata } from 'next'
-import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Clock, MapPin, Video, Phone, ArrowLeft, Calendar as CalendarIcon, CheckCircle } from 'lucide-react'
-import { PortableText } from '@portabletext/react'
-import { getSessionBySlug } from '@/lib/sanity/queries/sessions'
-import { Header } from '@/components/layout/Header'
+import { notFound } from 'next/navigation'
+
 import { Footer } from '@/components/layout/Footer'
-import {
+import { Header } from '@/components/layout/Header'
+import { SessionBookingSection } from '@/components/sesiones/SessionBookingSection'
+import { getBookingSettings } from '@/lib/sanity/queries/bookingSettings'
+import { getSessionBySlug ,
   getSessionTypeLabel,
   getDeliveryMethodLabel,
   formatDuration,
   getMemberPrice,
 } from '@/lib/sanity/queries/sessions'
-import { getBookingSettings } from '@/lib/sanity/queries/bookingSettings'
-import { SessionBookingSection } from '@/components/sesiones/SessionBookingSection'
 
 interface SessionPageProps {
   params: Promise<{ slug: string }>

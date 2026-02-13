@@ -3,7 +3,6 @@
  * Uses @react-pdf/renderer to generate PDF certificates
  */
 
-import React from 'react'
 import {
   Document,
   Page,
@@ -14,6 +13,8 @@ import {
   Font,
 } from '@react-pdf/renderer'
 import QRCode from 'qrcode'
+import React from 'react'
+
 import type { CertificateData } from './certificates'
 
 // Register fonts (using system fonts for now)

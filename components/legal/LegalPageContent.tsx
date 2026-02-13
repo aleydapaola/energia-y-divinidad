@@ -1,4 +1,5 @@
 import { Calendar } from 'lucide-react'
+
 import PortableTextRenderer from '@/components/blog/PortableTextRenderer'
 
 interface LegalPageContentProps {

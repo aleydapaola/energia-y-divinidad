@@ -1,13 +1,15 @@
-import Link from 'next/link'
-import Image from 'next/image'
 import { Clock, MapPin, Video, Phone, Calendar } from 'lucide-react'
-import type { Session } from '@/lib/sanity/queries/sessions'
+import Image from 'next/image'
+import Link from 'next/link'
+
 import {
   getSessionTypeLabel,
   getDeliveryMethodLabel,
   formatDuration,
   getMemberPrice,
 } from '@/lib/sanity/queries/sessions'
+
+import type { Session } from '@/lib/sanity/queries/sessions'
 
 interface SessionCardProps {
   session: Session

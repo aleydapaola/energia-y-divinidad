@@ -5,9 +5,10 @@
  * Source of truth for seat counting is Prisma (SeatAllocation table), not Sanity.
  */
 
+import { Prisma, SeatAllocationStatus, WaitlistStatus } from '@prisma/client'
+
 import { prisma } from '@/lib/prisma'
 import { getEventById } from '@/lib/sanity/queries/events'
-import { Prisma, SeatAllocationStatus, WaitlistStatus } from '@prisma/client'
 
 // Configuration constants
 const WAITLIST_OFFER_HOURS = parseInt(process.env.WAITLIST_OFFER_HOURS || '24', 10)

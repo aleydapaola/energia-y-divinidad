@@ -1,13 +1,14 @@
 'use client'
 
-import { Fragment, useEffect, useRef } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { X, ShoppingCart, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+import { Fragment, useEffect, useRef } from 'react'
+
 import { useCartStore, useCartSummary, formatPrice } from '@/lib/stores/cart-store'
 import { urlFor } from '@/sanity/lib/image'
-import { useSession } from 'next-auth/react'
 
 export function CartDrawer() {
   const { data: session } = useSession()

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
 import { Loader2, CreditCard, Lock, AlertCircle } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface WompiCheckoutProps {
   // Datos del pago

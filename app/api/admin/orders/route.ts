@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
@@ -33,14 +34,14 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {}
 
-    if (status) where.paymentStatus = status
-    if (type) where.orderType = type
-    if (currency) where.currency = currency
+    if (status) {where.paymentStatus = status}
+    if (type) {where.orderType = type}
+    if (currency) {where.currency = currency}
 
     if (from || to) {
       where.createdAt = {}
-      if (from) where.createdAt.gte = new Date(from)
-      if (to) where.createdAt.lte = new Date(to)
+      if (from) {where.createdAt.gte = new Date(from)}
+      if (to) {where.createdAt.lte = new Date(to)}
     }
 
     if (q) {

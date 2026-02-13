@@ -1,7 +1,8 @@
-import { prisma } from "@/lib/prisma"
-import { notFound } from "next/navigation"
-import Link from "next/link"
 import { ArrowLeft, User, CreditCard, Calendar, Clock, Shield } from "lucide-react"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+
+import { prisma } from "@/lib/prisma"
 
 interface SubscriptionDetailPageProps {
   params: Promise<{ id: string }>

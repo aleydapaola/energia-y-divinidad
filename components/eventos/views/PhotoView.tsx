@@ -1,10 +1,13 @@
 'use client'
 
+import { Calendar, MapPin, Video, Star } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Calendar, MapPin, Video, Star } from 'lucide-react'
-import type { Event } from '@/lib/sanity/queries/events'
+
 import { formatPrice, isEarlyBirdActive, isEventPast } from '@/lib/sanity/queries/events'
+
+import type { Event } from '@/lib/sanity/queries/events'
+
 
 interface PhotoViewProps {
   events: Event[]

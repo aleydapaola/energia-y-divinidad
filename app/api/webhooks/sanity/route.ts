@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
+
+import { NextRequest, NextResponse } from 'next/server'
+
 import { prisma } from '@/lib/prisma'
 import { revalidateSanityDocument } from '@/lib/sanity/revalidate'
 
@@ -15,7 +17,7 @@ interface SanityWebhookPayload {
  */
 function verifySignature(body: string, signature: string | null): boolean {
   const secret = process.env.SANITY_WEBHOOK_SECRET
-  if (!secret || !signature) return false
+  if (!secret || !signature) {return false}
 
   const hmac = createHmac('sha256', secret)
   hmac.update(body)

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { useSession } from "next-auth/react"
 import { User, Mail, Lock, Loader2, Check, AlertCircle } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { useState } from "react"
 
 export default function ConfiguracionPage() {
   const { data: session, update } = useSession()

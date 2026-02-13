@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+
+import { processApprovedPayment } from '@/lib/payment-processor'
 import { prisma } from '@/lib/prisma'
 import { getWompiApiUrl, WOMPI_CONFIG } from '@/lib/wompi'
-import { processApprovedPayment } from '@/lib/payment-processor'
 
 /**
  * GET /api/payments/wompi/verify
@@ -119,6 +120,7 @@ export async function GET(request: NextRequest) {
         currency: updatedOrder.currency,
         paymentStatus: newPaymentStatus,
         paymentMethod: updatedOrder.paymentMethod,
+        metadata: updatedOrder.metadata,
       },
     })
   } catch (error: any) {

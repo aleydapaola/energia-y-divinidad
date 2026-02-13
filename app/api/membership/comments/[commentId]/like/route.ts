@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
-import { toggleCommentLike } from '@/lib/membership-posts'
 import { hasActiveMembership } from '@/lib/membership-access'
+import { toggleCommentLike } from '@/lib/membership-posts'
 
 /**
  * POST /api/membership/comments/[commentId]/like

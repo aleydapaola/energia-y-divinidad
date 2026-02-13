@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
-import { getCertificateData } from '@/lib/certificates'
 import { generateCertificatePdfBuffer } from '@/lib/certificate-pdf'
+import { getCertificateData } from '@/lib/certificates'
 
 /**
  * GET /api/certificates/[certificateId]/download

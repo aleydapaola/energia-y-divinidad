@@ -112,6 +112,7 @@ enum PaymentMethod {
   WOMPI_NEQUI
   WOMPI_CARD
   WOMPI_PSE
+  WOMPI_MANUAL // Link de pago genérico (pago puntual, no recurrente)
 
   // PayPal (Internacional y Colombia - USD y COP)
   PAYPAL_DIRECT

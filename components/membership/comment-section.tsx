@@ -1,9 +1,10 @@
 'use client'
 
+import { Loader2, MessageCircle } from 'lucide-react'
 import { useState, useEffect } from 'react'
+
 import { CommentForm } from './comment-form'
 import { CommentList } from './comment-list'
-import { Loader2, MessageCircle } from 'lucide-react'
 
 interface Comment {
   id: string

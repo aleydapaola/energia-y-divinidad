@@ -1,8 +1,10 @@
-import { Metadata } from 'next'
-import { verifyCertificate } from '@/lib/certificates'
 import { CheckCircle, XCircle, AlertTriangle, Award, Calendar, Clock } from 'lucide-react'
-import Link from 'next/link'
+import { Metadata } from 'next'
 import Image from 'next/image'
+import Link from 'next/link'
+
+import { verifyCertificate } from '@/lib/certificates'
+
 
 interface VerifyPageProps {
   params: Promise<{

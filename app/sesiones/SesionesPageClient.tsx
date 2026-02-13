@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Calendar, Clock, Video, Heart, Sparkles, MessageCircle, Ticket, CheckCircle, Loader2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
 import { BookingCalendar } from '@/components/booking/booking-calendar'
-import { PaymentMethodSelector, type PaymentRegion } from '@/components/pago/PaymentMethodSelector'
-import type { PaymentMethodType } from '@/lib/membership-access'
+
 import type { Holiday, BlockedDateRange, Timezone } from '@/lib/sanity/queries/bookingSettings'
 
 interface SessionForCalendar {
@@ -66,9 +66,6 @@ export function SesionesPageClient({
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [paymentType, setPaymentType] = useState<'single' | 'pack'>('single')
-  const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
@@ -87,112 +84,19 @@ export function SesionesPageClient({
   }
 
   const handlePaymentClick = (type: 'single' | 'pack') => {
-    setPaymentType(type)
-    setShowPaymentModal(true)
-    setError(null)
-  }
+    // Build checkout URL with booking data
+    const params = new URLSearchParams()
+    params.set('type', type)
 
-  const handlePaymentMethodSelect = async (
-    method: PaymentMethodType,
-    region: PaymentRegion,
-    phoneNumber?: string,
-    guestEmail?: string,
-    guestName?: string
-  ) => {
-    setIsProcessing(true)
-    setError(null)
-
-    try {
-      const currency = region === 'colombia' ? 'COP' : 'USD'
-
-      // Determinar endpoint según método de pago
-      let endpoint: string
-      let body: any
-
-      // Construir fecha programada completa (fecha + hora)
-      let scheduledAt: string | undefined
-      if (paymentType === 'single' && selectedDate && selectedTime) {
-        const [hours, minutes] = selectedTime.split(':').map(Number)
-        const scheduledDateTime = new Date(selectedDate)
-        scheduledDateTime.setHours(hours, minutes, 0, 0)
-        scheduledAt = scheduledDateTime.toISOString()
-      }
-
-      // DEBUG: Log en cliente
-      console.log('[CLIENT] Payment request:', {
-        paymentType,
-        selectedDate: selectedDate?.toISOString(),
-        selectedTime,
-        scheduledAt,
-        hasScheduledAt: !!scheduledAt,
-      })
-
-      if (method === 'wompi_nequi' || method === 'wompi_card') {
-        // Pago via Wompi (Colombia)
-        endpoint = '/api/checkout/wompi'
-        body = {
-          productType: paymentType === 'pack' ? 'pack' : 'session',
-          productId: 'session-canalizacion',
-          productName: paymentType === 'pack' ? 'Pack de 8 Sesiones' : 'Sesión de Canalización',
-          amount: region === 'colombia' ? sessionDetails.price : sessionDetails.priceUSD,
-          paymentMethod: method === 'wompi_nequi' ? 'nequi' : 'card',
-          phoneNumber,
-          guestEmail,
-          guestName,
-          sessionSlug: paymentType === 'single' ? session.slug.current : undefined,
-          scheduledAt,
-        }
-      } else if (method === 'breb_manual') {
-        // Pago manual via Bre-B (Colombia) - Transferencia con llave Bancolombia
-        endpoint = '/api/checkout/breb'
-        body = {
-          productType: paymentType === 'pack' ? 'pack' : 'session',
-          productId: 'session-canalizacion',
-          productName: paymentType === 'pack' ? 'Pack de 8 Sesiones' : 'Sesión de Canalización',
-          amount: sessionDetails.price, // Bre-B solo COP
-          guestEmail,
-          guestName,
-          scheduledAt,
-        }
-      } else {
-        // Pago via PayPal (Internacional)
-        endpoint = '/api/checkout/paypal'
-        body = {
-          productType: paymentType === 'pack' ? 'pack' : 'session',
-          productId: 'session-canalizacion',
-          productName: paymentType === 'pack' ? 'Pack de 8 Sesiones' : 'Sesión de Canalización',
-          amount: region === 'colombia' ? sessionDetails.price : sessionDetails.priceUSD,
-          currency,
-          guestEmail,
-          guestName,
-          sessionSlug: paymentType === 'single' ? session.slug.current : undefined,
-          scheduledAt,
-        }
-      }
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al procesar el pago')
-      }
-
-      // Redirect según respuesta
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl
-      } else if (data.redirectUrl) {
-        router.push(data.redirectUrl)
-      }
-    } catch (err: any) {
-      setError(err.message || 'Error al procesar el pago')
-      setIsProcessing(false)
+    if (type === 'single' && selectedDate && selectedTime) {
+      params.set('date', selectedDate.toISOString())
+      params.set('time', selectedTime)
     }
+
+    // Redirect to dedicated checkout page
+    router.push(`/checkout/sesion?${params.toString()}`)
   }
+
 
   // Validate pack code
   const handleValidatePackCode = async () => {
@@ -614,23 +518,6 @@ export function SesionesPageClient({
         </section>
       </div>
 
-      {/* Payment Method Modal */}
-      {showPaymentModal && (
-        <PaymentMethodSelector
-          onMethodSelect={handlePaymentMethodSelect}
-          onCancel={() => {
-            setShowPaymentModal(false)
-            setError(null)
-          }}
-          isLoading={isProcessing}
-          pricesCOP={PRICES[paymentType].COP}
-          pricesUSD={PRICES[paymentType].USD}
-          productName={paymentType === 'single'
-            ? `Sesion Individual${selectedDate ? ` - ${selectedDate.toLocaleDateString('es-CO')} ${selectedTime}` : ''}`
-            : 'Pack de 8 Sesiones'
-          }
-        />
-      )}
 
       {/* Pack Code Redemption Modal */}
       {showPackCodeModal && (

@@ -1,12 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { ArrowLeft, Calendar, MapPin, Video, Users, Minus, Plus, Loader2, CreditCard, Key } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Calendar, MapPin, Video, Users, Minus, Plus, Loader2, CreditCard, Key } from 'lucide-react'
-import type { PaymentMethodType } from '@/lib/membership-access'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { useState, useEffect } from 'react'
+
+import { CheckoutHeader } from '@/components/checkout/CheckoutHeader'
+
+import type { PaymentMethodType } from '@/lib/membership-access'
 
 interface Event {
   _id: string
@@ -47,7 +50,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
   const [customerEmail, setCustomerEmail] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [country, setCountry] = useState<'colombia' | 'international'>('colombia')
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('wompi_nequi')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('wompi_manual')
   const [notes, setNotes] = useState('')
   const [acceptTerms, setAcceptTerms] = useState(false)
 
@@ -58,7 +61,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
       try {
         const resolvedParams = await params
         const response = await fetch(`/api/sanity/events/${resolvedParams.slug}`)
-        if (!response.ok) throw new Error('Evento no encontrado')
+        if (!response.ok) {throw new Error('Evento no encontrado')}
         const data = await response.json()
         setEvent(data)
 
@@ -81,8 +84,8 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
     new Date() <= new Date(event.earlyBirdDeadline)
 
   const getUnitPrice = () => {
-    if (!event) return 0
-    if (country === 'international') return event.priceUSD || 0
+    if (!event) {return 0}
+    if (country === 'international') {return event.priceUSD || 0}
     return isEarlyBird ? event.earlyBirdPrice! : (event.price || 0)
   }
 
@@ -110,7 +113,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!event || !acceptTerms) return
+    if (!event || !acceptTerms) {return}
 
     setSubmitting(true)
     setError(null)
@@ -123,21 +126,19 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
       let endpoint: string
       let body: Record<string, unknown>
 
-      if (paymentMethod === 'wompi_nequi' || paymentMethod === 'wompi_card') {
-        // Pago via Wompi (Colombia)
-        endpoint = '/api/checkout/wompi'
+      if (paymentMethod === 'wompi_manual') {
+        // Pago manual via Wompi - Link de pago genérico
+        endpoint = '/api/checkout/wompi-manual'
         body = {
           productType: 'event',
           productId: event._id,
           productName: `${event.title} (${seats} cupo${seats > 1 ? 's' : ''})`,
           amount,
-          paymentMethod: paymentMethod === 'wompi_nequi' ? 'nequi' : 'card',
-          customerName,
-          customerEmail,
-          customerPhone,
+          currency,
           guestEmail: customerEmail,
           guestName: customerName,
-          scheduledAt: event.eventDate, // Fecha del evento para el dashboard
+          guestPhone: customerPhone,
+          scheduledAt: event.eventDate,
           seats,
           notes,
         }
@@ -198,24 +199,30 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#8A4BAF]" />
+      <div className="min-h-screen bg-[#f8f0f5]">
+        <CheckoutHeader />
+        <div className="flex items-center justify-center py-32">
+          <Loader2 className="w-8 h-8 animate-spin text-[#8A4BAF]" />
+        </div>
       </div>
     )
   }
 
   if (error && !event) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <p className="text-red-500 mb-4">{error}</p>
-        <Link href="/eventos" className="text-[#4944a4] hover:underline">
-          Volver a eventos
-        </Link>
+      <div className="min-h-screen bg-[#f8f0f5]">
+        <CheckoutHeader />
+        <div className="flex flex-col items-center justify-center py-32 p-4">
+          <p className="text-red-500 mb-4">{error}</p>
+          <Link href="/eventos" className="text-[#4944a4] hover:underline">
+            Volver a eventos
+          </Link>
+        </div>
       </div>
     )
   }
 
-  if (!event) return null
+  if (!event) {return null}
 
   const maxSeats = Math.min(
     event.maxPerBooking || 1,
@@ -223,16 +230,19 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
   )
 
   return (
-    <div className="min-h-screen bg-[#f8f0f5] py-8">
-      <div className="container mx-auto px-4 max-w-4xl">
-        {/* Back button */}
-        <Link
-          href={`/eventos/${event.slug.current}`}
-          className="inline-flex items-center gap-2 text-[#8A4BAF] hover:text-[#654177] mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Volver al evento
-        </Link>
+    <div className="min-h-screen bg-[#f8f0f5]">
+      <CheckoutHeader />
+
+      <main className="py-8 px-4">
+        <div className="container mx-auto max-w-5xl">
+          {/* Back button */}
+          <Link
+            href={`/eventos/${event.slug.current}`}
+            className="inline-flex items-center gap-2 text-[#8A4BAF] hover:text-[#654177] mb-6 font-dm-sans text-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Volver al evento
+          </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Event Summary */}
@@ -397,7 +407,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                       checked={country === 'colombia'}
                       onChange={() => {
                         setCountry('colombia')
-                        setPaymentMethod('wompi_card')
+                        setPaymentMethod('wompi_manual')
                       }}
                       className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
                     />
@@ -411,7 +421,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                       checked={country === 'international'}
                       onChange={() => {
                         setCountry('international')
-                        setPaymentMethod('paypal_card')
+                        setPaymentMethod('wompi_manual')
                       }}
                       className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
                     />
@@ -428,22 +438,22 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                 <div className="space-y-3">
                   {country === 'colombia' ? (
                     <>
-                      {/* Card Colombia */}
+                      {/* Wompi Manual Colombia */}
                       <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                        paymentMethod === 'wompi_card' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
+                        paymentMethod === 'wompi_manual' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
                       }`}>
                         <input
                           type="radio"
                           name="paymentMethod"
-                          value="wompi_card"
-                          checked={paymentMethod === 'wompi_card'}
-                          onChange={() => setPaymentMethod('wompi_card')}
+                          value="wompi_manual"
+                          checked={paymentMethod === 'wompi_manual'}
+                          onChange={() => setPaymentMethod('wompi_manual')}
                           className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
                         />
                         <CreditCard className="w-5 h-5 text-[#8A4BAF]" />
                         <div>
-                          <span className="font-medium">Tarjeta de crédito/débito</span>
-                          <p className="text-xs text-gray-500">Visa, Mastercard, American Express</p>
+                          <span className="font-medium">Wompi (Tarjeta, PSE, Nequi, etc.)</span>
+                          <p className="text-xs text-gray-500">Todos los métodos de pago colombianos</p>
                         </div>
                       </label>
 
@@ -487,6 +497,25 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                     </>
                   ) : (
                     <>
+                      {/* Wompi Manual International */}
+                      <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                        paymentMethod === 'wompi_manual' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value="wompi_manual"
+                          checked={paymentMethod === 'wompi_manual'}
+                          onChange={() => setPaymentMethod('wompi_manual')}
+                          className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
+                        />
+                        <CreditCard className="w-5 h-5 text-[#8A4BAF]" />
+                        <div>
+                          <span className="font-medium">Wompi (Tarjeta, PSE, Nequi, etc.)</span>
+                          <p className="text-xs text-gray-500">Pagos con tarjeta o desde Colombia</p>
+                        </div>
+                      </label>
+
                       {/* Card International via PayPal */}
                       <label className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                         paymentMethod === 'paypal_card' ? 'border-[#8A4BAF] bg-[#8A4BAF]/5' : 'border-gray-200 hover:border-[#8A4BAF]/30'
@@ -528,8 +557,8 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                   )}
                 </div>
                 <p className="mt-3 text-xs text-gray-500 text-center">
-                  {paymentMethod?.startsWith('wompi')
-                    ? 'Pago procesado de forma segura por Wompi (Bancolombia)'
+                  {paymentMethod === 'wompi_manual'
+                    ? 'Link de pago seguro de Wompi - Tarjeta, PSE, Nequi, Daviplata y más'
                     : paymentMethod === 'breb_manual'
                       ? 'Transferencia directa con Bre-B - Sin comisiones'
                       : 'Pago procesado de forma segura por PayPal'}
@@ -598,7 +627,8 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
             </form>
           </div>
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

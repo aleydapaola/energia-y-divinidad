@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { auth } from '@/lib/auth'
-import { deletePostComment } from '@/lib/membership-posts'
 import { hasActiveMembership } from '@/lib/membership-access'
+import { deletePostComment } from '@/lib/membership-posts'
 
 /**
  * DELETE /api/membership/comments/[commentId]

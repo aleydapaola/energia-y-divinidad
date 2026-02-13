@@ -1,5 +1,6 @@
 import { format, parse, addMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
+
 import { isDateAvailable } from './blocked-dates';
 
 export interface TimeSlot {

@@ -1,14 +1,17 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { ChevronLeft, Menu, X, Award, ClipboardList } from 'lucide-react'
-import { LessonVideo } from './LessonVideo'
-import { LessonResources } from './LessonResources'
-import { LessonList } from './LessonList'
-import { CourseProgressBar } from './CourseProgressBar'
-import type { PortableTextBlock } from '@portabletext/types'
 import { PortableText } from '@portabletext/react'
+import { ChevronLeft, Menu, X, Award, ClipboardList } from 'lucide-react'
+import Link from 'next/link'
+import { useState } from 'react'
+
+import { CourseProgressBar } from './CourseProgressBar'
+import { LessonList } from './LessonList'
+import { LessonResources } from './LessonResources'
+import { LessonVideo } from './LessonVideo'
+
+import type { PortableTextBlock } from '@portabletext/types'
+
 
 interface Resource {
   _key: string
@@ -301,7 +304,7 @@ export function CoursePlayer({
                   </a>
                 ) : (
                   <a
-                    href={`/mi-cuenta/cursos`}
+                    href="/mi-cuenta/cursos"
                     className="flex items-center gap-2 bg-[#8A4BAF] hover:bg-[#7a3f9e] text-white font-dm-sans font-semibold py-2 px-4 rounded-lg transition-colors"
                   >
                     Ver Certificado

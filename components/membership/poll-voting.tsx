@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { CheckCircle, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
 
 interface PollVotingProps {
   postId: string
@@ -54,7 +54,7 @@ export function PollVoting({ postId, postSlug, pollOptions, pollEndsAt }: PollVo
   }, [postSlug])
 
   const handleVote = async (optionIndex: number) => {
-    if (hasVoted || isClosed || voting) return
+    if (hasVoted || isClosed || voting) {return}
 
     setVoting(true)
     setError(null)

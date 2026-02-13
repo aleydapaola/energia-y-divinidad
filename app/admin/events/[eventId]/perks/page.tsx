@@ -1,12 +1,15 @@
-import { Metadata } from 'next'
-import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+import { Metadata } from 'next'
+import Link from 'next/link'
+import { notFound, redirect } from 'next/navigation'
+
 import { auth } from '@/lib/auth'
+import { getEventPerkStats, getEventAllocations } from '@/lib/events/perks'
 import { prisma } from '@/lib/prisma'
 import { getEventById } from '@/lib/sanity/queries/events'
-import { getEventPerkStats, getEventAllocations } from '@/lib/events/perks'
+
 import { AdminPerksManager } from './AdminPerksManager'
+
 import type { EventPerk } from '@/types/events'
 
 export const metadata: Metadata = {

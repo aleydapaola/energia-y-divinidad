@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+
 import { AdminBookingsList } from "./AdminBookingsList"
 
 export default async function AdminBookingsPage() {

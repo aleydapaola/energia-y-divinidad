@@ -1,7 +1,5 @@
 'use client'
 
-import { useState, Fragment } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   Search,
   Filter,
@@ -12,6 +10,8 @@ import {
   User,
   Ticket,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useState, Fragment } from 'react'
 
 interface EventOrderData {
   id: string
@@ -101,7 +101,7 @@ export function AdminEventsList({ initialOrders }: AdminEventsListProps) {
   }
 
   const getPaymentMethodLabel = (method: string | null) => {
-    if (!method) return 'N/A'
+    if (!method) {return 'N/A'}
     const labels: Record<string, string> = {
       WOMPI_CARD: 'Tarjeta (Wompi)',
       WOMPI_NEQUI: 'Nequi',

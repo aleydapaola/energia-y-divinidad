@@ -1,9 +1,10 @@
 'use client'
 
 import { ShoppingCart, Play, Users, Shield, Clock } from 'lucide-react'
+import Link from 'next/link'
+
 import { AddToCartButton } from '@/components/cart/AddToCartButton'
 import { formatPrice } from '@/lib/stores/cart-store'
-import Link from 'next/link'
 
 interface CourseSidebarProps {
   course: {

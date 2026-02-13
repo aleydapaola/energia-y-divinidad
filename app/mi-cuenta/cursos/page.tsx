@@ -1,11 +1,13 @@
+import { GraduationCap } from 'lucide-react'
 import { Metadata } from 'next'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+
 import { auth } from '@/lib/auth'
 import { getUserCourses } from '@/lib/course-access'
 import { sanityFetch } from '@/sanity/lib/fetch'
 import { COURSES_BY_IDS_QUERY } from '@/sanity/lib/queries'
-import { GraduationCap } from 'lucide-react'
+
 import { MisCursosClient } from './MisCursosClient'
 
 export const metadata: Metadata = {
