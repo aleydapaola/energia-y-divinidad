@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Package manager
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Generated files
+*.min.js
+*.min.css
+public/
+
+# Sanity (tiene su propia configuración)
+sanity/
+
+# Otros
+.vercel/
+.env*
+*.md

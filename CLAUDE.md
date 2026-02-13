@@ -1,5 +1,73 @@
 # Energía y Divinidad - Contexto del Proyecto
 
+## Convenciones de Código
+
+### Herramientas de Calidad
+
+El proyecto usa las siguientes herramientas para garantizar código consistente:
+
+- **ESLint** - Análisis estático con reglas estrictas para Next.js/React/TypeScript
+- **Prettier** - Formato automático del código
+- **Husky** - Git hooks para validación pre-commit
+- **lint-staged** - Solo valida archivos modificados en cada commit
+- **TypeScript** - Tipado estricto habilitado
+
+### Scripts Disponibles
+
+```bash
+npm run lint          # Ejecutar ESLint
+npm run lint:fix      # Ejecutar ESLint y corregir automáticamente
+npm run format        # Formatear todo el código con Prettier
+npm run format:check  # Verificar formato sin modificar
+npm run typecheck     # Verificar tipos TypeScript
+npm run validate      # Ejecutar todas las validaciones
+```
+
+### Reglas de Código
+
+#### TypeScript
+- **Usar tipos explícitos** en funciones y props de componentes
+- **Evitar `any`** - usar `unknown` o tipos específicos
+- **Variables no usadas** deben prefijarse con `_` (ej: `_unused`)
+
+#### React/Next.js
+- **Componentes auto-cerrados** cuando no tienen hijos: `<Component />`
+- **Imports ordenados** alfabéticamente por grupos (builtin, external, internal, relative)
+- **No usar `console.log`** excepto en API routes - usar `console.warn` o `console.error`
+
+#### Formato (Prettier)
+- **Punto y coma**: Siempre (`semi: true`)
+- **Comillas**: Dobles (`"`)
+- **Indentación**: 2 espacios
+- **Ancho máximo**: 100 caracteres por línea
+- **Coma final**: ES5 style
+
+#### Commits
+- Todo commit pasa por lint-staged automáticamente
+- Si el lint falla, el commit se bloquea
+- Corregir errores antes de commitear
+
+### Estructura de Imports
+
+Los imports deben seguir este orden (aplicado automáticamente por ESLint):
+
+```typescript
+// 1. Módulos built-in de Node
+import { readFile } from "fs";
+
+// 2. Paquetes externos
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+// 3. Módulos internos (alias @/)
+import { prisma } from "@/lib/prisma";
+import { Button } from "@/components/ui/button";
+
+// 4. Imports relativos
+import { helper } from "./utils";
+import type { Props } from "./types";
+```
+
 ## Reglas de Layout
 
 - **Todas las páginas deben incluir Header y Footer**, excepto las páginas de pago (`/checkout`, `/pago`).
@@ -78,30 +146,29 @@ El violeta (`#8A4BAF`) se reserva para:
 
 | Pasarela | Monedas | Métodos | Comisión | Estado |
 |----------|---------|---------|----------|--------|
-| **Wompi** | Solo COP | Tarjetas colombianas | 1.99% + IVA | ✅ Activo |
-| **PayPal** | COP, USD | PayPal, Tarjetas internacionales | ~3.4% + comisión fija | ✅ Activo |
+| **Wompi Manual** | COP | Link de pago con todos los métodos (Tarjeta, PSE, Nequi, Daviplata, etc.) | ~2.5% + IVA | ✅ Activo (Principal) |
+| **Wompi API** | Solo COP | Tarjetas vía checkout automático | 1.99% + IVA | ⏸️ Deshabilitado temporalmente |
+| **PayPal** | COP/USD | PayPal directo, Tarjetas internacionales | ~3.4% + comisión fija | ✅ Activo |
 | **Bre-B Manual** | Solo COP | Transferencia con llave Bancolombia | **0% (sin comisión)** | ✅ Activo |
 | **Nequi API** | Solo COP | Nequi (Push) | 1.5% + IVA | ⏳ Pendiente credenciales |
 
 ### Métodos por Región
 
 #### Colombia (COP)
-- **Tarjeta de crédito** → Wompi
+- **Wompi (Tarjeta, PSE, Nequi, etc.)** → Link de pago manual con confirmación admin
 - **Bre-B (Llave Bancolombia)** → Pago manual con confirmación admin
 - **PayPal** → PayPal Directo
 
-> **Nota**: Nequi no está disponible actualmente. Se habilitará cuando tengamos las credenciales de Nequi API.
+> **Nota**: El checkout automático de Wompi (API) está temporalmente deshabilitado. Se usa el sistema de links de pago genéricos del dashboard de Wompi que permite todos los métodos de pago colombianos.
 
-#### Internacional (USD)
-
-#### Internacional (USD)
-- **Tarjeta de crédito** → PayPal
-- **PayPal** → PayPal Directo
+#### Internacional
+- **Wompi (Tarjeta, PSE, Nequi, etc.)** → Para pagos desde Colombia o con tarjetas colombianas
+- **PayPal / Tarjeta** → PayPal Directo (cobro automático)
 
 ### Restricciones Técnicas
 
-- Wompi **solo opera en COP**
-- PayPal opera en **COP y USD**
+- Wompi **solo opera en COP** pero acepta tarjetas internacionales (Visa, Mastercard, Amex de cualquier país)
+- PayPal opera **solo en USD** para esta integración
 - Next.js **no procesa pagos**, solo orquesta, redirige y valida vía webhooks
 - **NO exponer API keys** en el cliente
 - **NO confiar solo en redirecciones**, usar webhooks para validar pagos
@@ -117,9 +184,12 @@ Esta estrategia aplica a TODOS los productos de pago:
 
 ### Flujo de Checkout
 
-1. Detectar país del usuario (por IP o selección manual)
-2. Mostrar solo los métodos de pago disponibles para su región
-3. Según método seleccionado, orquestar hacia Wompi (COP) o PayPal (USD/COP)
+1. Usuario selecciona su región (Colombia o Internacional)
+2. Mostrar métodos de pago disponibles:
+   - Tarjeta de crédito → siempre Wompi (cobro en COP)
+   - PayPal → siempre PayPal (cobro en USD)
+   - Bre-B → solo Colombia (transferencia manual en COP)
+3. Según método seleccionado, orquestar hacia Wompi o PayPal
 4. Validar pago mediante webhook antes de confirmar
 5. Redirigir a página de confirmación
 
@@ -133,7 +203,8 @@ Esta estrategia aplica a TODOS los productos de pago:
 | `lib/membership-access.ts` | Detección de región y métodos disponibles |
 | `components/pago/PaymentMethodSelector.tsx` | Modal de selección de método de pago |
 | `components/pago/PayPalCheckout.tsx` | Componente de checkout PayPal |
-| `app/api/checkout/wompi/route.ts` | API para crear pagos Wompi |
+| `app/api/checkout/wompi/route.ts` | API para crear pagos Wompi automático (deshabilitado) |
+| `app/api/checkout/wompi-manual/route.ts` | API para crear órdenes Wompi manual |
 | `app/api/checkout/paypal/route.ts` | API para crear órdenes PayPal |
 | `app/api/checkout/paypal/capture/route.ts` | API para capturar pagos PayPal |
 | `app/api/webhooks/wompi/route.ts` | Webhook de Wompi |
@@ -141,8 +212,10 @@ Esta estrategia aplica a TODOS los productos de pago:
 | `app/pago/confirmacion/page.tsx` | Página de confirmación de pago |
 | `app/pago/nequi-pending/page.tsx` | Página de espera para Nequi |
 | `app/pago/breb-pending/page.tsx` | Página de instrucciones Bre-B |
+| `app/pago/wompi-pending/page.tsx` | Página de instrucciones Wompi manual |
 | `app/api/checkout/breb/route.ts` | API para crear órdenes Bre-B |
 | `components/pago/BrebPaymentInstructions.tsx` | Instrucciones de pago Bre-B |
+| `components/pago/WompiManualPaymentInstructions.tsx` | Instrucciones de pago Wompi manual |
 | `app/api/admin/orders/[id]/confirm-payment/route.ts` | API para confirmar pagos manuales |
 
 ### Variables de Entorno Requeridas
@@ -165,6 +238,17 @@ WOMPI_PRIVATE_KEY=
 WOMPI_EVENTS_SECRET=
 WOMPI_INTEGRITY_SECRET=
 WOMPI_ENVIRONMENT=sandbox
+
+# Wompi Manual - Links de pago genéricos desde dashboard
+# Configurar enlaces por monto específico o por tipo de producto
+# Formato: WOMPI_PAYMENT_LINK_{MONTO} o WOMPI_PAYMENT_LINK_{TIPO}
+WOMPI_PAYMENT_LINK_DEFAULT=https://checkout.wompi.co/l/XXXXX  # Link por defecto
+WOMPI_PAYMENT_LINK_SESSION=https://checkout.wompi.co/l/XXXXX  # Para sesiones
+WOMPI_PAYMENT_LINK_MEMBERSHIP=https://checkout.wompi.co/l/XXXXX  # Para membresías
+WOMPI_PAYMENT_LINK_EVENT=https://checkout.wompi.co/l/XXXXX  # Para eventos
+WOMPI_PAYMENT_LINK_COURSE=https://checkout.wompi.co/l/XXXXX  # Para cursos
+# Links por monto específico (en COP, sin decimales)
+# WOMPI_PAYMENT_LINK_150000=https://checkout.wompi.co/l/XXXXX
 
 # PayPal (Internacional - PayPal, Tarjetas)
 NEXT_PUBLIC_PAYPAL_CLIENT_ID=
@@ -243,6 +327,58 @@ La confirmación:
 - Crea el entitlement/booking correspondiente
 - Registra la acción en AuditLog
 - Envía email de confirmación al cliente
+
+### Integración Wompi Manual (Colombia + Internacional)
+
+Sistema de pago usando links de pago genéricos creados desde el dashboard de Wompi. Permite todos los métodos de pago colombianos (tarjeta, PSE, Nequi, Daviplata, Bancolombia, etc.) sin necesidad de integración API específica por cada método.
+
+#### Características
+- **Todos los métodos de pago** - Tarjeta, PSE, Nequi, Daviplata, Bancolombia, etc.
+- **Pagos no recurrentes** - Sesiones, eventos, cursos (Para membresías, se requiere renovación manual)
+- **Confirmación manual** - El admin confirma cuando verifica el pago
+- **Colombia + Internacional** - Cualquier tarjeta internacional puede pagar
+
+#### Flujo de pago
+```
+1. Cliente selecciona "Wompi (Tarjeta, PSE, Nequi, etc.)" en checkout
+2. Sistema crea orden con estado PENDING y asigna número de orden
+3. Cliente ve instrucciones con link de pago y número de orden
+4. Cliente hace clic en el link y paga en Wompi con su método preferido
+5. Cliente incluye el número de orden en el campo de descripción/referencia
+6. Admin verifica pago en dashboard de Wompi con el número de orden
+7. Admin confirma pago desde panel de órdenes
+8. Sistema activa entitlement y envía confirmación por email
+```
+
+#### Variables de entorno requeridas
+```bash
+# Links de pago genéricos desde dashboard de Wompi
+# Crear en: https://comercios.wompi.co → Links de Pago → Crear link
+WOMPI_PAYMENT_LINK_DEFAULT=https://checkout.wompi.co/l/XXXXX
+WOMPI_PAYMENT_LINK_SESSION=https://checkout.wompi.co/l/XXXXX
+WOMPI_PAYMENT_LINK_MEMBERSHIP=https://checkout.wompi.co/l/XXXXX
+WOMPI_PAYMENT_LINK_EVENT=https://checkout.wompi.co/l/XXXXX
+WOMPI_PAYMENT_LINK_COURSE=https://checkout.wompi.co/l/XXXXX
+```
+
+#### Cómo crear links de pago en Wompi
+1. Ir a https://comercios.wompi.co
+2. Navegar a **Links de Pago** → **Crear link**
+3. Configurar:
+   - **Nombre**: Descriptivo (ej: "Sesión de Canalización")
+   - **Monto**: Dejar vacío para monto variable o fijo para montos específicos
+   - **Descripción**: Opcional
+   - **Permitir múltiples pagos**: Sí (para links reutilizables)
+4. Copiar la URL del link y agregar a las variables de entorno
+
+#### Confirmación de pagos (Admin)
+Los pagos Wompi manual se confirman igual que Bre-B:
+1. `/admin/orders` → Buscar orden pendiente con método "Wompi Manual"
+2. Verificar en dashboard de Wompi que existe un pago con el número de orden
+3. Click en "Ver detalle" de la orden
+4. Click en botón "Confirmar Pago Manual"
+5. Ingresar referencia de transacción de Wompi (opcional)
+6. Confirmar
 
 ### Integración Nequi API (Pendiente)
 
