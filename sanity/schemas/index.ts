@@ -24,6 +24,7 @@ import courseResource from './courseResource'
 import quiz from './quiz'
 import certificate from './certificate'
 import discountCode from './discountCode'
+import testimonial from './testimonial'
 
 export const schemaTypes = [
   // Objetos reutilizables (deben ir primero)
@@ -61,4 +62,7 @@ export const schemaTypes = [
 
   // Páginas Estáticas
   page,
+
+  // Testimonios
+  testimonial,
 ]
