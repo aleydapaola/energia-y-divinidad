@@ -406,15 +406,10 @@ export default async function HomePage() {
             <div className="text-center mt-10 sm:mt-12">
               <Link
                 href="/testimonios"
-                className="inline-flex items-center gap-2 font-dm-sans text-[#8A4BAF] hover:text-[#654177] font-medium text-base transition-colors group"
+                className="inline-flex items-center justify-center gap-2 px-8 sm:px-10 py-4 bg-[#4944a4] hover:bg-[#3d3a8a] text-white rounded-full transition-all transform hover:scale-105 font-dm-sans text-base sm:text-lg font-semibold shadow-xl"
               >
                 Ver todos los testimonios
-                <svg
-                  className="w-4 h-4 transition-transform group-hover:translate-x-1"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"

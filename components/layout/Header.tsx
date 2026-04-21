@@ -24,6 +24,7 @@ export function Header({ session }: HeaderProps) {
     { label: "Membresía", href: "/membresia" },
     { label: "Blog", href: "/blog" },
     { label: "Sobre mí", href: "/sobre-mi" },
+    { label: "Testimonios", href: "/testimonios" },
     { label: "Contacto", href: "/contacto" },
   ];
 
