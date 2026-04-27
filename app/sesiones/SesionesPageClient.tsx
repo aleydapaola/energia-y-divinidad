@@ -1,58 +1,68 @@
-"use client"
+"use client";
 
-import { Calendar, Clock, Video, Heart, Sparkles, MessageCircle, Ticket, CheckCircle, Loader2 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import {
+  Calendar,
+  Clock,
+  Video,
+  Heart,
+  Sparkles,
+  MessageCircle,
+  Ticket,
+  CheckCircle,
+  Loader2,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-import { BookingCalendar } from '@/components/booking/booking-calendar'
+import { BookingCalendar } from "@/components/booking/booking-calendar";
 
-import type { Holiday, BlockedDateRange, Timezone } from '@/lib/sanity/queries/bookingSettings'
+import type { Holiday, BlockedDateRange, Timezone } from "@/lib/sanity/queries/bookingSettings";
 
 interface SessionForCalendar {
-  _id: string
-  title: string
-  slug: { current: string }
-  duration: number
-  price: number
-  priceUSD: number
-  maxAdvanceBooking: number
+  _id: string;
+  title: string;
+  slug: { current: string };
+  duration: number;
+  price: number;
+  priceUSD: number;
+  maxAdvanceBooking: number;
   availabilitySchedule?: {
-    monday?: Array<{ start: string; end: string }>
-    tuesday?: Array<{ start: string; end: string }>
-    wednesday?: Array<{ start: string; end: string }>
-    thursday?: Array<{ start: string; end: string }>
-    friday?: Array<{ start: string; end: string }>
-    saturday?: Array<{ start: string; end: string }>
-    sunday?: Array<{ start: string; end: string }>
-  }
+    monday?: Array<{ start: string; end: string }>;
+    tuesday?: Array<{ start: string; end: string }>;
+    wednesday?: Array<{ start: string; end: string }>;
+    thursday?: Array<{ start: string; end: string }>;
+    friday?: Array<{ start: string; end: string }>;
+    saturday?: Array<{ start: string; end: string }>;
+    sunday?: Array<{ start: string; end: string }>;
+  };
 }
 
 interface SessionDetails {
-  duration: number
-  deliveryMethod: string
-  availableDays: string
-  price: number
-  priceUSD: number
-  priceEUR: number
-  formattedPrice: string
+  duration: number;
+  deliveryMethod: string;
+  availableDays: string;
+  price: number;
+  priceUSD: number;
+  priceEUR: number;
+  formattedPrice: string;
 }
 
 interface SesionesPageClientProps {
-  session: SessionForCalendar
-  sessionDetails: SessionDetails
-  holidays: Holiday[]
-  blockedDates: BlockedDateRange[]
-  timezones: Timezone[]
-  timezoneNote: string
+  session: SessionForCalendar;
+  sessionDetails: SessionDetails;
+  holidays: Holiday[];
+  blockedDates: BlockedDateRange[];
+  timezones: Timezone[];
+  timezoneNote: string;
 }
 
 interface ValidatedPack {
-  id: string
-  code: string
-  packName: string
-  sessionsTotal: number
-  sessionsUsed: number
-  sessionsRemaining: number
+  id: string;
+  code: string;
+  packName: string;
+  sessionsTotal: number;
+  sessionsUsed: number;
+  sessionsRemaining: number;
 }
 
 export function SesionesPageClient({
@@ -63,131 +73,114 @@ export function SesionesPageClient({
   timezones,
   timezoneNote,
 }: SesionesPageClientProps) {
-  const router = useRouter()
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [selectedTime, setSelectedTime] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const router = useRouter();
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Pack code redemption state
-  const [showPackCodeModal, setShowPackCodeModal] = useState(false)
-  const [packCode, setPackCode] = useState('')
-  const [validatedPack, setValidatedPack] = useState<ValidatedPack | null>(null)
-  const [isValidatingCode, setIsValidatingCode] = useState(false)
-  const [isRedeemingSession, setIsRedeemingSession] = useState(false)
+  const [showPackCodeModal, setShowPackCodeModal] = useState(false);
+  const [packCode, setPackCode] = useState("");
+  const [validatedPack, setValidatedPack] = useState<ValidatedPack | null>(null);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+  const [isRedeemingSession, setIsRedeemingSession] = useState(false);
 
-  // Precios del pack (precio especial con descuento, la 8va sesion es gratis)
-  // Tasas aprox: 1 USD ≈ 4,100 COP | 1 EUR ≈ 4,400 COP
-  const PRICES = {
-    single: { COP: sessionDetails.price, USD: sessionDetails.priceUSD, EUR: sessionDetails.priceEUR },
-    pack: { COP: 1850000, USD: 450, EUR: 420 }, // Pack de 8 sesiones: 7+1 gratis
-  }
-
-  const handlePaymentClick = (type: 'single' | 'pack') => {
+  const handlePaymentClick = (type: "single" | "pack") => {
     // Build checkout URL with booking data
-    const params = new URLSearchParams()
-    params.set('type', type)
+    const params = new URLSearchParams();
+    params.set("type", type);
 
-    if (type === 'single' && selectedDate && selectedTime) {
-      params.set('date', selectedDate.toISOString())
-      params.set('time', selectedTime)
+    if (type === "single" && selectedDate && selectedTime) {
+      params.set("date", selectedDate.toISOString());
+      params.set("time", selectedTime);
     }
 
     // Redirect to dedicated checkout page
-    router.push(`/checkout/sesion?${params.toString()}`)
-  }
-
+    router.push(`/checkout/sesion?${params.toString()}`);
+  };
 
   // Validate pack code
   const handleValidatePackCode = async () => {
     if (!packCode.trim()) {
-      setError('Por favor ingresa tu codigo de pack')
-      return
+      setError("Por favor ingresa tu codigo de pack");
+      return;
     }
 
-    setIsValidatingCode(true)
-    setError(null)
+    setIsValidatingCode(true);
+    setError(null);
 
     try {
-      const response = await fetch('/api/sessions/validate-pack-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/sessions/validate-pack-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: packCode }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Codigo invalido')
+        throw new Error(data.error || "Codigo invalido");
       }
 
       if (data.valid) {
-        setValidatedPack(data.packCode)
+        setValidatedPack(data.packCode);
       } else {
-        throw new Error(data.error || 'Codigo invalido')
+        throw new Error(data.error || "Codigo invalido");
       }
     } catch (err: any) {
-      setError(err.message || 'Error al validar el codigo')
-      setValidatedPack(null)
+      setError(err.message || "Error al validar el codigo");
+      setValidatedPack(null);
     } finally {
-      setIsValidatingCode(false)
+      setIsValidatingCode(false);
     }
-  }
+  };
 
   // Redeem session from pack
   const handleRedeemSession = async () => {
     if (!validatedPack || !selectedDate || !selectedTime) {
-      setError('Selecciona una fecha y hora para tu sesion')
-      return
+      setError("Selecciona una fecha y hora para tu sesion");
+      return;
     }
 
-    setIsRedeemingSession(true)
-    setError(null)
+    setIsRedeemingSession(true);
+    setError(null);
 
     try {
-      const response = await fetch('/api/sessions/redeem-pack', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/sessions/redeem-pack", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           packCodeId: validatedPack.id,
-          date: selectedDate.toISOString().split('T')[0],
+          date: selectedDate.toISOString().split("T")[0],
           time: selectedTime,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al reservar la sesion')
+        throw new Error(data.error || "Error al reservar la sesion");
       }
 
       // Success!
-      setSuccessMessage(data.message || 'Sesion reservada exitosamente')
-      setShowPackCodeModal(false)
-      setValidatedPack(null)
-      setPackCode('')
-      setSelectedDate(null)
-      setSelectedTime(null)
+      setSuccessMessage(data.message || "Sesion reservada exitosamente");
+      setShowPackCodeModal(false);
+      setValidatedPack(null);
+      setPackCode("");
+      setSelectedDate(null);
+      setSelectedTime(null);
 
       // Redirect to confirmation or dashboard after a delay
       setTimeout(() => {
-        router.push('/dashboard/sesiones')
-      }, 3000)
+        router.push("/dashboard/sesiones");
+      }, 3000);
     } catch (err: any) {
-      setError(err.message || 'Error al reservar la sesion')
+      setError(err.message || "Error al reservar la sesion");
     } finally {
-      setIsRedeemingSession(false)
+      setIsRedeemingSession(false);
     }
-  }
-
-  // Formatear precio para mostrar
-  const formatPriceCOP = (price: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'decimal',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price)
-  }
+  };
 
   return (
     <>
@@ -200,9 +193,8 @@ export function SesionesPageClient({
                 Sesiones Individuales
               </h1>
               <p className="font-dm-sans text-[#654177]/80 text-lg leading-relaxed max-w-2xl mx-auto">
-                Un espacio sagrado de acompanamiento personalizado donde juntas exploramos
-                lo que necesitas en este momento de tu camino. Cada sesion es unica y
-                se adapta a ti.
+                Un espacio sagrado de acompanamiento personalizado donde juntas exploramos lo que
+                necesitas en este momento de tu camino. Cada sesion es unica y se adapta a ti.
               </p>
             </div>
           </div>
@@ -212,14 +204,11 @@ export function SesionesPageClient({
         <section className="pb-16 sm:pb-20">
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 max-w-6xl mx-auto">
-
               {/* Left Column - Session Info */}
               <div className="space-y-6 sm:space-y-8">
                 {/* What to Expect */}
                 <div className="bg-white rounded-2xl p-6 md:p-8 shadow-lg border border-[#8A4BAF]/10">
-                  <h2 className="font-gazeta text-2xl text-[#8A4BAF] mb-6">
-                    Que puedes esperar?
-                  </h2>
+                  <h2 className="font-gazeta text-2xl text-[#8A4BAF] mb-6">Que puedes esperar?</h2>
 
                   <div className="space-y-4">
                     <div className="flex items-start gap-4">
@@ -227,7 +216,9 @@ export function SesionesPageClient({
                         <Heart className="w-5 h-5 text-[#8A4BAF]" />
                       </div>
                       <div>
-                        <h3 className="font-gazeta text-lg text-[#654177] mb-1">Escucha Profunda</h3>
+                        <h3 className="font-gazeta text-lg text-[#654177] mb-1">
+                          Escucha Profunda
+                        </h3>
                         <p className="font-dm-sans text-sm text-gray-600">
                           Un espacio seguro donde ser escuchada sin juicios, con presencia amorosa.
                         </p>
@@ -239,9 +230,12 @@ export function SesionesPageClient({
                         <Sparkles className="w-5 h-5 text-[#8A4BAF]" />
                       </div>
                       <div>
-                        <h3 className="font-gazeta text-lg text-[#654177] mb-1">Sanacion Energetica</h3>
+                        <h3 className="font-gazeta text-lg text-[#654177] mb-1">
+                          Sanacion Energetica
+                        </h3>
                         <p className="font-dm-sans text-sm text-gray-600">
-                          Trabajo con tu campo energetico para liberar bloqueos y restaurar el flujo vital.
+                          Trabajo con tu campo energetico para liberar bloqueos y restaurar el flujo
+                          vital.
                         </p>
                       </div>
                     </div>
@@ -251,7 +245,9 @@ export function SesionesPageClient({
                         <MessageCircle className="w-5 h-5 text-[#8A4BAF]" />
                       </div>
                       <div>
-                        <h3 className="font-gazeta text-lg text-[#654177] mb-1">Mensajes Canalizados</h3>
+                        <h3 className="font-gazeta text-lg text-[#654177] mb-1">
+                          Mensajes Canalizados
+                        </h3>
                         <p className="font-dm-sans text-sm text-gray-600">
                           Recibe guia y claridad a traves de mensajes de tus guias espirituales.
                         </p>
@@ -296,39 +292,12 @@ export function SesionesPageClient({
                       </span>
                     </div>
                     <p className="font-dm-sans text-sm text-gray-500">
-                      ~${sessionDetails.priceUSD} USD | ~{sessionDetails.priceEUR} EUR
+                      ${sessionDetails.priceUSD} USD | {sessionDetails.priceEUR} EUR
                     </p>
                   </div>
                 </div>
 
-                {/* Pack de 8 Sesiones */}
-                <div className="bg-gradient-to-br from-[#8A4BAF] to-[#654177] rounded-2xl p-6 md:p-8 shadow-lg text-white">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-dm-sans font-medium">
-                      7 + 1 GRATIS
-                    </span>
-                  </div>
-                  <h2 className="font-gazeta text-2xl mb-3">
-                    Pack de 8 Sesiones
-                  </h2>
-                  <p className="font-dm-sans text-white/80 text-sm mb-4">
-                    Para quienes desean un proceso de acompanamiento mas profundo y sostenido. Pagas 7 sesiones y recibes 8.
-                  </p>
-                  <div className="flex items-baseline gap-2 mb-2">
-                    <span className="font-gazeta text-3xl">
-                      ${formatPriceCOP(PRICES.pack.COP)} COP
-                    </span>
-                  </div>
-                  <p className="font-dm-sans text-xs text-white/60 mb-6">
-                    ~${PRICES.pack.USD} USD | ~{PRICES.pack.EUR} EUR | Válido por 1 año
-                  </p>
-                  <button
-                    onClick={() => handlePaymentClick('pack')}
-                    className="w-full bg-white text-[#8A4BAF] py-3 rounded-lg font-dm-sans font-semibold hover:bg-white/90 transition-colors"
-                  >
-                    Comprar Pack
-                  </button>
-                </div>
+                {/* Pack de 8 Sesiones - oculto temporalmente */}
 
                 {/* Redeem Pack Code Card */}
                 <div className="bg-white rounded-2xl p-6 md:p-8 shadow-lg border-2 border-dashed border-[#8A4BAF]/30">
@@ -380,7 +349,7 @@ export function SesionesPageClient({
                 {selectedDate && selectedTime && (
                   <div className="mt-6">
                     <button
-                      onClick={() => handlePaymentClick('single')}
+                      onClick={() => handlePaymentClick("single")}
                       className="w-full bg-[#4944a4] text-white py-4 rounded-xl font-dm-sans font-semibold text-lg hover:bg-[#3d3a8a] transition-colors shadow-lg"
                     >
                       Continuar con el Pago
@@ -408,9 +377,7 @@ export function SesionesPageClient({
                   <div className="w-16 h-16 bg-[#8A4BAF] text-white rounded-full flex items-center justify-center text-2xl font-gazeta mx-auto mb-4">
                     1
                   </div>
-                  <h3 className="font-gazeta text-xl text-[#654177] mb-3">
-                    Elige tu Horario
-                  </h3>
+                  <h3 className="font-gazeta text-xl text-[#654177] mb-3">Elige tu Horario</h3>
                   <p className="font-dm-sans text-gray-600 leading-relaxed">
                     Usa el calendario para seleccionar la fecha y hora que mejor te funcione.
                   </p>
@@ -420,9 +387,7 @@ export function SesionesPageClient({
                   <div className="w-16 h-16 bg-[#8A4BAF] text-white rounded-full flex items-center justify-center text-2xl font-gazeta mx-auto mb-4">
                     2
                   </div>
-                  <h3 className="font-gazeta text-xl text-[#654177] mb-3">
-                    Realiza el Pago
-                  </h3>
+                  <h3 className="font-gazeta text-xl text-[#654177] mb-3">Realiza el Pago</h3>
                   <p className="font-dm-sans text-gray-600 leading-relaxed">
                     Completa tu reserva de forma segura. Recibiras confirmacion inmediata.
                   </p>
@@ -432,9 +397,7 @@ export function SesionesPageClient({
                   <div className="w-16 h-16 bg-[#8A4BAF] text-white rounded-full flex items-center justify-center text-2xl font-gazeta mx-auto mb-4">
                     3
                   </div>
-                  <h3 className="font-gazeta text-xl text-[#654177] mb-3">
-                    Conectate y Recibe
-                  </h3>
+                  <h3 className="font-gazeta text-xl text-[#654177] mb-3">Conectate y Recibe</h3>
                   <p className="font-dm-sans text-gray-600 leading-relaxed">
                     Recibiras el enlace de Zoom y una guia de preparacion por email.
                   </p>
@@ -456,60 +419,118 @@ export function SesionesPageClient({
                 <details className="bg-white rounded-xl shadow-md p-6 group">
                   <summary className="font-gazeta text-lg text-[#654177] cursor-pointer list-none flex items-center justify-between">
                     <span>Como son las sesiones online?</span>
-                    <svg className="w-5 h-5 text-[#8A4BAF] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg
+                      className="w-5 h-5 text-[#8A4BAF] transition-transform group-open:rotate-180"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </summary>
                   <p className="mt-4 font-dm-sans text-gray-600 leading-relaxed">
-                    Las sesiones online se realizan a traves de videollamada (Zoom). Recibiras el enlace por email antes de la sesion. Solo necesitas una conexion a internet estable y un espacio tranquilo donde puedas relajarte.
+                    Las sesiones online se realizan a traves de videollamada (Zoom). Recibiras el
+                    enlace por email antes de la sesion. Solo necesitas una conexion a internet
+                    estable y un espacio tranquilo donde puedas relajarte.
                   </p>
                 </details>
 
                 <details className="bg-white rounded-xl shadow-md p-6 group">
                   <summary className="font-gazeta text-lg text-[#654177] cursor-pointer list-none flex items-center justify-between">
                     <span>Puedo cancelar o reprogramar mi sesion?</span>
-                    <svg className="w-5 h-5 text-[#8A4BAF] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg
+                      className="w-5 h-5 text-[#8A4BAF] transition-transform group-open:rotate-180"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </summary>
                   <p className="mt-4 font-dm-sans text-gray-600 leading-relaxed">
-                    Puedes cancelar o reprogramar con al menos 24 horas de anticipacion sin ningun cargo. Cambios con menos de 24 horas estan sujetos a disponibilidad.
+                    Puedes cancelar o reprogramar con al menos 24 horas de anticipacion sin ningun
+                    cargo. Cambios con menos de 24 horas estan sujetos a disponibilidad.
                   </p>
                 </details>
 
                 <details className="bg-white rounded-xl shadow-md p-6 group">
                   <summary className="font-gazeta text-lg text-[#654177] cursor-pointer list-none flex items-center justify-between">
                     <span>Como me preparo para la sesion?</span>
-                    <svg className="w-5 h-5 text-[#8A4BAF] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg
+                      className="w-5 h-5 text-[#8A4BAF] transition-transform group-open:rotate-180"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </summary>
                   <p className="mt-4 font-dm-sans text-gray-600 leading-relaxed">
-                    Ven con mente abierta y corazon receptivo. Busca un espacio comodo y tranquilo. Te enviare instrucciones mas especificas por email despues de tu reserva.
+                    Ven con mente abierta y corazon receptivo. Busca un espacio comodo y tranquilo.
+                    Te enviare instrucciones mas especificas por email despues de tu reserva.
                   </p>
                 </details>
 
                 <details className="bg-white rounded-xl shadow-md p-6 group">
                   <summary className="font-gazeta text-lg text-[#654177] cursor-pointer list-none flex items-center justify-between">
                     <span>Las sesiones quedan grabadas?</span>
-                    <svg className="w-5 h-5 text-[#8A4BAF] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg
+                      className="w-5 h-5 text-[#8A4BAF] transition-transform group-open:rotate-180"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </summary>
                   <p className="mt-4 font-dm-sans text-gray-600 leading-relaxed">
-                    Si, con tu autorizacion puedo grabarte la sesion para que puedas revisarla despues. La grabacion es confidencial y solo tu tendras acceso a ella.
+                    Si, con tu autorizacion puedo grabarte la sesion para que puedas revisarla
+                    despues. La grabacion es confidencial y solo tu tendras acceso a ella.
                   </p>
                 </details>
 
                 <details className="bg-white rounded-xl shadow-md p-6 group">
                   <summary className="font-gazeta text-lg text-[#654177] cursor-pointer list-none flex items-center justify-between">
                     <span>Que incluye el pack de 8 sesiones?</span>
-                    <svg className="w-5 h-5 text-[#8A4BAF] transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <svg
+                      className="w-5 h-5 text-[#8A4BAF] transition-transform group-open:rotate-180"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                   </summary>
                   <p className="mt-4 font-dm-sans text-gray-600 leading-relaxed">
-                    El pack incluye 8 sesiones individuales de {sessionDetails.duration} minutos (pagas 7, la octava es gratis). Al comprar recibiras un codigo unico que te permite reservar cada sesion cuando quieras. El codigo tiene validez de 1 ano desde la compra.
+                    El pack incluye 8 sesiones individuales de {sessionDetails.duration} minutos
+                    (pagas 7, la octava es gratis). Al comprar recibiras un codigo unico que te
+                    permite reservar cada sesion cuando quieras. El codigo tiene validez de 1 ano
+                    desde la compra.
                   </p>
                 </details>
               </div>
@@ -517,7 +538,6 @@ export function SesionesPageClient({
           </div>
         </section>
       </div>
-
 
       {/* Pack Code Redemption Modal */}
       {showPackCodeModal && (
@@ -529,9 +549,7 @@ export function SesionesPageClient({
                 <div className="w-10 h-10 bg-[#8A4BAF]/10 rounded-full flex items-center justify-center">
                   <Ticket className="w-5 h-5 text-[#8A4BAF]" />
                 </div>
-                <h2 className="font-gazeta text-2xl text-[#8A4BAF]">
-                  Canjear Codigo de Pack
-                </h2>
+                <h2 className="font-gazeta text-2xl text-[#8A4BAF]">Canjear Codigo de Pack</h2>
               </div>
             </div>
 
@@ -564,11 +582,10 @@ export function SesionesPageClient({
                         Codigo valido
                       </span>
                     </div>
-                    <p className="font-dm-sans text-sm text-green-700">
-                      {validatedPack.packName}
-                    </p>
+                    <p className="font-dm-sans text-sm text-green-700">{validatedPack.packName}</p>
                     <p className="font-dm-sans text-sm text-green-600 mt-1">
-                      Sesiones disponibles: <strong>{validatedPack.sessionsRemaining}</strong> de {validatedPack.sessionsTotal}
+                      Sesiones disponibles: <strong>{validatedPack.sessionsRemaining}</strong> de{" "}
+                      {validatedPack.sessionsTotal}
                     </p>
                   </div>
 
@@ -581,11 +598,12 @@ export function SesionesPageClient({
                       <div className="bg-[#f8f0f5] rounded-xl p-4 mb-4">
                         <p className="font-dm-sans text-sm text-gray-600">Tu sesion:</p>
                         <p className="font-gazeta text-lg text-[#8A4BAF]">
-                          {selectedDate.toLocaleDateString('es-CO', {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'long',
-                          })} a las {selectedTime}
+                          {selectedDate.toLocaleDateString("es-CO", {
+                            weekday: "long",
+                            day: "numeric",
+                            month: "long",
+                          })}{" "}
+                          a las {selectedTime}
                         </p>
                       </div>
                     ) : (
@@ -606,8 +624,8 @@ export function SesionesPageClient({
                   disabled={isValidatingCode || !packCode.trim()}
                   className={`w-full py-4 rounded-xl font-dm-sans font-semibold text-lg transition-colors ${
                     isValidatingCode || !packCode.trim()
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-[#4944a4] text-white hover:bg-[#3d3a8a]'
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      : "bg-[#4944a4] text-white hover:bg-[#3d3a8a]"
                   }`}
                 >
                   {isValidatingCode ? (
@@ -616,7 +634,7 @@ export function SesionesPageClient({
                       Validando...
                     </span>
                   ) : (
-                    'Validar Codigo'
+                    "Validar Codigo"
                   )}
                 </button>
               ) : (
@@ -625,8 +643,8 @@ export function SesionesPageClient({
                   disabled={isRedeemingSession || !selectedDate || !selectedTime}
                   className={`w-full py-4 rounded-xl font-dm-sans font-semibold text-lg transition-colors ${
                     isRedeemingSession || !selectedDate || !selectedTime
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      : 'bg-[#4944a4] text-white hover:bg-[#3d3a8a]'
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                      : "bg-[#4944a4] text-white hover:bg-[#3d3a8a]"
                   }`}
                 >
                   {isRedeemingSession ? (
@@ -635,17 +653,17 @@ export function SesionesPageClient({
                       Reservando...
                     </span>
                   ) : (
-                    'Confirmar Reserva'
+                    "Confirmar Reserva"
                   )}
                 </button>
               )}
 
               <button
                 onClick={() => {
-                  setShowPackCodeModal(false)
-                  setValidatedPack(null)
-                  setPackCode('')
-                  setError(null)
+                  setShowPackCodeModal(false);
+                  setValidatedPack(null);
+                  setPackCode("");
+                  setError(null);
                 }}
                 disabled={isValidatingCode || isRedeemingSession}
                 className="w-full py-3 rounded-xl font-dm-sans text-gray-600 hover:bg-gray-100 transition-colors"
@@ -661,10 +679,7 @@ export function SesionesPageClient({
       {error && (
         <div className="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 font-dm-sans">
           {error}
-          <button
-            onClick={() => setError(null)}
-            className="ml-4 text-white/80 hover:text-white"
-          >
+          <button onClick={() => setError(null)} className="ml-4 text-white/80 hover:text-white">
             x
           </button>
         </div>
@@ -684,5 +699,5 @@ export function SesionesPageClient({
         </div>
       )}
     </>
-  )
+  );
 }
