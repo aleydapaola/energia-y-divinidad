@@ -1,29 +1,35 @@
-import { Calendar, Users, LayoutDashboard, ShoppingCart, CreditCard, ArrowLeft, Ticket } from "lucide-react"
-import Link from "next/link"
-import { redirect } from "next/navigation"
+import {
+  Calendar,
+  Users,
+  LayoutDashboard,
+  ShoppingCart,
+  CreditCard,
+  ArrowLeft,
+  Ticket,
+  GraduationCap,
+  Tag,
+} from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-export default async function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const session = await auth()
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
 
   if (!session?.user?.id) {
-    redirect("/auth/signin?callbackUrl=/admin")
+    redirect("/auth/signin?callbackUrl=/admin");
   }
 
   // Verify user is admin
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { role: true },
-  })
+  });
 
   if (user?.role !== "ADMIN") {
-    redirect("/mi-cuenta")
+    redirect("/mi-cuenta");
   }
 
   return (
@@ -98,14 +104,26 @@ export default async function AdminLayout({
               <Users className="w-5 h-5 text-[#8A4BAF]" />
               <span className="font-dm-sans">Usuarios</span>
             </Link>
+            <Link
+              href="/admin/courses"
+              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-[#f8f0f5] rounded-lg transition-colors"
+            >
+              <GraduationCap className="w-5 h-5 text-[#8A4BAF]" />
+              <span className="font-dm-sans">Academia</span>
+            </Link>
+            <Link
+              href="/admin/discount-codes"
+              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-[#f8f0f5] rounded-lg transition-colors"
+            >
+              <Tag className="w-5 h-5 text-[#8A4BAF]" />
+              <span className="font-dm-sans">Descuentos</span>
+            </Link>
           </nav>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-8">
-          {children}
-        </main>
+        <main className="flex-1 p-8">{children}</main>
       </div>
     </div>
-  )
+  );
 }

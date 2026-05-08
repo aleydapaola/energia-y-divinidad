@@ -3,55 +3,55 @@
  * Handles access control and entitlements for academy courses
  */
 
-import { EntitlementType } from '@prisma/client'
+import { EntitlementType } from "@prisma/client";
 
-import { prisma } from '@/lib/prisma'
-import { client } from '@/sanity/lib/client'
-import { COURSE_BY_SLUG_QUERY, COURSES_BY_IDS_QUERY } from '@/sanity/lib/queries'
+import { prisma } from "@/lib/prisma";
+import { client } from "@/sanity/lib/client";
+import { COURSES_BY_IDS_QUERY } from "@/sanity/lib/queries";
 
 // Types
 export interface CourseAccessResult {
-  hasAccess: boolean
-  reason: 'purchase' | 'membership' | 'free' | 'no_access'
+  hasAccess: boolean;
+  reason: "purchase" | "membership" | "free" | "no_access";
   entitlement?: {
-    id: string
-    expiresAt: Date | null
-  }
+    id: string;
+    expiresAt: Date | null;
+  };
 }
 
 // Drip Content Types
-export type DripMode = 'immediate' | 'offset' | 'fixed'
+export type DripMode = "immediate" | "offset" | "fixed";
 
 export interface LessonWithDrip {
-  _id: string
-  order?: number
-  isFreePreview?: boolean
-  dripMode?: DripMode
-  dripOffsetDays?: number
-  availableAt?: string
+  _id: string;
+  order?: number;
+  isFreePreview?: boolean;
+  dripMode?: DripMode;
+  dripOffsetDays?: number;
+  availableAt?: string;
 }
 
 export interface CourseWithDrip {
-  _id: string
-  dripEnabled?: boolean
-  defaultDripDays?: number
+  _id: string;
+  dripEnabled?: boolean;
+  defaultDripDays?: number;
 }
 
 export interface LessonAccessResult {
-  canAccess: boolean
-  reason: 'available' | 'drip_locked' | 'module_locked' | 'no_course_access' | 'free_preview'
-  availableAt?: Date
+  canAccess: boolean;
+  reason: "available" | "drip_locked" | "module_locked" | "no_course_access" | "free_preview";
+  availableAt?: Date;
 }
 
 export interface CourseWithProgress {
-  courseId: string
-  courseTitle: string
-  courseSlug: string
-  coverImage?: any
-  completionPercentage: number
-  startedAt: Date
-  lastAccessedAt: Date
-  completedAt?: Date | null
+  courseId: string;
+  courseTitle: string;
+  courseSlug: string;
+  coverImage?: any;
+  completionPercentage: number;
+  startedAt: Date;
+  lastAccessedAt: Date;
+  completedAt?: Date | null;
 }
 
 /**
@@ -77,17 +77,17 @@ export async function canAccessCourse(
       id: true,
       expiresAt: true,
     },
-  })
+  });
 
   if (entitlement) {
     return {
       hasAccess: true,
-      reason: 'purchase',
+      reason: "purchase",
       entitlement: {
         id: entitlement.id,
         expiresAt: entitlement.expiresAt,
       },
-    }
+    };
   }
 
   // 2. Check for membership access
@@ -98,43 +98,42 @@ export async function canAccessCourse(
       membershipTiers[]-> { _id }
     }`,
     { id: courseId }
-  )
+  );
 
   if (course?.includedInMembership) {
     // Check if user has an active membership
     const membership = await prisma.subscription.findFirst({
       where: {
         userId,
-        status: 'ACTIVE',
+        status: "ACTIVE",
         currentPeriodEnd: { gt: new Date() },
       },
-    })
+    });
 
     if (membership) {
       // If course specifies specific tiers, check if user's tier is included
       if (course.membershipTiers && course.membershipTiers.length > 0) {
-        const tierIds = course.membershipTiers.map((t: { _id: string }) => t._id)
+        const tierIds = course.membershipTiers.map((t: { _id: string }) => t._id);
         if (tierIds.includes(membership.membershipTierId)) {
-          return { hasAccess: true, reason: 'membership' }
+          return { hasAccess: true, reason: "membership" };
         }
       } else {
         // No specific tiers - any membership gives access
-        return { hasAccess: true, reason: 'membership' }
+        return { hasAccess: true, reason: "membership" };
       }
     }
   }
 
   // 3. Check if course is free (price = 0)
-  const coursePrice = await client.fetch(
-    `*[_type == "course" && _id == $id][0] { price }`,
-    { id: courseId }
-  )
+  const coursePrice = await client.fetch(`*[_type == "course" && _id == $id][0] { price }`, {
+    id: courseId,
+  });
 
   if (coursePrice?.price === 0) {
-    return { hasAccess: true, reason: 'free' }
+    return { hasAccess: true, reason: "free" };
   }
 
-  return { hasAccess: false, reason: 'no_access' }
+  return { hasAccess: false, reason: "no_access" };
 }
 
 /**
@@ -153,16 +152,16 @@ export async function getUserCourses(userId: string): Promise<CourseWithProgress
       resourceId: true,
       resourceName: true,
     },
-  })
+  });
 
   if (entitlements.length === 0) {
-    return []
+    return [];
   }
 
-  const courseIds = entitlements.map((e) => e.resourceId)
+  const courseIds = entitlements.map((e) => e.resourceId);
 
   // Get courses from Sanity
-  const courses = await client.fetch(COURSES_BY_IDS_QUERY, { ids: courseIds })
+  const courses = await client.fetch(COURSES_BY_IDS_QUERY, { ids: courseIds });
 
   // Get progress for each course
   const progress = await prisma.courseProgress.findMany({
@@ -170,13 +169,13 @@ export async function getUserCourses(userId: string): Promise<CourseWithProgress
       userId,
       courseId: { in: courseIds },
     },
-  })
+  });
 
-  const progressMap = new Map(progress.map((p) => [p.courseId, p]))
+  const progressMap = new Map(progress.map((p) => [p.courseId, p]));
 
   // Combine course data with progress
   return courses.map((course: any) => {
-    const courseProgress = progressMap.get(course._id)
+    const courseProgress = progressMap.get(course._id);
     return {
       courseId: course._id,
       courseTitle: course.title,
@@ -188,20 +187,20 @@ export async function getUserCourses(userId: string): Promise<CourseWithProgress
       startedAt: courseProgress?.startedAt || new Date(),
       lastAccessedAt: courseProgress?.lastAccessedAt || new Date(),
       completedAt: courseProgress?.completedAt,
-    }
-  })
+    };
+  });
 }
 
 /**
  * Create entitlement for a purchased course
  */
 export async function createCourseEntitlement(params: {
-  userId: string
-  courseId: string
-  courseName: string
-  orderId: string
+  userId: string;
+  courseId: string;
+  courseName: string;
+  orderId: string;
 }): Promise<void> {
-  const { userId, courseId, courseName, orderId } = params
+  const { userId, courseId, courseName, orderId } = params;
 
   // Check if entitlement already exists (idempotency)
   const existing = await prisma.entitlement.findFirst({
@@ -211,11 +210,11 @@ export async function createCourseEntitlement(params: {
       resourceId: courseId,
       orderId,
     },
-  })
+  });
 
   if (existing) {
-    console.log(`Course entitlement already exists for user ${userId}, course ${courseId}`)
-    return
+    console.log(`Course entitlement already exists for user ${userId}, course ${courseId}`);
+    return;
   }
 
   await prisma.entitlement.create({
@@ -227,7 +226,7 @@ export async function createCourseEntitlement(params: {
       orderId,
       expiresAt: null, // Perpetual access
     },
-  })
+  });
 
   // Initialize course progress
   await prisma.courseProgress.upsert({
@@ -242,23 +241,23 @@ export async function createCourseEntitlement(params: {
     update: {
       // If progress already exists, don't reset it
     },
-  })
+  });
 
-  console.log(`Created course entitlement for user ${userId}, course ${courseId}`)
+  console.log(`Created course entitlement for user ${userId}, course ${courseId}`);
 }
 
 /**
  * Update lesson progress
  */
 export async function updateLessonProgress(params: {
-  userId: string
-  courseId: string
-  lessonId: string
-  watchedSeconds?: number
-  lastPosition?: number
-  completed?: boolean
+  userId: string;
+  courseId: string;
+  lessonId: string;
+  watchedSeconds?: number;
+  lastPosition?: number;
+  completed?: boolean;
 }): Promise<void> {
-  const { userId, courseId, lessonId, watchedSeconds, lastPosition, completed } = params
+  const { userId, courseId, lessonId, watchedSeconds, lastPosition, completed } = params;
 
   // Get or create course progress
   const courseProgress = await prisma.courseProgress.upsert({
@@ -273,7 +272,7 @@ export async function updateLessonProgress(params: {
     update: {
       lastAccessedAt: new Date(),
     },
-  })
+  });
 
   // Update lesson progress
   await prisma.lessonProgress.upsert({
@@ -297,11 +296,11 @@ export async function updateLessonProgress(params: {
       completed: completed,
       completedAt: completed ? new Date() : undefined,
     },
-  })
+  });
 
   // Recalculate course completion percentage if lesson was marked complete
   if (completed) {
-    await recalculateCourseProgress(userId, courseId)
+    await recalculateCourseProgress(userId, courseId);
   }
 }
 
@@ -319,24 +318,26 @@ async function recalculateCourseProgress(userId: string, courseId: string): Prom
       }
     }`,
     { id: courseId }
-  )
+  );
 
-  let totalLessons = 0
-  const lessonIds: string[] = []
+  let totalLessons = 0;
+  const lessonIds: string[] = [];
 
-  if (course.courseType === 'simple' && course.simpleLesson) {
-    totalLessons = 1
-    lessonIds.push(course.simpleLesson._id)
+  if (course.courseType === "simple" && course.simpleLesson) {
+    totalLessons = 1;
+    lessonIds.push(course.simpleLesson._id);
   } else if (course.modules) {
     for (const courseModule of course.modules) {
       if (courseModule.lessons) {
-        totalLessons += courseModule.lessons.length
-        lessonIds.push(...courseModule.lessons.map((l: { _id: string }) => l._id))
+        totalLessons += courseModule.lessons.length;
+        lessonIds.push(...courseModule.lessons.map((l: { _id: string }) => l._id));
       }
     }
   }
 
-  if (totalLessons === 0) {return}
+  if (totalLessons === 0) {
+    return;
+  }
 
   // Get completed lessons count
   const courseProgress = await prisma.courseProgress.findUnique({
@@ -351,12 +352,14 @@ async function recalculateCourseProgress(userId: string, courseId: string): Prom
         },
       },
     },
-  })
+  });
 
-  if (!courseProgress) {return}
+  if (!courseProgress) {
+    return;
+  }
 
-  const completedLessons = courseProgress.lessonProgress.length
-  const percentage = Math.round((completedLessons / totalLessons) * 100)
+  const completedLessons = courseProgress.lessonProgress.length;
+  const percentage = Math.round((completedLessons / totalLessons) * 100);
 
   await prisma.courseProgress.update({
     where: { id: courseProgress.id },
@@ -364,7 +367,7 @@ async function recalculateCourseProgress(userId: string, courseId: string): Prom
       completionPercentage: percentage,
       completedAt: percentage === 100 ? new Date() : null,
     },
-  })
+  });
 }
 
 /**
@@ -381,12 +384,12 @@ export async function getLessonProgress(
     include: {
       lessonProgress: true,
     },
-  })
+  });
 
   const progressMap = new Map<
     string,
     { completed: boolean; watchedSeconds: number; lastPosition: number }
-  >()
+  >();
 
   if (courseProgress) {
     for (const lp of courseProgress.lessonProgress) {
@@ -394,11 +397,11 @@ export async function getLessonProgress(
         completed: lp.completed,
         watchedSeconds: lp.watchedSeconds,
         lastPosition: lp.lastPosition,
-      })
+      });
     }
   }
 
-  return progressMap
+  return progressMap;
 }
 
 /**
@@ -412,43 +415,43 @@ export function calculateDripAvailability(
 ): Date | null {
   // If drip is not enabled, lesson is immediately available
   if (!course.dripEnabled) {
-    return null
+    return null;
   }
 
-  const dripMode = lesson.dripMode || 'immediate'
+  const dripMode = lesson.dripMode || "immediate";
 
   switch (dripMode) {
-    case 'immediate':
-      return null
+    case "immediate":
+      return null;
 
-    case 'fixed':
+    case "fixed":
       if (lesson.availableAt) {
-        return new Date(lesson.availableAt)
+        return new Date(lesson.availableAt);
       }
-      return null
+      return null;
 
-    case 'offset':
+    case "offset":
       if (lesson.dripOffsetDays !== undefined && lesson.dripOffsetDays !== null) {
-        const availableDate = new Date(startedAt)
-        availableDate.setDate(availableDate.getDate() + lesson.dripOffsetDays)
-        return availableDate
+        const availableDate = new Date(startedAt);
+        availableDate.setDate(availableDate.getDate() + lesson.dripOffsetDays);
+        return availableDate;
       }
       // Fallback to default drip days based on lesson order
       if (course.defaultDripDays) {
-        const availableDate = new Date(startedAt)
-        availableDate.setDate(availableDate.getDate() + course.defaultDripDays * globalLessonIndex)
-        return availableDate
+        const availableDate = new Date(startedAt);
+        availableDate.setDate(availableDate.getDate() + course.defaultDripDays * globalLessonIndex);
+        return availableDate;
       }
-      return null
+      return null;
 
     default:
       // If no dripMode is set but drip is enabled, use default days
       if (course.defaultDripDays) {
-        const availableDate = new Date(startedAt)
-        availableDate.setDate(availableDate.getDate() + course.defaultDripDays * globalLessonIndex)
-        return availableDate
+        const availableDate = new Date(startedAt);
+        availableDate.setDate(availableDate.getDate() + course.defaultDripDays * globalLessonIndex);
+        return availableDate;
       }
-      return null
+      return null;
   }
 }
 
@@ -466,30 +469,30 @@ export async function canAccessLesson(
 ): Promise<LessonAccessResult> {
   // 1. Free preview lessons are always accessible
   if (lesson.isFreePreview) {
-    return { canAccess: true, reason: 'free_preview' }
+    return { canAccess: true, reason: "free_preview" };
   }
 
   // 2. Check course access (requires userId)
   if (!userId) {
-    return { canAccess: false, reason: 'no_course_access' }
+    return { canAccess: false, reason: "no_course_access" };
   }
 
-  const courseAccess = await canAccessCourse(userId, courseId)
+  const courseAccess = await canAccessCourse(userId, courseId);
   if (!courseAccess.hasAccess) {
-    return { canAccess: false, reason: 'no_course_access' }
+    return { canAccess: false, reason: "no_course_access" };
   }
 
   // 3. Check module unlock date
   if (moduleUnlockDate) {
-    const unlockDate = new Date(moduleUnlockDate)
+    const unlockDate = new Date(moduleUnlockDate);
     if (unlockDate > new Date()) {
-      return { canAccess: false, reason: 'module_locked', availableAt: unlockDate }
+      return { canAccess: false, reason: "module_locked", availableAt: unlockDate };
     }
   }
 
   // 4. Check drip content
   if (!course.dripEnabled) {
-    return { canAccess: true, reason: 'available' }
+    return { canAccess: true, reason: "available" };
   }
 
   // Get user's course progress to determine startedAt
@@ -500,19 +503,121 @@ export async function canAccessLesson(
     select: {
       startedAt: true,
     },
-  })
+  });
 
   // If no progress exists, create one and use current date as startedAt
-  const startedAt = courseProgress?.startedAt || new Date()
+  const startedAt = courseProgress?.startedAt || new Date();
 
   // Calculate availability
-  const availableAt = calculateDripAvailability(lesson, course, startedAt, globalLessonIndex)
+  const availableAt = calculateDripAvailability(lesson, course, startedAt, globalLessonIndex);
 
   if (availableAt && availableAt > new Date()) {
-    return { canAccess: false, reason: 'drip_locked', availableAt }
+    return { canAccess: false, reason: "drip_locked", availableAt };
   }
 
-  return { canAccess: true, reason: 'available' }
+  return { canAccess: true, reason: "available" };
+}
+
+/**
+ * Grant course access to a user (admin action, no order required)
+ */
+export async function grantCourseAccess(params: {
+  userId: string;
+  courseId: string;
+  courseName: string;
+}): Promise<void> {
+  const { userId, courseId, courseName } = params;
+
+  const existing = await prisma.entitlement.findFirst({
+    where: {
+      userId,
+      type: EntitlementType.COURSE,
+      resourceId: courseId,
+      revoked: false,
+    },
+  });
+
+  if (existing) {
+    return;
+  }
+
+  await prisma.entitlement.create({
+    data: {
+      userId,
+      type: EntitlementType.COURSE,
+      resourceId: courseId,
+      resourceName: courseName,
+      expiresAt: null,
+      // orderId null indicates admin grant (no purchase)
+    },
+  });
+
+  await prisma.courseProgress.upsert({
+    where: { userId_courseId: { userId, courseId } },
+    create: { userId, courseId, completionPercentage: 0 },
+    update: {},
+  });
+}
+
+/**
+ * Revoke course access from a user (admin action)
+ */
+export async function revokeCourseAccess(params: {
+  userId: string;
+  courseId: string;
+  revokedBy: string;
+}): Promise<void> {
+  const { userId, courseId, revokedBy } = params;
+
+  await prisma.entitlement.updateMany({
+    where: {
+      userId,
+      type: EntitlementType.COURSE,
+      resourceId: courseId,
+      revoked: false,
+    },
+    data: {
+      revoked: true,
+      revokedAt: new Date(),
+      revokedReason: `Revocado por admin: ${revokedBy}`,
+    },
+  });
+}
+
+/**
+ * Get all users with access to a course
+ */
+export async function getCourseAccessList(courseId: string): Promise<
+  {
+    userId: string;
+    userName: string | null;
+    userEmail: string | null;
+    userImage: string | null;
+    grantedAt: Date;
+    grantType: string;
+  }[]
+> {
+  const entitlements = await prisma.entitlement.findMany({
+    where: {
+      type: EntitlementType.COURSE,
+      resourceId: courseId,
+      revoked: false,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+    include: {
+      user: { select: { id: true, name: true, email: true, image: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return entitlements.map((e) => ({
+    userId: e.user.id,
+    userName: e.user.name,
+    userEmail: e.user.email,
+    userImage: e.user.image,
+    grantedAt: e.createdAt,
+    grantType: e.orderId === null ? "admin" : "compra",
+  }));
 }
 
 /**
@@ -532,7 +637,7 @@ export async function getCourseStartDate(userId: string, courseId: string): Prom
     select: {
       startedAt: true,
     },
-  })
+  });
 
-  return courseProgress.startedAt
+  return courseProgress.startedAt;
 }
