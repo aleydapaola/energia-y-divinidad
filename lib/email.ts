@@ -1,16 +1,16 @@
-import { Prisma } from '@prisma/client';
-import { Resend } from 'resend';
+import { Prisma } from "@prisma/client";
+import { Resend } from "resend";
 
-import { prisma } from '@/lib/prisma';
+import { prisma } from "@/lib/prisma";
 
-const FROM_EMAIL = process.env.EMAIL_FROM || 'Energía y Divinidad <noreply@energiaydivinidad.com>';
-const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+const FROM_EMAIL = process.env.EMAIL_FROM || "Energía y Divinidad <noreply@energiaydivinidad.com>";
+const APP_URL = process.env.NEXTAUTH_URL || "http://localhost:3000";
 // Logo URL para emails - usando URL de producción en Vercel
-const LOGO_URL = 'https://energia-y-divinidad.vercel.app/images/logoNoBackground.png';
+const LOGO_URL = "https://energia-y-divinidad.vercel.app/images/logoNoBackground.png";
 
 // Modo desarrollo: si está activo, se auto-verifica el email sin enviar correo real
-const DEV_MODE = process.env.NODE_ENV === 'development';
-const DEV_AUTO_VERIFY = process.env.DEV_AUTO_VERIFY_EMAIL === 'true';
+const DEV_MODE = process.env.NODE_ENV === "development";
+const DEV_AUTO_VERIFY = process.env.DEV_AUTO_VERIFY_EMAIL === "true";
 
 // Lazy initialization para evitar errores en build
 let resendClient: Resend | null = null;
@@ -18,7 +18,7 @@ let resendClient: Resend | null = null;
 function getResendClient(): Resend {
   if (!resendClient) {
     if (!process.env.RESEND_API_KEY) {
-      throw new Error('RESEND_API_KEY no está configurada');
+      throw new Error("RESEND_API_KEY no está configurada");
     }
     resendClient = new Resend(process.env.RESEND_API_KEY);
   }
@@ -57,30 +57,30 @@ export async function sendEmailWithLogging(params: SendEmailWithLoggingParams) {
       subject: params.subject,
       entityType: params.entityType,
       entityId: params.entityId,
-      status: 'PENDING',
+      status: "PENDING",
       metadata: params.metadata,
     },
   });
 
   // En modo desarrollo con auto-verify, simular envío
   if (DEV_MODE && DEV_AUTO_VERIFY) {
-    console.log('\n========================================');
+    console.log("\n========================================");
     console.log(`📧 EMAIL SIMULADO (${params.template})`);
-    console.log('========================================');
+    console.log("========================================");
     console.log(`Para: ${params.to}`);
     console.log(`Asunto: ${params.subject}`);
-    console.log('========================================\n');
+    console.log("========================================\n");
 
     await prisma.emailLog.update({
       where: { id: emailLog.id },
       data: {
-        status: 'SENT',
-        providerMessageId: 'dev-mode-simulated',
+        status: "SENT",
+        providerMessageId: "dev-mode-simulated",
         sentAt: new Date(),
       },
     });
 
-    return { success: true, messageId: 'dev-mode-simulated', emailLogId: emailLog.id };
+    return { success: true, messageId: "dev-mode-simulated", emailLogId: emailLog.id };
   }
 
   try {
@@ -95,12 +95,12 @@ export async function sendEmailWithLogging(params: SendEmailWithLoggingParams) {
       await prisma.emailLog.update({
         where: { id: emailLog.id },
         data: {
-          status: 'FAILED',
+          status: "FAILED",
           errorMessage: result.error.message,
         },
       });
 
-      console.error('Error sending email:', result.error);
+      console.error("Error sending email:", result.error);
       return { success: false, error: result.error, emailLogId: emailLog.id };
     }
 
@@ -108,7 +108,7 @@ export async function sendEmailWithLogging(params: SendEmailWithLoggingParams) {
     await prisma.emailLog.update({
       where: { id: emailLog.id },
       data: {
-        status: 'SENT',
+        status: "SENT",
         providerMessageId: result.data?.id,
         sentAt: new Date(),
       },
@@ -120,12 +120,12 @@ export async function sendEmailWithLogging(params: SendEmailWithLoggingParams) {
     await prisma.emailLog.update({
       where: { id: emailLog.id },
       data: {
-        status: 'FAILED',
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        status: "FAILED",
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
       },
     });
 
-    console.error('Error sending email:', error);
+    console.error("Error sending email:", error);
     return { success: false, error, emailLogId: emailLog.id };
   }
 }
@@ -136,7 +136,7 @@ export async function sendEmailWithLogging(params: SendEmailWithLoggingParams) {
 export async function getEmailHistory(to: string, limit: number = 20) {
   return prisma.emailLog.findMany({
     where: { to },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     take: limit,
   });
 }
@@ -147,7 +147,7 @@ export async function getEmailHistory(to: string, limit: number = 20) {
 export async function getEntityEmailHistory(entityType: string, entityId: string) {
   return prisma.emailLog.findMany({
     where: { entityType, entityId },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
   });
 }
 
@@ -162,20 +162,20 @@ export async function sendVerificationEmail({ email, name, token }: SendVerifica
 
   // En modo desarrollo con auto-verify, solo mostramos el link en consola
   if (DEV_MODE) {
-    console.log('\n========================================');
-    console.log('📧 EMAIL DE VERIFICACIÓN (Modo Desarrollo)');
-    console.log('========================================');
+    console.log("\n========================================");
+    console.log("📧 EMAIL DE VERIFICACIÓN (Modo Desarrollo)");
+    console.log("========================================");
     console.log(`Para: ${email}`);
     console.log(`Nombre: ${name}`);
     console.log(`\n🔗 Link de verificación:`);
     console.log(verificationUrl);
-    console.log('========================================\n');
+    console.log("========================================\n");
 
     // Si auto-verify está activo, retornamos éxito sin intentar enviar
     if (DEV_AUTO_VERIFY) {
-      console.log('⚠️  DEV_AUTO_VERIFY_EMAIL=true - El email NO se envía realmente.');
-      console.log('    Copia el link de arriba para verificar manualmente.\n');
-      return { success: true, data: { id: 'dev-mode-simulated' } };
+      console.log("⚠️  DEV_AUTO_VERIFY_EMAIL=true - El email NO se envía realmente.");
+      console.log("    Copia el link de arriba para verificar manualmente.\n");
+      return { success: true, data: { id: "dev-mode-simulated" } };
     }
   }
 
@@ -183,7 +183,7 @@ export async function sendVerificationEmail({ email, name, token }: SendVerifica
     const { data, error } = await getResendClient().emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: 'Verifica tu email - Energía y Divinidad',
+      subject: "Verifica tu email - Energía y Divinidad",
       html: `
         <!DOCTYPE html>
         <html>
@@ -261,13 +261,13 @@ export async function sendVerificationEmail({ email, name, token }: SendVerifica
     });
 
     if (error) {
-      console.error('Error sending verification email:', error);
-      throw new Error('Error al enviar el email de verificación');
+      console.error("Error sending verification email:", error);
+      throw new Error("Error al enviar el email de verificación");
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error sending verification email:', error);
+    console.error("Error sending verification email:", error);
     throw error;
   }
 }
@@ -282,7 +282,7 @@ export async function sendWelcomeEmail({ email, name }: SendWelcomeEmailParams) 
     const { data, error } = await getResendClient().emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: 'Bienvenida a Energía y Divinidad',
+      subject: "Bienvenida a Energía y Divinidad",
       html: `
         <!DOCTYPE html>
         <html>
@@ -355,14 +355,14 @@ export async function sendWelcomeEmail({ email, name }: SendWelcomeEmailParams) 
     });
 
     if (error) {
-      console.error('Error sending welcome email:', error);
+      console.error("Error sending welcome email:", error);
       // Don't throw - welcome email is not critical
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error sending welcome email:', error);
+    console.error("Error sending welcome email:", error);
     // Don't throw - welcome email is not critical
     return { success: false, error };
   }
@@ -382,18 +382,18 @@ export async function sendPasswordResetEmail({ email, name, token }: SendPasswor
   const resetLink = `${APP_URL}/auth/set-password?token=${token}`;
 
   if (DEV_MODE) {
-    console.log('\n========================================');
-    console.log('📧 EMAIL DE RECUPERACIÓN DE CONTRASEÑA (Modo Desarrollo)');
-    console.log('========================================');
+    console.log("\n========================================");
+    console.log("📧 EMAIL DE RECUPERACIÓN DE CONTRASEÑA (Modo Desarrollo)");
+    console.log("========================================");
     console.log(`Para: ${email}`);
     console.log(`Nombre: ${name}`);
     console.log(`\n🔐 ENLACE DE RECUPERACIÓN:`);
     console.log(resetLink);
-    console.log('\nExpira en 1 hora');
-    console.log('========================================\n');
+    console.log("\nExpira en 1 hora");
+    console.log("========================================\n");
 
     if (DEV_AUTO_VERIFY) {
-      return { success: true, data: { id: 'dev-mode-simulated' } };
+      return { success: true, data: { id: "dev-mode-simulated" } };
     }
   }
 
@@ -401,7 +401,7 @@ export async function sendPasswordResetEmail({ email, name, token }: SendPasswor
     const { data, error } = await getResendClient().emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: 'Recupera tu contraseña - Energía y Divinidad',
+      subject: "Recupera tu contraseña - Energía y Divinidad",
       html: `
         <!DOCTYPE html>
         <html>
@@ -486,13 +486,13 @@ export async function sendPasswordResetEmail({ email, name, token }: SendPasswor
     });
 
     if (error) {
-      console.error('Error sending password reset email:', error);
+      console.error("Error sending password reset email:", error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error sending password reset email:', error);
+    console.error("Error sending password reset email:", error);
     return { success: false, error };
   }
 }
@@ -506,12 +506,12 @@ interface EventBookingEmailParams {
   name: string;
   eventTitle: string;
   eventDate: string;
-  eventType: 'online' | 'in_person';
+  eventType: "online" | "in_person";
   orderNumber: string;
   seats: number;
   amount: number;
   currency: string;
-  paymentStatus: 'PENDING' | 'COMPLETED';
+  paymentStatus: "PENDING" | "COMPLETED";
   // Solo para eventos online confirmados
   zoomUrl?: string;
   zoomId?: string;
@@ -542,24 +542,25 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
     venueCity,
   } = params;
 
-  const isPending = paymentStatus === 'PENDING';
-  const isOnline = eventType === 'online';
+  const isPending = paymentStatus === "PENDING";
+  const isOnline = eventType === "online";
 
-  const formattedDate = new Date(eventDate).toLocaleDateString('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  const formattedDate = new Date(eventDate).toLocaleDateString("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
-  const formattedAmount = currency === 'USD'
-    ? `USD $${amount.toLocaleString('en-US')}`
-    : `$${amount.toLocaleString('es-CO')} COP`;
+  const formattedAmount =
+    currency === "USD"
+      ? `USD $${amount.toLocaleString("en-US")}`
+      : `$${amount.toLocaleString("es-CO")} COP`;
 
   // Construir sección de ubicación/Zoom
-  let locationSection = '';
+  let locationSection = "";
   if (isOnline && !isPending && zoomUrl) {
     locationSection = `
       <tr>
@@ -570,8 +571,8 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
           <p style="margin: 0 0 10px; font-size: 14px; color: #1e40af;">
             <strong>Link:</strong> <a href="${zoomUrl}" style="color: #2563eb;">${zoomUrl}</a>
           </p>
-          ${zoomId ? `<p style="margin: 0 0 5px; font-size: 14px; color: #1e40af;"><strong>ID:</strong> ${zoomId}</p>` : ''}
-          ${zoomPassword ? `<p style="margin: 0; font-size: 14px; color: #1e40af;"><strong>Contraseña:</strong> ${zoomPassword}</p>` : ''}
+          ${zoomId ? `<p style="margin: 0 0 5px; font-size: 14px; color: #1e40af;"><strong>ID:</strong> ${zoomId}</p>` : ""}
+          ${zoomPassword ? `<p style="margin: 0; font-size: 14px; color: #1e40af;"><strong>Contraseña:</strong> ${zoomPassword}</p>` : ""}
         </td>
       </tr>
     `;
@@ -593,16 +594,17 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
           <h3 style="margin: 0 0 10px; font-size: 16px; color: #166534;">
             📍 Ubicación
           </h3>
-          ${venueName ? `<p style="margin: 0 0 5px; font-size: 14px; color: #15803d;"><strong>${venueName}</strong></p>` : ''}
-          ${venueAddress ? `<p style="margin: 0 0 5px; font-size: 14px; color: #15803d;">${venueAddress}</p>` : ''}
-          ${venueCity ? `<p style="margin: 0; font-size: 14px; color: #15803d;">${venueCity}</p>` : ''}
+          ${venueName ? `<p style="margin: 0 0 5px; font-size: 14px; color: #15803d;"><strong>${venueName}</strong></p>` : ""}
+          ${venueAddress ? `<p style="margin: 0 0 5px; font-size: 14px; color: #15803d;">${venueAddress}</p>` : ""}
+          ${venueCity ? `<p style="margin: 0; font-size: 14px; color: #15803d;">${venueCity}</p>` : ""}
         </td>
       </tr>
     `;
   }
 
   // Sección de pago pendiente
-  const pendingPaymentSection = isPending ? `
+  const pendingPaymentSection = isPending
+    ? `
     <tr>
       <td style="padding: 20px; background-color: #fef3c7; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
         <h3 style="margin: 0 0 10px; font-size: 16px; color: #92400e;">
@@ -623,25 +625,28 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
         </p>
       </td>
     </tr>
-  ` : '';
+  `
+    : "";
 
   // En modo desarrollo, solo mostramos en consola
   if (DEV_MODE) {
-    console.log('\n========================================');
-    console.log('📧 EMAIL DE CONFIRMACIÓN DE EVENTO (Modo Desarrollo)');
-    console.log('========================================');
+    console.log("\n========================================");
+    console.log("📧 EMAIL DE CONFIRMACIÓN DE EVENTO (Modo Desarrollo)");
+    console.log("========================================");
     console.log(`Para: ${email}`);
     console.log(`Nombre: ${name}`);
     console.log(`Evento: ${eventTitle}`);
     console.log(`Fecha: ${formattedDate}`);
     console.log(`Cupos: ${seats}`);
     console.log(`Total: ${formattedAmount}`);
-    console.log(`Estado: ${isPending ? 'Pendiente de pago' : 'Confirmado'}`);
-    if (zoomUrl) {console.log(`Zoom: ${zoomUrl}`);}
-    console.log('========================================\n');
+    console.log(`Estado: ${isPending ? "Pendiente de pago" : "Confirmado"}`);
+    if (zoomUrl) {
+      console.log(`Zoom: ${zoomUrl}`);
+    }
+    console.log("========================================\n");
 
     if (DEV_AUTO_VERIFY) {
-      return { success: true, data: { id: 'dev-mode-simulated' } };
+      return { success: true, data: { id: "dev-mode-simulated" } };
     }
   }
 
@@ -658,7 +663,7 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>${isPending ? 'Reserva Recibida' : 'Reserva Confirmada'}</title>
+            <title>${isPending ? "Reserva Recibida" : "Reserva Confirmada"}</title>
           </head>
           <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f0f5;">
             <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -681,8 +686,8 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
                           <tr>
                             <td align="center" style="padding-bottom: 20px;">
-                              <span style="display: inline-block; padding: 8px 20px; background-color: ${isPending ? '#fef3c7' : '#d1fae5'}; color: ${isPending ? '#92400e' : '#065f46'}; border-radius: 20px; font-size: 14px; font-weight: 600;">
-                                ${isPending ? '⏳ Reserva Pendiente de Pago' : '✅ Reserva Confirmada'}
+                              <span style="display: inline-block; padding: 8px 20px; background-color: ${isPending ? "#fef3c7" : "#d1fae5"}; color: ${isPending ? "#92400e" : "#065f46"}; border-radius: 20px; font-size: 14px; font-weight: 600;">
+                                ${isPending ? "⏳ Reserva Pendiente de Pago" : "✅ Reserva Confirmada"}
                               </span>
                             </td>
                           </tr>
@@ -692,9 +697,11 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
                           ¡Hola ${name}!
                         </h2>
                         <p style="margin: 0 0 20px; font-size: 16px; color: #666666; line-height: 1.6;">
-                          ${isPending
-                            ? 'Hemos recibido tu solicitud de reserva para el siguiente evento:'
-                            : '¡Tu reserva ha sido confirmada! Te esperamos en el siguiente evento:'}
+                          ${
+                            isPending
+                              ? "Hemos recibido tu solicitud de reserva para el siguiente evento:"
+                              : "¡Tu reserva ha sido confirmada! Te esperamos en el siguiente evento:"
+                          }
                         </p>
 
                         <!-- Event Details -->
@@ -768,13 +775,13 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
     });
 
     if (error) {
-      console.error('Error sending event booking email:', error);
+      console.error("Error sending event booking email:", error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error sending event booking email:', error);
+    console.error("Error sending event booking email:", error);
     return { success: false, error };
   }
 }
@@ -784,7 +791,7 @@ interface EventReminderEmailParams {
   name: string;
   eventTitle: string;
   eventDate: string;
-  eventType: 'online' | 'in_person';
+  eventType: "online" | "in_person";
   hoursUntil: number;
   zoomUrl?: string;
   zoomId?: string;
@@ -808,33 +815,34 @@ export async function sendEventReminder(params: EventReminderEmailParams) {
     venueAddress,
   } = params;
 
-  const isOnline = eventType === 'online';
-  const formattedDate = new Date(eventDate).toLocaleDateString('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
+  const isOnline = eventType === "online";
+  const formattedDate = new Date(eventDate).toLocaleDateString("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
-  const timeMessage = hoursUntil <= 1
-    ? '¡El evento comienza en menos de 1 hora!'
-    : hoursUntil <= 24
-      ? `El evento comienza en ${hoursUntil} horas`
-      : `El evento es mañana`;
+  const timeMessage =
+    hoursUntil <= 1
+      ? "¡El evento comienza en menos de 1 hora!"
+      : hoursUntil <= 24
+        ? `El evento comienza en ${hoursUntil} horas`
+        : `El evento es mañana`;
 
   if (DEV_MODE) {
-    console.log('\n========================================');
-    console.log('📧 RECORDATORIO DE EVENTO (Modo Desarrollo)');
-    console.log('========================================');
+    console.log("\n========================================");
+    console.log("📧 RECORDATORIO DE EVENTO (Modo Desarrollo)");
+    console.log("========================================");
     console.log(`Para: ${email}`);
     console.log(`Evento: ${eventTitle}`);
     console.log(`Fecha: ${formattedDate}`);
     console.log(`Mensaje: ${timeMessage}`);
-    console.log('========================================\n');
+    console.log("========================================\n");
 
     if (DEV_AUTO_VERIFY) {
-      return { success: true, data: { id: 'dev-mode-simulated' } };
+      return { success: true, data: { id: "dev-mode-simulated" } };
     }
   }
 
@@ -877,7 +885,9 @@ export async function sendEventReminder(params: EventReminderEmailParams) {
                           📅 <strong>${formattedDate}</strong>
                         </p>
 
-                        ${isOnline && zoomUrl ? `
+                        ${
+                          isOnline && zoomUrl
+                            ? `
                           <table role="presentation" style="width: 100%; border-collapse: collapse;">
                             <tr>
                               <td style="padding: 20px; background-color: #eef6ff; border-radius: 8px;">
@@ -887,25 +897,31 @@ export async function sendEventReminder(params: EventReminderEmailParams) {
                                 <a href="${zoomUrl}" style="display: inline-block; padding: 12px 30px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px;">
                                   Unirse ahora
                                 </a>
-                                ${zoomId ? `<p style="margin: 15px 0 0; font-size: 14px; color: #1e40af;">ID: ${zoomId}</p>` : ''}
-                                ${zoomPassword ? `<p style="margin: 5px 0 0; font-size: 14px; color: #1e40af;">Contraseña: ${zoomPassword}</p>` : ''}
+                                ${zoomId ? `<p style="margin: 15px 0 0; font-size: 14px; color: #1e40af;">ID: ${zoomId}</p>` : ""}
+                                ${zoomPassword ? `<p style="margin: 5px 0 0; font-size: 14px; color: #1e40af;">Contraseña: ${zoomPassword}</p>` : ""}
                               </td>
                             </tr>
                           </table>
-                        ` : ''}
+                        `
+                            : ""
+                        }
 
-                        ${!isOnline ? `
+                        ${
+                          !isOnline
+                            ? `
                           <table role="presentation" style="width: 100%; border-collapse: collapse;">
                             <tr>
                               <td style="padding: 20px; background-color: #f0fdf4; border-radius: 8px;">
                                 <p style="margin: 0; font-size: 16px; color: #166534;">
-                                  📍 <strong>${venueName || 'Evento Presencial'}</strong><br>
-                                  ${venueAddress || ''}
+                                  📍 <strong>${venueName || "Evento Presencial"}</strong><br>
+                                  ${venueAddress || ""}
                                 </p>
                               </td>
                             </tr>
                           </table>
-                        ` : ''}
+                        `
+                            : ""
+                        }
 
                         <p style="margin: 30px 0 0; font-size: 14px; color: #999; text-align: center;">
                           ¡Te esperamos!<br>
@@ -923,13 +939,13 @@ export async function sendEventReminder(params: EventReminderEmailParams) {
     });
 
     if (error) {
-      console.error('Error sending event reminder:', error);
+      console.error("Error sending event reminder:", error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error sending event reminder:', error);
+    console.error("Error sending event reminder:", error);
     return { success: false, error };
   }
 }
@@ -945,46 +961,39 @@ interface SendPackCodeEmailParams {
   expiresAt: Date;
   sessionsTotal: number;
   amount: number;
-  currency: 'COP' | 'USD' | 'EUR';
+  currency: "COP" | "USD" | "EUR";
 }
 
 export async function sendPackCodeEmail(params: SendPackCodeEmailParams) {
-  const {
-    email,
-    name,
-    packCode,
-    expiresAt,
-    sessionsTotal,
-    amount,
-    currency,
-  } = params;
+  const { email, name, packCode, expiresAt, sessionsTotal, amount, currency } = params;
 
-  const formattedExpiration = expiresAt.toLocaleDateString('es-CO', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+  const formattedExpiration = expiresAt.toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
   });
 
-  const formattedAmount = currency === 'COP'
-    ? `$${amount.toLocaleString('es-CO')} COP`
-    : currency === 'EUR'
-      ? `€${amount.toLocaleString('es-ES')} EUR`
-      : `$${amount.toLocaleString('en-US')} USD`;
+  const formattedAmount =
+    currency === "COP"
+      ? `$${amount.toLocaleString("es-CO")} COP`
+      : currency === "EUR"
+        ? `€${amount.toLocaleString("es-ES")} EUR`
+        : `$${amount.toLocaleString("en-US")} USD`;
 
   if (DEV_MODE) {
-    console.log('\n========================================');
-    console.log('📧 EMAIL DE CÓDIGO DE PACK (Modo Desarrollo)');
-    console.log('========================================');
+    console.log("\n========================================");
+    console.log("📧 EMAIL DE CÓDIGO DE PACK (Modo Desarrollo)");
+    console.log("========================================");
     console.log(`Para: ${email}`);
     console.log(`Nombre: ${name}`);
     console.log(`Código: ${packCode}`);
     console.log(`Sesiones: ${sessionsTotal}`);
     console.log(`Total pagado: ${formattedAmount}`);
     console.log(`Expira: ${formattedExpiration}`);
-    console.log('========================================\n');
+    console.log("========================================\n");
 
     if (DEV_AUTO_VERIFY) {
-      return { success: true, data: { id: 'dev-mode-simulated' } };
+      return { success: true, data: { id: "dev-mode-simulated" } };
     }
   }
 
@@ -1129,13 +1138,13 @@ export async function sendPackCodeEmail(params: SendPackCodeEmailParams) {
     });
 
     if (error) {
-      console.error('Error sending pack code email:', error);
+      console.error("Error sending pack code email:", error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error sending pack code email:', error);
+    console.error("Error sending pack code email:", error);
     return { success: false, error };
   }
 }
@@ -1150,52 +1159,48 @@ interface SendRescheduleEmailParams {
   sessionName: string;
   previousDate: Date | null;
   newDate: Date;
-  rescheduledBy: 'client' | 'admin';
+  rescheduledBy: "client" | "admin";
   reason?: string;
 }
 
 export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
-  const {
-    email,
-    name,
-    sessionName,
-    previousDate,
-    newDate,
-    rescheduledBy,
-    reason,
-  } = params;
+  const { email, name, sessionName, previousDate, newDate, rescheduledBy, reason } = params;
 
-  const formatDate = (date: Date) => date.toLocaleDateString('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString("es-CO", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
-  const formattedPreviousDate = previousDate ? formatDate(previousDate) : 'No programada';
+  const formattedPreviousDate = previousDate ? formatDate(previousDate) : "No programada";
   const formattedNewDate = formatDate(newDate);
 
-  const rescheduledByText = rescheduledBy === 'admin'
-    ? 'Tu sesión ha sido reprogramada por Aleyda Paola.'
-    : 'Has reprogramado tu sesión exitosamente.';
+  const rescheduledByText =
+    rescheduledBy === "admin"
+      ? "Tu sesión ha sido reprogramada por Aleyda Paola."
+      : "Has reprogramado tu sesión exitosamente.";
 
   if (DEV_MODE) {
-    console.log('\n========================================');
-    console.log('📧 EMAIL DE REPROGRAMACIÓN (Modo Desarrollo)');
-    console.log('========================================');
+    console.log("\n========================================");
+    console.log("📧 EMAIL DE REPROGRAMACIÓN (Modo Desarrollo)");
+    console.log("========================================");
     console.log(`Para: ${email}`);
     console.log(`Nombre: ${name}`);
     console.log(`Sesión: ${sessionName}`);
     console.log(`Fecha anterior: ${formattedPreviousDate}`);
     console.log(`Nueva fecha: ${formattedNewDate}`);
     console.log(`Reprogramado por: ${rescheduledBy}`);
-    if (reason) {console.log(`Motivo: ${reason}`);}
-    console.log('========================================\n');
+    if (reason) {
+      console.log(`Motivo: ${reason}`);
+    }
+    console.log("========================================\n");
 
     if (DEV_AUTO_VERIFY) {
-      return { success: true, data: { id: 'dev-mode-simulated' } };
+      return { success: true, data: { id: "dev-mode-simulated" } };
     }
   }
 
@@ -1277,7 +1282,9 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
                           </tr>
                         </table>
 
-                        ${reason ? `
+                        ${
+                          reason
+                            ? `
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
                           <tr>
                             <td style="padding: 15px; background-color: #fef3c7; border-radius: 8px; margin-bottom: 20px;">
@@ -1287,7 +1294,9 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
                             </td>
                           </tr>
                         </table>
-                        ` : ''}
+                        `
+                            : ""
+                        }
 
                         <!-- CTA Button -->
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -1328,13 +1337,13 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
     });
 
     if (error) {
-      console.error('Error sending reschedule email:', error);
+      console.error("Error sending reschedule email:", error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error sending reschedule email:', error);
+    console.error("Error sending reschedule email:", error);
     return { success: false, error };
   }
 }
@@ -1355,20 +1364,20 @@ export async function sendContactEmail(params: SendContactEmailParams) {
   const { name, email, phone, subject, message } = params;
 
   // Email del destinatario (Aleyda)
-  const CONTACT_EMAIL = 'contacto@energiaydivinidad.com';
+  const CONTACT_EMAIL = "contacto@energiaydivinidad.com";
 
   if (DEV_MODE) {
-    console.log('\n========================================');
-    console.log('📧 EMAIL DE CONTACTO (Modo Desarrollo)');
-    console.log('========================================');
+    console.log("\n========================================");
+    console.log("📧 EMAIL DE CONTACTO (Modo Desarrollo)");
+    console.log("========================================");
     console.log(`De: ${name} <${email}>`);
-    console.log(`Teléfono: ${phone || 'No proporcionado'}`);
+    console.log(`Teléfono: ${phone || "No proporcionado"}`);
     console.log(`Asunto: ${subject}`);
     console.log(`Mensaje: ${message}`);
-    console.log('========================================\n');
+    console.log("========================================\n");
 
     if (DEV_AUTO_VERIFY) {
-      return { success: true, data: { id: 'dev-mode-simulated' } };
+      return { success: true, data: { id: "dev-mode-simulated" } };
     }
   }
 
@@ -1438,16 +1447,20 @@ export async function sendContactEmail(params: SendContactEmailParams) {
                                     </p>
                                   </td>
                                 </tr>
-                                ${phone ? `
+                                ${
+                                  phone
+                                    ? `
                                 <tr>
                                   <td style="padding: 8px 0;">
                                     <span style="font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 1px;">Teléfono/WhatsApp</span>
                                     <p style="margin: 5px 0 0; font-size: 16px; color: #654177;">
-                                      <a href="https://wa.me/${phone.replace(/[^0-9]/g, '')}" style="color: #25D366; text-decoration: none;">${phone}</a>
+                                      <a href="https://wa.me/${phone.replace(/[^0-9]/g, "")}" style="color: #25D366; text-decoration: none;">${phone}</a>
                                     </p>
                                   </td>
                                 </tr>
-                                ` : ''}
+                                `
+                                    : ""
+                                }
                               </table>
                             </td>
                           </tr>
@@ -1468,7 +1481,7 @@ ${message}
                           <tr>
                             <td align="center" style="padding: 30px 0 0;">
                               <a href="mailto:${email}?subject=Re: ${encodeURIComponent(subject)}" style="display: inline-block; padding: 14px 35px; background-color: #4944a4; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: 600;">
-                                Responder a ${name.split(' ')[0]}
+                                Responder a ${name.split(" ")[0]}
                               </a>
                             </td>
                           </tr>
@@ -1483,7 +1496,7 @@ ${message}
                           Este mensaje fue enviado desde el formulario de contacto de energiaydivinidad.com
                         </p>
                         <p style="margin: 10px 0 0; font-size: 12px; color: #999999;">
-                          ${new Date().toLocaleString('es-CO', { dateStyle: 'full', timeStyle: 'short' })}
+                          ${new Date().toLocaleString("es-CO", { dateStyle: "full", timeStyle: "short" })}
                         </p>
                       </td>
                     </tr>
@@ -1497,13 +1510,13 @@ ${message}
     });
 
     if (error) {
-      console.error('Error sending contact email:', error);
+      console.error("Error sending contact email:", error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error sending contact email:', error);
+    console.error("Error sending contact email:", error);
     return { success: false, error };
   }
 }
@@ -1521,6 +1534,7 @@ interface SendBookingConfirmationEmailParams {
   deliveryMethod: string;
   bookingId: string;
   paidWithCredit?: boolean;
+  meetingLink?: string;
 }
 
 export async function sendBookingConfirmationEmail(params: SendBookingConfirmationEmailParams) {
@@ -1533,25 +1547,26 @@ export async function sendBookingConfirmationEmail(params: SendBookingConfirmati
     deliveryMethod,
     bookingId,
     paidWithCredit,
+    meetingLink,
   } = params;
 
-  const formattedDate = scheduledAt.toLocaleDateString('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  const formattedDate = scheduledAt.toLocaleDateString("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
   const paymentNote = paidWithCredit
-    ? '✨ Esta sesión fue reservada con un crédito de tu membresía.'
-    : '';
+    ? "✨ Esta sesión fue reservada con un crédito de tu membresía."
+    : "";
 
   if (DEV_MODE) {
-    console.log('\n========================================');
-    console.log('📧 EMAIL DE CONFIRMACIÓN DE RESERVA (Modo Desarrollo)');
-    console.log('========================================');
+    console.log("\n========================================");
+    console.log("📧 EMAIL DE CONFIRMACIÓN DE RESERVA (Modo Desarrollo)");
+    console.log("========================================");
     console.log(`Para: ${email}`);
     console.log(`Nombre: ${name}`);
     console.log(`Sesión: ${sessionName}`);
@@ -1559,11 +1574,13 @@ export async function sendBookingConfirmationEmail(params: SendBookingConfirmati
     console.log(`Duración: ${duration} minutos`);
     console.log(`Método: ${deliveryMethod}`);
     console.log(`ID Reserva: ${bookingId}`);
-    if (paidWithCredit) {console.log(`Pagado con crédito: Sí`);}
-    console.log('========================================\n');
+    if (paidWithCredit) {
+      console.log(`Pagado con crédito: Sí`);
+    }
+    console.log("========================================\n");
 
     if (DEV_AUTO_VERIFY) {
-      return { success: true, data: { id: 'dev-mode-simulated' } };
+      return { success: true, data: { id: "dev-mode-simulated" } };
     }
   }
 
@@ -1635,7 +1652,9 @@ export async function sendBookingConfirmationEmail(params: SendBookingConfirmati
                           </tr>
                         </table>
 
-                        ${paidWithCredit ? `
+                        ${
+                          paidWithCredit
+                            ? `
                         <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                           <tr>
                             <td style="padding: 15px; background-color: #ede9fe; border-radius: 8px;">
@@ -1645,16 +1664,63 @@ export async function sendBookingConfirmationEmail(params: SendBookingConfirmati
                             </td>
                           </tr>
                         </table>
-                        ` : ''}
+                        `
+                            : ""
+                        }
 
                         <p style="margin: 0 0 10px; font-size: 14px; color: #999999; line-height: 1.6;">
                           <strong>ID de reserva:</strong> ${bookingId}
                         </p>
 
+                        <!-- Enlace de reunión -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                          <tr>
+                            <td style="padding: 16px 20px; background-color: #eef1fa; border-radius: 12px; border-left: 4px solid #4944a4;">
+                              <p style="margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #4944a4;">
+                                🔗 Enlace de conexión
+                              </p>
+                              ${
+                                meetingLink
+                                  ? `<a href="${meetingLink}" style="font-size: 14px; color: #4944a4; word-break: break-all;">${meetingLink}</a>`
+                                  : `<p style="margin: 0; font-size: 14px; color: #654177; font-style: italic;">Aleyda te enviará el enlace poco antes de tu sesión.</p>`
+                              }
+                            </td>
+                          </tr>
+                        </table>
+
+                        <!-- Instrucciones de preparación -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                          <tr>
+                            <td style="padding: 20px; background-color: #fdf8ff; border-radius: 12px; border: 1px solid #e9d8f4;">
+                              <p style="margin: 0 0 14px; font-size: 15px; color: #654177; line-height: 1.6;">
+                                ${name.split(" ")[0]}, te envío la siguiente información para que la tengas presente para tu <strong>Consulta de Canalización</strong>:
+                              </p>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.7;">
+                                🌿 Busca un lugar tranquilo y seguro, donde puedas estar en calma y sin interrupciones.
+                              </p>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.7;">
+                                🕊️ Respira profundo unos minutos y permite que tu mente se aquiete.
+                              </p>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.7;">
+                                🤍 Ten preparadas tus preguntas desde el corazón.
+                              </p>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.7;">
+                                ✨ Llega con el corazón abierto y la mente en paz.
+                              </p>
+                              <p style="margin: 0 0 14px; font-size: 14px; color: #654177; line-height: 1.7;">
+                                🌟 Permite que los Seres de Luz te acompañen y te entreguen la orientación que necesitas en este momento de tu camino.
+                              </p>
+                              <p style="margin: 0; font-size: 14px; color: #8A4BAF; font-style: italic;">
+                                Todo llega con amor, claridad y guía divina 💫
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+
                         <!-- CTA Button -->
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
                           <tr>
-                            <td align="center" style="padding: 30px 0;">
+                            <td align="center" style="padding: 10px 0 30px;">
                               <a href="${APP_URL}/mi-cuenta" style="display: inline-block; padding: 16px 40px; background-color: #4944a4; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
                                 Ver mis reservas
                               </a>
@@ -1690,13 +1756,13 @@ export async function sendBookingConfirmationEmail(params: SendBookingConfirmati
     });
 
     if (error) {
-      console.error('Error sending booking confirmation email:', error);
+      console.error("Error sending booking confirmation email:", error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error sending booking confirmation email:', error);
+    console.error("Error sending booking confirmation email:", error);
     return { success: false, error };
   }
 }
@@ -1709,16 +1775,17 @@ interface SendPaymentConfirmationEmailParams {
   email: string;
   name: string;
   orderNumber: string;
-  orderType: 'PRODUCT' | 'SESSION' | 'EVENT' | 'MEMBERSHIP' | 'PREMIUM_CONTENT' | 'COURSE';
+  orderType: "PRODUCT" | "SESSION" | "EVENT" | "MEMBERSHIP" | "PREMIUM_CONTENT" | "COURSE";
   itemName: string;
   amount: number;
-  currency: 'COP' | 'USD' | 'EUR';
+  currency: "COP" | "USD" | "EUR";
   paymentMethod: string;
   transactionId?: string;
   // Links específicos según tipo de producto
   productLink?: string;
   // Datos adicionales según tipo
   sessionDate?: Date;
+  meetingLink?: string;
   membershipPlan?: string;
   eventDate?: Date;
   // Token para establecer contraseña (solo para nuevos usuarios de guest checkout)
@@ -1738,27 +1805,33 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
     transactionId,
     productLink,
     sessionDate,
+    meetingLink,
     membershipPlan,
     eventDate,
     setPasswordToken,
   } = params;
 
-  const formattedAmount = currency === 'COP'
-    ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(amount)
-    : currency === 'EUR'
-      ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
-      : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  const formattedAmount =
+    currency === "COP"
+      ? new Intl.NumberFormat("es-CO", {
+          style: "currency",
+          currency: "COP",
+          minimumFractionDigits: 0,
+        }).format(amount)
+      : currency === "EUR"
+        ? new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(amount)
+        : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
 
   // Determinar el texto y link según tipo de producto
-  let productTypeText = '';
-  let ctaText = '';
+  let productTypeText = "";
+  let ctaText = "";
   let ctaLink = productLink || APP_URL;
-  let additionalInfo = '';
+  let additionalInfo = "";
 
   switch (orderType) {
-    case 'SESSION':
-      productTypeText = 'Sesión de Canalización';
-      ctaText = 'Ver mis sesiones';
+    case "SESSION":
+      productTypeText = "Sesión de Canalización";
+      ctaText = "Ver mis sesiones";
       ctaLink = productLink || `${APP_URL}/mi-cuenta/sesiones`;
       if (sessionDate) {
         additionalInfo = `
@@ -1766,12 +1839,12 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
             <td style="padding: 8px 0;">
               <span style="font-size: 14px; color: #666;">Fecha programada:</span>
               <span style="float: right; font-size: 14px; color: #654177; font-weight: 600;">
-                ${sessionDate.toLocaleDateString('es-CO', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long',
-                  hour: '2-digit',
-                  minute: '2-digit',
+                ${sessionDate.toLocaleDateString("es-CO", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  hour: "2-digit",
+                  minute: "2-digit",
                 })}
               </span>
             </td>
@@ -1779,9 +1852,9 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
         `;
       }
       break;
-    case 'MEMBERSHIP':
-      productTypeText = 'Membresía';
-      ctaText = 'Ir a mi cuenta';
+    case "MEMBERSHIP":
+      productTypeText = "Membresía";
+      ctaText = "Ir a mi cuenta";
       ctaLink = productLink || `${APP_URL}/mi-cuenta`;
       if (membershipPlan) {
         additionalInfo = `
@@ -1794,9 +1867,9 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
         `;
       }
       break;
-    case 'EVENT':
-      productTypeText = 'Evento';
-      ctaText = 'Ver mis reservas';
+    case "EVENT":
+      productTypeText = "Evento";
+      ctaText = "Ver mis reservas";
       ctaLink = productLink || `${APP_URL}/dashboard/eventos`;
       if (eventDate) {
         additionalInfo = `
@@ -1804,12 +1877,12 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
             <td style="padding: 8px 0;">
               <span style="font-size: 14px; color: #666;">Fecha del evento:</span>
               <span style="float: right; font-size: 14px; color: #654177; font-weight: 600;">
-                ${eventDate.toLocaleDateString('es-CO', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long',
-                  hour: '2-digit',
-                  minute: '2-digit',
+                ${eventDate.toLocaleDateString("es-CO", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  hour: "2-digit",
+                  minute: "2-digit",
                 })}
               </span>
             </td>
@@ -1817,33 +1890,38 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
         `;
       }
       break;
-    case 'PREMIUM_CONTENT':
-      productTypeText = 'Contenido Premium';
-      ctaText = 'Ver mi contenido';
+    case "PREMIUM_CONTENT":
+      productTypeText = "Contenido Premium";
+      ctaText = "Ver mi contenido";
       ctaLink = productLink || `${APP_URL}/mi-cuenta/contenido`;
       break;
-    case 'COURSE':
-      productTypeText = 'Curso';
-      ctaText = 'Ir a mis cursos';
+    case "COURSE":
+      productTypeText = "Curso";
+      ctaText = "Ir a mis cursos";
       ctaLink = productLink || `${APP_URL}/mi-cuenta/cursos`;
       break;
     default:
-      productTypeText = 'Producto';
-      ctaText = 'Ir a mi cuenta';
+      productTypeText = "Producto";
+      ctaText = "Ir a mi cuenta";
       ctaLink = productLink || `${APP_URL}/mi-cuenta`;
   }
 
   // Mapear método de pago a texto legible
-  const paymentMethodText = paymentMethod === 'WOMPI_CARD' ? 'Tarjeta de crédito'
-    : paymentMethod === 'WOMPI_NEQUI' ? 'Nequi'
-    : paymentMethod === 'PAYPAL_DIRECT' ? 'PayPal'
-    : paymentMethod === 'PAYPAL_CARD' ? 'Tarjeta de crédito (PayPal)'
-    : paymentMethod;
+  const paymentMethodText =
+    paymentMethod === "WOMPI_CARD"
+      ? "Tarjeta de crédito"
+      : paymentMethod === "WOMPI_NEQUI"
+        ? "Nequi"
+        : paymentMethod === "PAYPAL_DIRECT"
+          ? "PayPal"
+          : paymentMethod === "PAYPAL_CARD"
+            ? "Tarjeta de crédito (PayPal)"
+            : paymentMethod;
 
   if (DEV_MODE) {
-    console.log('\n========================================');
-    console.log('📧 EMAIL DE CONFIRMACIÓN DE PAGO (Modo Desarrollo)');
-    console.log('========================================');
+    console.log("\n========================================");
+    console.log("📧 EMAIL DE CONFIRMACIÓN DE PAGO (Modo Desarrollo)");
+    console.log("========================================");
     console.log(`Para: ${email}`);
     console.log(`Nombre: ${name}`);
     console.log(`Orden: ${orderNumber}`);
@@ -1851,16 +1929,18 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
     console.log(`Producto: ${itemName}`);
     console.log(`Total: ${formattedAmount}`);
     console.log(`Método: ${paymentMethodText}`);
-    if (transactionId) {console.log(`Transacción: ${transactionId}`);}
+    if (transactionId) {
+      console.log(`Transacción: ${transactionId}`);
+    }
     console.log(`Link: ${ctaLink}`);
     if (setPasswordToken) {
       console.log(`\n🔐 SET PASSWORD LINK:`);
       console.log(`${APP_URL}/auth/set-password?token=${setPasswordToken}`);
     }
-    console.log('========================================\n');
+    console.log("========================================\n");
 
     if (DEV_AUTO_VERIFY) {
-      return { success: true, data: { id: 'dev-mode-simulated' } };
+      return { success: true, data: { id: "dev-mode-simulated" } };
     }
   }
 
@@ -1961,11 +2041,66 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
                           </tr>
                         </table>
 
-                        ${transactionId ? `
+                        ${
+                          transactionId
+                            ? `
                         <p style="margin: 0 0 25px; font-size: 12px; color: #999; text-align: center;">
                           ID de transacción: ${transactionId}
                         </p>
-                        ` : ''}
+                        `
+                            : ""
+                        }
+
+                        ${
+                          orderType === "SESSION" && sessionDate
+                            ? `
+                        <!-- Enlace de reunión -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                          <tr>
+                            <td style="padding: 16px 20px; background-color: #eef1fa; border-radius: 12px; border-left: 4px solid #4944a4;">
+                              <p style="margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #4944a4;">
+                                🔗 Enlace de conexión
+                              </p>
+                              ${
+                                meetingLink
+                                  ? `<a href="${meetingLink}" style="font-size: 14px; color: #4944a4; word-break: break-all;">${meetingLink}</a>`
+                                  : `<p style="margin: 0; font-size: 14px; color: #654177; font-style: italic;">Aleyda te enviará el enlace poco antes de tu sesión.</p>`
+                              }
+                            </td>
+                          </tr>
+                        </table>
+
+                        <!-- Instrucciones de preparación -->
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                          <tr>
+                            <td style="padding: 20px; background-color: #fdf8ff; border-radius: 12px; border: 1px solid #e9d8f4;">
+                              <p style="margin: 0 0 14px; font-size: 15px; color: #654177; line-height: 1.6;">
+                                ${name.split(" ")[0]}, te envío la siguiente información para que la tengas presente para tu <strong>Consulta de Canalización</strong>:
+                              </p>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.7;">
+                                🌿 Busca un lugar tranquilo y seguro, donde puedas estar en calma y sin interrupciones.
+                              </p>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.7;">
+                                🕊️ Respira profundo unos minutos y permite que tu mente se aquiete.
+                              </p>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.7;">
+                                🤍 Ten preparadas tus preguntas desde el corazón.
+                              </p>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.7;">
+                                ✨ Llega con el corazón abierto y la mente en paz.
+                              </p>
+                              <p style="margin: 0 0 14px; font-size: 14px; color: #654177; line-height: 1.7;">
+                                🌟 Permite que los Seres de Luz te acompañen y te entreguen la orientación que necesitas en este momento de tu camino.
+                              </p>
+                              <p style="margin: 0; font-size: 14px; color: #8A4BAF; font-style: italic;">
+                                Todo llega con amor, claridad y guía divina 💫
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+                        `
+                            : ""
+                        }
 
                         <!-- CTA Button -->
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -1978,7 +2113,9 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
                           </tr>
                         </table>
 
-                        ${setPasswordToken ? `
+                        ${
+                          setPasswordToken
+                            ? `
                         <!-- Set Password Section -->
                         <table role="presentation" style="width: 100%; border-collapse: collapse; margin-top: 25px;">
                           <tr>
@@ -1998,7 +2135,9 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
                             </td>
                           </tr>
                         </table>
-                        ` : ''}
+                        `
+                            : ""
+                        }
 
                         <p style="margin: 25px 0 0; font-size: 14px; color: #999999; line-height: 1.6; text-align: center;">
                           Con amor y luz,<br>
@@ -2028,13 +2167,13 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
     });
 
     if (error) {
-      console.error('Error sending payment confirmation email:', error);
+      console.error("Error sending payment confirmation email:", error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error sending payment confirmation email:', error);
+    console.error("Error sending payment confirmation email:", error);
     return { success: false, error };
   }
 }
@@ -2048,7 +2187,7 @@ interface SendCancellationEmailParams {
   name: string;
   sessionName: string;
   scheduledDate: Date | null;
-  cancelledBy: 'client' | 'admin';
+  cancelledBy: "client" | "admin";
   reason?: string;
   packSessionReturned?: boolean;
   creditRefunded?: boolean;
@@ -2067,36 +2206,43 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
   } = params;
 
   const formattedDate = scheduledDate
-    ? scheduledDate.toLocaleDateString('es-CO', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
+    ? scheduledDate.toLocaleDateString("es-CO", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       })
-    : 'No programada';
+    : "No programada";
 
-  const cancelledByText = cancelledBy === 'admin'
-    ? 'Tu sesión ha sido cancelada por Aleyda Paola.'
-    : 'Has cancelado tu sesión.';
+  const cancelledByText =
+    cancelledBy === "admin"
+      ? "Tu sesión ha sido cancelada por Aleyda Paola."
+      : "Has cancelado tu sesión.";
 
   if (DEV_MODE) {
-    console.log('\n========================================');
-    console.log('📧 EMAIL DE CANCELACIÓN (Modo Desarrollo)');
-    console.log('========================================');
+    console.log("\n========================================");
+    console.log("📧 EMAIL DE CANCELACIÓN (Modo Desarrollo)");
+    console.log("========================================");
     console.log(`Para: ${email}`);
     console.log(`Nombre: ${name}`);
     console.log(`Sesión: ${sessionName}`);
     console.log(`Fecha: ${formattedDate}`);
     console.log(`Cancelado por: ${cancelledBy}`);
-    if (reason) {console.log(`Motivo: ${reason}`);}
-    if (packSessionReturned) {console.log(`Sesión devuelta al pack: Sí`);}
-    if (creditRefunded) {console.log(`Crédito reembolsado: Sí`);}
-    console.log('========================================\n');
+    if (reason) {
+      console.log(`Motivo: ${reason}`);
+    }
+    if (packSessionReturned) {
+      console.log(`Sesión devuelta al pack: Sí`);
+    }
+    if (creditRefunded) {
+      console.log(`Crédito reembolsado: Sí`);
+    }
+    console.log("========================================\n");
 
     if (DEV_AUTO_VERIFY) {
-      return { success: true, data: { id: 'dev-mode-simulated' } };
+      return { success: true, data: { id: "dev-mode-simulated" } };
     }
   }
 
@@ -2162,7 +2308,9 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
                           </tr>
                         </table>
 
-                        ${reason ? `
+                        ${
+                          reason
+                            ? `
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
                           <tr>
                             <td style="padding: 15px; background-color: #fef3c7; border-radius: 8px; margin-bottom: 20px;">
@@ -2172,9 +2320,13 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
                             </td>
                           </tr>
                         </table>
-                        ` : ''}
+                        `
+                            : ""
+                        }
 
-                        ${packSessionReturned ? `
+                        ${
+                          packSessionReturned
+                            ? `
                         <table role="presentation" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                           <tr>
                             <td style="padding: 15px; background-color: #d1fae5; border-radius: 8px;">
@@ -2184,9 +2336,13 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
                             </td>
                           </tr>
                         </table>
-                        ` : ''}
+                        `
+                            : ""
+                        }
 
-                        ${creditRefunded ? `
+                        ${
+                          creditRefunded
+                            ? `
                         <table role="presentation" style="width: 100%; border-collapse: collapse; margin-top: 20px;">
                           <tr>
                             <td style="padding: 15px; background-color: #d1fae5; border-radius: 8px;">
@@ -2196,7 +2352,9 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
                             </td>
                           </tr>
                         </table>
-                        ` : ''}
+                        `
+                            : ""
+                        }
 
                         <!-- CTA Button -->
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -2237,13 +2395,13 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
     });
 
     if (error) {
-      console.error('Error sending cancellation email:', error);
+      console.error("Error sending cancellation email:", error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error sending cancellation email:', error);
+    console.error("Error sending cancellation email:", error);
     return { success: false, error };
   }
 }
@@ -2252,9 +2410,16 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
 // NOTIFICACIONES AL ADMINISTRADOR
 // ============================================
 
-const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || 'admin@energiaydivinidad.com';
+const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || "admin@energiaydivinidad.com";
 
-type SaleType = 'SESSION' | 'SESSION_PACK' | 'MEMBERSHIP' | 'EVENT' | 'COURSE' | 'PREMIUM_CONTENT' | 'PRODUCT';
+type SaleType =
+  | "SESSION"
+  | "SESSION_PACK"
+  | "MEMBERSHIP"
+  | "EVENT"
+  | "COURSE"
+  | "PREMIUM_CONTENT"
+  | "PRODUCT";
 
 interface AdminNotificationParams {
   saleType: SaleType;
@@ -2263,7 +2428,7 @@ interface AdminNotificationParams {
   customerPhone?: string;
   itemName: string;
   amount: number;
-  currency: 'COP' | 'USD' | 'EUR';
+  currency: "COP" | "USD" | "EUR";
   paymentMethod: string;
   orderNumber: string;
   transactionId?: string;
@@ -2271,10 +2436,10 @@ interface AdminNotificationParams {
   sessionDate?: Date;
   sessionCount?: number; // Para packs
   membershipPlan?: string;
-  membershipInterval?: 'monthly' | 'yearly';
+  membershipInterval?: "monthly" | "yearly";
   eventDate?: Date;
   eventSeats?: number;
-  eventType?: 'online' | 'in_person';
+  eventType?: "online" | "in_person";
 }
 
 /**
@@ -2302,47 +2467,60 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
     eventType,
   } = params;
 
-  const formattedAmount = currency === 'COP'
-    ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(amount)
-    : currency === 'EUR'
-      ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
-      : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  const formattedAmount =
+    currency === "COP"
+      ? new Intl.NumberFormat("es-CO", {
+          style: "currency",
+          currency: "COP",
+          minimumFractionDigits: 0,
+        }).format(amount)
+      : currency === "EUR"
+        ? new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(amount)
+        : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
 
-  const formatDate = (date: Date) => date.toLocaleDateString('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString("es-CO", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   // Configurar textos según tipo de venta
   const saleTypeConfig: Record<SaleType, { emoji: string; label: string; color: string }> = {
-    SESSION: { emoji: '🔮', label: 'Sesión de Canalización', color: '#8A4BAF' },
-    SESSION_PACK: { emoji: '📦', label: 'Pack de Sesiones', color: '#654177' },
-    MEMBERSHIP: { emoji: '⭐', label: 'Membresía', color: '#C77DBA' },
-    EVENT: { emoji: '📅', label: 'Evento', color: '#2D4CC7' },
-    COURSE: { emoji: '📚', label: 'Curso', color: '#059669' },
-    PREMIUM_CONTENT: { emoji: '🎬', label: 'Contenido Premium', color: '#7c3aed' },
-    PRODUCT: { emoji: '🛍️', label: 'Producto', color: '#d97706' },
+    SESSION: { emoji: "🔮", label: "Sesión de Canalización", color: "#8A4BAF" },
+    SESSION_PACK: { emoji: "📦", label: "Pack de Sesiones", color: "#654177" },
+    MEMBERSHIP: { emoji: "⭐", label: "Membresía", color: "#C77DBA" },
+    EVENT: { emoji: "📅", label: "Evento", color: "#2D4CC7" },
+    COURSE: { emoji: "📚", label: "Curso", color: "#059669" },
+    PREMIUM_CONTENT: { emoji: "🎬", label: "Contenido Premium", color: "#7c3aed" },
+    PRODUCT: { emoji: "🛍️", label: "Producto", color: "#d97706" },
   };
 
   const config = saleTypeConfig[saleType];
 
   // Mapear método de pago a texto legible
-  const paymentMethodText = paymentMethod === 'WOMPI_CARD' ? 'Tarjeta (Wompi)'
-    : paymentMethod === 'WOMPI_NEQUI' ? 'Nequi (Wompi)'
-    : paymentMethod === 'PAYPAL_DIRECT' ? 'PayPal'
-    : paymentMethod === 'PAYPAL_CARD' ? 'Tarjeta (PayPal)'
-    : paymentMethod === 'STRIPE' ? 'Stripe'
-    : paymentMethod === 'NEQUI_PUSH' ? 'Nequi Push'
-    : paymentMethod;
+  const paymentMethodText =
+    paymentMethod === "WOMPI_CARD"
+      ? "Tarjeta (Wompi)"
+      : paymentMethod === "WOMPI_NEQUI"
+        ? "Nequi (Wompi)"
+        : paymentMethod === "PAYPAL_DIRECT"
+          ? "PayPal"
+          : paymentMethod === "PAYPAL_CARD"
+            ? "Tarjeta (PayPal)"
+            : paymentMethod === "STRIPE"
+              ? "Stripe"
+              : paymentMethod === "NEQUI_PUSH"
+                ? "Nequi Push"
+                : paymentMethod;
 
   // Construir detalles específicos según tipo
-  let specificDetails = '';
+  let specificDetails = "";
 
-  if (saleType === 'SESSION' && sessionDate) {
+  if (saleType === "SESSION" && sessionDate) {
     specificDetails = `
       <tr>
         <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
@@ -2353,7 +2531,7 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
     `;
   }
 
-  if (saleType === 'SESSION_PACK' && sessionCount) {
+  if (saleType === "SESSION_PACK" && sessionCount) {
     specificDetails = `
       <tr>
         <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
@@ -2364,7 +2542,7 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
     `;
   }
 
-  if (saleType === 'MEMBERSHIP') {
+  if (saleType === "MEMBERSHIP") {
     specificDetails = `
       <tr>
         <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
@@ -2375,18 +2553,18 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
       <tr>
         <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
           <span style="color: #666;">🔄 Frecuencia:</span>
-          <strong style="float: right; color: #333;">${membershipInterval === 'yearly' ? 'Anual' : 'Mensual'}</strong>
+          <strong style="float: right; color: #333;">${membershipInterval === "yearly" ? "Anual" : "Mensual"}</strong>
         </td>
       </tr>
     `;
   }
 
-  if (saleType === 'EVENT') {
+  if (saleType === "EVENT") {
     specificDetails = `
       <tr>
         <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
           <span style="color: #666;">📅 Fecha del evento:</span>
-          <strong style="float: right; color: #333;">${eventDate ? formatDate(eventDate) : 'Por definir'}</strong>
+          <strong style="float: right; color: #333;">${eventDate ? formatDate(eventDate) : "Por definir"}</strong>
         </td>
       </tr>
       <tr>
@@ -2398,7 +2576,7 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
       <tr>
         <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
           <span style="color: #666;">📍 Modalidad:</span>
-          <strong style="float: right; color: #333;">${eventType === 'online' ? 'Online (Zoom)' : 'Presencial'}</strong>
+          <strong style="float: right; color: #333;">${eventType === "online" ? "Online (Zoom)" : "Presencial"}</strong>
         </td>
       </tr>
     `;
@@ -2407,22 +2585,26 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
   const subject = `${config.emoji} Nueva venta: ${itemName} - ${formattedAmount}`;
 
   if (DEV_MODE) {
-    console.log('\n========================================');
-    console.log('📧 NOTIFICACIÓN ADMIN (Modo Desarrollo)');
-    console.log('========================================');
+    console.log("\n========================================");
+    console.log("📧 NOTIFICACIÓN ADMIN (Modo Desarrollo)");
+    console.log("========================================");
     console.log(`Para: ${ADMIN_EMAIL}`);
     console.log(`Tipo: ${config.label}`);
     console.log(`Cliente: ${customerName} <${customerEmail}>`);
-    if (customerPhone) {console.log(`Teléfono: ${customerPhone}`);}
+    if (customerPhone) {
+      console.log(`Teléfono: ${customerPhone}`);
+    }
     console.log(`Producto: ${itemName}`);
     console.log(`Total: ${formattedAmount}`);
     console.log(`Método: ${paymentMethodText}`);
     console.log(`Orden: ${orderNumber}`);
-    if (transactionId) {console.log(`Transacción: ${transactionId}`);}
-    console.log('========================================\n');
+    if (transactionId) {
+      console.log(`Transacción: ${transactionId}`);
+    }
+    console.log("========================================\n");
 
     if (DEV_AUTO_VERIFY) {
-      return { success: true, data: { id: 'dev-mode-simulated' } };
+      return { success: true, data: { id: "dev-mode-simulated" } };
     }
   }
 
@@ -2493,19 +2675,23 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
                             </td>
                           </tr>
                           <tr>
-                            <td style="padding: 10px 15px; ${customerPhone ? 'border-bottom: 1px solid #eee;' : ''}">
+                            <td style="padding: 10px 15px; ${customerPhone ? "border-bottom: 1px solid #eee;" : ""}">
                               <span style="color: #666;">Email:</span>
                               <a href="mailto:${customerEmail}" style="float: right; color: #8A4BAF; text-decoration: none;">${customerEmail}</a>
                             </td>
                           </tr>
-                          ${customerPhone ? `
+                          ${
+                            customerPhone
+                              ? `
                           <tr>
                             <td style="padding: 10px 15px;">
                               <span style="color: #666;">Teléfono:</span>
-                              <a href="https://wa.me/${customerPhone.replace(/[^0-9]/g, '')}" style="float: right; color: #25D366; text-decoration: none;">${customerPhone}</a>
+                              <a href="https://wa.me/${customerPhone.replace(/[^0-9]/g, "")}" style="float: right; color: #25D366; text-decoration: none;">${customerPhone}</a>
                             </td>
                           </tr>
-                          ` : ''}
+                          `
+                              : ""
+                          }
                         </table>
 
                         <!-- Order Details -->
@@ -2523,19 +2709,23 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
                             </td>
                           </tr>
                           <tr>
-                            <td style="padding: 10px 15px; ${transactionId ? 'border-bottom: 1px solid #eee;' : ''}">
+                            <td style="padding: 10px 15px; ${transactionId ? "border-bottom: 1px solid #eee;" : ""}">
                               <span style="color: #666;">N° de orden:</span>
                               <strong style="float: right; color: #333; font-family: monospace;">${orderNumber}</strong>
                             </td>
                           </tr>
-                          ${transactionId ? `
+                          ${
+                            transactionId
+                              ? `
                           <tr>
                             <td style="padding: 10px 15px;">
                               <span style="color: #666;">ID Transacción:</span>
                               <span style="float: right; color: #666; font-family: monospace; font-size: 12px;">${transactionId}</span>
                             </td>
                           </tr>
-                          ` : ''}
+                          `
+                              : ""
+                          }
                         </table>
 
                         <!-- Quick Actions -->
@@ -2558,7 +2748,7 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
                           Notificación automática de Energía y Divinidad
                         </p>
                         <p style="margin: 5px 0 0; font-size: 12px; color: #999;">
-                          ${new Date().toLocaleString('es-CO', { dateStyle: 'full', timeStyle: 'short' })}
+                          ${new Date().toLocaleString("es-CO", { dateStyle: "full", timeStyle: "short" })}
                         </p>
                       </td>
                     </tr>
@@ -2572,13 +2762,13 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
     });
 
     if (error) {
-      console.error('Error sending admin notification email:', error);
+      console.error("Error sending admin notification email:", error);
       return { success: false, error };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('Error sending admin notification email:', error);
+    console.error("Error sending admin notification email:", error);
     return { success: false, error };
   }
 }
@@ -2602,22 +2792,22 @@ interface WaitlistJoinedEmailParams {
 export async function sendWaitlistJoinedEmail(params: WaitlistJoinedEmailParams) {
   const { email, name, eventTitle, eventDate, position, seatsRequested } = params;
 
-  const formattedDate = new Date(eventDate).toLocaleDateString('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  const formattedDate = new Date(eventDate).toLocaleDateString("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
-  const seatsText = seatsRequested > 1 ? `${seatsRequested} cupos` : '1 cupo';
+  const seatsText = seatsRequested > 1 ? `${seatsRequested} cupos` : "1 cupo";
 
   return sendEmailWithLogging({
     to: email,
     subject: `Te has unido a la lista de espera - ${eventTitle}`,
-    template: 'waitlist_joined',
-    entityType: 'event',
+    template: "waitlist_joined",
+    entityType: "event",
     metadata: { eventTitle, position, seatsRequested },
     html: `
       <!DOCTYPE html>
@@ -2737,30 +2927,30 @@ interface WaitlistOfferEmailParams {
 export async function sendWaitlistOfferEmail(params: WaitlistOfferEmailParams) {
   const { email, name, eventTitle, eventDate, seats, expiresAt } = params;
 
-  const formattedDate = new Date(eventDate).toLocaleDateString('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  const formattedDate = new Date(eventDate).toLocaleDateString("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
-  const formattedExpiry = expiresAt.toLocaleDateString('es-CO', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
+  const formattedExpiry = expiresAt.toLocaleDateString("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 
-  const seatsText = seats > 1 ? `${seats} cupos` : '1 cupo';
+  const seatsText = seats > 1 ? `${seats} cupos` : "1 cupo";
 
   return sendEmailWithLogging({
     to: email,
     subject: `🎉 ¡Cupo disponible! - ${eventTitle}`,
-    template: 'waitlist_offer',
-    entityType: 'event',
+    template: "waitlist_offer",
+    entityType: "event",
     metadata: { eventTitle, seats, expiresAt: expiresAt.toISOString() },
     html: `
       <!DOCTYPE html>
@@ -2883,8 +3073,8 @@ export async function sendWaitlistOfferReminderEmail(params: WaitlistOfferRemind
   return sendEmailWithLogging({
     to: email,
     subject: `⏰ Recordatorio: Tu cupo expira en ${hoursRemaining}h - ${eventTitle}`,
-    template: 'waitlist_reminder',
-    entityType: 'event',
+    template: "waitlist_reminder",
+    entityType: "event",
     metadata: { eventTitle, hoursRemaining },
     html: `
       <!DOCTYPE html>
@@ -2985,8 +3175,8 @@ export async function sendWaitlistOfferExpiredEmail(params: WaitlistOfferExpired
   return sendEmailWithLogging({
     to: email,
     subject: `Tu cupo ha expirado - ${eventTitle}`,
-    template: 'waitlist_expired',
-    entityType: 'event',
+    template: "waitlist_expired",
+    entityType: "event",
     metadata: { eventTitle },
     html: `
       <!DOCTYPE html>

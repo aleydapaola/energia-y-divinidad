@@ -1,8 +1,6 @@
 import { sanityFetch } from '@/sanity/lib/fetch'
 import { mainImageProjection, seoProjection } from '@/sanity/lib/projections'
 
-import { client } from '../client'
-
 // ==========================================
 // INTERFACES
 // ==========================================
@@ -61,6 +59,8 @@ export interface SessionConfig {
   deliveryMethod: 'in_person' | 'video_call' | 'phone_call' | 'hybrid'
   price: number
   priceUSD?: number
+  priceEUR?: number
+  meetingLink?: string
   memberDiscount?: number
   preparationInstructions?: any[]
   whatToExpect?: any[]
@@ -105,6 +105,8 @@ const sessionConfigFields = `
   deliveryMethod,
   price,
   priceUSD,
+  priceEUR,
+  meetingLink,
   memberDiscount,
   preparationInstructions,
   whatToExpect,
@@ -500,4 +502,12 @@ export function isDateAvailable(
   }
 
   return true
+}
+
+/**
+ * Obtiene el enlace de reunión de la sesión activa (para emails de confirmación)
+ */
+export async function getSessionMeetingLink(): Promise<string | undefined> {
+  const session = await getActiveSession()
+  return session?.meetingLink ?? undefined
 }

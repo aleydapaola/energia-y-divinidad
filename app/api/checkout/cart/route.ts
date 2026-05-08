@@ -1,32 +1,34 @@
-import { nanoid } from 'nanoid'
-import { NextRequest, NextResponse } from 'next/server'
+import { nanoid } from "nanoid";
+import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from '@/lib/auth'
-import { createCourseEntitlement } from '@/lib/course-access'
-import { validateDiscountCode, recordDiscountUsage } from '@/lib/discount-codes'
-import { createPayPalOrder } from '@/lib/paypal'
-import { prisma } from '@/lib/prisma'
-import { getAppUrl } from '@/lib/utils'
-import {
-  createWompiPaymentLink,
-  generateWompiReference,
-} from '@/lib/wompi'
-import { client } from '@/sanity/lib/client'
-import { COURSES_BY_IDS_QUERY } from '@/sanity/lib/queries'
+import { auth } from "@/lib/auth";
+import { createCourseEntitlement } from "@/lib/course-access";
+import { validateDiscountCode, recordDiscountUsage } from "@/lib/discount-codes";
+import { createPayPalOrder } from "@/lib/paypal";
+import { prisma } from "@/lib/prisma";
+import { getAppUrl } from "@/lib/utils";
+import { createWompiPaymentLink, generateWompiReference } from "@/lib/wompi";
+import { client } from "@/sanity/lib/client";
+import { COURSES_BY_IDS_QUERY } from "@/sanity/lib/queries";
 
-type PaymentMethod = 'wompi_nequi' | 'wompi_card' | 'wompi_manual' | 'paypal_direct' | 'paypal_card'
+type PaymentMethod =
+  | "wompi_nequi"
+  | "wompi_card"
+  | "wompi_manual"
+  | "paypal_direct"
+  | "paypal_card";
 
 interface CartItem {
-  courseId: string
-  courseName: string
-  price: number
+  courseId: string;
+  courseName: string;
+  price: number;
 }
 
 interface CheckoutBody {
-  items: CartItem[]
-  currency: 'COP' | 'USD'
-  paymentMethod: PaymentMethod
-  discountCode?: string
+  items: CartItem[];
+  currency: "COP" | "USD";
+  paymentMethod: PaymentMethod;
+  discountCode?: string;
 }
 
 /**
@@ -36,42 +38,39 @@ interface CheckoutBody {
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
+    const session = await auth();
 
     if (!session?.user?.id || !session?.user?.email) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const body: CheckoutBody = await request.json()
-    const { items, currency, paymentMethod, discountCode } = body
+    const body: CheckoutBody = await request.json();
+    const { items, currency, paymentMethod, discountCode } = body;
 
     // Validaciones básicas
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: 'El carrito está vacío' }, { status: 400 })
+      return NextResponse.json({ error: "El carrito está vacío" }, { status: 400 });
     }
 
-    if (!currency || !['COP', 'USD'].includes(currency)) {
-      return NextResponse.json({ error: 'Moneda no válida' }, { status: 400 })
+    if (!currency || !["COP", "USD"].includes(currency)) {
+      return NextResponse.json({ error: "Moneda no válida" }, { status: 400 });
     }
 
     // Verificar que todos los cursos existen y están activos
-    const courseIds = items.map((item) => item.courseId)
-    const courses = await client.fetch(COURSES_BY_IDS_QUERY, { ids: courseIds })
+    const courseIds = items.map((item) => item.courseId);
+    const courses = await client.fetch(COURSES_BY_IDS_QUERY, { ids: courseIds });
 
     if (courses.length !== items.length) {
-      return NextResponse.json(
-        { error: 'Algunos cursos no están disponibles' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "Algunos cursos no están disponibles" }, { status: 400 });
     }
 
     // Verificar que los cursos están publicados y activos
     for (const course of courses) {
-      if (!course.published || course.status !== 'active') {
+      if (!course.published || course.status !== "active") {
         return NextResponse.json(
           { error: `El curso "${course.title}" no está disponible` },
           { status: 400 }
-        )
+        );
       }
     }
 
@@ -79,63 +78,57 @@ export async function POST(request: NextRequest) {
     const existingEntitlements = await prisma.entitlement.findMany({
       where: {
         userId: session.user.id,
-        type: 'COURSE',
+        type: "COURSE",
         resourceId: { in: courseIds },
         revoked: false,
       },
-    })
+    });
 
     if (existingEntitlements.length > 0) {
-      const ownedCourseIds = existingEntitlements.map((e) => e.resourceId)
-      const ownedCourse = courses.find((c: any) => ownedCourseIds.includes(c._id))
+      const ownedCourseIds = existingEntitlements.map((e) => e.resourceId);
+      const ownedCourse = courses.find((c: any) => ownedCourseIds.includes(c._id));
       return NextResponse.json(
         { error: `Ya tienes acceso al curso "${ownedCourse?.title}"` },
         { status: 400 }
-      )
+      );
     }
 
     // Calcular subtotal
-    const subtotal = items.reduce((sum, item) => sum + item.price, 0)
+    const subtotal = items.reduce((sum, item) => sum + item.price, 0);
 
     // Validar y aplicar código de descuento si existe
-    let discountAmount = 0
-    let discountCodeId: string | undefined
-    let discountCodeValue: string | undefined
+    let discountAmount = 0;
+    let discountCodeId: string | undefined;
+    let discountCodeValue: string | undefined;
 
     if (discountCode) {
       const discountResult = await validateDiscountCode({
         code: discountCode,
         userId: session.user.id,
+        productType: "course",
         courseIds,
         amount: subtotal,
         currency,
-      })
+      });
 
       if (!discountResult.valid) {
-        return NextResponse.json(
-          { error: discountResult.error },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: discountResult.error }, { status: 400 });
       }
 
-      discountAmount = discountResult.discountAmount || 0
-      discountCodeId = discountResult.discountCode?._id
-      discountCodeValue = discountResult.discountCode?.code
+      discountAmount = discountResult.discountAmount || 0;
+      discountCodeId = discountResult.discountCode?._id;
+      discountCodeValue = discountResult.discountCode?.code;
     }
 
-    const finalAmount = Math.max(0, subtotal - discountAmount)
+    const finalAmount = Math.max(0, subtotal - discountAmount);
 
     // Generar referencia
-    const isWompi = paymentMethod.startsWith('wompi')
-    const reference = isWompi
-      ? generateWompiReference('EYD')
-      : `PP-${nanoid(10).toUpperCase()}`
+    const isWompi = paymentMethod.startsWith("wompi");
+    const reference = isWompi ? generateWompiReference("EYD") : `PP-${nanoid(10).toUpperCase()}`;
 
     // Crear nombre del pedido
     const orderName =
-      items.length === 1
-        ? items[0].courseName
-        : `${items.length} cursos de la Academia`
+      items.length === 1 ? items[0].courseName : `${items.length} cursos de la Academia`;
 
     // ============================================
     // CASO ESPECIAL: Descuento 100% (gratis)
@@ -146,8 +139,8 @@ export async function POST(request: NextRequest) {
         data: {
           userId: session.user.id,
           orderNumber: reference,
-          orderType: 'COURSE',
-          itemId: courseIds.join(','), // Múltiples IDs separados por coma
+          orderType: "COURSE",
+          itemId: courseIds.join(","), // Múltiples IDs separados por coma
           itemName: orderName,
           amount: 0,
           originalAmount: subtotal,
@@ -155,15 +148,15 @@ export async function POST(request: NextRequest) {
           discountCodeId: discountCodeId,
           discountCode: discountCodeValue?.toUpperCase(),
           currency,
-          paymentMethod: 'FREE',
-          paymentStatus: 'COMPLETED',
+          paymentMethod: "FREE",
+          paymentStatus: "COMPLETED",
           metadata: {
             courseIds,
             items: items.map((i) => ({ id: i.courseId, name: i.courseName, price: i.price })),
             freeOrder: true,
           },
         },
-      })
+      });
 
       // Crear entitlements para cada curso
       for (const item of items) {
@@ -172,7 +165,7 @@ export async function POST(request: NextRequest) {
           courseId: item.courseId,
           courseName: item.courseName,
           orderId: order.id,
-        })
+        });
       }
 
       // Registrar uso del código de descuento
@@ -184,17 +177,17 @@ export async function POST(request: NextRequest) {
           orderId: order.id,
           discountAmount,
           currency,
-        })
+        });
       }
 
-      console.log(`Free order completed: ${reference} for user ${session.user.id}`)
+      console.log(`Free order completed: ${reference} for user ${session.user.id}`);
 
       return NextResponse.json({
         success: true,
         freeOrder: true,
         reference,
-        redirectUrl: '/mi-cuenta/cursos',
-      })
+        redirectUrl: "/mi-cuenta/cursos",
+      });
     }
 
     // ============================================
@@ -206,8 +199,8 @@ export async function POST(request: NextRequest) {
       data: {
         userId: session.user.id,
         orderNumber: reference,
-        orderType: 'COURSE',
-        itemId: courseIds.join(','),
+        orderType: "COURSE",
+        itemId: courseIds.join(","),
         itemName: orderName,
         amount: finalAmount,
         originalAmount: subtotal,
@@ -216,51 +209,48 @@ export async function POST(request: NextRequest) {
         discountCode: discountCodeValue?.toUpperCase() || null,
         currency,
         paymentMethod: getPaymentMethodEnum(paymentMethod),
-        paymentStatus: 'PENDING',
+        paymentStatus: "PENDING",
         metadata: {
           courseIds,
           items: items.map((i) => ({ id: i.courseId, name: i.courseName, price: i.price })),
         },
       },
-    })
+    });
 
-    const appUrl = getAppUrl()
+    const appUrl = getAppUrl();
 
     // Procesar según método de pago
-    if (paymentMethod === 'wompi_manual') {
+    if (paymentMethod === "wompi_manual") {
       // Wompi Manual - Usar link de pago genérico desde dashboard de Wompi
       // Buscar link por monto específico o usar default
       const paymentLinkUrl =
         process.env[`WOMPI_PAYMENT_LINK_${finalAmount}`] ||
         process.env[`WOMPI_PAYMENT_LINK_COURSE`] ||
-        process.env.WOMPI_PAYMENT_LINK_DEFAULT
+        process.env.WOMPI_PAYMENT_LINK_DEFAULT;
 
       await prisma.order.update({
         where: { id: order.id },
         data: {
-          paymentMethod: 'WOMPI_MANUAL',
+          paymentMethod: "WOMPI_MANUAL",
           metadata: {
             ...(order.metadata as object),
-            wompiPaymentLinkUrl: paymentLinkUrl || '',
+            wompiPaymentLinkUrl: paymentLinkUrl || "",
           },
         },
-      })
+      });
 
       return NextResponse.json({
         success: true,
         reference,
         redirectUrl: `/pago/wompi-pending?ref=${reference}`,
-      })
+      });
     } else if (isWompi) {
       // Wompi automático (legacy - deshabilitado temporalmente)
-      if (currency !== 'COP') {
-        return NextResponse.json(
-          { error: 'Wompi solo soporta pagos en COP' },
-          { status: 400 }
-        )
+      if (currency !== "COP") {
+        return NextResponse.json({ error: "Wompi solo soporta pagos en COP" }, { status: 400 });
       }
 
-      const amountInCents = Math.round(finalAmount * 100)
+      const amountInCents = Math.round(finalAmount * 100);
 
       const { paymentLink, checkoutUrl } = await createWompiPaymentLink({
         name: orderName,
@@ -268,7 +258,7 @@ export async function POST(request: NextRequest) {
         amountInCents,
         singleUse: true,
         redirectUrl: `${appUrl}/pago/confirmacion?ref=${reference}`,
-      })
+      });
 
       await prisma.order.update({
         where: { id: order.id },
@@ -278,35 +268,35 @@ export async function POST(request: NextRequest) {
             wompiPaymentLinkId: paymentLink.id,
           },
         },
-      })
+      });
 
       return NextResponse.json({
         success: true,
         reference,
         checkoutUrl,
-      })
+      });
     } else {
       // PayPal (Internacional - COP/USD)
       const paypalResult = await createPayPalOrder({
         amount: finalAmount,
-        currency: currency as 'USD' | 'COP',
+        currency: currency as "USD" | "COP",
         description: `${orderName} - Academia Energía y Divinidad`,
         reference,
         returnUrl: `${appUrl}/pago/confirmacion?ref=${reference}`,
         cancelUrl: `${appUrl}/pago/cancelado?ref=${reference}`,
         customerEmail: session.user.email,
-      })
+      });
 
       if (!paypalResult.success || !paypalResult.approvalUrl) {
         await prisma.order.update({
           where: { id: order.id },
-          data: { paymentStatus: 'FAILED' },
-        })
+          data: { paymentStatus: "FAILED" },
+        });
 
         return NextResponse.json(
-          { error: paypalResult.error || 'Error al procesar pago' },
+          { error: paypalResult.error || "Error al procesar pago" },
           { status: 400 }
-        )
+        );
       }
 
       // Actualizar orden con ID de PayPal
@@ -318,36 +308,33 @@ export async function POST(request: NextRequest) {
             paypalOrderId: paypalResult.orderId,
           },
         },
-      })
+      });
 
       return NextResponse.json({
         success: true,
         reference,
         approvalUrl: paypalResult.approvalUrl,
-      })
+      });
     }
   } catch (error) {
-    console.error('Error in cart checkout:', error)
-    return NextResponse.json(
-      { error: 'Error al procesar el pedido' },
-      { status: 500 }
-    )
+    console.error("Error in cart checkout:", error);
+    return NextResponse.json({ error: "Error al procesar el pedido" }, { status: 500 });
   }
 }
 
 function getPaymentMethodEnum(method: PaymentMethod) {
   switch (method) {
-    case 'wompi_nequi':
-      return 'WOMPI_NEQUI'
-    case 'wompi_card':
-      return 'WOMPI_CARD'
-    case 'wompi_manual':
-      return 'WOMPI_MANUAL'
-    case 'paypal_direct':
-      return 'PAYPAL_DIRECT'
-    case 'paypal_card':
-      return 'PAYPAL_CARD'
+    case "wompi_nequi":
+      return "WOMPI_NEQUI";
+    case "wompi_card":
+      return "WOMPI_CARD";
+    case "wompi_manual":
+      return "WOMPI_MANUAL";
+    case "paypal_direct":
+      return "PAYPAL_DIRECT";
+    case "paypal_card":
+      return "PAYPAL_CARD";
     default:
-      return 'PAYPAL_DIRECT'
+      return "PAYPAL_DIRECT";
   }
 }

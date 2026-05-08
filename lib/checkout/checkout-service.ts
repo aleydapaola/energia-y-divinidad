@@ -3,47 +3,47 @@
  * Servicio centralizado para procesar checkouts
  */
 
-import { validateDiscountCode, calculateDiscount } from '@/lib/discount-codes'
-import { generateOrderNumber, type OrderPrefix } from '@/lib/order-utils'
+import { validateDiscountCode, calculateDiscount } from "@/lib/discount-codes";
+import { generateOrderNumber, type OrderPrefix } from "@/lib/order-utils";
 import {
   getGatewayForPayment,
   type CreatePaymentParams,
   type PaymentMethodType,
   type Currency,
-} from '@/lib/payments'
-import { prisma } from '@/lib/prisma'
+} from "@/lib/payments";
+import { prisma } from "@/lib/prisma";
 
-import type { CheckoutInput } from './validation'
+import type { CheckoutInput } from "./validation";
 
 export interface CheckoutOptions {
   /** Datos validados del checkout */
-  data: CheckoutInput
+  data: CheckoutInput;
   /** ID del usuario autenticado (null para guest) */
-  userId: string | null
+  userId: string | null;
   /** Email del usuario (de sesión o de datos de cliente) */
-  userEmail: string
+  userEmail: string;
   /** Nombre del usuario */
-  userName: string | null
+  userName: string | null;
   /** IP del cliente */
-  clientIP: string
+  clientIP: string;
   /** URL base para retorno */
-  baseUrl: string
+  baseUrl: string;
 }
 
 export interface CheckoutResult {
-  success: boolean
+  success: boolean;
   /** URL para redirigir al usuario */
-  redirectUrl?: string
+  redirectUrl?: string;
   /** Orden creada */
   order?: {
-    id: string
-    orderNumber: string
-  }
+    id: string;
+    orderNumber: string;
+  };
   /** Referencia de pago */
-  reference?: string
+  reference?: string;
   /** Error si falló */
-  error?: string
-  errorCode?: 'VALIDATION' | 'DUPLICATE' | 'DISCOUNT_INVALID' | 'GATEWAY_ERROR' | 'INTERNAL'
+  error?: string;
+  errorCode?: "VALIDATION" | "DUPLICATE" | "DISCOUNT_INVALID" | "GATEWAY_ERROR" | "INTERNAL";
 }
 
 /**
@@ -51,14 +51,14 @@ export interface CheckoutResult {
  */
 function getOrderPrefix(productType: string): OrderPrefix {
   const prefixMap: Record<string, OrderPrefix> = {
-    SESSION: 'ORD',
-    EVENT: 'EVT',
-    MEMBERSHIP: 'MEM',
-    COURSE: 'CRS',
-    PRODUCT: 'ORD',
-    PREMIUM_CONTENT: 'ORD',
-  }
-  return prefixMap[productType] || 'ORD'
+    SESSION: "ORD",
+    EVENT: "EVT",
+    MEMBERSHIP: "MEM",
+    COURSE: "CRS",
+    PRODUCT: "ORD",
+    PREMIUM_CONTENT: "ORD",
+  };
+  return prefixMap[productType] || "ORD";
 }
 
 /**
@@ -66,19 +66,19 @@ function getOrderPrefix(productType: string): OrderPrefix {
  */
 function getOrderType(
   productType: string
-): 'PRODUCT' | 'SESSION' | 'EVENT' | 'MEMBERSHIP' | 'PREMIUM_CONTENT' | 'COURSE' {
+): "PRODUCT" | "SESSION" | "EVENT" | "MEMBERSHIP" | "PREMIUM_CONTENT" | "COURSE" {
   const typeMap: Record<
     string,
-    'PRODUCT' | 'SESSION' | 'EVENT' | 'MEMBERSHIP' | 'PREMIUM_CONTENT' | 'COURSE'
+    "PRODUCT" | "SESSION" | "EVENT" | "MEMBERSHIP" | "PREMIUM_CONTENT" | "COURSE"
   > = {
-    SESSION: 'SESSION',
-    EVENT: 'EVENT',
-    MEMBERSHIP: 'MEMBERSHIP',
-    COURSE: 'COURSE',
-    PRODUCT: 'PRODUCT',
-    PREMIUM_CONTENT: 'PREMIUM_CONTENT',
-  }
-  return typeMap[productType] || 'PRODUCT'
+    SESSION: "SESSION",
+    EVENT: "EVENT",
+    MEMBERSHIP: "MEMBERSHIP",
+    COURSE: "COURSE",
+    PRODUCT: "PRODUCT",
+    PREMIUM_CONTENT: "PREMIUM_CONTENT",
+  };
+  return typeMap[productType] || "PRODUCT";
 }
 
 /**
@@ -87,87 +87,88 @@ function getOrderType(
 function getPaymentMethodEnum(
   gatewayName: string,
   paymentMethod: PaymentMethodType
-): 'WOMPI_NEQUI' | 'WOMPI_CARD' | 'WOMPI_PSE' | 'PAYPAL_DIRECT' | 'PAYPAL_CARD' {
-  if (gatewayName === 'wompi') {
+): "WOMPI_NEQUI" | "WOMPI_CARD" | "WOMPI_PSE" | "PAYPAL_DIRECT" | "PAYPAL_CARD" {
+  if (gatewayName === "wompi") {
     switch (paymentMethod) {
-      case 'NEQUI':
-        return 'WOMPI_NEQUI'
-      case 'PSE':
-        return 'WOMPI_PSE'
-      case 'BANK_TRANSFER':
-        return 'WOMPI_PSE'
+      case "NEQUI":
+        return "WOMPI_NEQUI";
+      case "PSE":
+        return "WOMPI_PSE";
+      case "BANK_TRANSFER":
+        return "WOMPI_PSE";
       default:
-        return 'WOMPI_CARD'
+        return "WOMPI_CARD";
     }
-  } else if (gatewayName === 'paypal') {
+  } else if (gatewayName === "paypal") {
     switch (paymentMethod) {
-      case 'CARD':
-        return 'PAYPAL_CARD'
+      case "CARD":
+        return "PAYPAL_CARD";
       default:
-        return 'PAYPAL_DIRECT'
+        return "PAYPAL_DIRECT";
     }
-  } else if (gatewayName === 'nequi') {
-    return 'WOMPI_NEQUI' // Nequi directo también se marca como WOMPI_NEQUI
+  } else if (gatewayName === "nequi") {
+    return "WOMPI_NEQUI"; // Nequi directo también se marca como WOMPI_NEQUI
   }
-  return 'WOMPI_CARD'
+  return "WOMPI_CARD";
 }
 
 /**
  * Procesa un checkout completo
  */
 export async function processCheckout(options: CheckoutOptions): Promise<CheckoutResult> {
-  const { data, userId, userEmail, userName, clientIP, baseUrl } = options
+  const { data, userId, userEmail, userName, clientIP, baseUrl } = options;
 
   try {
     // 1. Verificar si intenta comprar el mismo plan
-    if (data.productType === 'MEMBERSHIP' && userId) {
-      const samePlanExists = await checkExistingMembership(userId, data.productId)
+    if (data.productType === "MEMBERSHIP" && userId) {
+      const samePlanExists = await checkExistingMembership(userId, data.productId);
       if (samePlanExists) {
         return {
           success: false,
-          error: 'Ya tienes este plan activo',
-          errorCode: 'DUPLICATE',
-        }
+          error: "Ya tienes este plan activo",
+          errorCode: "DUPLICATE",
+        };
       }
       // Si tiene otro plan, es un upgrade/downgrade - permitir continuar
     }
 
     // 2. Procesar código de descuento si existe
-    let finalAmount = data.amount
-    let discountInfo: { id: string; code: string; amount: number } | null = null
+    let finalAmount = data.amount;
+    let discountInfo: { id: string; code: string; amount: number } | null = null;
 
     if (data.discountCode && userId) {
       const discountResult = await validateDiscountCode({
         code: data.discountCode,
         userId,
-        courseIds: data.productType === 'COURSE' ? [data.productId] : [],
+        productType: data.productType === "COURSE" ? "course" : "session",
+        courseIds: data.productType === "COURSE" ? [data.productId] : [],
         amount: data.amount,
-        currency: data.currency as 'COP' | 'USD',
-      })
+        currency: data.currency as "COP" | "USD",
+      });
 
       if (discountResult.valid && discountResult.discountCode) {
         const discountAmount = calculateDiscount(
           data.amount,
           discountResult.discountCode.discountType,
           discountResult.discountCode.discountValue
-        )
+        );
         discountInfo = {
           id: discountResult.discountCode._id,
           code: data.discountCode.toUpperCase(),
           amount: discountAmount,
-        }
-        finalAmount = Math.max(0, data.amount - discountAmount)
+        };
+        finalAmount = Math.max(0, data.amount - discountAmount);
       }
     }
 
     // 3. Generar número de orden
-    const orderNumber = generateOrderNumber(getOrderPrefix(data.productType))
+    const orderNumber = generateOrderNumber(getOrderPrefix(data.productType));
 
     // 4. Seleccionar gateway
     const gateway = getGatewayForPayment(
       data.paymentMethod as PaymentMethodType,
       data.currency as Currency
-    )
+    );
 
     // 5. Crear orden en base de datos
     const order = await prisma.order.create({
@@ -182,7 +183,7 @@ export async function processCheckout(options: CheckoutOptions): Promise<Checkou
         amount: finalAmount,
         currency: data.currency,
         paymentMethod: getPaymentMethodEnum(gateway.name, data.paymentMethod as PaymentMethodType),
-        paymentStatus: 'PENDING',
+        paymentStatus: "PENDING",
         discountCodeId: discountInfo?.id,
         discountCode: discountInfo?.code,
         discountAmount: discountInfo?.amount,
@@ -202,7 +203,7 @@ export async function processCheckout(options: CheckoutOptions): Promise<Checkou
           ...data.metadata,
         },
       },
-    })
+    });
 
     // 6. Crear pago en el gateway
     const paymentParams: CreatePaymentParams = {
@@ -212,7 +213,7 @@ export async function processCheckout(options: CheckoutOptions): Promise<Checkou
       orderNumber: order.orderNumber,
       customer: {
         email: data.customerEmail || userEmail,
-        name: data.customerName || userName || 'Cliente',
+        name: data.customerName || userName || "Cliente",
         phone: data.customerPhone,
       },
       description: `${data.productName} - Energía y Divinidad`,
@@ -224,29 +225,29 @@ export async function processCheckout(options: CheckoutOptions): Promise<Checkou
       },
       returnUrl: `${baseUrl}/pago/confirmacion?ref=${order.orderNumber}`,
       webhookUrl: `${baseUrl}/api/webhooks/${gateway.name}`,
-    }
+    };
 
-    const paymentResult = await gateway.createPayment(paymentParams)
+    const paymentResult = await gateway.createPayment(paymentParams);
 
     if (!paymentResult.success) {
       // Marcar orden como fallida
       await prisma.order.update({
         where: { id: order.id },
         data: {
-          paymentStatus: 'FAILED',
+          paymentStatus: "FAILED",
           metadata: {
             ...(order.metadata as object),
             gatewayError: paymentResult.error,
             gatewayErrorCode: paymentResult.errorCode,
           },
         },
-      })
+      });
 
       return {
         success: false,
-        error: paymentResult.error || 'Error al crear el pago',
-        errorCode: 'GATEWAY_ERROR',
-      }
+        error: paymentResult.error || "Error al crear el pago",
+        errorCode: "GATEWAY_ERROR",
+      };
     }
 
     // 7. Actualizar orden con ID de transacción
@@ -259,7 +260,7 @@ export async function processCheckout(options: CheckoutOptions): Promise<Checkou
           gatewayReference: paymentResult.reference,
         },
       },
-    })
+    });
 
     return {
       success: true,
@@ -269,15 +270,15 @@ export async function processCheckout(options: CheckoutOptions): Promise<Checkou
         id: order.id,
         orderNumber: order.orderNumber,
       },
-    }
+    };
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
-    console.error('[CHECKOUT] Error:', error)
+    const errorMessage = error instanceof Error ? error.message : "Error desconocido";
+    console.error("[CHECKOUT] Error:", error);
     return {
       success: false,
       error: errorMessage,
-      errorCode: 'INTERNAL',
-    }
+      errorCode: "INTERNAL",
+    };
   }
 }
 
@@ -290,16 +291,20 @@ async function checkExistingMembership(userId: string, tierId?: string): Promise
   const existing = await prisma.subscription.findFirst({
     where: {
       userId,
-      status: { in: ['ACTIVE', 'TRIAL', 'PAST_DUE'] },
+      status: { in: ["ACTIVE", "TRIAL", "PAST_DUE"] },
     },
-  })
+  });
 
   // Si no tiene membresía activa, permitir
-  if (!existing) {return false}
+  if (!existing) {
+    return false;
+  }
 
   // Si tiene membresía pero es diferente tier, permitir (upgrade/downgrade)
-  if (tierId && existing.membershipTierId !== tierId) {return false}
+  if (tierId && existing.membershipTierId !== tierId) {
+    return false;
+  }
 
   // Mismo tier - bloquear
-  return true
+  return true;
 }

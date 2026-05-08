@@ -84,7 +84,7 @@ export default defineType({
           { title: '120 minutos', value: 120 },
         ],
       },
-      initialValue: 90,
+      initialValue: 120,
       validation: (Rule) => Rule.required().min(15),
     }),
     defineField({
@@ -114,10 +114,25 @@ export default defineType({
     defineField({
       name: 'priceUSD',
       title: 'Precio (USD)',
-      description: 'Para pagos internacionales',
+      description: 'Para pagos internacionales en dólares estadounidenses',
       type: 'number',
       group: 'session',
       validation: (Rule) => Rule.min(0),
+    }),
+    defineField({
+      name: 'priceEUR',
+      title: 'Precio (EUR)',
+      description: 'Para pagos internacionales en euros',
+      type: 'number',
+      group: 'session',
+      validation: (Rule) => Rule.min(0),
+    }),
+    defineField({
+      name: 'meetingLink',
+      title: 'Enlace de reunión (Zoom / Meet)',
+      description: 'Link de la videollamada que se enviará en los emails de confirmación de sesión',
+      type: 'url',
+      group: 'session',
     }),
     defineField({
       name: 'memberDiscount',
