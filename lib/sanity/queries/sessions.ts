@@ -31,6 +31,7 @@ export interface Session {
   memberDiscount?: number
   availabilitySchedule?: WeeklySchedule
   weeklySchedule?: WeeklySchedule
+  bufferTime?: number
   bookingLeadTime: number
   maxAdvanceBooking: number
   requiresIntake: boolean

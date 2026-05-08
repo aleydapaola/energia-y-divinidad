@@ -84,7 +84,7 @@ export default defineType({
           { title: '120 minutos', value: 120 },
         ],
       },
-      initialValue: 120,
+      initialValue: 90,
       validation: (Rule) => Rule.required().min(15),
     }),
     defineField({
@@ -411,6 +411,15 @@ export default defineType({
           ],
         },
       ],
+    }),
+    defineField({
+      name: 'bufferTime',
+      title: 'Tiempo de descanso entre sesiones (minutos)',
+      type: 'number',
+      group: 'schedule',
+      description: 'Minutos de pausa obligatoria entre una canalización y la siguiente',
+      initialValue: 30,
+      validation: (Rule) => Rule.required().min(0),
     }),
     defineField({
       name: 'bookingLeadTime',

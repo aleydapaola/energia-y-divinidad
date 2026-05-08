@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { useState, useEffect } from 'react';
-import { es as esRdp } from 'react-day-picker/locale';
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { useState, useEffect } from "react";
+import { es as esRdp } from "react-day-picker/locale";
 
-import { Calendar } from '@/components/ui/calendar';
-import { isPastDate } from '@/lib/availability/blocked-dates';
-import { TimeSlot } from '@/lib/availability/time-slots';
+import { Calendar } from "@/components/ui/calendar";
+import { isPastDate } from "@/lib/availability/blocked-dates";
+import { TimeSlot } from "@/lib/availability/time-slots";
 import {
   type Holiday,
   type BlockedDateRange,
@@ -17,10 +17,10 @@ import {
   isInBlockedRange,
   convertTimeFromColombia,
   isDayAvailable,
-} from '@/lib/sanity/queries/bookingSettings';
+} from "@/lib/sanity/queries/bookingSettings";
 
-import TimeSlotPicker from './time-slot-picker';
-import { TimezoneSelector } from './timezone-selector';
+import TimeSlotPicker from "./time-slot-picker";
+import { TimezoneSelector } from "./timezone-selector";
 
 interface Session {
   _id: string;
@@ -64,14 +64,18 @@ interface BookingCalendarProps {
 
 // Zonas horarias por defecto
 const DEFAULT_TIMEZONES: Timezone[] = [
-  { label: 'Colombia', value: 'America/Bogota', offsetHours: 0, isDefault: true },
-  { label: 'Mexico', value: 'America/Mexico_City', offsetHours: -1, isDefault: false },
-  { label: 'Argentina', value: 'America/Argentina/Buenos_Aires', offsetHours: 2, isDefault: false },
-  { label: 'Espana', value: 'Europe/Madrid', offsetHours: 6, isDefault: false },
+  { label: "Colombia", value: "America/Bogota", offsetHours: 0, isDefault: true },
+  { label: "Mexico", value: "America/Mexico_City", offsetHours: -1, isDefault: false },
+  { label: "Argentina", value: "America/Argentina/Buenos_Aires", offsetHours: 2, isDefault: false },
+  { label: "Espana", value: "Europe/Madrid", offsetHours: 6, isDefault: false },
 ];
 
 // Helper para verificar si un dia tiene disponibilidad configurada
-function hasDayAvailability(date: Date, session: Session, weeklySchedule?: WeeklySchedule): boolean {
+function hasDayAvailability(
+  date: Date,
+  session: Session,
+  weeklySchedule?: WeeklySchedule
+): boolean {
   const dayOfWeek = date.getDay();
 
   // PRIORIDAD 1: Usar horarios globales de Configuración de Reservas
@@ -80,7 +84,15 @@ function hasDayAvailability(date: Date, session: Session, weeklySchedule?: Weekl
   }
 
   // FALLBACK: Si no hay horarios globales, usar horarios de la sesión (compatibilidad)
-  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+  const dayNames = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ] as const;
   const dayName = dayNames[dayOfWeek];
 
   if (session.availabilitySchedule) {
@@ -89,7 +101,7 @@ function hasDayAvailability(date: Date, session: Session, weeklySchedule?: Weekl
   }
 
   if (session.availableDays) {
-    return session.availableDays.some(d => d.dayOfWeek === dayOfWeek);
+    return session.availableDays.some((d) => d.dayOfWeek === dayOfWeek);
   }
 
   // Por defecto, solo lunes a viernes
@@ -105,7 +117,7 @@ export function BookingCalendar({
   holidays = [],
   blockedDates = [],
   timezones = [],
-  timezoneNote = 'La sesion sera en hora de Colombia (GMT-5)',
+  timezoneNote = "La sesion sera en hora de Colombia (GMT-5)",
   showTimezoneSelector = true,
   weeklySchedule,
 }: BookingCalendarProps) {
@@ -115,14 +127,14 @@ export function BookingCalendar({
 
   // Estado para timezone
   const availableTimezones = timezones.length > 0 ? timezones : DEFAULT_TIMEZONES;
-  const defaultTz = availableTimezones.find(tz => tz.isDefault) || availableTimezones[0];
+  const defaultTz = availableTimezones.find((tz) => tz.isDefault) || availableTimezones[0];
   const [selectedTimezone, setSelectedTimezone] = useState<Timezone>(defaultTz);
 
   // Cargar timezone de localStorage al montar
   useEffect(() => {
-    const saved = localStorage.getItem('energia-divinidad-timezone');
+    const saved = localStorage.getItem("energia-divinidad-timezone");
     if (saved) {
-      const savedTz = availableTimezones.find(tz => tz.value === saved);
+      const savedTz = availableTimezones.find((tz) => tz.value === saved);
       if (savedTz) {
         setSelectedTimezone(savedTz);
       }
@@ -136,14 +148,14 @@ export function BookingCalendar({
       try {
         // Si no hay fecha seleccionada, usar la fecha de hoy para mostrar slots
         const targetDate = date || new Date();
-        const dateStr = format(targetDate, 'yyyy-MM-dd');
+        const dateStr = format(targetDate, "yyyy-MM-dd");
         const response = await fetch(
           `/api/bookings/availability?date=${dateStr}&slug=${session.slug.current}`
         );
         const data = await response.json();
         setAvailableSlots(data.slots || []);
       } catch (error) {
-        console.error('Error fetching slots:', error);
+        console.error("Error fetching slots:", error);
         setAvailableSlots([]);
       } finally {
         setIsLoadingSlots(false);
@@ -155,7 +167,7 @@ export function BookingCalendar({
 
   const handleDateSelect = (newDate: Date | undefined) => {
     // Debug log para móvil
-    console.log('[BookingCalendar] handleDateSelect:', {
+    console.log("[BookingCalendar] handleDateSelect:", {
       newDate: newDate?.toISOString(),
       currentDate: date?.toISOString(),
     });
@@ -181,12 +193,12 @@ export function BookingCalendar({
 
   const handleTimezoneChange = (timezone: Timezone) => {
     setSelectedTimezone(timezone);
-    localStorage.setItem('energia-divinidad-timezone', timezone.value);
+    localStorage.setItem("energia-divinidad-timezone", timezone.value);
   };
 
   // Funcion para verificar disponibilidad de una fecha
   const isDateAvailableLocal = (checkDate: Date): boolean => {
-    const dateStr = format(checkDate, 'yyyy-MM-dd');
+    const dateStr = format(checkDate, "yyyy-MM-dd");
 
     // Verificar si es festivo
     if (isHoliday(dateStr, holidays)) {
@@ -209,7 +221,9 @@ export function BookingCalendar({
   // Deshabilitar días no disponibles
   const disabledDays = (checkDate: Date) => {
     // Check if in the past
-    if (isPastDate(checkDate)) {return true;}
+    if (isPastDate(checkDate)) {
+      return true;
+    }
 
     // Check max advance booking
     const maxDate = new Date();
@@ -217,32 +231,36 @@ export function BookingCalendar({
     maxDate.setHours(23, 59, 59, 999);
     const dateToCheck = new Date(checkDate);
     dateToCheck.setHours(0, 0, 0, 0);
-    if (dateToCheck > maxDate) {return true;}
+    if (dateToCheck > maxDate) {
+      return true;
+    }
 
     // Check if date is available (weekdays, no holidays, no blocked)
-    if (!isDateAvailableLocal(checkDate)) {return true;}
+    if (!isDateAvailableLocal(checkDate)) {
+      return true;
+    }
 
     return false;
   };
 
   // Slots por defecto si no hay datos de la API
   const DEFAULT_SLOTS: TimeSlot[] = [
-    { time: '17:00', available: true, label: '17:00 - 18:00' },
-    { time: '18:00', available: true, label: '18:00 - 19:00' },
-    { time: '19:00', available: true, label: '19:00 - 20:00' },
+    { time: "09:00", available: true, label: "09:00 - 10:30" },
+    { time: "11:00", available: true, label: "11:00 - 12:30" },
+    { time: "15:00", available: true, label: "15:00 - 16:30" },
   ];
 
   // Usar slots de la API o los por defecto
   const slotsToConvert = availableSlots.length > 0 ? availableSlots : DEFAULT_SLOTS;
 
   // Convertir slots a la zona horaria seleccionada
-  const convertedSlots: TimeSlot[] = slotsToConvert.map(slot => {
+  const convertedSlots: TimeSlot[] = slotsToConvert.map((slot) => {
     if (selectedTimezone.offsetHours === 0) {
       return slot; // No conversion needed for Colombia
     }
 
-    const [startTime] = slot.label.split(' - ');
-    const endTime = slot.label.split(' - ')[1];
+    const [startTime] = slot.label.split(" - ");
+    const endTime = slot.label.split(" - ")[1];
     const convertedStart = convertTimeFromColombia(startTime, selectedTimezone.offsetHours);
     const convertedEnd = convertTimeFromColombia(endTime, selectedTimezone.offsetHours);
 
@@ -259,7 +277,9 @@ export function BookingCalendar({
       <div className="space-y-0">
         {/* Calendario - Ocupa todo el ancho */}
         <div className="p-3 sm:p-4 md:p-6 border-b border-gray-200 min-h-[320px] sm:min-h-[380px] md:min-h-[500px]">
-          <style dangerouslySetInnerHTML={{__html: `
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `
             .booking-calendar {
               width: 100%;
               height: 100%;
@@ -460,7 +480,9 @@ export function BookingCalendar({
               color: #654177;
               border-color: #8A4BAF;
             }
-          `}} />
+          `,
+            }}
+          />
 
           <Calendar
             mode="single"
@@ -473,7 +495,7 @@ export function BookingCalendar({
               available: (checkDate) => isDateAvailableLocal(checkDate) && !isPastDate(checkDate),
             }}
             modifiersClassNames={{
-              available: 'available',
+              available: "available",
             }}
           />
         </div>

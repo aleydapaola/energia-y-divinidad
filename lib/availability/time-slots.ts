@@ -1,7 +1,7 @@
-import { format, parse, addMinutes } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { format, parse, addMinutes } from "date-fns";
+import { es } from "date-fns/locale";
 
-import { isDateAvailable } from './blocked-dates';
+import { isDateAvailable } from "./blocked-dates";
 
 export interface TimeSlot {
   time: string; // HH:mm format (e.g., "17:00")
@@ -14,21 +14,12 @@ export interface TimeSlot {
  * Horario: Lunes a Viernes (ajustable según configuración de Sanity)
  * Estos son los slots por defecto si no hay configuración en Sanity
  */
-const DEFAULT_SLOTS = [
-  '09:00',
-  '10:00',
-  '11:00',
-  '15:00',
-  '16:00',
-  '17:00',
-  '18:00',
-  '19:00',
-];
+const DEFAULT_SLOTS = ["09:00", "10:00", "11:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
 
 /**
  * Duración por defecto de las sesiones en minutos
  */
-const DEFAULT_SESSION_DURATION = 60;
+const DEFAULT_SESSION_DURATION = 90;
 
 /**
  * Horas mínimas de anticipación para reservar
@@ -71,7 +62,7 @@ export function getAvailableTimeSlots(
 
     // Si es hoy, verificar tiempo mínimo de anticipación
     if (isToday && available) {
-      const slotTime = parse(time, 'HH:mm', new Date());
+      const slotTime = parse(time, "HH:mm", new Date());
       const minBookingTime = addMinutes(now, MIN_LEAD_TIME_HOURS * 60);
       if (slotTime < minBookingTime) {
         available = false;
@@ -79,11 +70,11 @@ export function getAvailableTimeSlots(
     }
 
     // Calcular hora de fin
-    const [hours, minutes] = time.split(':').map(Number);
+    const [hours, minutes] = time.split(":").map(Number);
     const endMinutes = hours * 60 + minutes + sessionDuration;
     const endHour = Math.floor(endMinutes / 60);
     const endMinute = endMinutes % 60;
-    const label = `${time} - ${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+    const label = `${time} - ${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`;
 
     return {
       time,
@@ -111,7 +102,7 @@ export function formatDateTime(date: Date, time: string): string {
  * @returns Date con fecha y hora combinadas
  */
 export function combineDateAndTime(date: Date, time: string): Date {
-  const [hours, minutes] = time.split(':').map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
   const combined = new Date(date);
   combined.setHours(hours, minutes, 0, 0);
   return combined;

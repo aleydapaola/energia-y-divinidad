@@ -55,7 +55,8 @@ async function updateSessionPrices() {
     const result = await client
       .patch(existing._id)
       .set({
-        duration: 120,
+        duration: 90,
+        bufferTime: 30,
         price: 350000,
         priceUSD: 100,
         priceEUR: 100,

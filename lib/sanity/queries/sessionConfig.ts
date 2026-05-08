@@ -68,6 +68,7 @@ export interface SessionConfig {
   contraindications?: any[]
   // Horarios
   weeklySchedule?: WeeklySchedule
+  bufferTime?: number
   bookingLeadTime: number
   maxAdvanceBooking: number
   // Festivos y bloqueos
@@ -121,6 +122,7 @@ const sessionConfigFields = `
     saturday[] { start, end },
     sunday[] { start, end }
   },
+  bufferTime,
   bookingLeadTime,
   maxAdvanceBooking,
   holidays[] {
