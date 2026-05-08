@@ -64,7 +64,7 @@ function SessionCheckoutContent() {
 
   // Prices
   const PRICES = {
-    single: { COP: 300000, USD: 100, EUR: 100 },
+    single: { COP: 350000, USD: 100, EUR: 100 },
     pack: { COP: 1850000, USD: 450, EUR: 420 },
   };
 
@@ -353,7 +353,7 @@ function SessionCheckoutContent() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <Clock className="w-5 h-5 text-[#8A4BAF]" />
-                      <span className="font-dm-sans text-gray-700">Duración: 120 minutos</span>
+                      <span className="font-dm-sans text-gray-700">Duración: 90 minutos</span>
                     </div>
 
                     <div className="flex items-center gap-3">
