@@ -1,24 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { generateWompiReference } from '@/lib/wompi'
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { generateWompiReference } from "@/lib/wompi";
 
 interface CheckoutBody {
   // Tipo de producto
-  productType: 'session' | 'pack' | 'event' | 'course' // No soporta membership (requiere recurrencia)
-  productId: string
-  productName: string
+  productType: "session" | "pack" | "event" | "course"; // No soporta membership (requiere recurrencia)
+  productId: string;
+  productName: string;
 
   // Monto (solo COP)
-  amount: number
+  amount: number;
 
   // Guest checkout fields
-  guestEmail?: string
-  guestName?: string
+  guestEmail?: string;
+  guestName?: string;
 
   // Para sesiones/eventos
-  scheduledAt?: string // ISO date string para la fecha/hora de la sesión
+  scheduledAt?: string; // ISO date string para la fecha/hora de la sesión
 }
 
 /**
@@ -31,25 +31,25 @@ interface CheckoutBody {
  */
 function getWompiPaymentLink(amount: number, productType: string): string | null {
   // Intentar obtener link específico por monto
-  const linkByAmount = process.env[`WOMPI_PAYMENT_LINK_${amount}`]
+  const linkByAmount = process.env[`WOMPI_PAYMENT_LINK_${amount}`];
   if (linkByAmount) {
-    return linkByAmount
+    return linkByAmount;
   }
 
   // Intentar obtener link por tipo de producto
-  const productTypeUpper = productType.toUpperCase()
-  const linkByType = process.env[`WOMPI_PAYMENT_LINK_${productTypeUpper}`]
+  const productTypeUpper = productType.toUpperCase();
+  const linkByType = process.env[`WOMPI_PAYMENT_LINK_${productTypeUpper}`];
   if (linkByType) {
-    return linkByType
+    return linkByType;
   }
 
   // Usar link por defecto (monto variable) si existe
-  const defaultLink = process.env.WOMPI_PAYMENT_LINK_DEFAULT
+  const defaultLink = process.env.WOMPI_PAYMENT_LINK_DEFAULT;
   if (defaultLink) {
-    return defaultLink
+    return defaultLink;
   }
 
-  return null
+  return null;
 }
 
 /**
@@ -59,62 +59,55 @@ function getWompiPaymentLink(amount: number, productType: string): string | null
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
+    const session = await auth();
 
-    const body: CheckoutBody = await request.json()
-    const {
-      productType,
-      productId,
-      productName,
-      amount,
-      guestEmail,
-      guestName,
-      scheduledAt,
-    } = body
+    const body: CheckoutBody = await request.json();
+    const { productType, productId, productName, amount, guestEmail, guestName, scheduledAt } =
+      body;
 
-    console.log('[CHECKOUT/WOMPI-MANUAL] Request body:', JSON.stringify({
-      productType,
-      productId,
-      productName,
-      amount,
-      scheduledAt,
-    }))
+    console.log(
+      "[CHECKOUT/WOMPI-MANUAL] Request body:",
+      JSON.stringify({
+        productType,
+        productId,
+        productName,
+        amount,
+        scheduledAt,
+      })
+    );
 
     // Determinar si es usuario autenticado o guest checkout
-    const isAuthenticated = !!session?.user?.id
-    const userEmail = session?.user?.email || guestEmail
+    const isAuthenticated = !!session?.user?.id;
+    const userEmail = session?.user?.email || guestEmail;
 
     // Si no está autenticado, requiere email de invitado
     if (!isAuthenticated && !guestEmail) {
-      return NextResponse.json(
-        { error: 'Se requiere email para continuar' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "Se requiere email para continuar" }, { status: 400 });
     }
 
     // Validaciones básicas
     if (!productType || !productId || !productName || !amount) {
-      return NextResponse.json({ error: 'Faltan parámetros requeridos' }, { status: 400 })
+      return NextResponse.json({ error: "Faltan parámetros requeridos" }, { status: 400 });
     }
 
     // Validar que el monto sea positivo
     if (amount <= 0) {
-      return NextResponse.json({ error: 'El monto debe ser mayor a 0' }, { status: 400 })
+      return NextResponse.json({ error: "El monto debe ser mayor a 0" }, { status: 400 });
     }
 
-    // Obtener el link de pago de Wompi correspondiente
-    const paymentLinkUrl = getWompiPaymentLink(amount, productType)
+    // Obtener el link de pago de Wompi correspondiente (puede ser null si no está configurado)
+    const paymentLinkUrl = getWompiPaymentLink(amount, productType);
 
     if (!paymentLinkUrl) {
-      console.error('[CHECKOUT/WOMPI-MANUAL] No payment link configured for amount:', amount)
-      return NextResponse.json(
-        { error: 'No hay link de pago configurado para este monto. Por favor contacta soporte.' },
-        { status: 400 }
-      )
+      console.warn(
+        "[CHECKOUT/WOMPI-MANUAL] No payment link configured for amount:",
+        amount,
+        "- proceeding without link"
+      );
     }
 
     // Generar referencia única
-    const reference = generateWompiReference('WPM') // Wompi Manual
+    const reference = generateWompiReference("WPM"); // Wompi Manual
 
     // Crear orden pendiente en la base de datos
     const orderMetadata = {
@@ -123,12 +116,15 @@ export async function POST(request: NextRequest) {
       customerEmail: userEmail,
       customerName: guestName || session?.user?.name || null,
       scheduledAt: scheduledAt || null,
-      paymentMethod: 'wompi_manual',
+      paymentMethod: "wompi_manual",
       awaitingManualConfirmation: true,
       wompiPaymentLinkUrl: paymentLinkUrl,
-    }
+    };
 
-    console.log('[CHECKOUT/WOMPI-MANUAL] Creating order with metadata:', JSON.stringify(orderMetadata))
+    console.log(
+      "[CHECKOUT/WOMPI-MANUAL] Creating order with metadata:",
+      JSON.stringify(orderMetadata)
+    );
 
     const order = await prisma.order.create({
       data: {
@@ -140,14 +136,14 @@ export async function POST(request: NextRequest) {
         itemId: productId,
         itemName: productName,
         amount: amount,
-        currency: 'COP', // Wompi manual solo opera en COP
-        paymentMethod: 'WOMPI_MANUAL',
-        paymentStatus: 'PENDING',
+        currency: "COP", // Wompi manual solo opera en COP
+        paymentMethod: "WOMPI_MANUAL",
+        paymentStatus: "PENDING",
         metadata: orderMetadata,
       },
-    })
+    });
 
-    console.log('[CHECKOUT/WOMPI-MANUAL] Order created:', order.id, 'reference:', reference)
+    console.log("[CHECKOUT/WOMPI-MANUAL] Order created:", order.id, "reference:", reference);
 
     return NextResponse.json({
       success: true,
@@ -157,30 +153,30 @@ export async function POST(request: NextRequest) {
       paymentLinkUrl,
       // URL a la que redirigir para mostrar instrucciones de pago
       redirectUrl: `/pago/wompi-pending?ref=${reference}`,
-    })
+    });
   } catch (error) {
-    console.error('[CHECKOUT/WOMPI-MANUAL] Error creating order:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
-    console.error('[CHECKOUT/WOMPI-MANUAL] Error message:', errorMessage)
+    console.error("[CHECKOUT/WOMPI-MANUAL] Error creating order:", error);
+    const errorMessage = error instanceof Error ? error.message : "Error desconocido";
+    console.error("[CHECKOUT/WOMPI-MANUAL] Error message:", errorMessage);
     return NextResponse.json(
       { error: `Error al crear la orden: ${errorMessage}` },
       { status: 500 }
-    )
+    );
   }
 }
 
 function getOrderType(
   productType: string
-): 'PRODUCT' | 'SESSION' | 'EVENT' | 'MEMBERSHIP' | 'PREMIUM_CONTENT' | 'COURSE' {
+): "PRODUCT" | "SESSION" | "EVENT" | "MEMBERSHIP" | "PREMIUM_CONTENT" | "COURSE" {
   switch (productType) {
-    case 'session':
-    case 'pack':
-      return 'SESSION'
-    case 'event':
-      return 'EVENT'
-    case 'course':
-      return 'COURSE'
+    case "session":
+    case "pack":
+      return "SESSION";
+    case "event":
+      return "EVENT";
+    case "course":
+      return "COURSE";
     default:
-      return 'PRODUCT'
+      return "PRODUCT";
   }
 }

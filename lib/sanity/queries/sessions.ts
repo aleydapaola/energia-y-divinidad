@@ -1,9 +1,6 @@
 // Re-export everything from the unified sessionConfig
 // This file is kept for backward compatibility
-import { client } from '../client'
 import {
-  SessionConfig,
-  getSessionConfig,
   getActiveSession,
   getDeliveryMethodLabel,
   formatDuration,
@@ -12,7 +9,6 @@ import {
   getAvailableDaysOfWeek,
   getTimeSlotsForDayOfWeek,
   WeeklySchedule,
-  TimeSlotRange,
 } from './sessionConfig'
 
 // Re-export types with legacy names for compatibility
@@ -31,6 +27,7 @@ export interface Session {
   deliveryMethod: 'in_person' | 'video_call' | 'phone_call' | 'hybrid'
   price: number
   priceUSD?: number
+  priceEUR?: number
   memberDiscount?: number
   availabilitySchedule?: WeeklySchedule
   weeklySchedule?: WeeklySchedule
@@ -76,11 +73,11 @@ export async function getAllSessions(): Promise<Session[]> {
   }]
 }
 
-export async function getFeaturedSessions(limit: number = 3): Promise<Session[]> {
+export async function getFeaturedSessions(_limit: number = 3): Promise<Session[]> {
   return getAllSessions()
 }
 
-export async function getSessionBySlug(slug: string): Promise<Session | null> {
+export async function getSessionBySlug(_slug: string): Promise<Session | null> {
   // Since there's only one session now, just return it
   const session = await getActiveSession()
   if (!session) {return null}
@@ -97,7 +94,7 @@ export async function getSessionBySlug(slug: string): Promise<Session | null> {
 }
 
 export async function getSessionsByType(
-  type: Session['sessionType']
+  _type: Session['sessionType']
 ): Promise<Session[]> {
   return getAllSessions()
 }

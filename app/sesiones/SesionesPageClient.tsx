@@ -306,17 +306,17 @@ export function SesionesPageClient({
                       <Ticket className="w-5 h-5 text-[#8A4BAF]" />
                     </div>
                     <h3 className="font-gazeta text-xl text-[#8A4BAF]">
-                      Tienes un codigo de pack?
+                      ¿Tienes un código de descuento?
                     </h3>
                   </div>
                   <p className="font-dm-sans text-sm text-gray-600 mb-4">
-                    Si ya compraste un pack de sesiones, ingresa tu codigo para reservar.
+                    Aplícalo acá y obtén tu descuento al reservar tu sesión.
                   </p>
                   <button
                     onClick={() => setShowPackCodeModal(true)}
                     className="w-full border-2 border-[#8A4BAF] text-[#8A4BAF] py-3 rounded-lg font-dm-sans font-semibold hover:bg-[#8A4BAF]/5 transition-colors"
                   >
-                    Canjear Codigo
+                    Aplicar Código
                   </button>
                 </div>
               </div>
@@ -549,7 +549,7 @@ export function SesionesPageClient({
                 <div className="w-10 h-10 bg-[#8A4BAF]/10 rounded-full flex items-center justify-center">
                   <Ticket className="w-5 h-5 text-[#8A4BAF]" />
                 </div>
-                <h2 className="font-gazeta text-2xl text-[#8A4BAF]">Canjear Codigo de Pack</h2>
+                <h2 className="font-gazeta text-2xl text-[#8A4BAF]">Aplicar Código de Descuento</h2>
               </div>
             </div>
 
@@ -559,7 +559,7 @@ export function SesionesPageClient({
                 // Code input step
                 <div>
                   <label className="block font-dm-sans text-sm text-gray-600 mb-2">
-                    Ingresa tu codigo de pack
+                    Ingresa tu código de descuento
                   </label>
                   <input
                     type="text"
@@ -569,7 +569,7 @@ export function SesionesPageClient({
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg font-dm-sans text-center text-lg tracking-wider focus:outline-none focus:border-[#8A4BAF] focus:ring-2 focus:ring-[#8A4BAF]/20"
                   />
                   <p className="text-xs text-gray-500 mt-2 font-dm-sans">
-                    El codigo fue enviado a tu email cuando compraste el pack
+                    El código fue enviado a tu email al comprar tu pack de sesiones
                   </p>
                 </div>
               ) : (

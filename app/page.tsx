@@ -244,7 +244,7 @@ export default async function HomePage() {
           {/* Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto mb-12 sm:mb-14">
             {/* Card 1 - Sientes señales */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
               <h3 className="font-gazeta text-xl sm:text-2xl text-[#8A4BAF] mb-4 text-center">
                 Sientes señales
               </h3>
@@ -269,7 +269,7 @@ export default async function HomePage() {
             </div>
 
             {/* Card 2 - Buscas claridad */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
               <h3 className="font-gazeta text-xl sm:text-2xl text-[#8A4BAF] mb-4 text-center">
                 Buscas claridad
               </h3>
@@ -296,7 +296,7 @@ export default async function HomePage() {
             </div>
 
             {/* Card 3 - Deseas acompañamiento */}
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
               <h3 className="font-gazeta text-xl sm:text-2xl text-[#8A4BAF] mb-4 text-center">
                 Deseas acompañamiento
               </h3>
@@ -361,7 +361,7 @@ export default async function HomePage() {
                 return (
                   <div
                     key={t._id}
-                    className={`bg-gradient-to-b ${isBlue ? "from-[#eef1fa]/50 border-[#2D4CC7]/5" : "from-[#f8f0f5]/50 border-[#8A4BAF]/5"} to-white rounded-2xl p-6 sm:p-8 shadow-lg border hover:shadow-xl transition-all ${isLastOdd ? "md:col-span-2 lg:col-span-1" : ""}`}
+                    className={`bg-gradient-to-b ${isBlue ? "from-[#eef1fa]/50 border-[#2D4CC7]/5" : "from-[#f8f0f5]/50 border-[#8A4BAF]/5"} to-white rounded-2xl p-6 sm:p-8 shadow-lg border hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 ${isLastOdd ? "md:col-span-2 lg:col-span-1" : ""}`}
                   >
                     <div className="mb-4">
                       <svg
@@ -1079,12 +1079,12 @@ export default async function HomePage() {
 
             {/* Title */}
             <h2 className="font-gazeta text-2xl sm:text-3xl md:text-4xl text-[#8A4BAF] mb-4">
-              Recibe 3 meditaciones gratis
+              Recibe una meditación gratis
             </h2>
 
             {/* Subtitle */}
             <p className="font-dm-sans text-base sm:text-lg text-[#674c6a] mb-8 max-w-lg mx-auto">
-              Suscríbete y recibe meditaciones guiadas, contenido exclusivo y herramientas para tu
+              Suscríbete y recibe una meditación guiada, contenido exclusivo y herramientas para tu
               camino espiritual
             </p>
 
