@@ -7,9 +7,8 @@ const FROM_EMAIL = process.env.EMAIL_FROM || "Energía y Divinidad <noreply@ener
 const APP_URL =
   process.env.NEXTAUTH_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
-  (process.env.NODE_ENV === "production"
-    ? "https://energiaydivinidad.com"
-    : "http://localhost:3000");
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+  "https://energiaydivinidad.com";
 // Logo URL para emails - usando URL de producción en Vercel
 const LOGO_URL = "https://energia-y-divinidad.vercel.app/images/logoNoBackground.png";
 
