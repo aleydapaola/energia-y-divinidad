@@ -4,11 +4,21 @@ import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 
 const FROM_EMAIL = process.env.EMAIL_FROM || "Energía y Divinidad <noreply@energiaydivinidad.com>";
-const APP_URL =
-  process.env.NEXTAUTH_URL ||
-  process.env.NEXT_PUBLIC_APP_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-  "https://energiaydivinidad.com";
+function resolveAppUrl(): string {
+  const candidates = [
+    process.env.NEXTAUTH_URL,
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  ];
+  for (const url of candidates) {
+    if (url && !url.includes("localhost") && !url.includes("127.0.0.1")) {
+      return url.replace(/\/$/, "");
+    }
+  }
+  return "https://energiaydivinidad.com";
+}
+const APP_URL = resolveAppUrl();
 // Logo URL para emails - usando URL de producción en Vercel
 const LOGO_URL = "https://energia-y-divinidad.vercel.app/images/logoNoBackground.png";
 
