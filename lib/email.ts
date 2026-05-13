@@ -4,7 +4,12 @@ import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 
 const FROM_EMAIL = process.env.EMAIL_FROM || "Energía y Divinidad <noreply@energiaydivinidad.com>";
-const APP_URL = process.env.NEXTAUTH_URL || "http://localhost:3000";
+const APP_URL =
+  process.env.NEXTAUTH_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://energiaydivinidad.com"
+    : "http://localhost:3000");
 // Logo URL para emails - usando URL de producción en Vercel
 const LOGO_URL = "https://energia-y-divinidad.vercel.app/images/logoNoBackground.png";
 
@@ -3258,5 +3263,76 @@ export async function sendWaitlistOfferExpiredEmail(params: WaitlistOfferExpired
         </body>
       </html>
     `,
+  });
+}
+
+// ============================================
+// MEMBRESÍA RECURRENTE — Renovación y fallos
+// ============================================
+
+interface MembershipRenewalSuccessParams {
+  email: string;
+  name: string;
+  plan: string;
+  amount: number;
+  currency: "COP" | "USD";
+  nextRenewalDate: Date;
+  transactionId?: string;
+}
+
+export async function sendMembershipRenewalSuccessEmail(params: MembershipRenewalSuccessParams) {
+  const { email, name, plan, amount, currency, nextRenewalDate, transactionId } = params;
+
+  const formattedAmount =
+    currency === "COP"
+      ? new Intl.NumberFormat("es-CO", {
+          style: "currency",
+          currency: "COP",
+          minimumFractionDigits: 0,
+        }).format(amount)
+      : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+
+  const formattedDate = nextRenewalDate.toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  await sendEmailWithLogging({
+    to: email,
+    subject: `✨ Tu membresía ${plan} ha sido renovada`,
+    template: "membership_renewal_success",
+    html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background-color:#f8f0f5;font-family:'DM Sans',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px;"><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;max-width:600px;width:100%;"><tr><td style="background:linear-gradient(135deg,#8A4BAF,#4944a4);padding:32px;text-align:center;"><img src="${LOGO_URL}" alt="Energía y Divinidad" style="height:48px;margin-bottom:12px;" /><h1 style="color:#fff;font-size:22px;margin:0;">¡Membresía renovada!</h1></td></tr><tr><td style="padding:32px;"><p style="color:#4b316c;font-size:16px;">Hola <strong>${name}</strong>,</p><p style="color:#555;font-size:15px;line-height:1.6;">Tu membresía <strong>${plan}</strong> ha sido renovada automáticamente.</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#eef1fa;border-radius:12px;margin:20px 0;"><tr><td style="padding:20px;"><p style="margin:0 0 8px;color:#4944a4;font-size:13px;font-weight:bold;">DETALLE DEL COBRO</p><p style="margin:4px 0;color:#333;font-size:15px;">Plan: <strong>${plan}</strong></p><p style="margin:4px 0;color:#333;font-size:15px;">Monto: <strong>${formattedAmount}</strong></p><p style="margin:4px 0;color:#333;font-size:15px;">Próxima renovación: <strong>${formattedDate}</strong></p>${transactionId ? `<p style="margin:4px 0;color:#888;font-size:13px;">Ref: ${transactionId}</p>` : ""}</td></tr></table><p style="color:#555;font-size:14px;line-height:1.6;">Puedes cancelar en cualquier momento desde tu perfil.</p><p style="color:#8A4BAF;font-size:14px;margin-top:24px;">Con amor y luz,<br><strong>Aleyda Paola y Energía y Divinidad</strong></p></td></tr></table></td></tr></table></body></html>`,
+    entityType: "subscription",
+    metadata: { plan, transactionId },
+  });
+}
+
+interface MembershipPaymentFailedParams {
+  email: string;
+  name: string;
+  plan: string;
+  retryDate: Date | null;
+  isLastAttempt: boolean;
+}
+
+export async function sendMembershipPaymentFailedEmail(params: MembershipPaymentFailedParams) {
+  const { email, name, plan, retryDate, isLastAttempt } = params;
+
+  const retryText = retryDate
+    ? `Reintentaremos el cobro el ${retryDate.toLocaleDateString("es-CO", { day: "numeric", month: "long" })}.`
+    : "";
+
+  const subject = isLastAttempt
+    ? `⚠️ Tu membresía ${plan} ha sido suspendida`
+    : `⚠️ No pudimos renovar tu membresía ${plan}`;
+
+  await sendEmailWithLogging({
+    to: email,
+    subject,
+    template: "membership_payment_failed",
+    html: `<!DOCTYPE html><html><body style="margin:0;padding:0;background-color:#f8f0f5;font-family:'DM Sans',Arial,sans-serif;"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 20px;"><table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;max-width:600px;width:100%;"><tr><td style="background:linear-gradient(135deg,#8A4BAF,#4944a4);padding:32px;text-align:center;"><img src="${LOGO_URL}" alt="Energía y Divinidad" style="height:48px;margin-bottom:12px;" /><h1 style="color:#fff;font-size:22px;margin:0;">Problema con tu pago</h1></td></tr><tr><td style="padding:32px;"><p style="color:#4b316c;font-size:16px;">Hola <strong>${name}</strong>,</p><p style="color:#555;font-size:15px;line-height:1.6;">${isLastAttempt ? `Después de 3 intentos, no pudimos renovar tu membresía <strong>${plan}</strong>. Tu acceso ha sido suspendido.` : `No pudimos procesar el cobro de tu membresía <strong>${plan}</strong>. ${retryText}`}</p><table width="100%" cellpadding="0" cellspacing="0" style="background:#fff3f3;border:1px solid #ffcccc;border-radius:12px;margin:20px 0;"><tr><td style="padding:20px;"><p style="margin:0;color:#c0392b;font-size:14px;line-height:1.6;">${isLastAttempt ? "Para reactivar tu membresía, vuelve a suscribirte desde la página de membresías." : "Verifica que tu tarjeta tenga fondos suficientes o actualiza tu método de pago."}</p></td></tr></table><div style="text-align:center;margin:28px 0;"><a href="${APP_URL}/membresia" style="background:#4944a4;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:15px;">${isLastAttempt ? "Reactivar membresía" : "Ir a mi perfil"}</a></div><p style="color:#8A4BAF;font-size:14px;margin-top:24px;">Con amor y luz,<br><strong>Aleyda Paola y Energía y Divinidad</strong></p></td></tr></table></td></tr></table></body></html>`,
+    entityType: "subscription",
+    metadata: { plan, isLastAttempt },
   });
 }
