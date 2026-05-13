@@ -212,6 +212,15 @@ export default function ConfiguracionPage() {
               disabled={isPasswordLoading}
               className="w-full max-w-md px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8A4BAF]/20 focus:border-[#8A4BAF] font-dm-sans transition-colors disabled:opacity-50"
             />
+            <p className="text-xs text-gray-500 mt-1 font-dm-sans">
+              ¿No recuerdas tu contraseña actual?{" "}
+              <a
+                href="/auth/forgot-password"
+                className="text-[#4944a4] hover:text-[#3d3a8a] font-semibold"
+              >
+                Recuperarla aquí
+              </a>
+            </p>
           </div>
 
           <div>

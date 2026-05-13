@@ -289,9 +289,23 @@ model Subscription {
   stripeCustomerId     String?
 
   // Nequi (si aplica)
-  nequiSubscriptionId String? @unique // ID de suscripción de Nequi API
+  nequiSubscriptionId String?   @unique // ID de suscripción de Nequi API
   nequiPhoneNumber    String? // Número de celular registrado en Nequi
   nequiApprovedAt     DateTime? // Cuando el usuario aprobó en la app Nequi
+
+  // Wompi recurring (tarjeta tokenizada)
+  wompiPaymentSourceId String? @unique // ID de la fuente de pago tokenizada en Wompi
+  wompiCardLastFour    String? // Últimos 4 dígitos de la tarjeta (para mostrar al usuario)
+  wompiCardBrand       String? // Marca de la tarjeta (VISA, MASTERCARD, AMEX)
+
+  // PayPal recurring (Billing Plans API)
+  paypalSubscriptionId String? @unique // ID de suscripción de PayPal Billing
+
+  // Estado de renovación automática
+  nextChargeDate      DateTime? // Próxima fecha de cobro (Wompi: calculado, PayPal: referencial)
+  lastChargeDate      DateTime? // Fecha del último cobro exitoso
+  chargeFailureCount  Int       @default(0) // Número de fallos consecutivos de cobro
+  chargeFailureReason String? // Razón del último fallo
 
   // Fechas
   startDate          DateTime
@@ -301,14 +315,58 @@ model Subscription {
   cancelledAt        DateTime?
 
   // Relaciones
-  user         User          @relation(fields: [userId], references: [id])
-  entitlements Entitlement[]
+  user             User             @relation(fields: [userId], references: [id])
+  entitlements     Entitlement[]
+  recurringCharges RecurringCharge[]
 
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("subscriptions")
+}
+
+// Historial de cobros recurrentes (Wompi y PayPal)
+enum ChargeStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  RETRYING
+}
+
+model RecurringCharge {
+  id             String       @id @default(cuid())
+  subscriptionId String
+
+  // Identificación del cobro
+  externalId String? // Wompi transactionId o PayPal saleId
+  reference  String  @unique // Referencia interna (RENEW-{subscriptionId}-{timestamp})
+
+  // Monto
+  amount   Decimal @db.Decimal(10, 2)
+  currency String
+
+  // Estado
+  status        ChargeStatus
+  failureReason String?
+  retryCount    Int       @default(0)
+  nextRetryAt   DateTime?
+
+  // Timestamps
+  chargedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  // Relaciones
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([nextRetryAt])
+  @@map("recurring_charges")
 }
 
 // ============================================

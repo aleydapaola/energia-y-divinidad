@@ -11,11 +11,17 @@ export async function middleware(request: NextRequest) {
   const isAuth = !!token
   const isAuthPage =
     request.nextUrl.pathname.startsWith("/auth/signin") ||
-    request.nextUrl.pathname.startsWith("/auth/signup")
+    request.nextUrl.pathname.startsWith("/auth/signup") ||
+    request.nextUrl.pathname.startsWith("/auth/set-password")
 
-  // Si está en página de auth y ya está autenticado, redirigir a mi-cuenta
+  // Si está en página de auth y ya está autenticado, redirigir
   if (isAuthPage) {
     if (isAuth) {
+      // Si está en set-password, redirigir a configuracion (set-password es solo para usuarios sin contraseña)
+      if (request.nextUrl.pathname.startsWith("/auth/set-password")) {
+        return NextResponse.redirect(new URL("/mi-cuenta/configuracion", request.url))
+      }
+      // Si está en signin o signup, redirigir a mi-cuenta
       return NextResponse.redirect(new URL("/mi-cuenta", request.url))
     }
     return NextResponse.next()
@@ -43,5 +49,6 @@ export const config = {
     "/admin/:path*",
     "/auth/signin",
     "/auth/signup",
+    "/auth/set-password",
   ],
 }

@@ -265,12 +265,12 @@ export function getAvailablePaymentMethods(region: 'colombia' | 'international')
       {
         type: 'paypal_direct',
         label: 'PayPal',
-        description: 'Paga con tu cuenta PayPal de forma segura.',
+        description: 'Paga con tu cuenta PayPal de forma segura. Los cobros son automáticos cada período.',
         available: true,
         icon: '🅿️',
         gateway: 'paypal',
-        currency: 'COP',
-        isRecurring: false, // PayPal recurrente requiere configuración especial
+        currency: 'USD',
+        isRecurring: true,
         recommended: false,
       },
     ]
@@ -292,12 +292,12 @@ export function getAvailablePaymentMethods(region: 'colombia' | 'international')
     {
       type: 'paypal_direct',
       label: 'PayPal',
-      description: 'Pay securely with your PayPal account (USD).',
+      description: 'Pay securely with your PayPal account (USD). Charged automatically each billing period.',
       available: true,
       icon: '🅿️',
       gateway: 'paypal',
       currency: 'USD',
-      isRecurring: false,
+      isRecurring: true,
       recommended: false,
     },
   ]

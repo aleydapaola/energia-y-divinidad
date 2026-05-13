@@ -258,6 +258,10 @@ async function createMembershipFromOrder(
     provider = order.paymentMethod.includes("CARD") ? "paypal_card" : "paypal_direct";
   }
 
+  // Calcular próxima fecha de cobro (1 día antes del fin de período para margen)
+  const nextChargeDate = new Date(periodEnd);
+  nextChargeDate.setDate(nextChargeDate.getDate() - 1);
+
   // Crear suscripción
   const subscription = await prisma.subscription.create({
     data: {
@@ -272,6 +276,15 @@ async function createMembershipFromOrder(
       startDate: new Date(),
       currentPeriodStart: new Date(),
       currentPeriodEnd: periodEnd,
+      // Datos para cobros recurrentes Wompi
+      wompiPaymentSourceId: metadata.wompiPaymentSourceId || null,
+      wompiCardLastFour: metadata.wompiCardLastFour || null,
+      wompiCardBrand: metadata.wompiCardBrand || null,
+      // Datos para suscripciones PayPal
+      paypalSubscriptionId: metadata.paypalSubscriptionId || null,
+      // Próxima fecha de cobro (solo para Wompi — PayPal cobra automáticamente)
+      nextChargeDate: metadata.wompiPaymentSourceId ? nextChargeDate : null,
+      lastChargeDate: new Date(),
     },
   });
 

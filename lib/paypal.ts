@@ -11,11 +11,15 @@ import {
   LogLevel,
   OrdersController,
   PaymentsController,
+  SubscriptionsController,
   CheckoutPaymentIntent,
   OrderApplicationContextLandingPage,
   OrderApplicationContextUserAction,
+  ApplicationContextUserAction,
   type OrderRequest,
   type Order,
+  type Subscription as PayPalSubscription,
+  type CreateSubscriptionRequest,
 } from '@paypal/paypal-server-sdk'
 
 // Configuration
@@ -399,4 +403,208 @@ export function mapPayPalCaptureStatus(
   }
 
   return statusMap[captureStatus] || 'PENDING'
+}
+
+// ============================================
+// PAYPAL SUBSCRIPTIONS (Recurring Billing)
+// ============================================
+
+export interface PayPalSubscriptionParams {
+  planId: string
+  subscriberEmail: string
+  subscriberName?: string
+  returnUrl: string
+  cancelUrl: string
+  customId?: string
+}
+
+export interface PayPalSubscriptionResult {
+  success: boolean
+  subscriptionId?: string
+  approvalUrl?: string
+  error?: string
+}
+
+export interface PayPalSubscriptionDetails {
+  id: string
+  status: string
+  planId?: string
+  startTime?: string
+  subscriberEmail?: string
+  nextBillingTime?: string
+  lastPaymentAmount?: string
+  lastPaymentTime?: string
+}
+
+/**
+ * Resolve the PayPal plan ID from env vars for a given tier + interval.
+ * Format: PAYPAL_PLAN_ID_{TIER_SLUG_UPPERCASE}_{MONTHLY|YEARLY}
+ */
+export function getPayPalPlanId(tierSlug: string, interval: 'monthly' | 'yearly'): string | null {
+  const key = `PAYPAL_PLAN_ID_${tierSlug.toUpperCase().replace(/-/g, '_')}_${interval.toUpperCase()}`
+  return process.env[key] || null
+}
+
+/**
+ * Create a PayPal subscription (recurring billing).
+ * Returns the approval URL that the user must visit to authorize.
+ */
+export async function createPayPalSubscription(
+  params: PayPalSubscriptionParams
+): Promise<PayPalSubscriptionResult> {
+  try {
+    const client = getPayPalClient()
+    const subscriptionsController = new SubscriptionsController(client)
+
+    const requestBody: CreateSubscriptionRequest = {
+      planId: params.planId,
+      subscriber: {
+        emailAddress: params.subscriberEmail,
+        ...(params.subscriberName
+          ? {
+              name: {
+                givenName: params.subscriberName.split(' ')[0],
+                surname: params.subscriberName.split(' ').slice(1).join(' ') || '',
+              },
+            }
+          : {}),
+      },
+      applicationContext: {
+        brandName: 'Energía y Divinidad',
+        userAction: ApplicationContextUserAction.SubscribeNow,
+        returnUrl: params.returnUrl,
+        cancelUrl: params.cancelUrl,
+      },
+      ...(params.customId ? { customId: params.customId } : {}),
+    }
+
+    const response = await subscriptionsController.createSubscription({
+      prefer: 'return=representation',
+      body: requestBody,
+    })
+
+    const subscription = response.result as PayPalSubscription
+
+    const approvalLink = subscription.links?.find((l) => l.rel === 'approve')
+
+    if (!subscription.id || !approvalLink?.href) {
+      return { success: false, error: 'No se pudo crear la suscripción de PayPal' }
+    }
+
+    return {
+      success: true,
+      subscriptionId: subscription.id,
+      approvalUrl: approvalLink.href,
+    }
+  } catch (error: unknown) {
+    console.error('[PAYPAL] Error creating subscription:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    }
+  }
+}
+
+/**
+ * Get details for an existing PayPal subscription.
+ */
+export async function getPayPalSubscriptionDetails(
+  subscriptionId: string
+): Promise<PayPalSubscriptionDetails | null> {
+  try {
+    const client = getPayPalClient()
+    const subscriptionsController = new SubscriptionsController(client)
+
+    const response = await subscriptionsController.getSubscription({
+      id: subscriptionId,
+    })
+
+    const sub = response.result as PayPalSubscription & {
+      billing_info?: {
+        next_billing_time?: string
+        last_payment?: { amount?: { value?: string }; time?: string }
+      }
+    }
+
+    return {
+      id: sub.id || subscriptionId,
+      status: (sub as unknown as { status?: string }).status || 'UNKNOWN',
+      planId: sub.planId,
+      startTime: sub.startTime,
+      subscriberEmail: sub.subscriber?.emailAddress,
+      nextBillingTime: sub.billingInfo?.nextBillingTime,
+      lastPaymentAmount: sub.billingInfo?.lastPayment?.amount?.value,
+      lastPaymentTime: sub.billingInfo?.lastPayment?.time,
+    }
+  } catch (error) {
+    console.error('[PAYPAL] Error getting subscription:', error)
+    return null
+  }
+}
+
+/**
+ * Cancel a PayPal subscription.
+ */
+export async function cancelPayPalSubscription(
+  subscriptionId: string,
+  reason: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const client = getPayPalClient()
+    const subscriptionsController = new SubscriptionsController(client)
+
+    await subscriptionsController.cancelSubscription({
+      id: subscriptionId,
+      body: { reason },
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error('[PAYPAL] Error cancelling subscription:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
+  }
+}
+
+/**
+ * Suspend a PayPal subscription (temporary pause).
+ */
+export async function suspendPayPalSubscription(
+  subscriptionId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const client = getPayPalClient()
+    const subscriptionsController = new SubscriptionsController(client)
+
+    await subscriptionsController.suspendSubscription({
+      id: subscriptionId,
+      body: { reason: 'Suspended by admin' },
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error('[PAYPAL] Error suspending subscription:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
+  }
+}
+
+/**
+ * Reactivate a suspended PayPal subscription.
+ */
+export async function activatePayPalSubscription(
+  subscriptionId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const client = getPayPalClient()
+    const subscriptionsController = new SubscriptionsController(client)
+
+    await subscriptionsController.activateSubscription({
+      id: subscriptionId,
+      body: { reason: 'Reactivated' },
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error('[PAYPAL] Error activating subscription:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
+  }
 }

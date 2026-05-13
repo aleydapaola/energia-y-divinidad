@@ -9,7 +9,6 @@ interface TokenValidation {
   valid: boolean
   email?: string
   name?: string
-  hasPassword?: boolean
   error?: string
 }
 
@@ -121,44 +120,24 @@ function SetPasswordForm() {
 
   // Token inválido o expirado
   if (!tokenData?.valid) {
+    // Si el error es sobre contraseña ya existente, mostrar mensaje diferente
+    const isAlreadyHasPassword = tokenData?.error?.toLowerCase().includes('ya tiene')
+    
     return (
       <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6 border border-[#8A4BAF]/10">
         <div className="flex flex-col items-center justify-center py-8">
           <XCircle className="w-12 h-12 text-red-500 mb-4" />
           <h2 className="text-xl font-semibold text-[#654177] font-dm-sans mb-2">
-            Enlace inválido
+            {isAlreadyHasPassword ? "Cuenta ya configurada" : "Enlace inválido"}
           </h2>
           <p className="text-gray-600 font-dm-sans text-center mb-6">
             {tokenData?.error || "Este enlace ha expirado o ya fue utilizado."}
           </p>
           <Link
-            href="/auth/signin"
+            href={isAlreadyHasPassword ? "/mi-cuenta/configuracion" : "/auth/signin"}
             className="bg-[#4944a4] text-white px-6 py-3 rounded-lg font-dm-sans font-semibold hover:bg-[#3d3a8a] transition-colors"
           >
-            Ir a Iniciar Sesión
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
-  // Usuario ya tiene contraseña
-  if (tokenData.hasPassword) {
-    return (
-      <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6 border border-[#8A4BAF]/10">
-        <div className="flex flex-col items-center justify-center py-8">
-          <CheckCircle className="w-12 h-12 text-green-500 mb-4" />
-          <h2 className="text-xl font-semibold text-[#654177] font-dm-sans mb-2">
-            Ya tienes contraseña
-          </h2>
-          <p className="text-gray-600 font-dm-sans text-center mb-6">
-            Tu cuenta ya tiene una contraseña establecida. Puedes iniciar sesión directamente.
-          </p>
-          <Link
-            href="/auth/signin"
-            className="bg-[#4944a4] text-white px-6 py-3 rounded-lg font-dm-sans font-semibold hover:bg-[#3d3a8a] transition-colors"
-          >
-            Iniciar Sesión
+            {isAlreadyHasPassword ? "Ir a Cambiar Contraseña" : "Ir a Iniciar Sesión"}
           </Link>
         </div>
       </div>

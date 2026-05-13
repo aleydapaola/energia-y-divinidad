@@ -744,7 +744,7 @@ export default async function HomePage() {
                   <div className="space-y-4 md:space-y-5">
                     <p className="font-dm-sans text-base md:text-lg text-[#4A4A4A] leading-relaxed">
                       Soy <span className="font-semibold text-[#8A4BAF]">Aleyda Paola Vargas</span>,
-                      canalizadora y chamana profesional.
+                      canalizadora profesional.
                     </p>
 
                     <p className="font-dm-sans text-base md:text-lg text-[#4A4A4A] leading-relaxed">

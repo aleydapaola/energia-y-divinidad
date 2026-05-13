@@ -1,9 +1,11 @@
 'use client'
 
-import { CreditCard, Globe, Loader2, Key } from 'lucide-react'
+import { CreditCard, Globe, Loader2, Key, RefreshCw } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 import type { PaymentMethodType } from '@/lib/membership-access'
+
+import { WompiCardForm, type WompiCardTokenData } from './WompiCardForm'
 
 export type PaymentRegion = 'colombia' | 'international'
 
@@ -16,6 +18,10 @@ interface PaymentMethodSelectorProps {
   productName: string
   isAuthenticated?: boolean
   userEmail?: string
+  /** Para membresías: activa el flujo de cobro recurrente automático */
+  productType?: 'membership' | 'other'
+  /** Callback cuando el usuario completa la tokenización de tarjeta para membresía */
+  onRecurringCardSetup?: (data: WompiCardTokenData, region: PaymentRegion, guestEmail?: string, guestName?: string) => void
 }
 
 interface PaymentOption {
@@ -35,16 +41,21 @@ export function PaymentMethodSelector({
   productName,
   isAuthenticated = false,
   userEmail,
+  productType = 'other',
+  onRecurringCardSetup,
 }: PaymentMethodSelectorProps) {
   const [selectedRegion, setSelectedRegion] = useState<PaymentRegion | null>(null)
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType | null>(null)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [phoneError, setPhoneError] = useState('')
+  const [showCardForm, setShowCardForm] = useState(false)
 
   // Guest checkout fields
   const [guestEmail, setGuestEmail] = useState('')
   const [guestName, setGuestName] = useState('')
   const [emailError, setEmailError] = useState('')
+
+  const isMembership = productType === 'membership'
 
   // Auto-detect region based on timezone (Colombia is UTC-5)
   useEffect(() => {
@@ -63,42 +74,72 @@ export function PaymentMethodSelector({
   }, [])
 
   // Métodos de pago para Colombia (COP)
-  const colombiaOptions: PaymentOption[] = [
-    {
-      method: 'wompi_manual',
-      label: 'Wompi (Tarjeta, PSE, Nequi, etc.)',
-      description: 'Múltiples métodos de pago colombianos',
-      icon: <CreditCard className="w-6 h-6" />,
-    },
-    {
-      method: 'breb_manual',
-      label: 'Bre-B (Llave Bancolombia)',
-      description: 'Transferencia instantánea sin comisión',
-      icon: <Key className="w-6 h-6" />,
-    },
-    {
-      method: 'paypal_direct',
-      label: 'PayPal',
-      description: 'Paga con tu cuenta PayPal',
-      icon: <PayPalIcon />,
-    },
-  ]
+  const colombiaOptions: PaymentOption[] = isMembership
+    ? [
+        {
+          method: 'wompi_card',
+          label: 'Tarjeta de crédito/débito',
+          description: 'Cobro automático mensual · Cancela cuando quieras',
+          icon: <RecurringCardIcon />,
+        },
+        {
+          method: 'paypal_direct',
+          label: 'PayPal',
+          description: 'Cobro automático mensual vía PayPal',
+          icon: <PayPalIcon />,
+        },
+      ]
+    : [
+        {
+          method: 'wompi_manual',
+          label: 'Wompi (Tarjeta, PSE, Nequi, etc.)',
+          description: 'Múltiples métodos de pago colombianos',
+          icon: <CreditCard className="w-6 h-6" />,
+        },
+        {
+          method: 'breb_manual',
+          label: 'Bre-B (Llave Bancolombia)',
+          description: 'Transferencia instantánea sin comisión',
+          icon: <Key className="w-6 h-6" />,
+        },
+        {
+          method: 'paypal_direct',
+          label: 'PayPal',
+          description: 'Paga con tu cuenta PayPal',
+          icon: <PayPalIcon />,
+        },
+      ]
 
   // Métodos de pago internacionales
-  const internationalOptions: PaymentOption[] = [
-    {
-      method: 'wompi_manual',
-      label: 'Wompi (Credit/Debit Card)',
-      description: 'Pay with Visa, Mastercard, American Express',
-      icon: <CreditCard className="w-6 h-6" />,
-    },
-    {
-      method: 'paypal_direct',
-      label: 'PayPal',
-      description: 'Pay with your PayPal account',
-      icon: <PayPalIcon />,
-    },
-  ]
+  const internationalOptions: PaymentOption[] = isMembership
+    ? [
+        {
+          method: 'wompi_card',
+          label: 'Credit/Debit Card',
+          description: 'Automatic monthly charge · Cancel anytime',
+          icon: <RecurringCardIcon />,
+        },
+        {
+          method: 'paypal_direct',
+          label: 'PayPal',
+          description: 'Automatic monthly charge via PayPal',
+          icon: <PayPalIcon />,
+        },
+      ]
+    : [
+        {
+          method: 'wompi_manual',
+          label: 'Wompi (Credit/Debit Card)',
+          description: 'Pay with Visa, Mastercard, American Express',
+          icon: <CreditCard className="w-6 h-6" />,
+        },
+        {
+          method: 'paypal_direct',
+          label: 'PayPal',
+          description: 'Pay with your PayPal account',
+          icon: <PayPalIcon />,
+        },
+      ]
 
   const currentOptions = selectedRegion === 'colombia' ? colombiaOptions : internationalOptions
   const selectedOption = currentOptions.find((o) => o.method === selectedMethod)
@@ -139,6 +180,12 @@ export function PaymentMethodSelector({
       if (!validateEmail(guestEmail)) {return}
     }
 
+    // Para membresías con tarjeta: mostrar formulario de tokenización
+    if (isMembership && selectedMethod === 'wompi_card') {
+      setShowCardForm(true)
+      return
+    }
+
     // Validar teléfono si es Nequi
     if (selectedOption?.requiresPhone) {
       if (!validatePhoneNumber(phoneNumber)) {return}
@@ -149,12 +196,23 @@ export function PaymentMethodSelector({
     }
   }
 
+  const handleCardTokenized = (data: WompiCardTokenData) => {
+    if (!selectedRegion || !onRecurringCardSetup) {return}
+    onRecurringCardSetup(
+      data,
+      selectedRegion,
+      needsGuestEmail ? guestEmail : undefined,
+      needsGuestEmail ? guestName : undefined
+    )
+  }
+
   const handleRegionSelect = (region: PaymentRegion) => {
     setSelectedRegion(region)
-    // Auto-seleccionar el método recomendado (Wompi manual para ambas regiones)
-    setSelectedMethod('wompi_manual')
+    // Auto-seleccionar el método recomendado según tipo de producto
+    setSelectedMethod(isMembership ? 'wompi_card' : 'wompi_manual')
     setPhoneNumber('')
     setPhoneError('')
+    setShowCardForm(false)
   }
 
   const formatPrice = (amount: number, currency: 'COP' | 'USD') => {
@@ -175,6 +233,16 @@ export function PaymentMethodSelector({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
+
+        {/* Formulario de tarjeta para membresía (reemplaza el contenido del modal) */}
+        {showCardForm && isMembership ? (
+          <WompiCardForm
+            onSuccess={handleCardTokenized}
+            onBack={() => setShowCardForm(false)}
+            isSubmitting={isLoading}
+          />
+        ) : (
+          <>
         {/* Header */}
         <div className="p-4 sm:p-6 border-b border-gray-100">
           <h2 className="font-gazeta text-xl sm:text-2xl text-[#8A4BAF]">Método de Pago</h2>
@@ -383,16 +451,29 @@ export function PaymentMethodSelector({
         {/* Gateway Info */}
         <div className="px-4 pb-4 sm:px-6 sm:pb-6">
           <p className="font-dm-sans text-xs text-center text-gray-400">
-            {selectedMethod === 'wompi_manual'
-              ? 'Pago procesado de forma segura por Wompi (Bancolombia)'
-              : selectedMethod?.startsWith('paypal')
-                ? 'Pago procesado de forma segura por PayPal'
-                : selectedMethod === 'breb_manual'
-                  ? 'Transferencia directa con Bre-B - Sin comisiones'
-                  : 'Selecciona un método de pago para continuar'}
+            {selectedMethod === 'wompi_card'
+              ? 'Cobro recurrente seguro procesado por Wompi (Bancolombia)'
+              : selectedMethod === 'wompi_manual'
+                ? 'Pago procesado de forma segura por Wompi (Bancolombia)'
+                : selectedMethod?.startsWith('paypal')
+                  ? 'Pago procesado de forma segura por PayPal'
+                  : selectedMethod === 'breb_manual'
+                    ? 'Transferencia directa con Bre-B - Sin comisiones'
+                    : 'Selecciona un método de pago para continuar'}
           </p>
         </div>
+          </>
+        )}
       </div>
+    </div>
+  )
+}
+
+function RecurringCardIcon() {
+  return (
+    <div className="relative">
+      <CreditCard className="w-6 h-6" />
+      <RefreshCw className="w-3 h-3 absolute -bottom-1 -right-1 text-current opacity-70" />
     </div>
   )
 }

@@ -117,7 +117,6 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // Verificar que el usuario existe y no tiene contraseña
   const user = await prisma.user.findUnique({
     where: { email: verificationToken.identifier },
     select: { email: true, name: true, password: true },
@@ -130,10 +129,18 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // Si el usuario ya tiene contraseña, no puede usar set-password
+  // (set-password es solo para usuarios que nunca establecieron contraseña)
+  if (user.password) {
+    return NextResponse.json(
+      { valid: false, error: 'Esta cuenta ya tiene una contraseña. Por favor, usa la opción de cambiar contraseña en tu cuenta.' },
+      { status: 400 }
+    )
+  }
+
   return NextResponse.json({
     valid: true,
     email: user.email,
     name: user.name,
-    hasPassword: !!user.password,
   })
 }

@@ -9,6 +9,7 @@ import { SubscriptionStatus } from '@prisma/client'
 
 import { createAuditLog } from '@/lib/audit'
 import { cancelNequiSubscription, getNequiMode } from '@/lib/nequi'
+import { cancelPayPalSubscription } from '@/lib/paypal'
 import { prisma } from '@/lib/prisma'
 
 
@@ -257,16 +258,15 @@ async function cancelInPaymentProvider(
     paymentProvider: string
     stripeSubscriptionId: string | null
     nequiSubscriptionId: string | null
+    paypalSubscriptionId?: string | null
   },
-  immediate: boolean
+  _immediate: boolean
 ): Promise<{ success: boolean; error?: string }> {
   const provider = subscription.paymentProvider
 
   try {
     if (provider === 'stripe' && subscription.stripeSubscriptionId) {
       // LEGACY: Stripe ya no está soportado para nuevas suscripciones
-      // Las suscripciones históricas de Stripe solo se marcan como canceladas localmente
-      // El usuario debe cancelar manualmente en Stripe si aún tiene acceso
       console.warn(`LEGACY: Attempting to cancel Stripe subscription ${subscription.stripeSubscriptionId}. Manual cancellation may be required.`)
       return {
         success: true,
@@ -275,14 +275,21 @@ async function cancelInPaymentProvider(
     }
 
     if (provider === 'nequi' && subscription.nequiSubscriptionId) {
-      // Verificar si Nequi Push está habilitado
       if (getNequiMode() === 'push') {
         await cancelNequiSubscription(subscription.nequiSubscriptionId)
       }
       return { success: true }
     }
 
-    // Si no hay proveedor externo (manual, etc.), la cancelación es solo local
+    if (subscription.paypalSubscriptionId) {
+      const result = await cancelPayPalSubscription(
+        subscription.paypalSubscriptionId,
+        'Cancelado por el usuario'
+      )
+      return result
+    }
+
+    // Wompi y métodos manuales: cancelación solo local (no hay suscripción en proveedor)
     return { success: true }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
