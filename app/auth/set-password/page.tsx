@@ -120,24 +120,21 @@ function SetPasswordForm() {
 
   // Token inválido o expirado
   if (!tokenData?.valid) {
-    // Si el error es sobre contraseña ya existente, mostrar mensaje diferente
-    const isAlreadyHasPassword = tokenData?.error?.toLowerCase().includes('ya tiene')
-    
     return (
       <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6 border border-[#8A4BAF]/10">
         <div className="flex flex-col items-center justify-center py-8">
           <XCircle className="w-12 h-12 text-red-500 mb-4" />
           <h2 className="text-xl font-semibold text-[#654177] font-dm-sans mb-2">
-            {isAlreadyHasPassword ? "Cuenta ya configurada" : "Enlace inválido"}
+            Enlace inválido
           </h2>
           <p className="text-gray-600 font-dm-sans text-center mb-6">
             {tokenData?.error || "Este enlace ha expirado o ya fue utilizado."}
           </p>
           <Link
-            href={isAlreadyHasPassword ? "/mi-cuenta/configuracion" : "/auth/signin"}
+            href="/auth/signin"
             className="bg-[#4944a4] text-white px-6 py-3 rounded-lg font-dm-sans font-semibold hover:bg-[#3d3a8a] transition-colors"
           >
-            {isAlreadyHasPassword ? "Ir a Cambiar Contraseña" : "Ir a Iniciar Sesión"}
+            Ir a Iniciar Sesión
           </Link>
         </div>
       </div>

@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
 /**
  * GET /api/auth/set-password?token=xxx
  * Valida si un token es válido antes de mostrar el formulario
+ * Permite tanto establecer contraseña por primera vez como cambiarla si la olvidó
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -119,22 +120,13 @@ export async function GET(request: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { email: verificationToken.identifier },
-    select: { email: true, name: true, password: true },
+    select: { email: true, name: true },
   })
 
   if (!user) {
     return NextResponse.json(
       { valid: false, error: 'Usuario no encontrado' },
       { status: 404 }
-    )
-  }
-
-  // Si el usuario ya tiene contraseña, no puede usar set-password
-  // (set-password es solo para usuarios que nunca establecieron contraseña)
-  if (user.password) {
-    return NextResponse.json(
-      { valid: false, error: 'Esta cuenta ya tiene una contraseña. Por favor, usa la opción de cambiar contraseña en tu cuenta.' },
-      { status: 400 }
     )
   }
 

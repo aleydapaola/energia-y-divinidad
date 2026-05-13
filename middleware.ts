@@ -17,8 +17,14 @@ export async function middleware(request: NextRequest) {
   // Si está en página de auth y ya está autenticado, redirigir
   if (isAuthPage) {
     if (isAuth) {
-      // Si está en set-password, redirigir a configuracion (set-password es solo para usuarios sin contraseña)
+      // Si está en set-password con token de recuperación, permitir acceso
       if (request.nextUrl.pathname.startsWith("/auth/set-password")) {
+        const resetToken = request.nextUrl.searchParams.get('token')
+        if (resetToken) {
+          // Permitir acceso si tiene un token de recuperación válido
+          return NextResponse.next()
+        }
+        // Sin token, redirigir a configuracion
         return NextResponse.redirect(new URL("/mi-cuenta/configuracion", request.url))
       }
       // Si está en signin o signup, redirigir a mi-cuenta
