@@ -1,23 +1,18 @@
-import { PrismaAdapter } from "@auth/prisma-adapter"
-import bcrypt from "bcrypt"
-import NextAuth from "next-auth"
-// import Google from "next-auth/providers/google"
-import Credentials from "next-auth/providers/credentials"
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import bcrypt from "bcrypt";
+import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
 
-import { prisma } from "./prisma"
-
+import { authConfig } from "./auth.config";
+import { prisma } from "./prisma";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  ...authConfig,
+
+  // Prisma adapter solo en el runtime Node.js (no en Edge)
   adapter: PrismaAdapter(prisma),
 
   providers: [
-    // Google OAuth - Deshabilitado temporalmente (credenciales no configuradas)
-    // Google({
-    //   clientId: process.env.GOOGLE_CLIENT_ID,
-    //   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    // }),
-
-    // Email/Password
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
@@ -25,31 +20,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null
+          return null;
         }
 
         const user = await prisma.user.findUnique({
           where: {
             email: credentials.email as string,
           },
-        })
+        });
 
         if (!user || !user.password) {
-          return null
+          return null;
         }
 
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        )
+        const isPasswordValid = await bcrypt.compare(credentials.password as string, user.password);
 
         if (!isPasswordValid) {
-          return null
+          return null;
         }
 
-        // Verificar si el email está verificado
         if (!user.emailVerified) {
-          throw new Error("EMAIL_NOT_VERIFIED")
+          throw new Error("EMAIL_NOT_VERIFIED");
         }
 
         return {
@@ -57,52 +48,44 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: user.email,
           name: user.name,
           image: user.image,
-        }
+        };
       },
     }),
   ],
 
-  pages: {
-    signIn: "/auth/signin",
-    error: "/auth/error",
-  },
-
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 días
+    maxAge: 30 * 24 * 60 * 60,
   },
 
   callbacks: {
-    async jwt({ token, user, account }) {
+    jwt({ token, user, account }) {
       if (user) {
-        token.id = user.id
+        token.id = user.id;
       }
-
       if (account?.provider) {
-        token.provider = account.provider
+        token.provider = account.provider;
       }
-
-      return token
+      return token;
     },
 
-    async session({ session, token }) {
+    session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string
-        session.user.provider = token.provider as string
+        session.user.id = token.id as string;
+        session.user.provider = token.provider as string;
       }
-      return session
+      return session;
     },
   },
 
   events: {
-    async signIn({ user, account, isNewUser }) {
-      console.log(`✅ Usuario autenticado: ${user.email} (${account?.provider})`)
-
+    signIn({ user, account, isNewUser }) {
+      console.warn(`[AUTH] signIn: ${user.email} (${account?.provider})`);
       if (isNewUser) {
-        console.log(`🆕 Nuevo usuario registrado: ${user.email}`)
+        console.warn(`[AUTH] nuevo usuario: ${user.email}`);
       }
     },
   },
 
   debug: process.env.NODE_ENV === "development",
-})
+});

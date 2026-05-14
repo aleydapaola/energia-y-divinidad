@@ -1,26 +1,30 @@
-import { redirect } from "next/navigation"
-import { ReactNode } from "react"
+import { redirect } from "next/navigation";
+import { ReactNode } from "react";
 
-import { DashboardNav } from "@/components/dashboard/dashboard-nav"
-import { Footer } from "@/components/layout/Footer"
-import { Header } from "@/components/layout/Header"
-import { auth } from "@/lib/auth"
-import { hasActiveMembership } from "@/lib/membership-access"
+import { DashboardNav } from "@/components/dashboard/dashboard-nav";
+import { Footer } from "@/components/layout/Footer";
+import { Header } from "@/components/layout/Header";
+import { auth } from "@/lib/auth";
+import { hasActiveMembership } from "@/lib/membership-access";
 
 interface MiCuentaLayoutProps {
-  children: ReactNode
+  children: ReactNode;
 }
 
 export default async function MiCuentaLayout({ children }: MiCuentaLayoutProps) {
-  const session = await auth()
+  const session = await auth();
 
-  // Verificar autenticación
+  // Log para diagnosticar problemas de sesión en producción
+  console.warn(
+    `[MI-CUENTA LAYOUT] session=${session ? `ok (id=${session.user?.id}, email=${session.user?.email})` : "null — redirigiendo a signin"}`
+  );
+
   if (!session?.user?.id) {
-    redirect("/auth/signin?callbackUrl=/mi-cuenta")
+    redirect("/auth/signin?callbackUrl=/mi-cuenta");
   }
 
   // Verificar si tiene membresía activa (para mostrar enlace adecuado)
-  const hasMembership = await hasActiveMembership(session.user.id)
+  const hasMembership = await hasActiveMembership(session.user.id);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -44,5 +48,5 @@ export default async function MiCuentaLayout({ children }: MiCuentaLayoutProps) 
       {/* Footer */}
       <Footer />
     </div>
-  )
+  );
 }
