@@ -1,74 +1,74 @@
-"use client"
+"use client";
 
-import { Loader2, Eye, EyeOff } from "lucide-react"
-import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { signIn } from "next-auth/react"
-import { Suspense, useState } from "react"
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { Suspense, useState } from "react";
 
 function SignInForm() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get("callbackUrl") || "/"
-  const errorParam = searchParams.get("error")
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const errorParam = searchParams.get("error");
 
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(
     errorParam === "CredentialsSignin" ? "Email o contraseña incorrectos" : null
-  )
-  const [showPassword, setShowPassword] = useState(false)
-  const [emailNotVerified, setEmailNotVerified] = useState(false)
+  );
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
 
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-  })
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
-    }))
-    setError(null)
-    setEmailNotVerified(false)
-  }
+    }));
+    setError(null);
+    setEmailNotVerified(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!formData.email || !formData.password) {
-      setError("Email y contraseña son requeridos")
-      return
+      setError("Email y contraseña son requeridos");
+      return;
     }
 
-    setIsLoading(true)
-    setError(null)
-    setEmailNotVerified(false)
+    setIsLoading(true);
+    setError(null);
+    setEmailNotVerified(false);
 
     try {
       const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
         redirect: false,
-      })
+      });
 
       if (result?.error) {
         if (result.error === "EMAIL_NOT_VERIFIED") {
-          setEmailNotVerified(true)
-          setError("Tu email no está verificado")
+          setEmailNotVerified(true);
+          setError("Tu email no está verificado");
         } else {
-          setError("Email o contraseña incorrectos")
+          setError("Email o contraseña incorrectos");
         }
       } else if (result?.ok) {
-        router.push(callbackUrl)
-        router.refresh()
+        // Navegación completa para garantizar que la cookie JWT va en los headers
+        // del servidor (router.push + router.refresh puede tener race condition)
+        window.location.href = callbackUrl;
       }
-    } catch (err) {
-      setError("Error al iniciar sesión")
+    } catch (_err) {
+      setError("Error al iniciar sesión");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6 border border-[#8A4BAF]/10">
@@ -121,11 +121,7 @@ function SignInForm() {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#8A4BAF] transition-colors"
             >
-              {showPassword ? (
-                <EyeOff className="w-5 h-5" />
-              ) : (
-                <Eye className="w-5 h-5" />
-              )}
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
         </div>
@@ -174,15 +170,12 @@ function SignInForm() {
 
       <div className="text-center text-sm font-dm-sans">
         <span className="text-gray-600">¿No tienes una cuenta? </span>
-        <Link
-          href="/auth/signup"
-          className="text-[#8A4BAF] hover:text-[#654177] font-semibold"
-        >
+        <Link href="/auth/signup" className="text-[#8A4BAF] hover:text-[#654177] font-semibold">
           Regístrate
         </Link>
       </div>
     </div>
-  )
+  );
 }
 
 function SignInLoading() {
@@ -194,7 +187,7 @@ function SignInLoading() {
         <div className="h-12 bg-gray-200 rounded-lg" />
       </div>
     </div>
-  )
+  );
 }
 
 export default function SignInPage() {
@@ -203,13 +196,9 @@ export default function SignInPage() {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-block">
-            <h1 className="font-rightland text-4xl text-[#8A4BAF] mb-2">
-              Energía y Divinidad
-            </h1>
+            <h1 className="font-rightland text-4xl text-[#8A4BAF] mb-2">Energía y Divinidad</h1>
           </Link>
-          <p className="text-[#654177] font-dm-sans">
-            Inicia sesión para acceder a tu cuenta
-          </p>
+          <p className="text-[#654177] font-dm-sans">Inicia sesión para acceder a tu cuenta</p>
         </div>
 
         <Suspense fallback={<SignInLoading />}>
@@ -228,5 +217,5 @@ export default function SignInPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }
