@@ -1,191 +1,179 @@
-'use client'
+"use client";
 
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
 
-import { CoursePlayer } from '@/components/academia'
+import { CoursePlayer } from "@/components/academia";
 
 interface Lesson {
-  _id: string
-  title: string
-  lessonType: 'video' | 'live' | 'text'
-  videoUrl?: string
-  videoDuration?: string
-  content?: any
-  resources?: any[]
+  _id: string;
+  title: string;
+  lessonType: "video" | "live" | "text";
+  videoUrl?: string;
+  videoDuration?: string;
+  content?: any;
+  resources?: any[];
 }
 
 interface Module {
-  _id: string
-  title: string
-  unlockDate?: string
-  lessons: Lesson[]
+  _id: string;
+  title: string;
+  unlockDate?: string;
+  lessons: Lesson[];
 }
 
 interface CoursePlayerClientProps {
   course: {
-    _id: string
-    title: string
-    slug: { current: string }
-    courseType: 'simple' | 'modular'
-    dripEnabled?: boolean
-    defaultDripDays?: number
-  }
-  modules: Module[]
-  initialLesson: Lesson
-  userId: string
-  startedAt?: Date
+    _id: string;
+    title: string;
+    slug: { current: string };
+    courseType: "simple" | "modular";
+    dripEnabled?: boolean;
+    defaultDripDays?: number;
+  };
+  modules: Module[];
+  initialLesson: Lesson;
+  userId: string;
+  startedAt?: Date;
 }
 
 interface Progress {
-  completionPercentage: number
-  completedLessons: string[]
+  completionPercentage: number;
+  completedLessons: string[];
 }
 
 export function CoursePlayerClient({
   course,
   modules,
   initialLesson,
-  userId,
+  userId: _userId,
   startedAt,
 }: CoursePlayerClientProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [currentLesson, setCurrentLesson] = useState<Lesson>(initialLesson)
+  const [currentLesson, setCurrentLesson] = useState<Lesson>(initialLesson);
   const [progress, setProgress] = useState<Progress>({
     completionPercentage: 0,
     completedLessons: [],
-  })
-  const [isLoadingProgress, setIsLoadingProgress] = useState(true)
+  });
+  const [isLoadingProgress, setIsLoadingProgress] = useState(true);
 
   // Fetch initial progress
   useEffect(() => {
     async function fetchProgress() {
       try {
-        const response = await fetch(`/api/courses/${course._id}/progress`)
+        const response = await fetch(`/api/courses/${course._id}/progress`);
         if (response.ok) {
-          const data = await response.json()
+          const data = await response.json();
           setProgress({
             completionPercentage: data.completionPercentage || 0,
             completedLessons: data.completedLessons || [],
-          })
+          });
         }
       } catch (error) {
-        console.error('Error fetching progress:', error)
+        console.error("Error fetching progress:", error);
       } finally {
-        setIsLoadingProgress(false)
+        setIsLoadingProgress(false);
       }
     }
 
-    fetchProgress()
-  }, [course._id])
+    fetchProgress();
+  }, [course._id]);
 
   // Handle lesson selection
   const handleLessonSelect = useCallback(
     async (lessonId: string) => {
       // Update URL without full navigation
-      const url = new URL(window.location.href)
-      url.searchParams.set('lesson', lessonId)
-      router.push(url.pathname + url.search, { scroll: false })
+      const url = new URL(window.location.href);
+      url.searchParams.set("lesson", lessonId);
+      router.push(url.pathname + url.search, { scroll: false });
 
       // Find lesson in modules
-      let lesson: Lesson | null = null
-      for (const module of modules) {
-        const found = module.lessons.find((l) => l._id === lessonId)
+      let lesson: Lesson | null = null;
+      for (const mod of modules) {
+        const found = mod.lessons.find((l) => l._id === lessonId);
         if (found) {
-          lesson = found
-          break
+          lesson = found;
+          break;
         }
       }
 
       if (lesson) {
-        // Fetch full lesson data
+        // Fetch full lesson data from Sanity
         try {
-          const response = await fetch(`/api/courses/${course._id}/progress`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              lessonId,
-              action: 'access',
-            }),
-          })
-
+          const response = await fetch(`/api/courses/${course._id}/lessons/${lessonId}`);
           if (response.ok) {
-            const data = await response.json()
-            if (data.lesson) {
-              setCurrentLesson(data.lesson)
-            } else {
-              setCurrentLesson(lesson)
-            }
+            const data = await response.json();
+            setCurrentLesson(data.lesson);
           } else {
-            setCurrentLesson(lesson)
+            setCurrentLesson(lesson);
           }
         } catch {
-          setCurrentLesson(lesson)
+          setCurrentLesson(lesson);
         }
       }
     },
     [course._id, modules, router]
-  )
+  );
 
   // Handle lesson completion
   const handleLessonComplete = useCallback(
     async (lessonId: string) => {
       try {
         const response = await fetch(`/api/courses/${course._id}/progress`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             lessonId,
             completed: true,
           }),
-        })
+        });
 
         if (response.ok) {
-          const data = await response.json()
+          const data = await response.json();
 
           setProgress((prev) => ({
             completionPercentage: data.completionPercentage ?? prev.completionPercentage,
             completedLessons: prev.completedLessons.includes(lessonId)
               ? prev.completedLessons
               : [...prev.completedLessons, lessonId],
-          }))
+          }));
         }
       } catch (error) {
-        console.error('Error updating progress:', error)
+        console.error("Error updating progress:", error);
       }
     },
     [course._id]
-  )
+  );
 
   // Handle progress update (video position)
   const handleProgressUpdate = useCallback(
     async (lessonId: string, watchedSeconds: number, position: number) => {
       try {
         await fetch(`/api/courses/${course._id}/progress`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             lessonId,
             watchedSeconds,
             lastPosition: position,
           }),
-        })
+        });
       } catch (error) {
-        console.error('Error saving video progress:', error)
+        console.error("Error saving video progress:", error);
       }
     },
     [course._id]
-  )
+  );
 
   // Update current lesson when URL changes
   useEffect(() => {
-    const lessonId = searchParams.get('lesson')
+    const lessonId = searchParams.get("lesson");
     if (lessonId && lessonId !== currentLesson._id) {
-      handleLessonSelect(lessonId)
+      handleLessonSelect(lessonId);
     }
-  }, [searchParams, currentLesson._id, handleLessonSelect])
+  }, [searchParams, currentLesson._id, handleLessonSelect]);
 
   if (isLoadingProgress) {
     return (
@@ -195,7 +183,7 @@ export function CoursePlayerClient({
           <div className="h-4 w-32 bg-gray-300 rounded" />
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -211,5 +199,5 @@ export function CoursePlayerClient({
       defaultDripDays={course.defaultDripDays}
       startedAt={startedAt ? new Date(startedAt) : undefined}
     />
-  )
+  );
 }
