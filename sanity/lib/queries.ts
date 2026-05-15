@@ -139,7 +139,7 @@ export const COURSES_QUERY = groq`*[
 ] | order(displayOrder asc) {
   _id,
   title,
-  "slug": slug.current,
+  slug,
   shortDescription,
   ${coverImageProjection},
   courseType,
@@ -219,7 +219,7 @@ export const COURSE_BY_SLUG_QUERY = groq`*[_type == "course" && slug.current == 
 export const COURSES_BY_IDS_QUERY = groq`*[_type == "course" && _id in $ids] {
   _id,
   title,
-  "slug": slug.current,
+  slug,
   ${coverImageProjection},
   ${pricingProjection},
   status,

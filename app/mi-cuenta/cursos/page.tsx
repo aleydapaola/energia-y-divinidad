@@ -63,18 +63,11 @@ export default async function MiCuentaCursosPage() {
     const sanityData = coursesData?.find((c: any) => c._id === userCourse.courseId);
 
     return {
-      course: sanityData
-        ? {
-            ...sanityData,
-            // COURSES_BY_IDS_QUERY returns slug as a string (slug.current),
-            // but PurchasedCourseCard expects { current: string }
-            slug: { current: sanityData.slug as string },
-          }
-        : {
-            _id: userCourse.courseId,
-            title: userCourse.courseTitle || "Curso",
-            slug: { current: userCourse.courseSlug || userCourse.courseId },
-          },
+      course: sanityData || {
+        _id: userCourse.courseId,
+        title: userCourse.courseTitle || "Curso",
+        slug: { current: userCourse.courseSlug || userCourse.courseId },
+      },
       progress: {
         completionPercentage: Number(userCourse.completionPercentage) || 0,
         completedLessons: 0,
