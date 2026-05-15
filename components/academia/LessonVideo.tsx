@@ -88,10 +88,7 @@ export function LessonVideo({
   const videoId = extractYouTubeId(videoUrl);
 
   useEffect(() => {
-    console.warn("[LessonVideo] useEffect disparado | lessonId:", lessonId, "| videoId:", videoId);
-
     if (!videoId) {
-      console.warn("[LessonVideo] videoId vacío para lessonId:", lessonId);
       return;
     }
 
@@ -104,7 +101,6 @@ export function LessonVideo({
     }
 
     const initPlayer = () => {
-      console.warn("[LessonVideo] initPlayer | lessonId:", lessonId, "| videoId:", videoId);
       if (playerRef.current) {
         playerRef.current.destroy();
       }

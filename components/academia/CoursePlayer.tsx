@@ -86,15 +86,6 @@ export function CoursePlayer({
 }: CoursePlayerProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  console.warn(
-    "[CoursePlayer] render | lessonId:",
-    currentLesson._id,
-    "| lessonType:",
-    currentLesson.lessonType,
-    "| videoUrl:",
-    currentLesson.videoUrl ?? "(vacío)"
-  );
-
   // Flatten lessons for navigation
   const allLessons = modules.flatMap((m) =>
     m.lessons.map((l) => ({ ...l, moduleId: m._id, moduleTitle: m.title }))
@@ -193,17 +184,10 @@ export function CoursePlayer({
 
         {/* Video or Content */}
         <div className="bg-black">
-          {currentLesson.lessonType === "video" && currentLesson.videoUrl ? (
+          {(currentLesson.lessonType === "video" || currentLesson.lessonType === "live") &&
+          currentLesson.videoUrl ? (
             <LessonVideo
-              videoUrl={currentLesson.videoUrl}
-              lessonId={currentLesson._id}
-              onEnd={handleVideoEnd}
-              onProgress={(seconds, position) =>
-                onProgressUpdate(currentLesson._id, seconds, position)
-              }
-            />
-          ) : currentLesson.lessonType === "live" && currentLesson.videoUrl ? (
-            <LessonVideo
+              key={currentLesson._id}
               videoUrl={currentLesson.videoUrl}
               lessonId={currentLesson._id}
               onEnd={handleVideoEnd}
