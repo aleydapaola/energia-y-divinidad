@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 
 import { CoursePlayer } from "@/components/academia";
@@ -49,9 +48,6 @@ export function CoursePlayerClient({
   userId: _userId,
   startedAt,
 }: CoursePlayerClientProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
   const [currentLesson, setCurrentLesson] = useState<Lesson>(initialLesson);
   const [progress, setProgress] = useState<Progress>({
     completionPercentage: 0,
@@ -84,12 +80,12 @@ export function CoursePlayerClient({
   // Handle lesson selection
   const handleLessonSelect = useCallback(
     async (lessonId: string) => {
-      // Update URL without full navigation
+      // Update URL without triggering Next.js server re-render
       const url = new URL(window.location.href);
       url.searchParams.set("lesson", lessonId);
-      router.push(url.pathname + url.search, { scroll: false });
+      window.history.replaceState(null, "", url.pathname + url.search);
 
-      // Find lesson in modules
+      // Find lesson in modules (partial data — no videoUrl)
       let lesson: Lesson | null = null;
       for (const mod of modules) {
         const found = mod.lessons.find((l) => l._id === lessonId);
@@ -99,43 +95,22 @@ export function CoursePlayerClient({
         }
       }
 
-      console.warn(
-        "[LessonSelect] found in modules:",
-        lesson?._id,
-        "| videoUrl:",
-        lesson?.videoUrl ?? "(vacío - datos parciales)"
-      );
-
       if (lesson) {
         // Fetch full lesson data from Sanity
         try {
           const response = await fetch(`/api/courses/${course._id}/lessons/${lessonId}`);
           if (response.ok) {
             const data = await response.json();
-            console.warn(
-              "[LessonSelect] API ok | id:",
-              data.lesson?._id,
-              "| videoUrl:",
-              data.lesson?.videoUrl
-            );
             setCurrentLesson(data.lesson);
           } else {
-            console.warn(
-              "[LessonSelect] API error status:",
-              response.status,
-              "| usando datos parciales sin videoUrl"
-            );
             setCurrentLesson(lesson);
           }
-        } catch (err) {
-          console.error("[LessonSelect] fetch exception:", err);
+        } catch {
           setCurrentLesson(lesson);
         }
-      } else {
-        console.warn("[LessonSelect] lección NO encontrada en módulos para id:", lessonId);
       }
     },
-    [course._id, modules, router]
+    [course._id, modules]
   );
 
   // Handle lesson completion
@@ -187,14 +162,6 @@ export function CoursePlayerClient({
     },
     [course._id]
   );
-
-  // Update current lesson when URL changes
-  useEffect(() => {
-    const lessonId = searchParams.get("lesson");
-    if (lessonId && lessonId !== currentLesson._id) {
-      handleLessonSelect(lessonId);
-    }
-  }, [searchParams, currentLesson._id, handleLessonSelect]);
 
   if (isLoadingProgress) {
     return (
