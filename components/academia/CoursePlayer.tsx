@@ -1,75 +1,74 @@
-'use client'
+"use client";
 
-import { PortableText } from '@portabletext/react'
-import { ChevronLeft, Menu, X, Award, ClipboardList } from 'lucide-react'
-import Link from 'next/link'
-import { useState } from 'react'
+import { PortableText } from "@portabletext/react";
+import { ChevronLeft, Menu, X, Award, ClipboardList } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
 
-import { CourseProgressBar } from './CourseProgressBar'
-import { LessonList } from './LessonList'
-import { LessonResources } from './LessonResources'
-import { LessonVideo } from './LessonVideo'
+import { CourseProgressBar } from "./CourseProgressBar";
+import { LessonList } from "./LessonList";
+import { LessonResources } from "./LessonResources";
+import { LessonVideo } from "./LessonVideo";
 
-import type { PortableTextBlock } from '@portabletext/types'
-
+import type { PortableTextBlock } from "@portabletext/types";
 
 interface Resource {
-  _key: string
-  title: string
-  resourceType: 'pdf' | 'audio' | 'video' | 'link' | 'powerpoint' | 'image' | 'other'
-  file?: { asset: { url: string } }
-  externalUrl?: string
-  description?: string
+  _key: string;
+  title: string;
+  resourceType: "pdf" | "audio" | "video" | "link" | "powerpoint" | "image" | "other";
+  file?: { asset: { url: string } };
+  externalUrl?: string;
+  description?: string;
 }
 
 interface Lesson {
-  _id: string
-  title: string
-  lessonType: 'video' | 'live' | 'text'
-  videoUrl?: string
-  videoDuration?: string
-  content?: PortableTextBlock[]
-  resources?: Resource[]
-  completed?: boolean
-  quizId?: string
-  requiresQuizToComplete?: boolean
+  _id: string;
+  title: string;
+  lessonType: "video" | "live" | "text";
+  videoUrl?: string;
+  videoDuration?: string;
+  content?: PortableTextBlock[];
+  resources?: Resource[];
+  completed?: boolean;
+  quizId?: string;
+  requiresQuizToComplete?: boolean;
 }
 
 interface Module {
-  _id: string
-  title: string
-  unlockDate?: string
-  lessons: Lesson[]
+  _id: string;
+  title: string;
+  unlockDate?: string;
+  lessons: Lesson[];
 }
 
 interface QuizCertificateInfo {
-  hasCertificate?: boolean
-  finalQuizId?: string
-  requiresFinalQuizToComplete?: boolean
-  hasPassedFinalQuiz?: boolean
-  existingCertificateId?: string
+  hasCertificate?: boolean;
+  finalQuizId?: string;
+  requiresFinalQuizToComplete?: boolean;
+  hasPassedFinalQuiz?: boolean;
+  existingCertificateId?: string;
 }
 
 interface CoursePlayerProps {
   course: {
-    _id: string
-    title: string
-    slug: { current: string }
-    courseType: 'simple' | 'modular'
-  }
-  modules: Module[]
-  currentLesson: Lesson
+    _id: string;
+    title: string;
+    slug: { current: string };
+    courseType: "simple" | "modular";
+  };
+  modules: Module[];
+  currentLesson: Lesson;
   progress: {
-    completionPercentage: number
-    completedLessons: string[]
-  }
-  onLessonComplete: (lessonId: string) => void
-  onLessonSelect: (lessonId: string) => void
-  onProgressUpdate: (lessonId: string, watchedSeconds: number, position: number) => void
-  dripEnabled?: boolean
-  defaultDripDays?: number
-  startedAt?: Date
-  quizCertificateInfo?: QuizCertificateInfo
+    completionPercentage: number;
+    completedLessons: string[];
+  };
+  onLessonComplete: (lessonId: string) => void;
+  onLessonSelect: (lessonId: string) => void;
+  onProgressUpdate: (lessonId: string, watchedSeconds: number, position: number) => void;
+  dripEnabled?: boolean;
+  defaultDripDays?: number;
+  startedAt?: Date;
+  quizCertificateInfo?: QuizCertificateInfo;
 }
 
 export function CoursePlayer({
@@ -85,33 +84,32 @@ export function CoursePlayer({
   startedAt,
   quizCertificateInfo,
 }: CoursePlayerProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Flatten lessons for navigation
   const allLessons = modules.flatMap((m) =>
     m.lessons.map((l) => ({ ...l, moduleId: m._id, moduleTitle: m.title }))
-  )
+  );
 
-  const currentIndex = allLessons.findIndex((l) => l._id === currentLesson._id)
-  const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null
-  const nextLesson =
-    currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null
+  const currentIndex = allLessons.findIndex((l) => l._id === currentLesson._id);
+  const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+  const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
 
   const handleVideoEnd = () => {
     if (!progress.completedLessons.includes(currentLesson._id)) {
-      onLessonComplete(currentLesson._id)
+      onLessonComplete(currentLesson._id);
     }
-  }
+  };
 
   const handleMarkComplete = () => {
     if (!progress.completedLessons.includes(currentLesson._id)) {
-      onLessonComplete(currentLesson._id)
+      onLessonComplete(currentLesson._id);
     }
     // Auto-advance to next lesson
     if (nextLesson) {
-      onLessonSelect(nextLesson._id)
+      onLessonSelect(nextLesson._id);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
@@ -126,7 +124,7 @@ export function CoursePlayer({
       {/* Sidebar */}
       <aside
         className={`fixed lg:relative inset-y-0 left-0 z-50 w-80 bg-white shadow-lg transform transition-transform duration-300 lg:transform-none ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Sidebar Header */}
@@ -147,9 +145,7 @@ export function CoursePlayer({
             </button>
           </div>
 
-          <h2 className="font-gazeta text-lg text-[#654177] line-clamp-2">
-            {course.title}
-          </h2>
+          <h2 className="font-gazeta text-lg text-[#654177] line-clamp-2">{course.title}</h2>
 
           <CourseProgressBar percentage={progress.completionPercentage} />
         </div>
@@ -161,8 +157,8 @@ export function CoursePlayer({
             currentLessonId={currentLesson._id}
             completedLessons={progress.completedLessons}
             onLessonSelect={(id) => {
-              onLessonSelect(id)
-              setSidebarOpen(false)
+              onLessonSelect(id);
+              setSidebarOpen(false);
             }}
             dripEnabled={dripEnabled}
             defaultDripDays={defaultDripDays}
@@ -183,14 +179,20 @@ export function CoursePlayer({
           >
             <Menu className="h-6 w-6" />
           </button>
-          <h2 className="font-dm-sans font-medium text-gray-900 truncate">
-            {currentLesson.title}
-          </h2>
+          <h2 className="font-dm-sans font-medium text-gray-900 truncate">{currentLesson.title}</h2>
         </div>
 
         {/* Video or Content */}
         <div className="bg-black">
-          {currentLesson.lessonType === 'video' && currentLesson.videoUrl ? (
+          {console.warn(
+            "[CoursePlayer] render | lessonId:",
+            currentLesson._id,
+            "| lessonType:",
+            currentLesson.lessonType,
+            "| videoUrl:",
+            currentLesson.videoUrl ?? "(vacío)"
+          )}
+          {currentLesson.lessonType === "video" && currentLesson.videoUrl ? (
             <LessonVideo
               videoUrl={currentLesson.videoUrl}
               lessonId={currentLesson._id}
@@ -199,7 +201,7 @@ export function CoursePlayer({
                 onProgressUpdate(currentLesson._id, seconds, position)
               }
             />
-          ) : currentLesson.lessonType === 'live' && currentLesson.videoUrl ? (
+          ) : currentLesson.lessonType === "live" && currentLesson.videoUrl ? (
             <LessonVideo
               videoUrl={currentLesson.videoUrl}
               lessonId={currentLesson._id}
@@ -210,9 +212,7 @@ export function CoursePlayer({
             />
           ) : (
             <div className="aspect-video bg-gradient-to-br from-[#654177] to-[#4944a4] flex items-center justify-center">
-              <span className="text-white/50 font-dm-sans">
-                Contenido de texto
-              </span>
+              <span className="text-white/50 font-dm-sans">Contenido de texto</span>
             </div>
           )}
         </div>
@@ -225,7 +225,7 @@ export function CoursePlayer({
           </h1>
 
           {/* Text Content */}
-          {currentLesson.lessonType === 'text' && currentLesson.content && (
+          {currentLesson.lessonType === "text" && currentLesson.content && (
             <div className="prose prose-lg max-w-none font-dm-sans mb-8">
               <PortableText value={currentLesson.content} />
             </div>
@@ -244,13 +244,11 @@ export function CoursePlayer({
                   <ClipboardList className="h-5 w-5 text-[#8A4BAF]" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-dm-sans font-medium text-[#654177]">
-                    Quiz de la lección
-                  </p>
+                  <p className="font-dm-sans font-medium text-[#654177]">Quiz de la lección</p>
                   <p className="font-dm-sans text-sm text-gray-600">
                     {currentLesson.requiresQuizToComplete
-                      ? 'Completa el quiz para marcar esta lección como terminada'
-                      : 'Pon a prueba tus conocimientos'}
+                      ? "Completa el quiz para marcar esta lección como terminada"
+                      : "Pon a prueba tus conocimientos"}
                   </p>
                 </div>
                 <a
@@ -273,17 +271,19 @@ export function CoursePlayer({
                 <div className="flex-1">
                   <p className="font-gazeta text-lg text-[#654177]">
                     {quizCertificateInfo.existingCertificateId
-                      ? '¡Certificado disponible!'
-                      : quizCertificateInfo.requiresFinalQuizToComplete && !quizCertificateInfo.hasPassedFinalQuiz
-                        ? 'Completa el examen final'
-                        : '¡Felicitaciones! Puedes obtener tu certificado'}
+                      ? "¡Certificado disponible!"
+                      : quizCertificateInfo.requiresFinalQuizToComplete &&
+                          !quizCertificateInfo.hasPassedFinalQuiz
+                        ? "Completa el examen final"
+                        : "¡Felicitaciones! Puedes obtener tu certificado"}
                   </p>
                   <p className="font-dm-sans text-sm text-[#654177]/80">
                     {quizCertificateInfo.existingCertificateId
-                      ? 'Descarga tu certificado de completación'
-                      : quizCertificateInfo.requiresFinalQuizToComplete && !quizCertificateInfo.hasPassedFinalQuiz
-                        ? 'Aprueba el examen final para obtener tu certificado'
-                        : 'Has completado todos los requisitos del curso'}
+                      ? "Descarga tu certificado de completación"
+                      : quizCertificateInfo.requiresFinalQuizToComplete &&
+                          !quizCertificateInfo.hasPassedFinalQuiz
+                        ? "Aprueba el examen final para obtener tu certificado"
+                        : "Has completado todos los requisitos del curso"}
                   </p>
                 </div>
                 {quizCertificateInfo.existingCertificateId ? (
@@ -337,16 +337,16 @@ export function CoursePlayer({
               >
                 {progress.completedLessons.includes(currentLesson._id)
                   ? nextLesson
-                    ? 'Siguiente Lección'
-                    : 'Completado'
+                    ? "Siguiente Lección"
+                    : "Completado"
                   : nextLesson
-                    ? 'Completar y Continuar'
-                    : 'Marcar como Completado'}
+                    ? "Completar y Continuar"
+                    : "Marcar como Completado"}
               </button>
             </div>
           </div>
         </div>
       </main>
     </div>
-  )
+  );
 }

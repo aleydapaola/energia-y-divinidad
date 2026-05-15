@@ -99,19 +99,40 @@ export function CoursePlayerClient({
         }
       }
 
+      console.warn(
+        "[LessonSelect] found in modules:",
+        lesson?._id,
+        "| videoUrl:",
+        lesson?.videoUrl ?? "(vacío - datos parciales)"
+      );
+
       if (lesson) {
         // Fetch full lesson data from Sanity
         try {
           const response = await fetch(`/api/courses/${course._id}/lessons/${lessonId}`);
           if (response.ok) {
             const data = await response.json();
+            console.warn(
+              "[LessonSelect] API ok | id:",
+              data.lesson?._id,
+              "| videoUrl:",
+              data.lesson?.videoUrl
+            );
             setCurrentLesson(data.lesson);
           } else {
+            console.warn(
+              "[LessonSelect] API error status:",
+              response.status,
+              "| usando datos parciales sin videoUrl"
+            );
             setCurrentLesson(lesson);
           }
-        } catch {
+        } catch (err) {
+          console.error("[LessonSelect] fetch exception:", err);
           setCurrentLesson(lesson);
         }
+      } else {
+        console.warn("[LessonSelect] lección NO encontrada en módulos para id:", lessonId);
       }
     },
     [course._id, modules, router]
