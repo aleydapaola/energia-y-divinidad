@@ -86,6 +86,15 @@ export function CoursePlayer({
 }: CoursePlayerProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  console.warn(
+    "[CoursePlayer] render | lessonId:",
+    currentLesson._id,
+    "| lessonType:",
+    currentLesson.lessonType,
+    "| videoUrl:",
+    currentLesson.videoUrl ?? "(vacío)"
+  );
+
   // Flatten lessons for navigation
   const allLessons = modules.flatMap((m) =>
     m.lessons.map((l) => ({ ...l, moduleId: m._id, moduleTitle: m.title }))
@@ -184,14 +193,6 @@ export function CoursePlayer({
 
         {/* Video or Content */}
         <div className="bg-black">
-          {console.warn(
-            "[CoursePlayer] render | lessonId:",
-            currentLesson._id,
-            "| lessonType:",
-            currentLesson.lessonType,
-            "| videoUrl:",
-            currentLesson.videoUrl ?? "(vacío)"
-          )}
           {currentLesson.lessonType === "video" && currentLesson.videoUrl ? (
             <LessonVideo
               videoUrl={currentLesson.videoUrl}
