@@ -16,8 +16,8 @@ export async function sanityFetch<T>({
 }: SanityFetchOptions<T>): Promise<T> {
   try {
     const result = await client.fetch<T>(query, params, {
-      cache: process.env.NODE_ENV === 'production' ? 'force-cache' : 'no-store',
       next: {
+        revalidate: process.env.NODE_ENV === 'production' ? 60 : 0,
         tags: ['sanity', ...tags],
       },
     })
