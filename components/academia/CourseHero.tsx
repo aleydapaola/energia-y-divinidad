@@ -1,32 +1,32 @@
-'use client'
+"use client";
 
-import { Clock, BookOpen, BarChart3, Play, CheckCircle } from 'lucide-react'
-import Image from 'next/image'
+import { Clock, BookOpen, BarChart3, Play, CheckCircle } from "lucide-react";
+import Image from "next/image";
 
-import { urlFor } from '@/sanity/lib/image'
+import { urlFor } from "@/sanity/lib/image";
 
 interface CourseHeroProps {
   course: {
-    title: string
-    shortDescription?: string
-    coverImage?: any
-    previewVideoUrl?: string
-    totalDuration?: string
-    difficulty?: 'beginner' | 'intermediate' | 'advanced'
-    courseType: 'simple' | 'modular'
-    moduleCount?: number
-    lessonCount?: number
-    instructor?: string
-    whatYouWillLearn?: string[]
-  }
-  onPlayPreview?: () => void
+    title: string;
+    shortDescription?: string;
+    coverImage?: any;
+    previewVideoUrl?: string;
+    totalDuration?: string;
+    difficulty?: "beginner" | "intermediate" | "advanced";
+    courseType: "simple" | "modular";
+    moduleCount?: number;
+    lessonCount?: number;
+    instructor?: string;
+    whatYouWillLearn?: string[];
+  };
+  onPlayPreview?: () => void;
 }
 
 const difficultyLabels = {
-  beginner: 'Principiante',
-  intermediate: 'Intermedio',
-  advanced: 'Avanzado',
-}
+  beginner: "Principiante",
+  intermediate: "Intermedio",
+  advanced: "Avanzado",
+};
 
 export function CourseHero({ course, onPlayPreview }: CourseHeroProps) {
   return (
@@ -43,7 +43,7 @@ export function CourseHero({ course, onPlayPreview }: CourseHeroProps) {
           <div className="order-2 lg:order-1 text-center lg:text-left">
             {/* Course type badge */}
             <span className="inline-block bg-white/20 backdrop-blur-sm text-white text-xs sm:text-sm font-dm-sans font-medium px-3 py-1 rounded-full mb-3 sm:mb-4">
-              {course.courseType === 'simple' ? 'Meditación / Lección' : 'Curso Modular'}
+              {course.courseType === "simple" ? "Meditación / Lección" : "Curso Modular"}
             </span>
 
             {/* Title */}
@@ -70,7 +70,7 @@ export function CourseHero({ course, onPlayPreview }: CourseHeroProps) {
                 <div className="flex items-center gap-1.5 sm:gap-2 text-white/80 text-sm sm:text-base">
                   <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span className="font-dm-sans">
-                    {course.lessonCount} {course.lessonCount === 1 ? 'lección' : 'lecciones'}
+                    {course.lessonCount} {course.lessonCount === 1 ? "lección" : "lecciones"}
                   </span>
                 </div>
               )}
@@ -96,10 +96,12 @@ export function CourseHero({ course, onPlayPreview }: CourseHeroProps) {
               {course.coverImage ? (
                 <Image
                   src={urlFor(course.coverImage).width(1280).height(720).url()}
-                  alt={course.title}
+                  alt={course.coverImage.alt || course.title}
                   fill
                   className="object-cover"
+                  sizes="(min-width: 1024px) 50vw, 100vw"
                   priority
+                  unoptimized
                 />
               ) : (
                 <div className="w-full h-full bg-white/10 flex items-center justify-center">
@@ -141,5 +143,5 @@ export function CourseHero({ course, onPlayPreview }: CourseHeroProps) {
         )}
       </div>
     </section>
-  )
+  );
 }

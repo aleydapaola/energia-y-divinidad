@@ -99,6 +99,8 @@ export const coverImageProjection = `
   coverImage {
     asset-> {
       _id,
+      "_ref": ^.asset._ref,
+      "_type": ^.asset._type,
       url,
       "width": metadata.dimensions.width,
       "height": metadata.dimensions.height
@@ -125,6 +127,8 @@ export const mainImageProjection = `
   mainImage {
     asset-> {
       _id,
+      "_ref": ^.asset._ref,
+      "_type": ^.asset._type,
       url,
       "width": metadata.dimensions.width,
       "height": metadata.dimensions.height
