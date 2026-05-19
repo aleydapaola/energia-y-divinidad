@@ -1,64 +1,64 @@
-'use client'
+"use client";
 
-import { Dialog, Transition } from '@headlessui/react'
-import { X, ShoppingCart, Trash2 } from 'lucide-react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { useSession } from 'next-auth/react'
-import { Fragment, useEffect, useRef } from 'react'
+import { Dialog, Transition } from "@headlessui/react";
+import { X, ShoppingCart, Trash2 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { Fragment, useEffect, useRef } from "react";
 
-import { useCartStore, useCartSummary, formatPrice } from '@/lib/stores/cart-store'
-import { urlFor } from '@/sanity/lib/image'
+import { useCartStore, useCartSummary, formatPrice } from "@/lib/stores/cart-store";
+import { urlFor } from "@/sanity/lib/image";
 
 export function CartDrawer() {
-  const { data: session } = useSession()
-  const items = useCartStore((state) => state.items)
-  const isOpen = useCartStore((state) => state.isOpen)
-  const closeCart = useCartStore((state) => state.closeCart)
-  const removeItem = useCartStore((state) => state.removeItem)
-  const { subtotal, discountAmount, total, currency, isEmpty, discount } = useCartSummary()
+  const { data: session } = useSession();
+  const items = useCartStore((state) => state.items);
+  const isOpen = useCartStore((state) => state.isOpen);
+  const closeCart = useCartStore((state) => state.closeCart);
+  const removeItem = useCartStore((state) => state.removeItem);
+  const { subtotal, discountAmount, total, currency, isEmpty, discount } = useCartSummary();
 
   // Ref para evitar verificaciones repetidas en la misma apertura
-  const hasCheckedRef = useRef(false)
-  const lastOpenRef = useRef(false)
+  const hasCheckedRef = useRef(false);
+  const lastOpenRef = useRef(false);
 
   // Verificar y eliminar cursos ya comprados cuando se abre el carrito
   useEffect(() => {
     // Reset check flag cuando el carrito se cierra
     if (!isOpen && lastOpenRef.current) {
-      hasCheckedRef.current = false
+      hasCheckedRef.current = false;
     }
-    lastOpenRef.current = isOpen
+    lastOpenRef.current = isOpen;
 
     // Solo verificar cuando se abre, hay usuario y no hemos verificado aún
     if (!isOpen || !session?.user || items.length === 0 || hasCheckedRef.current) {
-      return
+      return;
     }
 
-    hasCheckedRef.current = true
+    hasCheckedRef.current = true;
 
     const checkOwnedCourses = async () => {
       // Copiar IDs para evitar problemas con el estado cambiante
-      const itemIds = items.map((item) => ({ id: item.id, title: item.title }))
+      const itemIds = items.map((item) => ({ id: item.id, title: item.title }));
 
       for (const { id, title } of itemIds) {
         try {
-          const response = await fetch(`/api/courses/${id}/access`)
+          const response = await fetch(`/api/courses/${id}/access`);
           if (response.ok) {
-            const data = await response.json()
+            const data = await response.json();
             if (data.hasAccess) {
-              removeItem(id)
-              console.log(`[CART] Removed owned course: ${title}`)
+              removeItem(id);
+              console.log(`[CART] Removed owned course: ${title}`);
             }
           }
         } catch (error) {
-          console.error('Error checking course ownership:', error)
+          console.error("Error checking course ownership:", error);
         }
       }
-    }
+    };
 
-    checkOwnedCourses()
-  }, [isOpen, session?.user, items, removeItem])
+    checkOwnedCourses();
+  }, [isOpen, session?.user, items, removeItem]);
 
   return (
     <Transition.Root show={isOpen} as={Fragment}>
@@ -110,9 +110,7 @@ export function CartDrawer() {
                       {isEmpty ? (
                         <div className="flex flex-col items-center justify-center h-full text-center">
                           <ShoppingCart className="h-16 w-16 text-gray-300 mb-4" />
-                          <p className="text-gray-500 font-dm-sans">
-                            Tu carrito está vacío
-                          </p>
+                          <p className="text-gray-500 font-dm-sans">Tu carrito está vacío</p>
                           <Link
                             href="/academia"
                             onClick={closeCart}
@@ -130,10 +128,11 @@ export function CartDrawer() {
                                 {item.coverImage ? (
                                   <Image
                                     src={urlFor(item.coverImage).width(160).height(160).url()}
-                                    alt={item.title}
+                                    alt={item.coverImage.alt || item.title}
                                     width={80}
                                     height={80}
                                     className="h-full w-full object-cover"
+                                    unoptimized
                                   />
                                 ) : (
                                   <div className="h-full w-full flex items-center justify-center">
@@ -158,7 +157,7 @@ export function CartDrawer() {
                                 </div>
                                 <p className="mt-1 text-[#4944a4] font-dm-sans font-semibold">
                                   {formatPrice(
-                                    currency === 'COP' ? item.price : item.priceUSD,
+                                    currency === "COP" ? item.price : item.priceUSD,
                                     currency
                                   )}
                                 </p>
@@ -192,7 +191,7 @@ export function CartDrawer() {
                         <div className="flex justify-between text-lg font-semibold text-gray-900 mb-6">
                           <span>Total</span>
                           <span className="text-[#4944a4]">
-                            {total === 0 ? 'Gratis' : formatPrice(total, currency)}
+                            {total === 0 ? "Gratis" : formatPrice(total, currency)}
                           </span>
                         </div>
 
@@ -202,7 +201,7 @@ export function CartDrawer() {
                           onClick={closeCart}
                           className="w-full block text-center bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-4 rounded-lg transition-colors"
                         >
-                          {total === 0 ? 'Obtener Gratis' : 'Ir al Checkout'}
+                          {total === 0 ? "Obtener Gratis" : "Ir al Checkout"}
                         </Link>
 
                         {/* Continue Shopping */}
@@ -223,5 +222,5 @@ export function CartDrawer() {
         </div>
       </Dialog>
     </Transition.Root>
-  )
+  );
 }

@@ -1,60 +1,55 @@
-'use client'
+"use client";
 
-import { Clock, BookOpen, Users } from 'lucide-react'
-import Image from 'next/image'
-import Link from 'next/link'
+import { Clock, BookOpen } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
-import { AddToCartButton } from '@/components/cart/AddToCartButton'
-import { formatPrice } from '@/lib/stores/cart-store'
-import { urlFor } from '@/sanity/lib/image'
+import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { formatPrice } from "@/lib/stores/cart-store";
+import { urlFor } from "@/sanity/lib/image";
 
 interface CourseCardProps {
   course: {
-    _id: string
-    title: string
-    slug: { current: string }
-    shortDescription?: string
-    coverImage?: any
-    price: number
-    priceUSD: number
-    compareAtPrice?: number
-    compareAtPriceUSD?: number
-    totalDuration?: string
-    difficulty?: 'beginner' | 'intermediate' | 'advanced'
-    courseType: 'simple' | 'modular'
-    moduleCount?: number
-    lessonCount?: number
-    featured?: boolean
-  }
-  currency?: 'COP' | 'USD'
-  showAddToCart?: boolean
+    _id: string;
+    title: string;
+    slug: { current: string };
+    shortDescription?: string;
+    coverImage?: any;
+    price: number;
+    priceUSD: number;
+    compareAtPrice?: number;
+    compareAtPriceUSD?: number;
+    totalDuration?: string;
+    difficulty?: "beginner" | "intermediate" | "advanced";
+    courseType: "simple" | "modular";
+    moduleCount?: number;
+    lessonCount?: number;
+    featured?: boolean;
+  };
+  currency?: "COP" | "USD";
+  showAddToCart?: boolean;
 }
 
 const difficultyLabels = {
-  beginner: 'Principiante',
-  intermediate: 'Intermedio',
-  advanced: 'Avanzado',
-}
+  beginner: "Principiante",
+  intermediate: "Intermedio",
+  advanced: "Avanzado",
+};
 
 const difficultyColors = {
-  beginner: 'bg-green-100 text-green-700',
-  intermediate: 'bg-yellow-100 text-yellow-700',
-  advanced: 'bg-red-100 text-red-700',
-}
+  beginner: "bg-green-100 text-green-700",
+  intermediate: "bg-yellow-100 text-yellow-700",
+  advanced: "bg-red-100 text-red-700",
+};
 
-export function CourseCard({
-  course,
-  currency = 'COP',
-  showAddToCart = true,
-}: CourseCardProps) {
-  const price = currency === 'COP' ? course.price : course.priceUSD
-  const compareAtPrice =
-    currency === 'COP' ? course.compareAtPrice : course.compareAtPriceUSD
-  const hasDiscount = compareAtPrice && compareAtPrice > price
+export function CourseCard({ course, currency = "COP", showAddToCart = true }: CourseCardProps) {
+  const price = currency === "COP" ? course.price : course.priceUSD;
+  const compareAtPrice = currency === "COP" ? course.compareAtPrice : course.compareAtPriceUSD;
+  const hasDiscount = compareAtPrice && compareAtPrice > price;
 
   const discountPercentage = hasDiscount
     ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100)
-    : 0
+    : 0;
 
   return (
     <article className="group bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col h-full">
@@ -66,9 +61,11 @@ export function CourseCard({
         {course.coverImage ? (
           <Image
             src={urlFor(course.coverImage).width(640).height(360).url()}
-            alt={course.title}
+            alt={course.coverImage.alt || course.title}
             fill
+            sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
             className="object-cover group-hover:scale-105 transition-transform duration-300"
+            unoptimized
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-[#8A4BAF]/20 to-[#4944a4]/20 flex items-center justify-center">
@@ -104,7 +101,7 @@ export function CourseCard({
           {course.lessonCount && course.lessonCount > 0 && (
             <span className="flex items-center gap-1">
               <BookOpen className="h-3.5 w-3.5" />
-              {course.lessonCount} {course.lessonCount === 1 ? 'lección' : 'lecciones'}
+              {course.lessonCount} {course.lessonCount === 1 ? "lección" : "lecciones"}
             </span>
           )}
           {course.difficulty && (
@@ -146,14 +143,10 @@ export function CourseCard({
           </div>
 
           {showAddToCart && (
-            <AddToCartButton
-              course={course}
-              variant="primary"
-              className="w-full"
-            />
+            <AddToCartButton course={course} variant="primary" className="w-full" />
           )}
         </div>
       </div>
     </article>
-  )
+  );
 }

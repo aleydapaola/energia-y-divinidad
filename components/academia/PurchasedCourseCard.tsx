@@ -1,35 +1,32 @@
-'use client'
+"use client";
 
-import { Play, BookOpen } from 'lucide-react'
-import Image from 'next/image'
-import Link from 'next/link'
+import { Play, BookOpen } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
-import { urlFor } from '@/sanity/lib/image'
+import { urlFor } from "@/sanity/lib/image";
 
-import { CourseProgressBar } from './CourseProgressBar'
+import { CourseProgressBar } from "./CourseProgressBar";
 
 interface PurchasedCourseCardProps {
   course: {
-    _id: string
-    title: string
-    slug: { current: string }
-    coverImage?: any
-    lessonCount?: number
-    totalDuration?: string
-  }
+    _id: string;
+    title: string;
+    slug: { current: string };
+    coverImage?: any;
+    lessonCount?: number;
+    totalDuration?: string;
+  };
   progress: {
-    completionPercentage: number
-    completedLessons: number
-    lastAccessedAt?: string
-  }
+    completionPercentage: number;
+    completedLessons: number;
+    lastAccessedAt?: string;
+  };
 }
 
-export function PurchasedCourseCard({
-  course,
-  progress,
-}: PurchasedCourseCardProps) {
-  const isCompleted = progress.completionPercentage >= 100
-  const hasStarted = progress.completionPercentage > 0
+export function PurchasedCourseCard({ course, progress }: PurchasedCourseCardProps) {
+  const isCompleted = progress.completionPercentage >= 100;
+  const hasStarted = progress.completionPercentage > 0;
 
   return (
     <Link
@@ -41,9 +38,11 @@ export function PurchasedCourseCard({
         {course.coverImage ? (
           <Image
             src={urlFor(course.coverImage).width(640).height(360).url()}
-            alt={course.title}
+            alt={course.coverImage.alt || course.title}
             fill
+            sizes="(min-width: 768px) 33vw, 100vw"
             className="object-cover group-hover:scale-105 transition-transform duration-300"
+            unoptimized
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-[#8A4BAF]/20 to-[#4944a4]/20 flex items-center justify-center">
@@ -94,23 +93,20 @@ export function PurchasedCourseCard({
 
         {/* Progress Bar */}
         <div className="mt-auto">
-          <CourseProgressBar
-            percentage={progress.completionPercentage}
-            size="sm"
-          />
+          <CourseProgressBar percentage={progress.completionPercentage} size="sm" />
         </div>
 
         {/* Last accessed */}
         {progress.lastAccessedAt && hasStarted && (
           <p className="text-xs text-gray-400 font-dm-sans mt-2">
-            Último acceso:{' '}
-            {new Date(progress.lastAccessedAt).toLocaleDateString('es-ES', {
-              day: 'numeric',
-              month: 'short',
+            Último acceso:{" "}
+            {new Date(progress.lastAccessedAt).toLocaleDateString("es-ES", {
+              day: "numeric",
+              month: "short",
             })}
           </p>
         )}
       </div>
     </Link>
-  )
+  );
 }
