@@ -13,8 +13,8 @@
  * 5. Al 3er fallo: la suscripción pasa a PAST_DUE y se revoca el acceso
  */
 
-import { chargeWompiPaymentSource, generateWompiReference } from "@/lib/wompi";
 import { prisma } from "@/lib/prisma";
+import { chargeWompiPaymentSource, generateWompiReference } from "@/lib/wompi";
 
 const MAX_RETRY_COUNT = 3;
 const RETRY_DELAY_DAYS = 2;
@@ -34,6 +34,14 @@ export interface BatchResult {
   results: RenewalResult[];
 }
 
+interface PendingPlanChange {
+  orderId: string;
+  targetTierId: string;
+  targetTierName: string;
+  amount: number;
+  currency: string;
+}
+
 /**
  * Procesa todas las suscripciones Wompi con cobro pendiente para hoy.
  * Llamado por el cron diario.
@@ -42,12 +50,12 @@ export async function processRenewalBatch(): Promise<BatchResult> {
   const now = new Date();
 
   // Buscar suscripciones Wompi que necesitan renovación hoy
-  // Incluye reintentos (RETRYING) y cobros normales (ACTIVE)
+  // Incluye pruebas gratis vencidas (TRIAL), reintentos y cobros normales.
   const subscriptions = await prisma.subscription.findMany({
     where: {
       wompiPaymentSourceId: { not: null },
       cancelledAt: null,
-      status: { in: ["ACTIVE", "PAST_DUE"] },
+      status: { in: ["TRIAL", "ACTIVE", "PAST_DUE"] },
       nextChargeDate: { lte: now },
     },
     include: {
@@ -93,15 +101,18 @@ export async function renewWompiSubscription(subscriptionId: string): Promise<Re
   }
 
   const reference = generateWompiReference("RENEW");
-  const amountInCents = Math.round(Number(subscription.amount) * 100);
+  const pendingPlanChange = await getPendingPlanChange(subscription.id);
+  const chargeAmount = pendingPlanChange?.amount ?? Number(subscription.amount);
+  const chargeCurrency = pendingPlanChange?.currency ?? subscription.currency;
+  const amountInCents = Math.round(chargeAmount * 100);
 
   // Crear RecurringCharge en estado PENDING antes del intento
   const recurringCharge = await prisma.recurringCharge.create({
     data: {
       subscriptionId,
       reference,
-      amount: subscription.amount,
-      currency: subscription.currency,
+      amount: chargeAmount,
+      currency: chargeCurrency,
       status: "PENDING",
       retryCount: subscription.chargeFailureCount,
     },
@@ -114,6 +125,16 @@ export async function renewWompiSubscription(subscriptionId: string): Promise<Re
       reference,
       customerEmail: subscription.user.email,
     });
+
+    if (transaction.status === "APPROVED") {
+      await applySuccessfulRenewal(subscription.id, recurringCharge.id, transaction.id);
+    } else if (
+      transaction.status === "DECLINED" ||
+      transaction.status === "ERROR" ||
+      transaction.status === "VOIDED"
+    ) {
+      throw new Error(transaction.statusMessage || transaction.status);
+    }
 
     // La transacción fue iniciada — el webhook de Wompi procesará el resultado final
     // (APPROVED / DECLINED) y actualizará RecurringCharge + Subscription
@@ -179,4 +200,118 @@ export async function renewWompiSubscription(subscriptionId: string): Promise<Re
 
     return { subscriptionId, success: false, error: errorMessage, chargeId: recurringCharge.id };
   }
+}
+
+async function applySuccessfulRenewal(
+  subscriptionId: string,
+  recurringChargeId: string,
+  transactionId: string
+) {
+  const recurringCharge = await prisma.recurringCharge.findUnique({
+    where: { id: recurringChargeId },
+    include: { subscription: true },
+  });
+
+  if (!recurringCharge || recurringCharge.status === "COMPLETED") {
+    return;
+  }
+
+  const subscription = recurringCharge.subscription;
+  const pendingPlanChange = await getPendingPlanChange(subscriptionId);
+  const periodStart = new Date(subscription.currentPeriodEnd);
+  const periodEnd = new Date(subscription.currentPeriodEnd);
+
+  if (subscription.billingInterval === "YEARLY") {
+    periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+  } else {
+    periodEnd.setMonth(periodEnd.getMonth() + 1);
+  }
+
+  const nextChargeDate = new Date(periodEnd);
+  nextChargeDate.setDate(nextChargeDate.getDate() - 1);
+
+  await prisma.$transaction([
+    prisma.recurringCharge.update({
+      where: { id: recurringCharge.id },
+      data: {
+        status: "COMPLETED",
+        externalId: transactionId,
+        completedAt: new Date(),
+      },
+    }),
+    prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: {
+        status: "ACTIVE",
+        ...(pendingPlanChange
+          ? {
+              membershipTierId: pendingPlanChange.targetTierId,
+              membershipTierName: pendingPlanChange.targetTierName,
+              amount: pendingPlanChange.amount,
+              currency: pendingPlanChange.currency,
+            }
+          : {}),
+        currentPeriodStart: periodStart,
+        currentPeriodEnd: periodEnd,
+        nextChargeDate,
+        lastChargeDate: new Date(),
+        chargeFailureCount: 0,
+        chargeFailureReason: null,
+      },
+    }),
+    prisma.entitlement.updateMany({
+      where: { subscriptionId, revoked: false },
+      data: {
+        ...(pendingPlanChange
+          ? {
+              resourceId: pendingPlanChange.targetTierId,
+              resourceName: pendingPlanChange.targetTierName,
+            }
+          : {}),
+        expiresAt: periodEnd,
+      },
+    }),
+    ...(pendingPlanChange
+      ? [
+          prisma.order.update({
+            where: { id: pendingPlanChange.orderId },
+            data: { paymentStatus: "COMPLETED" },
+          }),
+        ]
+      : []),
+  ]);
+}
+
+async function getPendingPlanChange(subscriptionId: string): Promise<PendingPlanChange | null> {
+  const orders = await prisma.order.findMany({
+    where: {
+      orderType: "MEMBERSHIP",
+      paymentStatus: "PENDING",
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  const order = orders.find((candidate) => {
+    const metadata =
+      candidate.metadata && typeof candidate.metadata === "object"
+        ? (candidate.metadata as Record<string, unknown>)
+        : null;
+
+    return (
+      metadata?.scheduledPlanChange === true && metadata.sourceSubscriptionId === subscriptionId
+    );
+  });
+
+  if (!order) {
+    return null;
+  }
+
+  return {
+    orderId: order.id,
+    targetTierId: order.itemId,
+    targetTierName: order.itemName,
+    amount: Number(order.amount),
+    currency: order.currency,
+  };
 }

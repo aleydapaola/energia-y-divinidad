@@ -1,4 +1,4 @@
-import { createHmac } from 'crypto'
+import { createHash } from "crypto";
 
 /**
  * Wompi Payment Integration
@@ -16,115 +16,112 @@ import { createHmac } from 'crypto'
  */
 
 export const WOMPI_CONFIG = {
-  publicKey: process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || '',
-  privateKey: process.env.WOMPI_PRIVATE_KEY || '',
-  eventsSecret: process.env.WOMPI_EVENTS_SECRET || '',
-  integritySecret: process.env.WOMPI_INTEGRITY_SECRET || '',
-  environment: (process.env.WOMPI_ENVIRONMENT || 'sandbox') as 'sandbox' | 'production',
-}
+  publicKey: process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || "",
+  privateKey: process.env.WOMPI_PRIVATE_KEY || "",
+  eventsSecret: process.env.WOMPI_EVENTS_SECRET || "",
+  integritySecret: process.env.WOMPI_INTEGRITY_SECRET || "",
+  environment: (process.env.WOMPI_ENVIRONMENT || "sandbox") as "sandbox" | "production",
+};
 
 // URLs de API según environment
 const API_URLS = {
-  sandbox: 'https://sandbox.wompi.co/v1',
-  production: 'https://production.wompi.co/v1',
-}
+  sandbox: "https://sandbox.wompi.co/v1",
+  production: "https://production.wompi.co/v1",
+};
 
 export function getWompiApiUrl(): string {
-  return API_URLS[WOMPI_CONFIG.environment]
+  return API_URLS[WOMPI_CONFIG.environment];
 }
 
 // ============================================
 // TIPOS
 // ============================================
 
-export type WompiPaymentMethod = 'CARD' | 'NEQUI' | 'PSE' | 'BANCOLOMBIA_QR'
+export type WompiPaymentMethod = "CARD" | "NEQUI" | "PSE" | "BANCOLOMBIA_QR";
 
 export interface WompiTransactionRequest {
-  amountInCents: number
-  currency: 'COP'
-  customerEmail: string
+  amountInCents: number;
+  currency: "COP";
+  customerEmail: string;
   customerData?: {
-    phoneNumber?: string
-    fullName?: string
-    legalId?: string
-    legalIdType?: 'CC' | 'CE' | 'NIT' | 'PP'
-  }
-  reference: string
+    phoneNumber?: string;
+    fullName?: string;
+    legalId?: string;
+    legalIdType?: "CC" | "CE" | "NIT" | "PP";
+  };
+  reference: string;
   paymentMethod: {
-    type: WompiPaymentMethod
-    token?: string // Para tarjetas tokenizadas
-    phoneNumber?: string // Para Nequi
-    userType?: number // Para PSE
-    userLegalId?: string // Para PSE
-    userLegalIdType?: string // Para PSE
-    financialInstitutionCode?: string // Para PSE
-  }
-  redirectUrl?: string
-  paymentSourceId?: string
+    type?: WompiPaymentMethod;
+    installments?: number; // Para tarjetas y fuentes de pago de tarjeta
+    token?: string; // Para tarjetas tokenizadas
+    phoneNumber?: string; // Para Nequi
+    userType?: number; // Para PSE
+    userLegalId?: string; // Para PSE
+    userLegalIdType?: string; // Para PSE
+    financialInstitutionCode?: string; // Para PSE
+  };
+  redirectUrl?: string;
+  paymentSourceId?: string;
+  recurrent?: boolean;
 }
 
 export interface WompiTransaction {
-  id: string
-  createdAt: string
-  amountInCents: number
-  reference: string
-  currency: string
-  paymentMethodType: WompiPaymentMethod
+  id: string;
+  createdAt: string;
+  amountInCents: number;
+  reference: string;
+  currency: string;
+  paymentMethodType: WompiPaymentMethod;
   paymentMethod: {
-    type: string
-    extra?: Record<string, any>
-    phoneNumber?: string
-  }
-  status: WompiTransactionStatus
-  statusMessage?: string
-  customerEmail: string
+    type: string;
+    extra?: Record<string, any>;
+    phoneNumber?: string;
+  };
+  status: WompiTransactionStatus;
+  statusMessage?: string;
+  customerEmail: string;
   customerData?: {
-    fullName?: string
-    phoneNumber?: string
-  }
-  redirectUrl?: string
-  paymentLinkId?: string
+    fullName?: string;
+    phoneNumber?: string;
+  };
+  redirectUrl?: string;
+  paymentLinkId?: string;
 }
 
-export type WompiTransactionStatus =
-  | 'PENDING'
-  | 'APPROVED'
-  | 'DECLINED'
-  | 'VOIDED'
-  | 'ERROR'
+export type WompiTransactionStatus = "PENDING" | "APPROVED" | "DECLINED" | "VOIDED" | "ERROR";
 
 export interface WompiPaymentLink {
-  id: string
-  name: string
-  description?: string
-  singleUse: boolean
-  collectShipping: boolean
-  currency: 'COP'
-  amountInCents: number
-  redirectUrl?: string
-  imageUrl?: string
-  expiresAt?: string
+  id: string;
+  name: string;
+  description?: string;
+  singleUse: boolean;
+  collectShipping: boolean;
+  currency: "COP";
+  amountInCents: number;
+  redirectUrl?: string;
+  imageUrl?: string;
+  expiresAt?: string;
 }
 
 export interface WompiNequiPaymentResponse {
-  success: boolean
-  transactionId?: string
-  status?: WompiTransactionStatus
-  message?: string
-  error?: string
+  success: boolean;
+  transactionId?: string;
+  status?: WompiTransactionStatus;
+  message?: string;
+  error?: string;
 }
 
 export interface WompiCardTokenResponse {
-  id: string
-  createdAt: string
-  brand: string
-  name: string
-  lastFour: string
-  bin: string
-  expYear: string
-  expMonth: string
-  cardHolder: string
-  expiresAt: string
+  id: string;
+  createdAt: string;
+  brand: string;
+  name: string;
+  lastFour: string;
+  bin: string;
+  expYear: string;
+  expMonth: string;
+  cardHolder: string;
+  expiresAt: string;
 }
 
 // ============================================
@@ -135,7 +132,7 @@ export interface WompiCardTokenResponse {
  * Verificar si Wompi está configurado
  */
 export function isWompiConfigured(): boolean {
-  return !!(WOMPI_CONFIG.publicKey && WOMPI_CONFIG.privateKey)
+  return !!(WOMPI_CONFIG.publicKey && WOMPI_CONFIG.privateKey);
 }
 
 /**
@@ -145,15 +142,15 @@ export function isWompiConfigured(): boolean {
 export function generateWompiIntegritySignature(
   reference: string,
   amountInCents: number,
-  currency: string = 'COP'
+  currency: string = "COP"
 ): string {
-  const { integritySecret } = WOMPI_CONFIG
+  const { integritySecret } = WOMPI_CONFIG;
   if (!integritySecret) {
-    throw new Error('WOMPI_INTEGRITY_SECRET no está configurado')
+    throw new Error("WOMPI_INTEGRITY_SECRET no está configurado");
   }
 
-  const data = `${reference}${amountInCents}${currency}${integritySecret}`
-  return createHmac('sha256', integritySecret).update(data).digest('hex')
+  const data = `${reference}${amountInCents}${currency}${integritySecret}`;
+  return createHash("sha256").update(data).digest("hex");
 }
 
 /**
@@ -164,29 +161,58 @@ export function verifyWompiWebhookSignature(
   signature: string,
   timestamp: string
 ): boolean {
-  const { eventsSecret } = WOMPI_CONFIG
+  const { eventsSecret } = WOMPI_CONFIG;
   if (!eventsSecret) {
-    console.error('WOMPI_EVENTS_SECRET no está configurado')
-    return false
+    console.error("WOMPI_EVENTS_SECRET no está configurado");
+    return false;
   }
 
-  const data = `${timestamp}${payload}`
-  const expectedSignature = createHmac('sha256', eventsSecret)
-    .update(data)
-    .digest('hex')
+  let event: WompiWebhookEvent;
+  try {
+    event = JSON.parse(payload) as WompiWebhookEvent;
+  } catch {
+    console.error("Payload de webhook Wompi inválido");
+    return false;
+  }
 
-  return signature === expectedSignature
+  const checksum = signature || event.signature?.checksum;
+  const properties = event.signature?.properties || [];
+  const eventTimestamp = event.timestamp ?? Number(timestamp);
+
+  if (!checksum || properties.length === 0 || !eventTimestamp) {
+    console.error("Firma de webhook Wompi incompleta");
+    return false;
+  }
+
+  const values = properties.map((property) => {
+    const value = getValueByPath(event.data, property);
+    return value === undefined || value === null ? "" : String(value);
+  });
+
+  const data = `${values.join("")}${eventTimestamp}${eventsSecret}`;
+  const expectedSignature = createHash("sha256").update(data).digest("hex");
+
+  return checksum.toLowerCase() === expectedSignature.toLowerCase();
+}
+
+function getValueByPath(source: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((current, segment) => {
+    if (current && typeof current === "object" && segment in current) {
+      return (current as Record<string, unknown>)[segment];
+    }
+    return undefined;
+  }, source);
 }
 
 /**
  * Generar referencia única para transacción
  * Formato alfanumérico sin caracteres especiales (compatible con apps bancarias)
  */
-export function generateWompiReference(prefix: string = 'EYD'): string {
-  const timestamp = Date.now().toString(36)
-  const random = Math.random().toString(36).substring(2, 8)
+export function generateWompiReference(prefix: string = "EYD"): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
   // Sin guiones para compatibilidad con apps bancarias (Bre-B, Nequi, etc.)
-  return `${prefix}${timestamp}${random}`.toUpperCase()
+  return `${prefix}${timestamp}${random}`.toUpperCase();
 }
 
 // ============================================
@@ -197,11 +223,11 @@ export function generateWompiReference(prefix: string = 'EYD'): string {
  * Headers de autenticación para requests a Wompi
  */
 function getWompiHeaders(usePublicKey: boolean = false): Record<string, string> {
-  const key = usePublicKey ? WOMPI_CONFIG.publicKey : WOMPI_CONFIG.privateKey
+  const key = usePublicKey ? WOMPI_CONFIG.publicKey : WOMPI_CONFIG.privateKey;
   return {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     Authorization: `Bearer ${key}`,
-  }
+  };
 }
 
 /**
@@ -210,16 +236,25 @@ function getWompiHeaders(usePublicKey: boolean = false): Record<string, string> 
  */
 export async function getWompiAcceptanceToken(): Promise<string> {
   const response = await fetch(`${getWompiApiUrl()}/merchants/${WOMPI_CONFIG.publicKey}`, {
-    method: 'GET',
+    method: "GET",
     headers: getWompiHeaders(true),
-  })
+  });
 
   if (!response.ok) {
-    throw new Error(`Error obteniendo acceptance token: ${response.statusText}`)
+    throw new Error(`Error obteniendo acceptance token: ${response.statusText}`);
   }
 
-  const data = await response.json()
-  return data.data.presignedAcceptance.acceptanceToken
+  const data = await response.json();
+  const merchant = data.data;
+  const acceptanceToken =
+    merchant?.presigned_acceptance?.acceptance_token ||
+    merchant?.presignedAcceptance?.acceptanceToken;
+
+  if (!acceptanceToken) {
+    throw new Error("Wompi no retornó acceptance token para este comercio");
+  }
+
+  return acceptanceToken;
 }
 
 /**
@@ -227,25 +262,25 @@ export async function getWompiAcceptanceToken(): Promise<string> {
  * La tarjeta se tokeniza en el frontend con la public key
  */
 export async function tokenizeCard(cardData: {
-  number: string
-  cvc: string
-  expMonth: string
-  expYear: string
-  cardHolder: string
+  number: string;
+  cvc: string;
+  expMonth: string;
+  expYear: string;
+  cardHolder: string;
 }): Promise<WompiCardTokenResponse> {
   const response = await fetch(`${getWompiApiUrl()}/tokens/cards`, {
-    method: 'POST',
+    method: "POST",
     headers: getWompiHeaders(true),
     body: JSON.stringify(cardData),
-  })
+  });
 
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(`Error tokenizando tarjeta: ${error.error?.message || response.statusText}`)
+    const error = await response.json();
+    throw new Error(`Error tokenizando tarjeta: ${error.error?.message || response.statusText}`);
   }
 
-  const data = await response.json()
-  return data.data
+  const data = await response.json();
+  return data.data;
 }
 
 /**
@@ -254,12 +289,17 @@ export async function tokenizeCard(cardData: {
 export async function createWompiTransaction(
   request: WompiTransactionRequest
 ): Promise<WompiTransaction> {
-  const acceptanceToken = await getWompiAcceptanceToken()
+  const acceptanceToken = await getWompiAcceptanceToken();
 
   const payload = {
     acceptance_token: acceptanceToken,
     amount_in_cents: request.amountInCents,
     currency: request.currency,
+    signature: generateWompiIntegritySignature(
+      request.reference,
+      request.amountInCents,
+      request.currency
+    ),
     customer_email: request.customerEmail,
     customer_data: request.customerData
       ? {
@@ -272,6 +312,7 @@ export async function createWompiTransaction(
     reference: request.reference,
     payment_method: {
       type: request.paymentMethod.type,
+      installments: request.paymentMethod.installments,
       token: request.paymentMethod.token,
       phone_number: request.paymentMethod.phoneNumber,
       user_type: request.paymentMethod.userType,
@@ -281,23 +322,27 @@ export async function createWompiTransaction(
     },
     redirect_url: request.redirectUrl,
     payment_source_id: request.paymentSourceId,
-  }
+    recurrent: request.recurrent,
+  };
 
   const response = await fetch(`${getWompiApiUrl()}/transactions`, {
-    method: 'POST',
+    method: "POST",
     headers: getWompiHeaders(),
     body: JSON.stringify(payload),
-  })
+  });
 
   if (!response.ok) {
-    const error = await response.json()
+    const error = await response.json();
+    console.error("[WOMPI] Error creando transacción:", JSON.stringify(error));
     throw new Error(
-      `Error creando transacción Wompi: ${error.error?.message || response.statusText}`
-    )
+      `Error creando transacción Wompi: ${
+        error.error?.message || error.message || response.statusText
+      }`
+    );
   }
 
-  const data = await response.json()
-  return mapWompiTransaction(data.data)
+  const data = await response.json();
+  return mapWompiTransaction(data.data);
 }
 
 /**
@@ -305,43 +350,43 @@ export async function createWompiTransaction(
  * El usuario recibe notificación push en su app Nequi
  */
 export async function createWompiNequiPayment(request: {
-  phoneNumber: string
-  amountInCents: number
-  customerEmail: string
-  reference: string
-  redirectUrl?: string
+  phoneNumber: string;
+  amountInCents: number;
+  customerEmail: string;
+  reference: string;
+  redirectUrl?: string;
 }): Promise<WompiNequiPaymentResponse> {
   try {
     const transaction = await createWompiTransaction({
       amountInCents: request.amountInCents,
-      currency: 'COP',
+      currency: "COP",
       customerEmail: request.customerEmail,
       customerData: {
         phoneNumber: request.phoneNumber,
       },
       reference: request.reference,
       paymentMethod: {
-        type: 'NEQUI',
+        type: "NEQUI",
         phoneNumber: request.phoneNumber,
       },
       redirectUrl: request.redirectUrl,
-    })
+    });
 
     return {
       success: true,
       transactionId: transaction.id,
       status: transaction.status,
       message:
-        transaction.status === 'PENDING'
-          ? 'Se envió la solicitud de pago a tu app Nequi. Por favor apruébala.'
+        transaction.status === "PENDING"
+          ? "Se envió la solicitud de pago a tu app Nequi. Por favor apruébala."
           : `Estado: ${transaction.status}`,
-    }
+    };
   } catch (error) {
-    console.error('Error en Wompi Nequi payment:', error)
+    console.error("Error en Wompi Nequi payment:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
-    }
+      error: error instanceof Error ? error.message : "Error desconocido",
+    };
   }
 }
 
@@ -350,58 +395,58 @@ export async function createWompiNequiPayment(request: {
  */
 export async function getWompiTransaction(transactionId: string): Promise<WompiTransaction> {
   const response = await fetch(`${getWompiApiUrl()}/transactions/${transactionId}`, {
-    method: 'GET',
+    method: "GET",
     headers: getWompiHeaders(),
-  })
+  });
 
   if (!response.ok) {
-    throw new Error(`Error consultando transacción: ${response.statusText}`)
+    throw new Error(`Error consultando transacción: ${response.statusText}`);
   }
 
-  const data = await response.json()
-  return mapWompiTransaction(data.data)
+  const data = await response.json();
+  return mapWompiTransaction(data.data);
 }
 
 /**
  * Crear link de pago (para checkout hospedado por Wompi)
  */
 export async function createWompiPaymentLink(request: {
-  name: string
-  description?: string
-  amountInCents: number
-  singleUse?: boolean
-  redirectUrl?: string
-  expiresAt?: string
+  name: string;
+  description?: string;
+  amountInCents: number;
+  singleUse?: boolean;
+  redirectUrl?: string;
+  expiresAt?: string;
 }): Promise<{ paymentLink: WompiPaymentLink; checkoutUrl: string }> {
   const payload = {
     name: request.name,
     description: request.description,
     single_use: request.singleUse ?? true,
     collect_shipping: false,
-    currency: 'COP',
+    currency: "COP",
     amount_in_cents: request.amountInCents,
     redirect_url: request.redirectUrl,
     expires_at: request.expiresAt,
-  }
+  };
 
   const response = await fetch(`${getWompiApiUrl()}/payment_links`, {
-    method: 'POST',
+    method: "POST",
     headers: getWompiHeaders(),
     body: JSON.stringify(payload),
-  })
+  });
 
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(`Error creando link de pago: ${error.error?.message || response.statusText}`)
+    const error = await response.json();
+    throw new Error(`Error creando link de pago: ${error.error?.message || response.statusText}`);
   }
 
-  const data = await response.json()
-  const paymentLink = data.data
+  const data = await response.json();
+  const paymentLink = data.data;
 
   // Generar URL de checkout
   // Wompi usa la misma URL para sandbox y producción
   // El ambiente se determina por el tipo de llave (pub_test_ vs pub_prod_)
-  const checkoutUrl = `https://checkout.wompi.co/l/${paymentLink.id}`
+  const checkoutUrl = `https://checkout.wompi.co/l/${paymentLink.id}`;
 
   return {
     paymentLink: {
@@ -416,7 +461,7 @@ export async function createWompiPaymentLink(request: {
       expiresAt: paymentLink.expires_at,
     },
     checkoutUrl,
-  }
+  };
 }
 
 /**
@@ -426,16 +471,16 @@ export async function getWompiBanks(): Promise<
   Array<{ financial_institution_code: string; financial_institution_name: string }>
 > {
   const response = await fetch(`${getWompiApiUrl()}/pse/financial_institutions`, {
-    method: 'GET',
+    method: "GET",
     headers: getWompiHeaders(true),
-  })
+  });
 
   if (!response.ok) {
-    throw new Error(`Error obteniendo bancos: ${response.statusText}`)
+    throw new Error(`Error obteniendo bancos: ${response.statusText}`);
   }
 
-  const data = await response.json()
-  return data.data
+  const data = await response.json();
+  return data.data;
 }
 
 // ============================================
@@ -443,15 +488,15 @@ export async function getWompiBanks(): Promise<
 // ============================================
 
 export interface WompiPaymentSource {
-  id: string
+  id: string;
   publicData: {
-    type: string
-    token?: string
-    phoneNumber?: string
-  }
-  status: 'AVAILABLE' | 'UNAVAILABLE'
-  type: 'CARD' | 'NEQUI'
-  customerId: string
+    type: string;
+    token?: string;
+    phoneNumber?: string;
+  };
+  status: "AVAILABLE" | "UNAVAILABLE";
+  type: "CARD" | "NEQUI";
+  customerId: string;
 }
 
 /**
@@ -459,11 +504,11 @@ export interface WompiPaymentSource {
  * El cliente debe autorizar el débito automático
  */
 export async function createWompiPaymentSource(request: {
-  type: 'CARD' | 'NEQUI'
-  token?: string // Para tarjetas
-  phoneNumber?: string // Para Nequi
-  customerEmail: string
-  acceptanceToken: string
+  type: "CARD" | "NEQUI";
+  token?: string; // Para tarjetas
+  phoneNumber?: string; // Para Nequi
+  customerEmail: string;
+  acceptanceToken: string;
 }): Promise<WompiPaymentSource> {
   const payload = {
     type: request.type,
@@ -471,50 +516,51 @@ export async function createWompiPaymentSource(request: {
     phone_number: request.phoneNumber,
     customer_email: request.customerEmail,
     acceptance_token: request.acceptanceToken,
-  }
+  };
 
   const response = await fetch(`${getWompiApiUrl()}/payment_sources`, {
-    method: 'POST',
+    method: "POST",
     headers: getWompiHeaders(),
     body: JSON.stringify(payload),
-  })
+  });
 
   if (!response.ok) {
-    const error = await response.json()
-    throw new Error(
-      `Error creando fuente de pago: ${error.error?.message || response.statusText}`
-    )
+    const error = await response.json();
+    throw new Error(`Error creando fuente de pago: ${error.error?.message || response.statusText}`);
   }
 
-  const data = await response.json()
+  const data = await response.json();
   return {
     id: data.data.id,
     publicData: data.data.public_data,
     status: data.data.status,
     type: data.data.type,
     customerId: data.data.customer_email,
-  }
+  };
 }
 
 /**
  * Cobrar a una fuente de pago existente (débito recurrente)
  */
 export async function chargeWompiPaymentSource(request: {
-  paymentSourceId: string
-  amountInCents: number
-  reference: string
-  customerEmail: string
+  paymentSourceId: string;
+  amountInCents: number;
+  reference: string;
+  customerEmail: string;
+  redirectUrl?: string;
 }): Promise<WompiTransaction> {
-  return await createWompiTransaction({
+  return createWompiTransaction({
     amountInCents: request.amountInCents,
-    currency: 'COP',
+    currency: "COP",
     customerEmail: request.customerEmail,
     reference: request.reference,
     paymentMethod: {
-      type: 'CARD', // El tipo real se determina por el payment source
+      installments: 1,
     },
     paymentSourceId: request.paymentSourceId,
-  })
+    redirectUrl: request.redirectUrl,
+    recurrent: true,
+  });
 }
 
 // ============================================
@@ -545,7 +591,7 @@ function mapWompiTransaction(data: any): WompiTransaction {
       : undefined,
     redirectUrl: data.redirect_url,
     paymentLinkId: data.payment_link_id,
-  }
+  };
 }
 
 // ============================================
@@ -553,18 +599,18 @@ function mapWompiTransaction(data: any): WompiTransaction {
 // ============================================
 
 export interface WompiWebhookEvent {
-  event: 'transaction.updated' | 'nequi_token.updated'
+  event: "transaction.updated" | "nequi_token.updated";
   data: {
-    transaction?: WompiTransaction
-    nequi_token?: any
-  }
-  sentAt: string
-  timestamp: number
+    transaction?: WompiTransaction;
+    nequi_token?: any;
+  };
+  sentAt: string;
+  timestamp: number;
   signature: {
-    properties: string[]
-    checksum: string
-  }
-  environment: 'test' | 'prod'
+    properties: string[];
+    checksum: string;
+  };
+  environment: "test" | "prod";
 }
 
 /**
@@ -576,14 +622,14 @@ export function parseWompiWebhookEvent(
   timestamp: string
 ): WompiWebhookEvent | null {
   if (!verifyWompiWebhookSignature(body, signature, timestamp)) {
-    console.error('Firma de webhook Wompi inválida')
-    return null
+    console.error("Firma de webhook Wompi inválida");
+    return null;
   }
 
   try {
-    return JSON.parse(body) as WompiWebhookEvent
+    return JSON.parse(body) as WompiWebhookEvent;
   } catch (error) {
-    console.error('Error parseando webhook Wompi:', error)
-    return null
+    console.error("Error parseando webhook Wompi:", error);
+    return null;
   }
 }

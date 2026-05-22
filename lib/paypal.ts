@@ -20,20 +20,20 @@ import {
   type Order,
   type Subscription as PayPalSubscription,
   type CreateSubscriptionRequest,
-} from '@paypal/paypal-server-sdk'
+} from "@paypal/paypal-server-sdk";
 
 // Configuration
 export const PAYPAL_CONFIG = {
-  clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || '',
-  clientSecret: process.env.PAYPAL_CLIENT_SECRET || '',
-  webhookId: process.env.PAYPAL_WEBHOOK_ID || '',
-  environment: (process.env.PAYPAL_ENVIRONMENT || 'sandbox') as 'sandbox' | 'live',
-}
+  clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "",
+  clientSecret: process.env.PAYPAL_CLIENT_SECRET || "",
+  webhookId: process.env.PAYPAL_WEBHOOK_ID || "",
+  environment: (process.env.PAYPAL_ENVIRONMENT || "sandbox") as "sandbox" | "live",
+};
 
 // Create PayPal client
 function getPayPalClient(): Client {
   const environment =
-    PAYPAL_CONFIG.environment === 'live' ? Environment.Production : Environment.Sandbox
+    PAYPAL_CONFIG.environment === "live" ? Environment.Production : Environment.Sandbox;
 
   return new Client({
     clientCredentialsAuthCredentials: {
@@ -46,89 +46,87 @@ function getPayPalClient(): Client {
       logRequest: { logBody: true },
       logResponse: { logHeaders: true },
     },
-  })
+  });
 }
 
 // Types
 export interface PayPalOrderParams {
-  amount: number
-  currency: 'USD' | 'COP'
-  description: string
-  reference: string
-  returnUrl: string
-  cancelUrl: string
-  customerEmail?: string
+  amount: number;
+  currency: "USD" | "COP";
+  description: string;
+  reference: string;
+  returnUrl: string;
+  cancelUrl: string;
+  customerEmail?: string;
 }
 
 export interface PayPalOrderResult {
-  success: boolean
-  orderId?: string
-  approvalUrl?: string
-  error?: string
+  success: boolean;
+  orderId?: string;
+  approvalUrl?: string;
+  error?: string;
 }
 
 export interface PayPalCaptureResult {
-  success: boolean
-  captureId?: string
-  status?: string
-  amount?: number
-  currency?: string
-  payerEmail?: string
-  error?: string
+  success: boolean;
+  captureId?: string;
+  status?: string;
+  amount?: number;
+  currency?: string;
+  payerEmail?: string;
+  error?: string;
 }
 
 export type PayPalOrderStatus =
-  | 'CREATED'
-  | 'SAVED'
-  | 'APPROVED'
-  | 'VOIDED'
-  | 'COMPLETED'
-  | 'PAYER_ACTION_REQUIRED'
+  | "CREATED"
+  | "SAVED"
+  | "APPROVED"
+  | "VOIDED"
+  | "COMPLETED"
+  | "PAYER_ACTION_REQUIRED";
 
 export interface PayPalWebhookEvent {
-  id: string
-  event_type: string
-  resource_type: string
+  id: string;
+  event_type: string;
+  resource_type: string;
   resource: {
-    id: string
-    status: string
+    id: string;
+    status: string;
     amount?: {
-      currency_code: string
-      value: string
-    }
+      currency_code: string;
+      value: string;
+    };
     purchase_units?: Array<{
-      reference_id: string
+      reference_id: string;
       payments?: {
         captures?: Array<{
-          id: string
-          status: string
+          id: string;
+          status: string;
           amount: {
-            currency_code: string
-            value: string
-          }
-        }>
-      }
-    }>
-  }
-  create_time: string
+            currency_code: string;
+            value: string;
+          };
+        }>;
+      };
+    }>;
+  };
+  create_time: string;
 }
 
 /**
  * Check if PayPal is configured
  */
 export function isPayPalConfigured(): boolean {
-  return !!(PAYPAL_CONFIG.clientId && PAYPAL_CONFIG.clientSecret)
+  return !!(PAYPAL_CONFIG.clientId && PAYPAL_CONFIG.clientSecret);
 }
 
 /**
  * Create a PayPal order
  */
-export async function createPayPalOrder(
-  params: PayPalOrderParams
-): Promise<PayPalOrderResult> {
+export async function createPayPalOrder(params: PayPalOrderParams): Promise<PayPalOrderResult> {
   try {
-    const client = getPayPalClient()
-    const ordersController = new OrdersController(client)
+    const client = getPayPalClient();
+    const ordersController = new OrdersController(client);
 
     const orderRequest: OrderRequest = {
       intent: CheckoutPaymentIntent.Capture,
@@ -143,102 +141,100 @@ export async function createPayPalOrder(
         },
       ],
       applicationContext: {
-        brandName: 'Energía y Divinidad',
+        brandName: "Energía y Divinidad",
         landingPage: OrderApplicationContextLandingPage.Login,
         userAction: OrderApplicationContextUserAction.PayNow,
         returnUrl: params.returnUrl,
         cancelUrl: params.cancelUrl,
       },
-    }
+    };
 
     const response = await ordersController.createOrder({
       body: orderRequest,
-      prefer: 'return=representation',
-    })
+      prefer: "return=representation",
+    });
 
-    const order = response.result as Order
+    const order = response.result as Order;
 
     // Find approval URL
-    const approvalLink = order.links?.find((link) => link.rel === 'approve')
+    const approvalLink = order.links?.find((link) => link.rel === "approve");
 
     if (!order.id || !approvalLink?.href) {
       return {
         success: false,
-        error: 'No se pudo crear la orden de PayPal',
-      }
+        error: "No se pudo crear la orden de PayPal",
+      };
     }
 
     return {
       success: true,
       orderId: order.id,
       approvalUrl: approvalLink.href,
-    }
+    };
   } catch (error: unknown) {
-    console.error('[PAYPAL] Error creating order:', error)
+    console.error("[PAYPAL] Error creating order:", error);
 
     // Extract detailed error info from PayPal SDK
-    let errorMessage = 'Error desconocido'
+    let errorMessage = "Error desconocido";
     if (error instanceof Error) {
-      errorMessage = error.message
+      errorMessage = error.message;
     }
 
     // PayPal SDK errors often have additional details
     const errorDetails = error as {
       statusCode?: number;
       body?: string;
-      result?: { details?: Array<{ issue?: string; description?: string }> }
-    }
+      result?: { details?: Array<{ issue?: string; description?: string }> };
+    };
 
     if (errorDetails.statusCode) {
-      console.error('[PAYPAL] Status code:', errorDetails.statusCode)
+      console.error("[PAYPAL] Status code:", errorDetails.statusCode);
     }
     if (errorDetails.body) {
-      console.error('[PAYPAL] Error body:', errorDetails.body)
+      console.error("[PAYPAL] Error body:", errorDetails.body);
       try {
-        const bodyParsed = JSON.parse(errorDetails.body)
+        const bodyParsed = JSON.parse(errorDetails.body);
         if (bodyParsed.details?.[0]?.description) {
-          errorMessage = bodyParsed.details[0].description
+          errorMessage = bodyParsed.details[0].description;
         } else if (bodyParsed.message) {
-          errorMessage = bodyParsed.message
+          errorMessage = bodyParsed.message;
         }
       } catch {
         // Body is not JSON, use as-is
       }
     }
     if (errorDetails.result?.details) {
-      console.error('[PAYPAL] Error details:', JSON.stringify(errorDetails.result.details))
+      console.error("[PAYPAL] Error details:", JSON.stringify(errorDetails.result.details));
     }
 
     return {
       success: false,
       error: errorMessage,
-    }
+    };
   }
 }
 
 /**
  * Capture a PayPal order after approval
  */
-export async function capturePayPalOrder(
-  orderId: string
-): Promise<PayPalCaptureResult> {
+export async function capturePayPalOrder(orderId: string): Promise<PayPalCaptureResult> {
   try {
-    const client = getPayPalClient()
-    const ordersController = new OrdersController(client)
+    const client = getPayPalClient();
+    const ordersController = new OrdersController(client);
 
     const response = await ordersController.captureOrder({
       id: orderId,
-      prefer: 'return=representation',
-    })
+      prefer: "return=representation",
+    });
 
-    const order = response.result as Order
-    const captureData = order.purchaseUnits?.[0]?.payments?.captures?.[0]
+    const order = response.result as Order;
+    const captureData = order.purchaseUnits?.[0]?.payments?.captures?.[0];
 
     if (!captureData) {
       return {
         success: false,
-        error: 'No se encontró información de captura',
-      }
+        error: "No se encontró información de captura",
+      };
     }
 
     return {
@@ -248,13 +244,13 @@ export async function capturePayPalOrder(
       amount: captureData.amount?.value ? parseFloat(captureData.amount.value) : undefined,
       currency: captureData.amount?.currencyCode,
       payerEmail: order.payer?.emailAddress,
-    }
+    };
   } catch (error) {
-    console.error('[PAYPAL] Error capturing order:', error)
+    console.error("[PAYPAL] Error capturing order:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
-    }
+      error: error instanceof Error ? error.message : "Error desconocido",
+    };
   }
 }
 
@@ -263,17 +259,17 @@ export async function capturePayPalOrder(
  */
 export async function getPayPalOrder(orderId: string): Promise<Order | null> {
   try {
-    const client = getPayPalClient()
-    const ordersController = new OrdersController(client)
+    const client = getPayPalClient();
+    const ordersController = new OrdersController(client);
 
     const response = await ordersController.getOrder({
       id: orderId,
-    })
+    });
 
-    return response.result as Order
+    return response.result as Order;
   } catch (error) {
-    console.error('[PAYPAL] Error getting order:', error)
-    return null
+    console.error("[PAYPAL] Error getting order:", error);
+    return null;
   }
 }
 
@@ -286,35 +282,36 @@ export async function refundPayPalCapture(
   currency?: string
 ): Promise<{ success: boolean; refundId?: string; error?: string }> {
   try {
-    const client = getPayPalClient()
-    const paymentsController = new PaymentsController(client)
+    const client = getPayPalClient();
+    const paymentsController = new PaymentsController(client);
 
-    const refundRequest = amount && currency
-      ? {
-          amount: {
-            currencyCode: currency,
-            value: amount.toFixed(2),
-          },
-        }
-      : undefined
+    const refundRequest =
+      amount && currency
+        ? {
+            amount: {
+              currencyCode: currency,
+              value: amount.toFixed(2),
+            },
+          }
+        : undefined;
 
     const response = await paymentsController.refundCapturedPayment({
       captureId,
       body: refundRequest,
-    })
+    });
 
-    const refund = response.result
+    const refund = response.result;
 
     return {
       success: true,
       refundId: refund.id,
-    }
+    };
   } catch (error) {
-    console.error('[PAYPAL] Error refunding capture:', error)
+    console.error("[PAYPAL] Error refunding capture:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
-    }
+      error: error instanceof Error ? error.message : "Error desconocido",
+    };
   }
 }
 
@@ -330,14 +327,14 @@ export async function verifyPayPalWebhook(
 ): Promise<{ valid: boolean; event?: PayPalWebhookEvent; error?: string }> {
   try {
     // Get required headers
-    const transmissionId = headers.get('paypal-transmission-id')
-    const transmissionTime = headers.get('paypal-transmission-time')
-    const certUrl = headers.get('paypal-cert-url')
-    const authAlgo = headers.get('paypal-auth-algo')
-    const transmissionSig = headers.get('paypal-transmission-sig')
+    const transmissionId = headers.get("paypal-transmission-id");
+    const transmissionTime = headers.get("paypal-transmission-time");
+    const certUrl = headers.get("paypal-cert-url");
+    const authAlgo = headers.get("paypal-auth-algo");
+    const transmissionSig = headers.get("paypal-transmission-sig");
 
     if (!transmissionId || !transmissionTime || !certUrl || !authAlgo || !transmissionSig) {
-      return { valid: false, error: 'Missing required headers' }
+      return { valid: false, error: "Missing required headers" };
     }
 
     // For now, we'll do basic validation and trust the payload
@@ -345,11 +342,11 @@ export async function verifyPayPalWebhook(
     // POST /v1/notifications/verify-webhook-signature
 
     // Parse the event
-    const event = JSON.parse(rawBody) as PayPalWebhookEvent
+    const event = JSON.parse(rawBody) as PayPalWebhookEvent;
 
     // Basic validation
     if (!event.id || !event.event_type || !event.resource) {
-      return { valid: false, error: 'Invalid webhook payload' }
+      return { valid: false, error: "Invalid webhook payload" };
     }
 
     // TODO: Implement full signature verification using PayPal API
@@ -358,13 +355,13 @@ export async function verifyPayPalWebhook(
     return {
       valid: true,
       event,
-    }
+    };
   } catch (error) {
-    console.error('[PAYPAL] Error verifying webhook:', error)
+    console.error("[PAYPAL] Error verifying webhook:", error);
     return {
       valid: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
-    }
+      error: error instanceof Error ? error.message : "Error desconocido",
+    };
   }
 }
 
@@ -373,18 +370,21 @@ export async function verifyPayPalWebhook(
  */
 export function mapPayPalStatus(
   paypalStatus: string
-): 'PENDING' | 'APPROVED' | 'DECLINED' | 'VOIDED' | 'ERROR' | 'EXPIRED' {
-  const statusMap: Record<string, 'PENDING' | 'APPROVED' | 'DECLINED' | 'VOIDED' | 'ERROR' | 'EXPIRED'> = {
-    CREATED: 'PENDING',
-    SAVED: 'PENDING',
-    APPROVED: 'PENDING', // Still needs capture
-    PAYER_ACTION_REQUIRED: 'PENDING',
-    COMPLETED: 'APPROVED',
-    VOIDED: 'VOIDED',
-    DECLINED: 'DECLINED',
-  }
+): "PENDING" | "APPROVED" | "DECLINED" | "VOIDED" | "ERROR" | "EXPIRED" {
+  const statusMap: Record<
+    string,
+    "PENDING" | "APPROVED" | "DECLINED" | "VOIDED" | "ERROR" | "EXPIRED"
+  > = {
+    CREATED: "PENDING",
+    SAVED: "PENDING",
+    APPROVED: "PENDING", // Still needs capture
+    PAYER_ACTION_REQUIRED: "PENDING",
+    COMPLETED: "APPROVED",
+    VOIDED: "VOIDED",
+    DECLINED: "DECLINED",
+  };
 
-  return statusMap[paypalStatus] || 'PENDING'
+  return statusMap[paypalStatus] || "PENDING";
 }
 
 /**
@@ -392,17 +392,20 @@ export function mapPayPalStatus(
  */
 export function mapPayPalCaptureStatus(
   captureStatus: string
-): 'PENDING' | 'APPROVED' | 'DECLINED' | 'VOIDED' | 'ERROR' | 'EXPIRED' {
-  const statusMap: Record<string, 'PENDING' | 'APPROVED' | 'DECLINED' | 'VOIDED' | 'ERROR' | 'EXPIRED'> = {
-    COMPLETED: 'APPROVED',
-    DECLINED: 'DECLINED',
-    PARTIALLY_REFUNDED: 'APPROVED',
-    PENDING: 'PENDING',
-    REFUNDED: 'VOIDED',
-    FAILED: 'ERROR',
-  }
+): "PENDING" | "APPROVED" | "DECLINED" | "VOIDED" | "ERROR" | "EXPIRED" {
+  const statusMap: Record<
+    string,
+    "PENDING" | "APPROVED" | "DECLINED" | "VOIDED" | "ERROR" | "EXPIRED"
+  > = {
+    COMPLETED: "APPROVED",
+    DECLINED: "DECLINED",
+    PARTIALLY_REFUNDED: "APPROVED",
+    PENDING: "PENDING",
+    REFUNDED: "VOIDED",
+    FAILED: "ERROR",
+  };
 
-  return statusMap[captureStatus] || 'PENDING'
+  return statusMap[captureStatus] || "PENDING";
 }
 
 // ============================================
@@ -410,39 +413,40 @@ export function mapPayPalCaptureStatus(
 // ============================================
 
 export interface PayPalSubscriptionParams {
-  planId: string
-  subscriberEmail: string
-  subscriberName?: string
-  returnUrl: string
-  cancelUrl: string
-  customId?: string
+  planId: string;
+  subscriberEmail: string;
+  subscriberName?: string;
+  startTime?: string;
+  returnUrl: string;
+  cancelUrl: string;
+  customId?: string;
 }
 
 export interface PayPalSubscriptionResult {
-  success: boolean
-  subscriptionId?: string
-  approvalUrl?: string
-  error?: string
+  success: boolean;
+  subscriptionId?: string;
+  approvalUrl?: string;
+  error?: string;
 }
 
 export interface PayPalSubscriptionDetails {
-  id: string
-  status: string
-  planId?: string
-  startTime?: string
-  subscriberEmail?: string
-  nextBillingTime?: string
-  lastPaymentAmount?: string
-  lastPaymentTime?: string
+  id: string;
+  status: string;
+  planId?: string;
+  startTime?: string;
+  subscriberEmail?: string;
+  nextBillingTime?: string;
+  lastPaymentAmount?: string;
+  lastPaymentTime?: string;
 }
 
 /**
  * Resolve the PayPal plan ID from env vars for a given tier + interval.
  * Format: PAYPAL_PLAN_ID_{TIER_SLUG_UPPERCASE}_{MONTHLY|YEARLY}
  */
-export function getPayPalPlanId(tierSlug: string, interval: 'monthly' | 'yearly'): string | null {
-  const key = `PAYPAL_PLAN_ID_${tierSlug.toUpperCase().replace(/-/g, '_')}_${interval.toUpperCase()}`
-  return process.env[key] || null
+export function getPayPalPlanId(tierSlug: string, interval: "monthly" | "yearly"): string | null {
+  const key = `PAYPAL_PLAN_ID_${tierSlug.toUpperCase().replace(/-/g, "_")}_${interval.toUpperCase()}`;
+  return process.env[key] || null;
 }
 
 /**
@@ -453,55 +457,56 @@ export async function createPayPalSubscription(
   params: PayPalSubscriptionParams
 ): Promise<PayPalSubscriptionResult> {
   try {
-    const client = getPayPalClient()
-    const subscriptionsController = new SubscriptionsController(client)
+    const client = getPayPalClient();
+    const subscriptionsController = new SubscriptionsController(client);
 
     const requestBody: CreateSubscriptionRequest = {
       planId: params.planId,
+      ...(params.startTime ? { startTime: params.startTime } : {}),
       subscriber: {
         emailAddress: params.subscriberEmail,
         ...(params.subscriberName
           ? {
               name: {
-                givenName: params.subscriberName.split(' ')[0],
-                surname: params.subscriberName.split(' ').slice(1).join(' ') || '',
+                givenName: params.subscriberName.split(" ")[0],
+                surname: params.subscriberName.split(" ").slice(1).join(" ") || "",
               },
             }
           : {}),
       },
       applicationContext: {
-        brandName: 'Energía y Divinidad',
+        brandName: "Energía y Divinidad",
         userAction: ApplicationContextUserAction.SubscribeNow,
         returnUrl: params.returnUrl,
         cancelUrl: params.cancelUrl,
       },
       ...(params.customId ? { customId: params.customId } : {}),
-    }
+    };
 
     const response = await subscriptionsController.createSubscription({
-      prefer: 'return=representation',
+      prefer: "return=representation",
       body: requestBody,
-    })
+    });
 
-    const subscription = response.result as PayPalSubscription
+    const subscription = response.result as PayPalSubscription;
 
-    const approvalLink = subscription.links?.find((l) => l.rel === 'approve')
+    const approvalLink = subscription.links?.find((l) => l.rel === "approve");
 
     if (!subscription.id || !approvalLink?.href) {
-      return { success: false, error: 'No se pudo crear la suscripción de PayPal' }
+      return { success: false, error: "No se pudo crear la suscripción de PayPal" };
     }
 
     return {
       success: true,
       subscriptionId: subscription.id,
       approvalUrl: approvalLink.href,
-    }
+    };
   } catch (error: unknown) {
-    console.error('[PAYPAL] Error creating subscription:', error)
+    console.error("[PAYPAL] Error creating subscription:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
-    }
+      error: error instanceof Error ? error.message : "Error desconocido",
+    };
   }
 }
 
@@ -512,33 +517,33 @@ export async function getPayPalSubscriptionDetails(
   subscriptionId: string
 ): Promise<PayPalSubscriptionDetails | null> {
   try {
-    const client = getPayPalClient()
-    const subscriptionsController = new SubscriptionsController(client)
+    const client = getPayPalClient();
+    const subscriptionsController = new SubscriptionsController(client);
 
     const response = await subscriptionsController.getSubscription({
       id: subscriptionId,
-    })
+    });
 
     const sub = response.result as PayPalSubscription & {
       billing_info?: {
-        next_billing_time?: string
-        last_payment?: { amount?: { value?: string }; time?: string }
-      }
-    }
+        next_billing_time?: string;
+        last_payment?: { amount?: { value?: string }; time?: string };
+      };
+    };
 
     return {
       id: sub.id || subscriptionId,
-      status: (sub as unknown as { status?: string }).status || 'UNKNOWN',
+      status: (sub as unknown as { status?: string }).status || "UNKNOWN",
       planId: sub.planId,
       startTime: sub.startTime,
       subscriberEmail: sub.subscriber?.emailAddress,
       nextBillingTime: sub.billingInfo?.nextBillingTime,
       lastPaymentAmount: sub.billingInfo?.lastPayment?.amount?.value,
       lastPaymentTime: sub.billingInfo?.lastPayment?.time,
-    }
+    };
   } catch (error) {
-    console.error('[PAYPAL] Error getting subscription:', error)
-    return null
+    console.error("[PAYPAL] Error getting subscription:", error);
+    return null;
   }
 }
 
@@ -550,18 +555,18 @@ export async function cancelPayPalSubscription(
   reason: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const client = getPayPalClient()
-    const subscriptionsController = new SubscriptionsController(client)
+    const client = getPayPalClient();
+    const subscriptionsController = new SubscriptionsController(client);
 
     await subscriptionsController.cancelSubscription({
       id: subscriptionId,
       body: { reason },
-    })
+    });
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error('[PAYPAL] Error cancelling subscription:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
+    console.error("[PAYPAL] Error cancelling subscription:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Error desconocido" };
   }
 }
 
@@ -572,18 +577,18 @@ export async function suspendPayPalSubscription(
   subscriptionId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const client = getPayPalClient()
-    const subscriptionsController = new SubscriptionsController(client)
+    const client = getPayPalClient();
+    const subscriptionsController = new SubscriptionsController(client);
 
     await subscriptionsController.suspendSubscription({
       id: subscriptionId,
-      body: { reason: 'Suspended by admin' },
-    })
+      body: { reason: "Suspended by admin" },
+    });
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error('[PAYPAL] Error suspending subscription:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
+    console.error("[PAYPAL] Error suspending subscription:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Error desconocido" };
   }
 }
 
@@ -594,17 +599,17 @@ export async function activatePayPalSubscription(
   subscriptionId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const client = getPayPalClient()
-    const subscriptionsController = new SubscriptionsController(client)
+    const client = getPayPalClient();
+    const subscriptionsController = new SubscriptionsController(client);
 
     await subscriptionsController.activateSubscription({
       id: subscriptionId,
-      body: { reason: 'Reactivated' },
-    })
+      body: { reason: "Reactivated" },
+    });
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error('[PAYPAL] Error activating subscription:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
+    console.error("[PAYPAL] Error activating subscription:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Error desconocido" };
   }
 }
