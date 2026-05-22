@@ -241,13 +241,19 @@ async function createMembershipFromOrder(
   userId: string
 ): Promise<{ id: string }> {
   const billingInterval = metadata.billingInterval || "monthly";
+  const hasFreeTrial = metadata.freeTrial === true;
+  const periodStart = new Date();
 
-  // Calcular fecha de fin del período
-  const periodEnd = new Date();
-  if (billingInterval === "yearly") {
-    periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-  } else {
-    periodEnd.setMonth(periodEnd.getMonth() + 1);
+  // Calcular fecha de fin del período. En prueba gratis siempre damos 1 mes;
+  // después del primer cobro, las renovaciones usan el intervalo real.
+  let periodEnd = metadata.trialEndsAt ? new Date(metadata.trialEndsAt) : new Date(periodStart);
+  if (!hasFreeTrial || Number.isNaN(periodEnd.getTime())) {
+    periodEnd = new Date(periodStart);
+    if (billingInterval === "yearly") {
+      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+    } else {
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+    }
   }
 
   // Determinar provider según método de pago
@@ -258,9 +264,14 @@ async function createMembershipFromOrder(
     provider = order.paymentMethod.includes("CARD") ? "paypal_card" : "paypal_direct";
   }
 
-  // Calcular próxima fecha de cobro (1 día antes del fin de período para margen)
+  // Calcular próxima fecha de cobro. En prueba gratis el primer cargo va al final exacto
+  // del mes gratuito; las renovaciones normales conservan el margen de 1 día.
   const nextChargeDate = new Date(periodEnd);
-  nextChargeDate.setDate(nextChargeDate.getDate() - 1);
+  if (!hasFreeTrial) {
+    nextChargeDate.setDate(nextChargeDate.getDate() - 1);
+  }
+
+  const recurringAmount = metadata.recurringAmount ?? order.amount;
 
   // Crear suscripción
   const subscription = await prisma.subscription.create({
@@ -268,23 +279,26 @@ async function createMembershipFromOrder(
       userId,
       membershipTierId: order.itemId,
       membershipTierName: order.itemName,
-      status: "ACTIVE",
+      status: hasFreeTrial ? "TRIAL" : "ACTIVE",
       paymentProvider: provider,
       billingInterval: billingInterval === "yearly" ? "YEARLY" : "MONTHLY",
-      amount: order.amount,
+      amount: recurringAmount,
       currency: order.currency,
-      startDate: new Date(),
-      currentPeriodStart: new Date(),
+      startDate: periodStart,
+      currentPeriodStart: periodStart,
       currentPeriodEnd: periodEnd,
+      trialEnd: hasFreeTrial ? periodEnd : null,
       // Datos para cobros recurrentes Wompi
-      wompiPaymentSourceId: metadata.wompiPaymentSourceId || null,
+      wompiPaymentSourceId: metadata.wompiPaymentSourceId
+        ? String(metadata.wompiPaymentSourceId)
+        : null,
       wompiCardLastFour: metadata.wompiCardLastFour || null,
       wompiCardBrand: metadata.wompiCardBrand || null,
       // Datos para suscripciones PayPal
       paypalSubscriptionId: metadata.paypalSubscriptionId || null,
       // Próxima fecha de cobro (solo para Wompi — PayPal cobra automáticamente)
       nextChargeDate: metadata.wompiPaymentSourceId ? nextChargeDate : null,
-      lastChargeDate: new Date(),
+      lastChargeDate: hasFreeTrial ? null : new Date(),
     },
   });
 

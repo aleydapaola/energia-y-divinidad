@@ -7,6 +7,7 @@ import { getAppUrl } from "@/lib/utils";
 
 interface PayPalSubscriptionBody {
   productId: string;
+  productSlug?: string;
   productName: string;
   amount: number;
   currency: "USD" | "COP";
@@ -36,14 +37,28 @@ export async function POST(request: NextRequest) {
     }
 
     const body: PayPalSubscriptionBody = await request.json();
-    const { productId, productName, amount, currency, billingInterval, guestName } = body;
+    const { productId, productSlug, productName, amount, currency, billingInterval, guestName } =
+      body;
 
     if (!productId || !productName || !amount || !billingInterval) {
       return NextResponse.json({ error: "Faltan parámetros requeridos" }, { status: 400 });
     }
 
+    if (currency !== "USD") {
+      return NextResponse.json(
+        { error: "PayPal está disponible solo para pagos internacionales en USD" },
+        { status: 400 }
+      );
+    }
+
     const userId = session.user.id;
-    const customerEmail = session.user.email!;
+    const customerEmail = session.user.email;
+    if (!customerEmail) {
+      return NextResponse.json(
+        { error: "Tu cuenta no tiene un correo válido para crear la suscripción" },
+        { status: 400 }
+      );
+    }
     const customerName = session.user.name || guestName || "";
 
     // Verificar si ya tiene suscripción activa con este plan
@@ -60,11 +75,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener el planId de PayPal desde env vars
-    const planId = getPayPalPlanId(productId, billingInterval);
+    const planKey = productSlug || productId;
+    const planId = getPayPalPlanId(planKey, billingInterval);
     if (!planId) {
-      console.error(
-        `[PAYPAL-SUB] Plan ID no configurado para ${productId} / ${billingInterval}`
-      );
+      console.error(`[PAYPAL-SUB] Plan ID no configurado para ${planKey} / ${billingInterval}`);
       return NextResponse.json(
         { error: "Este plan no está disponible por el momento" },
         { status: 503 }
@@ -72,8 +86,11 @@ export async function POST(request: NextRequest) {
     }
 
     const appUrl = getAppUrl();
+    const trialEndsAt = new Date();
+    trialEndsAt.setMonth(trialEndsAt.getMonth() + 1);
 
-    // Crear Order local PENDING antes de ir a PayPal
+    // Crear Order local PENDING antes de ir a PayPal. La suscripción empieza con 1 mes gratis,
+    // así que la orden local se registra en 0 y guardamos el monto recurrente para renovaciones.
     const order = await prisma.order.create({
       data: {
         userId,
@@ -81,13 +98,16 @@ export async function POST(request: NextRequest) {
         orderType: "MEMBERSHIP",
         itemId: productId,
         itemName: productName,
-        amount,
+        amount: 0,
         currency,
         paymentMethod: "PAYPAL_DIRECT",
         paymentStatus: "PENDING",
         metadata: {
           productType: "membership",
           billingInterval,
+          recurringAmount: amount,
+          freeTrial: true,
+          trialEndsAt: trialEndsAt.toISOString(),
           isGuestCheckout: false,
           customerEmail,
           customerName,
@@ -101,6 +121,7 @@ export async function POST(request: NextRequest) {
       planId,
       subscriberEmail: customerEmail,
       subscriberName: customerName,
+      startTime: trialEndsAt.toISOString(),
       returnUrl: `${appUrl}/api/checkout/paypal-subscription/activate?orderId=${order.id}`,
       cancelUrl: `${appUrl}/membresia?cancelled=true`,
       customId: order.id,

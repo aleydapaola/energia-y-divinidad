@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
-import { processApprovedPayment } from '@/lib/payment-processor'
-import { prisma } from '@/lib/prisma'
-import { getWompiApiUrl, WOMPI_CONFIG } from '@/lib/wompi'
+import { processApprovedPayment } from "@/lib/payment-processor";
+import { prisma } from "@/lib/prisma";
+import { getWompiApiUrl, WOMPI_CONFIG } from "@/lib/wompi";
 
 /**
  * GET /api/payments/wompi/verify-by-reference
@@ -13,35 +13,35 @@ import { getWompiApiUrl, WOMPI_CONFIG } from '@/lib/wompi'
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const reference = searchParams.get('ref')
+    const { searchParams } = new URL(request.url);
+    const reference = searchParams.get("ref");
 
-    console.log('[VERIFY-BY-REF] === INICIANDO VERIFICACIÓN POR REFERENCIA ===')
-    console.log('[VERIFY-BY-REF] reference:', reference)
+    console.log("[VERIFY-BY-REF] === INICIANDO VERIFICACIÓN POR REFERENCIA ===");
+    console.log("[VERIFY-BY-REF] reference:", reference);
 
     if (!reference) {
-      return NextResponse.json({ error: 'Referencia requerida' }, { status: 400 })
+      return NextResponse.json({ error: "Referencia requerida" }, { status: 400 });
     }
 
     // Buscar la orden en nuestra BD
     const order = await prisma.order.findFirst({
       where: { orderNumber: reference },
       include: { user: true },
-    })
+    });
 
     if (!order) {
-      console.log('[VERIFY-BY-REF] Order not found')
-      return NextResponse.json({ error: 'Orden no encontrada' }, { status: 404 })
+      console.log("[VERIFY-BY-REF] Order not found");
+      return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
     }
 
-    console.log('[VERIFY-BY-REF] Order found:', order.id)
-    console.log('[VERIFY-BY-REF] Order status:', order.paymentStatus)
+    console.log("[VERIFY-BY-REF] Order found:", order.id);
+    console.log("[VERIFY-BY-REF] Order status:", order.paymentStatus);
 
     // Si ya está completada, no necesitamos verificar
-    if (order.paymentStatus === 'COMPLETED') {
-      console.log('[VERIFY-BY-REF] Order already completed')
+    if (order.paymentStatus === "COMPLETED") {
+      console.log("[VERIFY-BY-REF] Order already completed");
       return NextResponse.json({
-        transactionStatus: 'APPROVED',
+        transactionStatus: "APPROVED",
         order: {
           id: order.id,
           orderNumber: order.orderNumber,
@@ -49,103 +49,111 @@ export async function GET(request: NextRequest) {
           itemName: order.itemName,
           amount: order.amount,
           currency: order.currency,
-          paymentStatus: 'COMPLETED',
+          paymentStatus: "COMPLETED",
           paymentMethod: order.paymentMethod,
           metadata: order.metadata,
         },
-      })
+      });
     }
 
     // Obtener el payment link ID de metadata
-    const metadata = order.metadata as any
-    const paymentLinkId = metadata?.wompiPaymentLinkId
+    const metadata = order.metadata as any;
+    const paymentLinkId = metadata?.wompiPaymentLinkId;
 
     if (!paymentLinkId) {
-      console.log('[VERIFY-BY-REF] No payment link ID in metadata')
+      console.log("[VERIFY-BY-REF] No payment link ID in metadata");
       return NextResponse.json({
-        error: 'No se encontró ID de link de pago',
+        error: "No se encontró ID de link de pago",
         order: {
           id: order.id,
           orderNumber: order.orderNumber,
           paymentStatus: order.paymentStatus,
         },
-      })
+      });
     }
 
-    console.log('[VERIFY-BY-REF] Payment link ID:', paymentLinkId)
+    console.log("[VERIFY-BY-REF] Payment link ID:", paymentLinkId);
 
     // Buscar transacciones del payment link en Wompi
-    const wompiUrl = `${getWompiApiUrl()}/payment_links/${paymentLinkId}`
-    console.log('[VERIFY-BY-REF] Fetching payment link from Wompi:', wompiUrl)
+    const wompiUrl = `${getWompiApiUrl()}/payment_links/${paymentLinkId}`;
+    console.log("[VERIFY-BY-REF] Fetching payment link from Wompi:", wompiUrl);
 
     const wompiResponse = await fetch(wompiUrl, {
       headers: {
         Authorization: `Bearer ${WOMPI_CONFIG.privateKey}`,
       },
-    })
+    });
 
     if (!wompiResponse.ok) {
-      console.error('[VERIFY-BY-REF] Error fetching payment link:', wompiResponse.status)
+      console.error("[VERIFY-BY-REF] Error fetching payment link:", wompiResponse.status);
       return NextResponse.json({
-        error: 'Error consultando Wompi',
+        error: "Error consultando Wompi",
         order: {
           id: order.id,
           orderNumber: order.orderNumber,
           paymentStatus: order.paymentStatus,
         },
-      })
+      });
     }
 
-    const paymentLinkData = await wompiResponse.json()
-    console.log('[VERIFY-BY-REF] Payment link status:', paymentLinkData.data?.status)
+    const paymentLinkData = await wompiResponse.json();
+    console.log("[VERIFY-BY-REF] Payment link status:", paymentLinkData.data?.status);
 
     // Buscar transacciones asociadas al payment link
-    const transactionsUrl = `${getWompiApiUrl()}/transactions?payment_link_id=${paymentLinkId}`
-    console.log('[VERIFY-BY-REF] Fetching transactions:', transactionsUrl)
+    const transactionsUrl = `${getWompiApiUrl()}/transactions?payment_link_id=${paymentLinkId}`;
+    console.log("[VERIFY-BY-REF] Fetching transactions:", transactionsUrl);
 
     const transactionsResponse = await fetch(transactionsUrl, {
       headers: {
         Authorization: `Bearer ${WOMPI_CONFIG.privateKey}`,
       },
-    })
+    });
 
     if (!transactionsResponse.ok) {
-      console.error('[VERIFY-BY-REF] Error fetching transactions:', transactionsResponse.status)
+      console.error("[VERIFY-BY-REF] Error fetching transactions:", transactionsResponse.status);
       return NextResponse.json({
-        transactionStatus: 'PENDING',
+        transactionStatus: "PENDING",
         order: {
           id: order.id,
           orderNumber: order.orderNumber,
           paymentStatus: order.paymentStatus,
         },
-      })
+      });
     }
 
-    const transactionsData = await transactionsResponse.json()
-    const transactions = transactionsData.data || []
-    console.log('[VERIFY-BY-REF] Found transactions:', transactions.length)
+    const transactionsData = await transactionsResponse.json();
+    const transactions = transactionsData.data || [];
+    console.log("[VERIFY-BY-REF] Found transactions:", transactions.length);
 
     // Buscar la transacción más reciente aprobada
-    const approvedTransaction = transactions.find((t: any) => t.status === 'APPROVED')
-    const latestTransaction = approvedTransaction || transactions[0]
+    const approvedTransaction = transactions.find((t: any) => t.status === "APPROVED");
+    const latestTransaction = approvedTransaction || transactions[0];
 
     if (!latestTransaction) {
-      console.log('[VERIFY-BY-REF] No transactions found')
+      console.log("[VERIFY-BY-REF] No transactions found");
       return NextResponse.json({
-        transactionStatus: 'PENDING',
+        transactionStatus: "PENDING",
         order: {
           id: order.id,
           orderNumber: order.orderNumber,
           paymentStatus: order.paymentStatus,
         },
-      })
+      });
     }
 
-    console.log('[VERIFY-BY-REF] Latest transaction:', latestTransaction.id, latestTransaction.status)
+    console.log(
+      "[VERIFY-BY-REF] Latest transaction:",
+      latestTransaction.id,
+      latestTransaction.status
+    );
 
     // Actualizar orden con los datos de la transacción
-    const isApproved = latestTransaction.status === 'APPROVED'
-    const newPaymentStatus = isApproved ? 'COMPLETED' : (latestTransaction.status === 'PENDING' ? 'PENDING' : 'FAILED')
+    const isApproved = latestTransaction.status === "APPROVED";
+    const newPaymentStatus = isApproved
+      ? "COMPLETED"
+      : latestTransaction.status === "PENDING"
+        ? "PENDING"
+        : "FAILED";
 
     const updatedOrder = await prisma.order.update({
       where: { id: order.id },
@@ -159,23 +167,34 @@ export async function GET(request: NextRequest) {
         },
       },
       include: { user: true },
-    })
+    });
 
-    console.log('[VERIFY-BY-REF] Order updated to:', newPaymentStatus)
+    console.log("[VERIFY-BY-REF] Order updated to:", newPaymentStatus);
 
-    // Si el pago fue aprobado, procesar con el servicio centralizado
-    // Nota: order.paymentStatus ya no puede ser COMPLETED aquí debido al early return
-    if (isApproved) {
-      console.log('[VERIFY-BY-REF] Payment approved, processing...')
+    const hasMembershipSubscription =
+      updatedOrder.orderType === "MEMBERSHIP"
+        ? await prisma.subscription.findFirst({
+            where: {
+              userId: updatedOrder.userId || undefined,
+              membershipTierId: updatedOrder.itemId,
+            },
+            select: { id: true },
+          })
+        : null;
+
+    // Si el pago fue aprobado, procesar con el servicio centralizado.
+    // También repara órdenes completadas sin Subscription.
+    if (isApproved && (updatedOrder.orderType !== "MEMBERSHIP" || !hasMembershipSubscription)) {
+      console.log("[VERIFY-BY-REF] Payment approved, processing...");
 
       const result = await processApprovedPayment(updatedOrder, {
         transactionId: latestTransaction.id,
-      })
+      });
 
       if (!result.success) {
-        console.error('[VERIFY-BY-REF] Error processing payment:', result.error)
+        console.error("[VERIFY-BY-REF] Error processing payment:", result.error);
       } else {
-        console.log('[VERIFY-BY-REF] Payment processed successfully')
+        console.log("[VERIFY-BY-REF] Payment processed successfully");
       }
     }
 
@@ -192,13 +211,12 @@ export async function GET(request: NextRequest) {
         paymentMethod: updatedOrder.paymentMethod,
         metadata: updatedOrder.metadata,
       },
-    })
+    });
   } catch (error: any) {
-    console.error('[VERIFY-BY-REF] Error:', error)
+    console.error("[VERIFY-BY-REF] Error:", error);
     return NextResponse.json(
-      { error: error.message || 'Error verificando transacción' },
+      { error: error.message || "Error verificando transacción" },
       { status: 500 }
-    )
+    );
   }
 }
-

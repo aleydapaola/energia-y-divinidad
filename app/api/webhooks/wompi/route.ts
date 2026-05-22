@@ -5,11 +5,19 @@ import { processPaymentWebhook } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
 import { verifyWompiWebhookSignature } from "@/lib/wompi";
 
+interface PendingPlanChange {
+  orderId: string;
+  targetTierId: string;
+  targetTierName: string;
+  amount: number;
+  currency: string;
+}
+
 /**
  * POST /api/webhooks/wompi
  *
  * Maneja dos tipos de referencias:
- * - RENEW-* → cobro de renovación automática (generado por el cron)
+ * - RENEW* → cobro de renovación automática (generado por el cron)
  * - Cualquier otra → primer pago / pago puntual (delegado al procesador genérico)
  */
 export async function POST(request: NextRequest) {
@@ -34,7 +42,7 @@ export async function POST(request: NextRequest) {
   const reference: string = transaction?.reference || "";
 
   // Cobro de renovación automática
-  if (reference.startsWith("RENEW-")) {
+  if (reference.startsWith("RENEW")) {
     return handleRenewalWebhook(transaction, reference);
   }
 
@@ -64,10 +72,7 @@ export async function POST(request: NextRequest) {
 /**
  * Procesa un webhook de renovación recurrente (referencia RENEW-*)
  */
-async function handleRenewalWebhook(
-  transaction: any,
-  reference: string
-): Promise<NextResponse> {
+async function handleRenewalWebhook(transaction: any, reference: string): Promise<NextResponse> {
   const transactionId: string = transaction?.id || "";
   const status: string = transaction?.status || "";
 
@@ -88,7 +93,21 @@ async function handleRenewalWebhook(
 
   const subscription = recurringCharge.subscription;
 
+  if (
+    transactionId &&
+    recurringCharge.externalId === transactionId &&
+    recurringCharge.status !== "PENDING"
+  ) {
+    return NextResponse.json({ received: true, processed: false, reason: "already_processed" });
+  }
+
   if (status === "APPROVED") {
+    if (recurringCharge.status === "COMPLETED") {
+      return NextResponse.json({ received: true, processed: false, reason: "already_completed" });
+    }
+
+    const pendingPlanChange = await getPendingPlanChange(subscription.id);
+
     // Calcular nuevo período
     const periodStart = new Date(subscription.currentPeriodEnd);
     const periodEnd = new Date(subscription.currentPeriodEnd);
@@ -116,6 +135,14 @@ async function handleRenewalWebhook(
         where: { id: subscription.id },
         data: {
           status: "ACTIVE",
+          ...(pendingPlanChange
+            ? {
+                membershipTierId: pendingPlanChange.targetTierId,
+                membershipTierName: pendingPlanChange.targetTierName,
+                amount: pendingPlanChange.amount,
+                currency: pendingPlanChange.currency,
+              }
+            : {}),
           currentPeriodStart: periodStart,
           currentPeriodEnd: periodEnd,
           nextChargeDate,
@@ -127,8 +154,24 @@ async function handleRenewalWebhook(
       // Extender el entitlement de membresía
       prisma.entitlement.updateMany({
         where: { subscriptionId: subscription.id, revoked: false },
-        data: { expiresAt: periodEnd },
+        data: {
+          ...(pendingPlanChange
+            ? {
+                resourceId: pendingPlanChange.targetTierId,
+                resourceName: pendingPlanChange.targetTierName,
+              }
+            : {}),
+          expiresAt: periodEnd,
+        },
       }),
+      ...(pendingPlanChange
+        ? [
+            prisma.order.update({
+              where: { id: pendingPlanChange.orderId },
+              data: { paymentStatus: "COMPLETED" },
+            }),
+          ]
+        : []),
     ]);
 
     // Email de renovación exitosa
@@ -146,7 +189,9 @@ async function handleRenewalWebhook(
       );
     }
 
-    console.log(`[WEBHOOK/WOMPI-RENEWAL] Renovación exitosa: ${subscription.id} → ${periodEnd.toISOString()}`);
+    console.log(
+      `[WEBHOOK/WOMPI-RENEWAL] Renovación exitosa: ${subscription.id} → ${periodEnd.toISOString()}`
+    );
   } else if (status === "DECLINED" || status === "ERROR" || status === "VOIDED") {
     const failureCount = (subscription.chargeFailureCount || 0) + 1;
     const isLastAttempt = failureCount >= 3;
@@ -208,4 +253,38 @@ async function handleRenewalWebhook(
   }
 
   return NextResponse.json({ received: true, processed: true });
+}
+
+async function getPendingPlanChange(subscriptionId: string): Promise<PendingPlanChange | null> {
+  const orders = await prisma.order.findMany({
+    where: {
+      orderType: "MEMBERSHIP",
+      paymentStatus: "PENDING",
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
+  const order = orders.find((candidate) => {
+    const metadata =
+      candidate.metadata && typeof candidate.metadata === "object"
+        ? (candidate.metadata as Record<string, unknown>)
+        : null;
+
+    return (
+      metadata?.scheduledPlanChange === true && metadata.sourceSubscriptionId === subscriptionId
+    );
+  });
+
+  if (!order) {
+    return null;
+  }
+
+  return {
+    orderId: order.id,
+    targetTierId: order.itemId,
+    targetTierName: order.itemName,
+    amount: Number(order.amount),
+    currency: order.currency,
+  };
 }

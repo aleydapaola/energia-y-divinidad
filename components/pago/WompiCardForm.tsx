@@ -36,9 +36,15 @@ interface CardErrors {
 
 function detectBrand(number: string): string {
   const n = number.replace(/\s/g, "");
-  if (/^4/.test(n)) return "VISA";
-  if (/^5[1-5]/.test(n) || /^2[2-7]/.test(n)) return "MASTERCARD";
-  if (/^3[47]/.test(n)) return "AMEX";
+  if (/^4/.test(n)) {
+    return "VISA";
+  }
+  if (/^5[1-5]/.test(n) || /^2[2-7]/.test(n)) {
+    return "MASTERCARD";
+  }
+  if (/^3[47]/.test(n)) {
+    return "AMEX";
+  }
   return "UNKNOWN";
 }
 
@@ -51,12 +57,21 @@ function validateCard(card: CardState): CardErrors {
   const errors: CardErrors = {};
   const digits = card.number.replace(/\s/g, "");
 
-  if (!digits || digits.length < 13) errors.number = "Número de tarjeta inválido";
-  if (!card.expMonth || Number(card.expMonth) < 1 || Number(card.expMonth) > 12)
+  if (!digits || digits.length < 13) {
+    errors.number = "Número de tarjeta inválido";
+  }
+  if (!card.expMonth || Number(card.expMonth) < 1 || Number(card.expMonth) > 12) {
     errors.expMonth = "Mes inválido";
-  if (!card.expYear || card.expYear.length < 2) errors.expYear = "Año inválido";
-  if (!card.cvc || card.cvc.length < 3) errors.cvc = "CVV inválido";
-  if (!card.cardHolder.trim()) errors.cardHolder = "Ingresa el nombre del titular";
+  }
+  if (!card.expYear || card.expYear.length < 2) {
+    errors.expYear = "Año inválido";
+  }
+  if (!card.cvc || card.cvc.length < 3) {
+    errors.cvc = "CVV inválido";
+  }
+  if (!card.cardHolder.trim()) {
+    errors.cardHolder = "Ingresa el nombre del titular";
+  }
 
   return errors;
 }
@@ -88,7 +103,9 @@ export function WompiCardForm({ onSuccess, onBack, isSubmitting = false }: Wompi
     try {
       // 1. Obtener acceptance token del backend
       const tokenRes = await fetch("/api/checkout/wompi-acceptance-token");
-      if (!tokenRes.ok) throw new Error("Error obteniendo token de pago");
+      if (!tokenRes.ok) {
+        throw new Error("Error obteniendo token de pago");
+      }
       const { acceptanceToken, publicKey, apiUrl } = await tokenRes.json();
 
       // 2. Tokenizar tarjeta directamente con Wompi (client-side, nunca pasan por nuestro servidor)
@@ -160,9 +177,7 @@ export function WompiCardForm({ onSuccess, onBack, isSubmitting = false }: Wompi
 
         {/* Número de tarjeta */}
         <div>
-          <label className="block font-dm-sans text-sm text-gray-600 mb-2">
-            Número de tarjeta
-          </label>
+          <label className="block font-dm-sans text-sm text-gray-600 mb-2">Número de tarjeta</label>
           <div className="relative">
             <input
               type="text"
@@ -260,9 +275,7 @@ export function WompiCardForm({ onSuccess, onBack, isSubmitting = false }: Wompi
                   : "border-gray-200 focus:border-[#8A4BAF]"
               }`}
             />
-            {errors.cvc && (
-              <p className="mt-1 font-dm-sans text-xs text-red-500">{errors.cvc}</p>
-            )}
+            {errors.cvc && <p className="mt-1 font-dm-sans text-xs text-red-500">{errors.cvc}</p>}
           </div>
         </div>
 
@@ -293,8 +306,9 @@ export function WompiCardForm({ onSuccess, onBack, isSubmitting = false }: Wompi
         {/* Aviso de cobro automático */}
         <div className="p-3 rounded-xl bg-[#eef1fa] border border-[#4944a4]/20">
           <p className="font-dm-sans text-xs text-[#4944a4]">
-            <strong>Cobro automático:</strong> Tu tarjeta será cobrada automáticamente cada mes.
-            Puedes cancelar en cualquier momento desde tu perfil.
+            <strong>Primer mes gratis:</strong> No cobraremos hoy. Tu primer cobro automático se
+            realizará al terminar el mes gratis. Puedes cancelar en cualquier momento desde tu
+            perfil.
           </p>
         </div>
       </div>
@@ -318,7 +332,7 @@ export function WompiCardForm({ onSuccess, onBack, isSubmitting = false }: Wompi
           ) : (
             <>
               <Lock className="w-4 h-4" />
-              Activar membresía
+              Activar 1 mes gratis
             </>
           )}
         </button>

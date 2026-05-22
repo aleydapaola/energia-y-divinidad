@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
+import { processApprovedPayment } from "@/lib/payment-processor";
 import { prisma } from "@/lib/prisma";
+import { client } from "@/lib/sanity/client";
 import { getAppUrl } from "@/lib/utils";
-import {
-  createWompiPaymentSource,
-  chargeWompiPaymentSource,
-  generateWompiReference,
-} from "@/lib/wompi";
+import { createWompiPaymentSource, generateWompiReference } from "@/lib/wompi";
 
 interface WompiRecurringBody {
   // Datos del producto
@@ -31,10 +29,10 @@ interface WompiRecurringBody {
 /**
  * POST /api/checkout/wompi-recurring
  *
- * Flujo de primer pago para membresía recurrente con Wompi:
+ * Flujo de activación para membresía recurrente con Wompi:
  * 1. Crea una Payment Source (tarjeta tokenizada) en Wompi
- * 2. Cobra el primer período
- * 3. Crea la Order en BD — el webhook activa la Subscription
+ * 2. Activa el primer mes gratis sin cobrar hoy
+ * 3. Guarda la suscripción para que el cron cobre automáticamente al terminar el mes gratis
  */
 export async function POST(request: NextRequest) {
   try {
@@ -66,7 +64,31 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = session.user.id;
-    const customerEmail = session.user.email!;
+    const customerEmail = session.user.email;
+    if (!customerEmail) {
+      return NextResponse.json(
+        { error: "Tu cuenta no tiene un correo válido para registrar la tarjeta" },
+        { status: 400 }
+      );
+    }
+    const expectedAmount = await getMembershipPrice(productId, billingInterval);
+
+    if (!expectedAmount) {
+      return NextResponse.json(
+        { error: "No se pudo validar el precio de la membresía" },
+        { status: 400 }
+      );
+    }
+
+    if (Math.round(amount) !== Math.round(expectedAmount)) {
+      console.warn("[WOMPI-RECURRING] Monto inválido recibido:", {
+        productId,
+        billingInterval,
+        received: amount,
+        expected: expectedAmount,
+      });
+      return NextResponse.json({ error: "Monto de membresía inválido" }, { status: 400 });
+    }
 
     // Verificar si ya tiene suscripción activa con este plan
     const existingSubscription = await prisma.subscription.findFirst({
@@ -101,8 +123,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Crear Order en BD (pendiente — el webhook la completará)
-    const amountInCents = Math.round(amount * 100);
+    if (paymentSource.status !== "AVAILABLE") {
+      return NextResponse.json(
+        { error: "La tarjeta aún no quedó disponible para cobros recurrentes" },
+        { status: 422 }
+      );
+    }
+
+    const trialEndsAt = new Date();
+    trialEndsAt.setMonth(trialEndsAt.getMonth() + 1);
 
     const order = await prisma.order.create({
       data: {
@@ -111,67 +140,84 @@ export async function POST(request: NextRequest) {
         orderType: "MEMBERSHIP",
         itemId: productId,
         itemName: productName,
-        amount,
+        amount: 0,
         currency: "COP",
         paymentMethod: "WOMPI_CARD",
-        paymentStatus: "PENDING",
+        paymentStatus: "COMPLETED",
         metadata: {
           productType: "membership",
           billingInterval,
+          recurringAmount: amount,
+          freeTrial: true,
+          trialEndsAt: trialEndsAt.toISOString(),
           isGuestCheckout: false,
           customerEmail,
           customerName: session.user.name || cardHolder,
-          wompiPaymentSourceId: paymentSource.id,
+          wompiPaymentSourceId: String(paymentSource.id),
           wompiCardLastFour: cardLastFour,
           wompiCardBrand: cardBrand,
+          wompiStatus: "TRIAL_STARTED",
         },
       },
     });
 
-    // 3. Cobrar el primer período usando la Payment Source
-    let transaction;
-    try {
-      transaction = await chargeWompiPaymentSource({
-        paymentSourceId: paymentSource.id,
-        amountInCents,
-        reference,
-        customerEmail,
-      });
-    } catch (err) {
-      // Si el cobro falla, eliminar la orden (no queremos una orden fantasma)
-      await prisma.order.delete({ where: { id: order.id } });
-      console.error("[WOMPI-RECURRING] Error en primer cobro:", err);
+    const approvedOrder = await prisma.order.findUnique({
+      where: { id: order.id },
+      include: { user: true },
+    });
+
+    if (!approvedOrder) {
+      return NextResponse.json({ error: "Orden no encontrada" }, { status: 500 });
+    }
+
+    const result = await processApprovedPayment(approvedOrder, {
+      transactionId: `wompi_trial_${paymentSource.id}`,
+    });
+
+    if (!result.success) {
+      console.error("[WOMPI-RECURRING] Error activando prueba de membresía:", result.error);
       return NextResponse.json(
-        { error: "La tarjeta fue rechazada. Verifica el saldo o usa otro método de pago." },
-        { status: 422 }
+        { error: "La tarjeta se registró, pero no se pudo activar la membresía" },
+        { status: 500 }
       );
     }
 
-    // 4. Actualizar Order con el transactionId de Wompi
-    await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        metadata: {
-          ...(order.metadata as object),
-          wompiTransactionId: transaction.id,
-          wompiStatus: transaction.status,
-        },
-      },
-    });
-
-    // Si la transacción ya es APPROVED (Wompi a veces aprueba sincrónicamente),
-    // el webhook también llegará — la idempotencia del webhook-processor evita duplicados.
     const redirectUrl = `${appUrl}/pago/confirmacion?ref=${reference}`;
 
     return NextResponse.json({
       success: true,
       reference,
-      transactionId: transaction.id,
-      status: transaction.status,
+      status: "TRIAL",
+      trialEndsAt: trialEndsAt.toISOString(),
       redirectUrl,
     });
   } catch (error) {
     console.error("[WOMPI-RECURRING] Error inesperado:", error);
     return NextResponse.json({ error: "Error al procesar el pago" }, { status: 500 });
   }
+}
+
+async function getMembershipPrice(
+  productId: string,
+  billingInterval: "monthly" | "yearly"
+): Promise<number | null> {
+  const tier = await client.fetch<{
+    pricing?: {
+      monthlyPrice?: number;
+      yearlyPrice?: number;
+    };
+  } | null>(
+    `*[_type == "membershipTier" && _id == $productId][0]{
+      pricing
+    }`,
+    { productId }
+  );
+
+  if (!tier?.pricing) {
+    return null;
+  }
+
+  return billingInterval === "yearly"
+    ? tier.pricing.yearlyPrice || null
+    : tier.pricing.monthlyPrice || null;
 }

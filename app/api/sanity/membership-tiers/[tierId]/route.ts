@@ -15,15 +15,18 @@ export async function GET(
     const query = `*[_type == "membershipTier" && _id == $tierId][0]{
       _id,
       name,
+      slug,
       tagline,
       description,
       pricing,
       features,
+      benefits,
       color,
       icon,
       popularityBadge,
       trialPeriod,
-      ctaButtonText
+      ctaButtonText,
+      "order": displayOrder
     }`
 
     const tier = await client.fetch(query, { tierId })

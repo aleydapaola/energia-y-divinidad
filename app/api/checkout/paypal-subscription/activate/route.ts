@@ -37,9 +37,7 @@ export async function GET(request: NextRequest) {
 
     if (order.paymentStatus === "COMPLETED") {
       // Ya procesado — redirigir a confirmación directamente
-      return NextResponse.redirect(
-        `${appUrl}/pago/confirmacion?ref=${order.orderNumber}`
-      );
+      return NextResponse.redirect(`${appUrl}/pago/confirmacion?ref=${order.orderNumber}`);
     }
 
     const metadata = (order.metadata as Record<string, unknown>) || {};
@@ -67,6 +65,7 @@ export async function GET(request: NextRequest) {
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
+        paymentStatus: "COMPLETED",
         metadata: {
           ...metadata,
           paypalSubscriptionId: subId,
@@ -78,18 +77,19 @@ export async function GET(request: NextRequest) {
     });
 
     // Procesar el pago aprobado — crea Subscription + Entitlement en BD
-    const result = await processApprovedPayment(updatedOrder as Parameters<typeof processApprovedPayment>[0], {
-      transactionId: subId,
-    });
+    const result = await processApprovedPayment(
+      updatedOrder as Parameters<typeof processApprovedPayment>[0],
+      {
+        transactionId: subId,
+      }
+    );
 
     if (!result.success) {
       console.error("[PAYPAL-SUB/ACTIVATE] Error procesando pago:", result.error);
       return NextResponse.redirect(`${appUrl}/pago/error?reason=processing_failed`);
     }
 
-    return NextResponse.redirect(
-      `${appUrl}/pago/confirmacion?ref=${order.orderNumber}`
-    );
+    return NextResponse.redirect(`${appUrl}/pago/confirmacion?ref=${order.orderNumber}`);
   } catch (error) {
     console.error("[PAYPAL-SUB/ACTIVATE] Error inesperado:", error);
     return NextResponse.redirect(`${appUrl}/pago/error?reason=server_error`);
