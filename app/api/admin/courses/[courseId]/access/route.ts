@@ -8,6 +8,25 @@ import { sendCourseAccessEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { client } from "@/sanity/lib/client";
 
+interface CourseAccessCourse {
+  title: string;
+  slug?: string | null;
+}
+
+interface GrantAccessResult {
+  email: string;
+  ok: boolean;
+  error?: string;
+  user?: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+  createdUser?: boolean;
+  invitationSent?: boolean;
+  emailSent?: boolean;
+}
+
 async function requireAdmin() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -23,60 +42,35 @@ async function requireAdmin() {
   return session;
 }
 
-// GET /api/admin/courses/[courseId]/access — lista usuarios con acceso
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ courseId: string }> }
-) {
-  const session = await requireAdmin();
-  if (!session) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+function parseEmails(input: unknown): string[] {
+  if (Array.isArray(input)) {
+    return input
+      .flatMap((value) => String(value).split(/[\s,;]+/))
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean);
   }
 
-  const { courseId } = await params;
-  const list = await getCourseAccessList(courseId);
-  return NextResponse.json(list);
+  return String(input ?? "")
+    .split(/[\s,;]+/)
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
 }
 
-// POST /api/admin/courses/[courseId]/access — otorgar acceso
-// Body: { email: string }
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ courseId: string }> }
-) {
-  const session = await requireAdmin();
-  if (!session) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-  }
-
-  const { courseId } = await params;
-  const { email, name } = await req.json();
-
-  if (!email) {
-    return NextResponse.json({ error: "Email requerido" }, { status: 400 });
-  }
-
-  const normalizedEmail = String(email).trim().toLowerCase();
+async function grantAccessToEmail(params: {
+  email: string;
+  name?: unknown;
+  courseId: string;
+  course: CourseAccessCourse;
+}): Promise<GrantAccessResult> {
+  const { email, name, courseId, course } = params;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  if (!emailRegex.test(normalizedEmail)) {
-    return NextResponse.json({ error: "Email inválido" }, { status: 400 });
-  }
-
-  const course = await client.fetch(
-    `*[_type == "course" && _id == $id][0] {
-      title,
-      "slug": slug.current
-    }`,
-    { id: courseId }
-  );
-
-  if (!course) {
-    return NextResponse.json({ error: "Curso no encontrado" }, { status: 404 });
+  if (!emailRegex.test(email)) {
+    return { email, ok: false, error: "Email inválido" };
   }
 
   let user = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
+    where: { email },
     select: { id: true, name: true, email: true, password: true, emailVerified: true },
   });
   let createdUser = false;
@@ -88,7 +82,7 @@ export async function POST(
 
     const created = await prisma.user.create({
       data: {
-        email: normalizedEmail,
+        email,
         name: typeof name === "string" && name.trim() ? name.trim() : null,
         password: null,
         emailVerified: null,
@@ -98,7 +92,7 @@ export async function POST(
 
     await prisma.verificationToken.create({
       data: {
-        identifier: normalizedEmail,
+        identifier: email,
         token: setPasswordToken,
         expires,
       },
@@ -108,7 +102,7 @@ export async function POST(
     createdUser = true;
   } else if (!user.password || !user.emailVerified) {
     await prisma.verificationToken.deleteMany({
-      where: { identifier: normalizedEmail },
+      where: { identifier: email },
     });
 
     setPasswordToken = randomBytes(32).toString("hex");
@@ -116,7 +110,7 @@ export async function POST(
 
     await prisma.verificationToken.create({
       data: {
-        identifier: normalizedEmail,
+        identifier: email,
         token: setPasswordToken,
         expires,
       },
@@ -137,7 +131,8 @@ export async function POST(
     setPasswordToken,
   });
 
-  return NextResponse.json({
+  return {
+    email,
     ok: true,
     user: {
       id: user.id,
@@ -147,6 +142,148 @@ export async function POST(
     createdUser,
     invitationSent: Boolean(setPasswordToken),
     emailSent: emailResult.success,
+  };
+}
+
+// GET /api/admin/courses/[courseId]/access — lista usuarios con acceso
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
+  const session = await requireAdmin();
+  if (!session) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const { courseId } = await params;
+  const list = await getCourseAccessList(courseId);
+  return NextResponse.json(list);
+}
+
+// POST /api/admin/courses/[courseId]/access — otorgar acceso
+// Body: { email: string, name?: string } o { emails: string[] | string }
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ courseId: string }> }
+) {
+  const session = await requireAdmin();
+  if (!session) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const { courseId } = await params;
+  const { email, emails, name } = await req.json();
+  const emailList = Array.from(new Set(parseEmails(emails ?? email)));
+
+  if (emailList.length === 0) {
+    return NextResponse.json({ error: "Al menos un email es requerido" }, { status: 400 });
+  }
+
+  const course = await client.fetch<CourseAccessCourse | null>(
+    `*[_type == "course" && _id == $id][0] {
+      title,
+      "slug": slug.current
+    }`,
+    { id: courseId }
+  );
+
+  if (!course) {
+    return NextResponse.json({ error: "Curso no encontrado" }, { status: 404 });
+  }
+
+  const results: GrantAccessResult[] = [];
+  for (const emailAddress of emailList) {
+    results.push(await grantAccessToEmail({ email: emailAddress, name, courseId, course }));
+  }
+
+  const failed = results.filter((result) => !result.ok);
+
+  if (failed.length > 0 && failed.length === results.length) {
+    return NextResponse.json(
+      { error: "No se pudo otorgar acceso a ningún email", results },
+      { status: 400 }
+    );
+  }
+
+  const firstSuccess = results.find((result) => result.ok);
+
+  return NextResponse.json({
+    ok: true,
+    user: firstSuccess?.user,
+    createdUser: firstSuccess?.createdUser,
+    invitationSent: firstSuccess?.invitationSent,
+    emailSent: firstSuccess?.emailSent,
+    results,
+    total: results.length,
+    successCount: results.length - failed.length,
+    failedCount: failed.length,
+  });
+}
+
+// PUT /api/admin/courses/[courseId]/access — reemplazar lista completa de accesos
+// Body: { emails: string[] | string }
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ courseId: string }> }) {
+  const session = await requireAdmin();
+  if (!session) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
+  const { courseId } = await params;
+  const { emails } = await req.json();
+  const emailList = Array.from(new Set(parseEmails(emails)));
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const invalidEmails = emailList.filter((email) => !emailRegex.test(email));
+
+  if (invalidEmails.length > 0) {
+    return NextResponse.json(
+      { error: `Emails inválidos: ${invalidEmails.join(", ")}` },
+      { status: 400 }
+    );
+  }
+
+  const course = await client.fetch<CourseAccessCourse | null>(
+    `*[_type == "course" && _id == $id][0] {
+      title,
+      "slug": slug.current
+    }`,
+    { id: courseId }
+  );
+
+  if (!course) {
+    return NextResponse.json({ error: "Curso no encontrado" }, { status: 404 });
+  }
+
+  const currentAccessList = await getCourseAccessList(courseId);
+  const desiredEmails = new Set(emailList);
+  const results: GrantAccessResult[] = [];
+
+  for (const emailAddress of emailList) {
+    results.push(await grantAccessToEmail({ email: emailAddress, courseId, course }));
+  }
+
+  const revokedUsers = [];
+  for (const entry of currentAccessList) {
+    const currentEmail = entry.userEmail?.toLowerCase();
+    if (!currentEmail || desiredEmails.has(currentEmail)) {
+      continue;
+    }
+
+    await revokeCourseAccess({
+      userId: entry.userId,
+      courseId,
+      revokedBy: session.user?.email ?? "admin",
+    });
+    revokedUsers.push(currentEmail);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    results,
+    total: emailList.length,
+    successCount: results.filter((result) => result.ok).length,
+    failedCount: results.filter((result) => !result.ok).length,
+    revokedCount: revokedUsers.length,
+    revokedUsers,
   });
 }
 

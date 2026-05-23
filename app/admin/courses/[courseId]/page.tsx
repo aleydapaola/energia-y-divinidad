@@ -22,6 +22,7 @@ export default async function AdminCourseAccessPage({ params }: Props) {
       "slug": slug.current,
       status,
       published,
+      "visibility": coalesce(visibility, "public"),
       "coverImage": coverImage.asset->url
     }`,
     { id: courseId }
@@ -55,6 +56,7 @@ export default async function AdminCourseAccessPage({ params }: Props) {
           <p className="text-sm text-gray-500 font-dm-sans mt-0.5">
             {statusLabel[course.status] ?? course.status}
             {!course.published && " · No publicado"}
+            {course.visibility === "private" && " · Privado"}
             {course.slug && ` · /academia/${course.slug}`}
           </p>
         </div>

@@ -31,6 +31,18 @@ interface CheckoutBody {
   discountCode?: string;
 }
 
+interface CheckoutCourse {
+  _id: string;
+  title: string;
+  slug: { current: string };
+  price?: number | null;
+  priceUSD?: number | null;
+  isFree?: boolean;
+  status: string;
+  published: boolean;
+  visibility?: "public" | "private";
+}
+
 /**
  * POST /api/checkout/cart
  * Procesa el checkout del carrito de la academia
@@ -58,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar que todos los cursos existen y están activos
     const courseIds = items.map((item) => item.courseId);
-    const courses = await client.fetch(COURSES_BY_IDS_QUERY, { ids: courseIds });
+    const courses = await client.fetch<CheckoutCourse[]>(COURSES_BY_IDS_QUERY, { ids: courseIds });
 
     if (courses.length !== items.length) {
       return NextResponse.json({ error: "Algunos cursos no están disponibles" }, { status: 400 });
@@ -72,6 +84,31 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+
+      if (course.visibility === "private") {
+        return NextResponse.json(
+          { error: `El curso "${course.title}" es privado y solo puede asignarse desde admin` },
+          { status: 400 }
+        );
+      }
+    }
+
+    const serverItems = [];
+    for (const course of courses) {
+      const price = currency === "COP" ? course.price : course.priceUSD;
+
+      if (!course.isFree && (!price || price <= 0)) {
+        return NextResponse.json(
+          { error: `El curso "${course.title}" no tiene precio configurado` },
+          { status: 400 }
+        );
+      }
+
+      serverItems.push({
+        courseId: course._id,
+        courseName: course.title,
+        price: course.isFree ? 0 : (price ?? 0),
+      });
     }
 
     // Verificar que el usuario no tiene ya acceso a alguno de los cursos
@@ -86,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     if (existingEntitlements.length > 0) {
       const ownedCourseIds = existingEntitlements.map((e) => e.resourceId);
-      const ownedCourse = courses.find((c: any) => ownedCourseIds.includes(c._id));
+      const ownedCourse = courses.find((c) => ownedCourseIds.includes(c._id));
       return NextResponse.json(
         { error: `Ya tienes acceso al curso "${ownedCourse?.title}"` },
         { status: 400 }
@@ -94,7 +131,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calcular subtotal
-    const subtotal = items.reduce((sum, item) => sum + item.price, 0);
+    const subtotal = serverItems.reduce((sum, item) => sum + item.price, 0);
 
     // Validar y aplicar código de descuento si existe
     let discountAmount = 0;
@@ -128,7 +165,9 @@ export async function POST(request: NextRequest) {
 
     // Crear nombre del pedido
     const orderName =
-      items.length === 1 ? items[0].courseName : `${items.length} cursos de la Academia`;
+      serverItems.length === 1
+        ? serverItems[0].courseName
+        : `${serverItems.length} cursos de la Academia`;
 
     // ============================================
     // CASO ESPECIAL: Descuento 100% (gratis)
@@ -152,14 +191,14 @@ export async function POST(request: NextRequest) {
           paymentStatus: "COMPLETED",
           metadata: {
             courseIds,
-            items: items.map((i) => ({ id: i.courseId, name: i.courseName, price: i.price })),
+            items: serverItems.map((i) => ({ id: i.courseId, name: i.courseName, price: i.price })),
             freeOrder: true,
           },
         },
       });
 
       // Crear entitlements para cada curso
-      for (const item of items) {
+      for (const item of serverItems) {
         await createCourseEntitlement({
           userId: session.user.id,
           courseId: item.courseId,
@@ -212,7 +251,7 @@ export async function POST(request: NextRequest) {
         paymentStatus: "PENDING",
         metadata: {
           courseIds,
-          items: items.map((i) => ({ id: i.courseId, name: i.courseName, price: i.price })),
+          items: serverItems.map((i) => ({ id: i.courseId, name: i.courseName, price: i.price })),
         },
       },
     });

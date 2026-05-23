@@ -11,6 +11,7 @@ interface SanityCourse {
   slug: string;
   status: string;
   published: boolean;
+  visibility?: "public" | "private";
   courseType: string;
   coverImage?: string;
   accessCount: number;
@@ -24,6 +25,7 @@ export default async function AdminCoursesPage() {
       "slug": slug.current,
       status,
       published,
+      "visibility": coalesce(visibility, "public"),
       courseType,
       "coverImage": coverImage.asset->url
     }`
@@ -63,6 +65,16 @@ export default async function AdminCoursesPage() {
     coming_soon: "bg-yellow-100 text-yellow-700",
     active: "bg-green-100 text-green-700",
     archived: "bg-red-100 text-red-600",
+  };
+
+  const visibilityLabel: Record<string, string> = {
+    public: "Público",
+    private: "Privado",
+  };
+
+  const visibilityColors: Record<string, string> = {
+    public: "bg-blue-100 text-blue-700",
+    private: "bg-purple-100 text-purple-700",
   };
 
   return (
@@ -115,6 +127,11 @@ export default async function AdminCoursesPage() {
                       No publicado
                     </span>
                   )}
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${visibilityColors[course.visibility ?? "public"]}`}
+                  >
+                    {visibilityLabel[course.visibility ?? "public"]}
+                  </span>
                 </div>
                 <p className="text-sm text-gray-500 font-dm-sans mt-0.5">
                   {course.courseType === "simple" ? "Simple" : "Modular"}

@@ -25,8 +25,12 @@ export function CourseAccessManager({
   initialAccessList,
 }: CourseAccessManagerProps) {
   const [accessList, setAccessList] = useState<AccessEntry[]>(initialAccessList);
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
+  const [emails, setEmails] = useState(
+    initialAccessList
+      .map((entry) => entry.userEmail)
+      .filter(Boolean)
+      .join("\n")
+  );
   const [loading, setLoading] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +38,10 @@ export function CourseAccessManager({
 
   async function handleGrant(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) {
+    if (
+      !emails.trim() &&
+      !confirm("La lista está vacía. ¿Quieres revocar el acceso a todos los usuarios?")
+    ) {
       return;
     }
 
@@ -44,9 +51,9 @@ export function CourseAccessManager({
 
     try {
       const res = await fetch(`/api/admin/courses/${courseId}/access`, {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), name: name.trim() || undefined }),
+        body: JSON.stringify({ emails }),
       });
 
       const data = await res.json();
@@ -56,20 +63,29 @@ export function CourseAccessManager({
         return;
       }
 
-      let successMessage = `Acceso otorgado a ${data.user.email}`;
-      if (data.createdUser) {
-        successMessage = `Cuenta creada, acceso otorgado e invitación enviada a ${data.user.email}`;
-      } else if (data.invitationSent) {
-        successMessage = `Acceso otorgado e invitación reenviada a ${data.user.email}`;
+      let successMessage = `Lista guardada: ${data.successCount ?? 0} usuario con acceso`;
+      if ((data.successCount ?? 0) !== 1) {
+        successMessage = `Lista guardada: ${data.successCount ?? 0} usuarios con acceso`;
+      }
+      if (data.revokedCount > 0) {
+        successMessage += `. ${data.revokedCount} acceso revocado.`;
+      }
+      if (data.failedCount > 0) {
+        successMessage += `. ${data.failedCount} email no se pudo procesar.`;
       }
 
       setSuccess(successMessage);
-      setEmail("");
-      setName("");
 
       const refreshed = await fetch(`/api/admin/courses/${courseId}/access`);
       if (refreshed.ok) {
-        setAccessList(await refreshed.json());
+        const refreshedList = await refreshed.json();
+        setAccessList(refreshedList);
+        setEmails(
+          refreshedList
+            .map((entry: AccessEntry) => entry.userEmail)
+            .filter(Boolean)
+            .join("\n")
+        );
       }
     } finally {
       setLoading(false);
@@ -98,7 +114,16 @@ export function CourseAccessManager({
         return;
       }
 
-      setAccessList((prev) => prev.filter((u) => u.userId !== userId));
+      setAccessList((prev) => {
+        const next = prev.filter((u) => u.userId !== userId);
+        setEmails(
+          next
+            .map((entry) => entry.userEmail)
+            .filter(Boolean)
+            .join("\n")
+        );
+        return next;
+      });
       setSuccess("Acceso revocado correctamente");
     } finally {
       setRevoking(null);
@@ -119,45 +144,33 @@ export function CourseAccessManager({
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="font-gazeta text-xl text-[#654177] flex items-center gap-2 mb-4">
             <UserPlus className="w-5 h-5" />
-            Dar acceso
+            Editar accesos
           </h2>
           <form onSubmit={handleGrant} className="space-y-3">
             <div>
               <label className="block text-sm text-gray-600 font-dm-sans mb-1">
-                Email del usuario
+                Lista de emails con acceso
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="email"
-                  value={email}
+                <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <textarea
+                  value={emails}
                   onChange={(e) => {
-                    setEmail(e.target.value);
+                    setEmails(e.target.value);
                     setError(null);
                     setSuccess(null);
                   }}
-                  placeholder="usuario@email.com"
+                  placeholder={`usuario@email.com
+otra.persona@email.com
+tercera@email.com`}
                   required
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg font-dm-sans text-sm focus:outline-none focus:ring-2 focus:ring-[#8A4BAF] focus:border-transparent"
+                  rows={5}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg font-dm-sans text-sm focus:outline-none focus:ring-2 focus:ring-[#8A4BAF] focus:border-transparent resize-y"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm text-gray-600 font-dm-sans mb-1">
-                Nombre del usuario <span className="text-gray-400">(opcional)</span>
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setError(null);
-                  setSuccess(null);
-                }}
-                placeholder="Nombre para la invitación"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-dm-sans text-sm focus:outline-none focus:ring-2 focus:ring-[#8A4BAF] focus:border-transparent"
-              />
+              <p className="text-xs text-gray-400 font-dm-sans mt-1">
+                Al guardar, solo los emails que queden en esta lista tendrán acceso al curso.
+              </p>
             </div>
 
             {error && (
@@ -173,16 +186,16 @@ export function CourseAccessManager({
 
             <button
               type="submit"
-              disabled={loading || !email.trim()}
+              disabled={loading}
               className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] disabled:opacity-50 disabled:cursor-not-allowed text-white font-dm-sans font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
             >
-              {loading ? "Otorgando acceso..." : "Otorgar acceso"}
+              {loading ? "Guardando lista..." : "Guardar lista de accesos"}
             </button>
           </form>
 
           <p className="text-xs text-gray-400 font-dm-sans mt-3">
-            Si el usuario no existe, se crea su cuenta y recibe un enlace para establecer
-            contraseña. El acceso es permanente hasta que se revoque.
+            Si un usuario no existe, se crea su cuenta y recibe un enlace para establecer
+            contraseña. Si borras un email de la lista y guardas, se revoca su acceso.
           </p>
         </div>
 

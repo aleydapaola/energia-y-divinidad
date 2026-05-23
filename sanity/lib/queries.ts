@@ -135,7 +135,12 @@ export const LEGAL_PAGE_BY_SLUG_QUERY = groq`*[
 export const COURSES_QUERY = groq`*[
   _type == "course" &&
   published == true &&
-  status == "active"
+  status == "active" &&
+  coalesce(visibility, "public") == "public" &&
+  (
+    coalesce(pricing.isFree, false) == true ||
+    coalesce(pricing.price, price) > 0
+  )
 ] | order(displayOrder asc) {
   _id,
   title,
@@ -149,7 +154,8 @@ export const COURSES_QUERY = groq`*[
   totalDuration,
   topics,
   instructor,
-  featured
+  featured,
+  "visibility": coalesce(visibility, "public")
 }`
 
 // Curso completo con módulos y lecciones
@@ -160,6 +166,7 @@ export const COURSE_BY_SLUG_QUERY = groq`*[_type == "course" && slug.current == 
   ${pricingProjection},
   ${membershipAccessProjection},
   ${seoProjection},
+  "visibility": coalesce(visibility, "public"),
   dripEnabled,
   defaultDripDays,
   "hasCertificate": defined(certificate),
@@ -223,7 +230,8 @@ export const COURSES_BY_IDS_QUERY = groq`*[_type == "course" && _id in $ids] {
   ${coverImageProjection},
   ${pricingProjection},
   status,
-  published
+  published,
+  "visibility": coalesce(visibility, "public")
 }`
 
 // Cursos destacados
@@ -231,6 +239,11 @@ export const FEATURED_COURSES_QUERY = groq`*[
   _type == "course" &&
   published == true &&
   status == "active" &&
+  coalesce(visibility, "public") == "public" &&
+  (
+    coalesce(pricing.isFree, false) == true ||
+    coalesce(pricing.price, price) > 0
+  ) &&
   featured == true
 ] | order(displayOrder asc)[0...4] {
   _id,

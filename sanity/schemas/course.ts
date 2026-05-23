@@ -340,6 +340,23 @@ export default defineType({
       description: 'Solo los cursos publicados serán visibles en la web',
       initialValue: false,
     }),
+    defineField({
+      name: 'visibility',
+      title: 'Visibilidad en Academia',
+      type: 'string',
+      group: 'basic',
+      description:
+        'Público aparece en el catálogo y se puede comprar. Privado solo aparece a usuarios con acceso asignado.',
+      options: {
+        list: [
+          { title: '🌐 Público (visible y comprable)', value: 'public' },
+          { title: '🔒 Privado (solo usuarios asignados)', value: 'private' },
+        ],
+        layout: 'radio',
+      },
+      initialValue: 'public',
+      validation: (Rule) => Rule.required(),
+    }),
 
     // ============================================
     // GRUPO: Membresía (usando objeto reutilizable)
