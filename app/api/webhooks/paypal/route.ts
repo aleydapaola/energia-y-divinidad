@@ -25,10 +25,7 @@ export async function POST(request: NextRequest) {
   const eventType: string = event.event_type;
 
   // Eventos de suscripción recurrente
-  if (
-    eventType.startsWith("BILLING.SUBSCRIPTION.") ||
-    eventType.startsWith("PAYMENT.SALE.")
-  ) {
+  if (eventType.startsWith("BILLING.SUBSCRIPTION.") || eventType.startsWith("PAYMENT.SALE.")) {
     return handleSubscriptionWebhook(event);
   }
 
@@ -46,7 +43,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true, error: result.error }, { status: 200 });
   }
 
-  return NextResponse.json({ received: true, processed: result.processed, eventId: result.eventId });
+  return NextResponse.json({
+    received: true,
+    processed: result.processed,
+    eventId: result.eventId,
+  });
 }
 
 /**
@@ -70,8 +71,7 @@ async function handleSubscriptionWebhook(event: {
 
   // Para PAYMENT.SALE.* el ID de suscripción está en billing_agreement_id
   // Para BILLING.SUBSCRIPTION.* está directamente en resource.id
-  const paypalSubscriptionId =
-    (resource.billing_agreement_id as string) || (resource.id as string);
+  const paypalSubscriptionId = (resource.billing_agreement_id as string) || (resource.id as string);
 
   if (!paypalSubscriptionId) {
     console.error("[WEBHOOK/PAYPAL-SUB] No se encontró subscription ID en evento:", eventType);
@@ -178,7 +178,7 @@ async function handleSubscriptionWebhook(event: {
           name: subscription.user.name || "Miembro",
           plan: subscription.membershipTierName,
           amount: saleAmount ? parseFloat(saleAmount) : Number(subscription.amount),
-          currency: subscription.currency as "COP" | "USD",
+          currency: subscription.currency as "COP" | "USD" | "EUR",
           nextRenewalDate: nextChargeDate,
           transactionId: saleId,
         }).catch((err) =>
@@ -197,9 +197,7 @@ async function handleSubscriptionWebhook(event: {
       if (eventType === "PAYMENT.SALE.DENIED") {
         const failureCount = (subscription.chargeFailureCount || 0) + 1;
         const isLastAttempt = failureCount >= 3;
-        const nextRetryAt = isLastAttempt
-          ? null
-          : new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+        const nextRetryAt = isLastAttempt ? null : new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
 
         await prisma.subscription.update({
           where: { id: subscription.id },
@@ -229,9 +227,7 @@ async function handleSubscriptionWebhook(event: {
             plan: subscription.membershipTierName,
             retryDate: nextRetryAt,
             isLastAttempt,
-          }).catch((err) =>
-            console.error("[WEBHOOK/PAYPAL-SUB] Error enviando email fallo:", err)
-          );
+          }).catch((err) => console.error("[WEBHOOK/PAYPAL-SUB] Error enviando email fallo:", err));
         }
 
         console.error(

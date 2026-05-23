@@ -89,6 +89,12 @@ export default defineType({
           validation: (Rule) => Rule.min(0),
         },
         {
+          name: 'monthlyPriceEUR',
+          title: 'Precio Mensual (EUR)',
+          type: 'number',
+          validation: (Rule) => Rule.min(0),
+        },
+        {
           name: 'yearlyPrice',
           title: 'Precio Anual (COP)',
           type: 'number',
@@ -98,6 +104,12 @@ export default defineType({
         {
           name: 'yearlyPriceUSD',
           title: 'Precio Anual (USD)',
+          type: 'number',
+          validation: (Rule) => Rule.min(0),
+        },
+        {
+          name: 'yearlyPriceEUR',
+          title: 'Precio Anual (EUR)',
           type: 'number',
           validation: (Rule) => Rule.min(0),
         },

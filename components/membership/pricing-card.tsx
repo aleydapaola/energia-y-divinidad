@@ -1,17 +1,17 @@
-'use client'
+"use client";
 
-import { Check, Crown, ArrowUp, Sparkles } from 'lucide-react'
+import { Check, Crown, ArrowUp, Sparkles } from "lucide-react";
 
-import type { MembershipTier } from '@/types/membership'
+import type { MembershipTier } from "@/types/membership";
 
 interface PricingCardProps {
-  tier: MembershipTier
-  currency: 'COP' | 'USD'
-  billingInterval: 'monthly' | 'yearly'
-  onSelect: (tierId: string) => void
-  isPopular?: boolean
-  isCurrentPlan?: boolean // Indica si este es el plan actual del usuario
-  currentTierOrder?: number // Orden del plan actual del usuario (para determinar upgrade/downgrade)
+  tier: MembershipTier;
+  currency: "COP" | "USD" | "EUR";
+  billingInterval: "monthly" | "yearly";
+  onSelect: (tierId: string) => void;
+  isPopular?: boolean;
+  isCurrentPlan?: boolean; // Indica si este es el plan actual del usuario
+  currentTierOrder?: number; // Orden del plan actual del usuario (para determinar upgrade/downgrade)
 }
 
 export function PricingCard({
@@ -24,55 +24,62 @@ export function PricingCard({
   currentTierOrder,
 }: PricingCardProps) {
   // Determinar si es upgrade o downgrade (solo si el usuario tiene membresía)
-  const userHasMembership = currentTierOrder !== undefined
-  const isUpgrade = userHasMembership && !isCurrentPlan && (tier.tierLevel || 0) > currentTierOrder
-  const isDowngrade = userHasMembership && !isCurrentPlan && (tier.tierLevel || 0) < currentTierOrder
+  const userHasMembership = currentTierOrder !== undefined;
+  const isUpgrade = userHasMembership && !isCurrentPlan && (tier.tierLevel || 0) > currentTierOrder;
+  const isDowngrade =
+    userHasMembership && !isCurrentPlan && (tier.tierLevel || 0) < currentTierOrder;
 
   const price =
-    billingInterval === 'monthly'
-      ? currency === 'COP'
+    billingInterval === "monthly"
+      ? currency === "COP"
         ? tier.pricing.monthlyPrice
-        : tier.pricing.monthlyPriceUSD
-      : currency === 'COP'
-      ? tier.pricing.yearlyPrice
-      : tier.pricing.yearlyPriceUSD
+        : currency === "EUR"
+          ? tier.pricing.monthlyPriceEUR
+          : tier.pricing.monthlyPriceUSD
+      : currency === "COP"
+        ? tier.pricing.yearlyPrice
+        : currency === "EUR"
+          ? tier.pricing.yearlyPriceEUR
+          : tier.pricing.yearlyPriceUSD;
 
-  const monthlyPrice =
-    billingInterval === 'yearly' && price
-      ? Math.round(price / 12)
-      : price
+  const monthlyPrice = billingInterval === "yearly" && price ? Math.round(price / 12) : price;
 
-  const discount = billingInterval === 'yearly' ? tier.pricing.yearlyDiscount : null
+  const discount = billingInterval === "yearly" ? tier.pricing.yearlyDiscount : null;
 
   const formatPrice = (amount: number | undefined) => {
-    if (!amount) {return 'Gratis'}
-
-    if (currency === 'COP') {
-      return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(amount)
+    if (amount === undefined || amount === null) {
+      return "No disponible";
+    }
+    if (amount === 0) {
+      return "Gratis";
     }
 
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount)
-  }
+    if (currency === "COP") {
+      return new Intl.NumberFormat("es-CO", {
+        style: "currency",
+        currency: "COP",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(amount);
+    }
 
-  const isPopularTier = isPopular || tier.popularityBadge === 'popular'
+    return new Intl.NumberFormat(currency === "EUR" ? "es-ES" : "en-US", {
+      style: "currency",
+      currency,
+    }).format(amount);
+  };
+
+  const isPopularTier = isPopular || tier.popularityBadge === "popular";
 
   // Color del borde: usa el color del tier para diferenciarlo
-  const borderColor = tier.color || '#654177'
+  const borderColor = tier.color || "#654177";
 
   return (
     <div
       className={`relative rounded-xl p-6 sm:p-8 transition-all flex flex-col ${
         isPopularTier
-          ? 'bg-gradient-to-b from-[#f8f0f5] to-white shadow-2xl border-[3px] ring-1 ring-[#5C4D9B]/20'
-          : 'bg-white shadow-lg border-2'
+          ? "bg-gradient-to-b from-[#f8f0f5] to-white shadow-2xl border-[3px] ring-1 ring-[#5C4D9B]/20"
+          : "bg-white shadow-lg border-2"
       }`}
       style={{ borderColor }}
     >
@@ -103,15 +110,10 @@ export function PricingCard({
       )}
 
       {/* Name & Tagline */}
-      <h3
-        className="font-gazeta text-2xl mb-2"
-        style={{ color: tier.color || '#654177' }}
-      >
+      <h3 className="font-gazeta text-2xl mb-2" style={{ color: tier.color || "#654177" }}>
         {tier.name}
       </h3>
-      {tier.tagline && (
-        <p className="text-[#654177]/70 font-dm-sans mb-6">{tier.tagline}</p>
-      )}
+      {tier.tagline && <p className="text-[#654177]/70 font-dm-sans mb-6">{tier.tagline}</p>}
 
       {/* Price */}
       <div className="mb-6">
@@ -122,13 +124,13 @@ export function PricingCard({
           <span className="text-[#654177]/60 font-dm-sans">/mes</span>
         </div>
 
-        {billingInterval === 'yearly' && discount && (
+        {billingInterval === "yearly" && discount && (
           <p className="text-sm text-green-600 font-dm-sans mt-1">
             Ahorra {discount}% pagando anualmente
           </p>
         )}
 
-        {billingInterval === 'yearly' && price && (
+        {billingInterval === "yearly" && price && (
           <p className="text-sm text-[#654177]/50 font-dm-sans mt-1">
             {formatPrice(price)} facturado anualmente
           </p>
@@ -174,24 +176,20 @@ export function PricingCard({
           onClick={() => onSelect(tier._id)}
           className="w-full py-3 px-6 rounded-lg font-dm-sans font-semibold text-white transition-all bg-[#4944a4] hover:bg-[#3d3a8a] mb-6"
         >
-          {tier.ctaButtonText || 'Comenzar Ahora'}
+          {tier.ctaButtonText || "Comenzar Ahora"}
         </button>
       )}
 
       {/* Features */}
       <div className="space-y-3 flex-1">
-        <p className="text-sm font-dm-sans font-semibold text-[#654177]">
-          Incluye:
-        </p>
+        <p className="text-sm font-dm-sans font-semibold text-[#654177]">Incluye:</p>
         {tier.features
           ?.filter((f) => f.included)
           .map((feature, index) => (
             <div key={index} className="flex items-start gap-2">
               <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm text-[#654177] font-dm-sans">
-                  {feature.feature}
-                </p>
+                <p className="text-sm text-[#654177] font-dm-sans">{feature.feature}</p>
                 {feature.description && (
                   <p className="text-xs text-[#654177]/60 font-dm-sans mt-0.5">
                     {feature.description}
@@ -211,5 +209,5 @@ export function PricingCard({
         </div>
       )}
     </div>
-  )
+  );
 }

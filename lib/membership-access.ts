@@ -264,7 +264,7 @@ export interface PaymentMethod {
   available: boolean;
   icon: string;
   gateway: "wompi" | "paypal" | "breb";
-  currency: "COP" | "USD";
+  currency: "COP" | "USD" | "EUR";
   isRecurring: boolean;
   recommended: boolean;
 }
@@ -274,10 +274,10 @@ export interface PaymentMethod {
  *
  * ESTRATEGIA DE PAGOS:
  * - Colombia: Tarjeta (Wompi), Bre-B (manual)
- * - Internacional: PayPal (directo en USD)
+ * - Internacional: Tarjeta Wompi (equivalente COP) o PayPal (directo en USD/EUR)
  *
  * Wompi procesa en COP - tarjetas internacionales son aceptadas, el banco del cliente hace la conversión
- * PayPal procesa en USD
+ * PayPal procesa en USD/EUR según la moneda internacional seleccionada
  * Bre-B es pago manual con llave Bancolombia (sin comisiones, solo Colombia)
  */
 export function getAvailablePaymentMethods(region: "colombia" | "international"): PaymentMethod[] {
@@ -319,19 +319,31 @@ export function getAvailablePaymentMethods(region: "colombia" | "international")
     ];
   }
 
-  // Internacional (USD por PayPal)
+  // Internacional
   return [
+    {
+      type: "wompi_card",
+      label: "Tarjeta de crédito/débito",
+      description:
+        "Pay with your international card. Wompi charges the equivalent amount in COP automatically each billing period.",
+      available: true,
+      icon: "💳",
+      gateway: "wompi",
+      currency: "COP",
+      isRecurring: true,
+      recommended: true,
+    },
     {
       type: "paypal_direct",
       label: "PayPal",
       description:
-        "Pay securely with your PayPal account (USD). Charged automatically each billing period.",
+        "Pay securely with your PayPal account. Charged automatically each billing period.",
       available: true,
       icon: "🅿️",
       gateway: "paypal",
       currency: "USD",
       isRecurring: true,
-      recommended: true,
+      recommended: false,
     },
   ];
 }

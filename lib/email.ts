@@ -3284,7 +3284,7 @@ interface MembershipRenewalSuccessParams {
   name: string;
   plan: string;
   amount: number;
-  currency: "COP" | "USD";
+  currency: "COP" | "USD" | "EUR";
   nextRenewalDate: Date;
   transactionId?: string;
 }
@@ -3299,7 +3299,10 @@ export async function sendMembershipRenewalSuccessEmail(params: MembershipRenewa
           currency: "COP",
           minimumFractionDigits: 0,
         }).format(amount)
-      : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+      : new Intl.NumberFormat(currency === "EUR" ? "es-ES" : "en-US", {
+          style: "currency",
+          currency,
+        }).format(amount);
 
   const formattedDate = nextRenewalDate.toLocaleDateString("es-CO", {
     day: "numeric",

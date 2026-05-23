@@ -2,7 +2,7 @@
  * PayPal Integration
  *
  * Integración directa con PayPal REST API v2
- * Soporta pagos en USD y COP para Colombia e Internacional
+ * Soporta pagos en USD, EUR y COP para Colombia e Internacional
  */
 
 import {
@@ -49,10 +49,40 @@ function getPayPalClient(): Client {
   });
 }
 
+function getPayPalApiBaseUrl(): string {
+  return PAYPAL_CONFIG.environment === "live"
+    ? "https://api-m.paypal.com"
+    : "https://api-m.sandbox.paypal.com";
+}
+
+async function getPayPalAccessToken(): Promise<string> {
+  const response = await fetch(`${getPayPalApiBaseUrl()}/v1/oauth2/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${Buffer.from(
+        `${PAYPAL_CONFIG.clientId}:${PAYPAL_CONFIG.clientSecret}`
+      ).toString("base64")}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Error obteniendo token PayPal: ${response.statusText}`);
+  }
+
+  const data = (await response.json()) as { access_token?: string };
+  if (!data.access_token) {
+    throw new Error("PayPal no devolvió access token");
+  }
+
+  return data.access_token;
+}
+
 // Types
 export interface PayPalOrderParams {
   amount: number;
-  currency: "USD" | "COP";
+  currency: "USD" | "EUR" | "COP";
   description: string;
   reference: string;
   returnUrl: string;
@@ -442,11 +472,20 @@ export interface PayPalSubscriptionDetails {
 
 /**
  * Resolve the PayPal plan ID from env vars for a given tier + interval.
- * Format: PAYPAL_PLAN_ID_{TIER_SLUG_UPPERCASE}_{MONTHLY|YEARLY}
+ * Format preferred: PAYPAL_PLAN_ID_{TIER_SLUG_UPPERCASE}_{USD|EUR}_{MONTHLY|YEARLY}
+ * Legacy fallback: PAYPAL_PLAN_ID_{TIER_SLUG_UPPERCASE}_{MONTHLY|YEARLY}
  */
-export function getPayPalPlanId(tierSlug: string, interval: "monthly" | "yearly"): string | null {
-  const key = `PAYPAL_PLAN_ID_${tierSlug.toUpperCase().replace(/-/g, "_")}_${interval.toUpperCase()}`;
-  return process.env[key] || null;
+export function getPayPalPlanId(
+  tierSlug: string,
+  interval: "monthly" | "yearly",
+  currency: "USD" | "EUR" = "USD"
+): string | null {
+  const normalizedSlug = tierSlug.toUpperCase().replace(/-/g, "_");
+  const intervalKey = interval.toUpperCase();
+  const currencyKey = `PAYPAL_PLAN_ID_${normalizedSlug}_${currency}_${intervalKey}`;
+  const legacyKey = `PAYPAL_PLAN_ID_${normalizedSlug}_${intervalKey}`;
+
+  return process.env[currencyKey] || (currency === "USD" ? process.env[legacyKey] : null) || null;
 }
 
 /**
@@ -517,14 +556,31 @@ export async function getPayPalSubscriptionDetails(
   subscriptionId: string
 ): Promise<PayPalSubscriptionDetails | null> {
   try {
-    const client = getPayPalClient();
-    const subscriptionsController = new SubscriptionsController(client);
+    const accessToken = await getPayPalAccessToken();
+    const response = await fetch(
+      `${getPayPalApiBaseUrl()}/v1/billing/subscriptions/${subscriptionId}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
 
-    const response = await subscriptionsController.getSubscription({
-      id: subscriptionId,
-    });
+    if (!response.ok) {
+      console.error("[PAYPAL] Error getting subscription:", response.status, await response.text());
+      return null;
+    }
 
-    const sub = response.result as PayPalSubscription & {
+    const sub = (await response.json()) as {
+      id?: string;
+      status?: string;
+      plan_id?: string;
+      start_time?: string;
+      subscriber?: {
+        email_address?: string;
+      };
       billing_info?: {
         next_billing_time?: string;
         last_payment?: { amount?: { value?: string }; time?: string };
@@ -533,13 +589,13 @@ export async function getPayPalSubscriptionDetails(
 
     return {
       id: sub.id || subscriptionId,
-      status: (sub as unknown as { status?: string }).status || "UNKNOWN",
-      planId: sub.planId,
-      startTime: sub.startTime,
-      subscriberEmail: sub.subscriber?.emailAddress,
-      nextBillingTime: sub.billingInfo?.nextBillingTime,
-      lastPaymentAmount: sub.billingInfo?.lastPayment?.amount?.value,
-      lastPaymentTime: sub.billingInfo?.lastPayment?.time,
+      status: sub.status || "UNKNOWN",
+      planId: sub.plan_id,
+      startTime: sub.start_time,
+      subscriberEmail: sub.subscriber?.email_address,
+      nextBillingTime: sub.billing_info?.next_billing_time,
+      lastPaymentAmount: sub.billing_info?.last_payment?.amount?.value,
+      lastPaymentTime: sub.billing_info?.last_payment?.time,
     };
   } catch (error) {
     console.error("[PAYPAL] Error getting subscription:", error);

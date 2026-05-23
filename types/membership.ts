@@ -24,8 +24,10 @@ export interface MembershipTier {
   pricing: {
     monthlyPrice?: number;
     monthlyPriceUSD?: number;
+    monthlyPriceEUR?: number;
     yearlyPrice?: number;
     yearlyPriceUSD?: number;
+    yearlyPriceEUR?: number;
     yearlyDiscount?: number;
   };
   features: Array<{
@@ -295,7 +297,7 @@ export interface PaymentIntent {
   region: PaymentRegion;
   method: PaymentMethodType;
   amount: number;
-  currency: "COP" | "USD";
+  currency: "COP" | "USD" | "EUR";
   membershipTierId: string;
   billingInterval: BillingInterval;
   phoneNumber?: string; // Para Nequi (número de celular del usuario)

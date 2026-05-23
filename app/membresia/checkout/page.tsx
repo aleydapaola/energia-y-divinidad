@@ -18,10 +18,22 @@ import { useState, useEffect, Suspense } from "react";
 
 import { CheckoutHeader } from "@/components/checkout/CheckoutHeader";
 import { WompiCardForm, type WompiCardTokenData } from "@/components/pago/WompiCardForm";
+import { usesEuro } from "@/lib/euro-countries";
 
 import type { PaymentMethodType } from "@/lib/membership-access";
 
 type PaymentRegion = "colombia" | "international";
+type DisplayCurrency = "COP" | "USD" | "EUR";
+
+interface CurrencyConversion {
+  from: "USD" | "EUR";
+  to: "COP";
+  sourceAmount: number;
+  convertedAmount: number;
+  rate: number;
+  rateDate: string;
+  provider: string;
+}
 
 interface PaymentOption {
   method: PaymentMethodType;
@@ -37,6 +49,8 @@ function CheckoutContent() {
 
   const tierId = searchParams?.get("tier");
   const interval = searchParams?.get("interval") as "monthly" | "yearly" | null;
+  const currencyParam = searchParams?.get("currency")?.toUpperCase();
+  const requestedInternationalCurrency: "USD" | "EUR" = currencyParam === "EUR" ? "EUR" : "USD";
 
   const [tierData, setTierData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -58,6 +72,12 @@ function CheckoutContent() {
   // Form data
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showCardForm, setShowCardForm] = useState(false);
+  const [internationalCurrency, setInternationalCurrency] = useState<"USD" | "EUR">(
+    requestedInternationalCurrency
+  );
+  const [conversion, setConversion] = useState<CurrencyConversion | null>(null);
+  const [conversionLoading, setConversionLoading] = useState(false);
+  const [conversionError, setConversionError] = useState<string | null>(null);
 
   // Payment method options - Solo métodos con pago recurrente automático
   const colombiaOptions: PaymentOption[] = [
@@ -71,9 +91,15 @@ function CheckoutContent() {
 
   const internationalOptions: PaymentOption[] = [
     {
+      method: "wompi_card",
+      label: "Tarjeta de Crédito/Débito",
+      description: `Cobro automático en COP equivalente a ${internationalCurrency}`,
+      icon: <CreditCard className="w-5 h-5" />,
+    },
+    {
       method: "paypal_direct",
       label: "PayPal",
-      description: "Cobro automático mensual/anual",
+      description: `Cobro automático en ${internationalCurrency}`,
       icon: <PayPalIcon />,
     },
   ];
@@ -155,6 +181,44 @@ function CheckoutContent() {
     fetchTierData();
   }, [tierId, router]);
 
+  useEffect(() => {
+    if (currencyParam === "USD" || currencyParam === "EUR") {
+      setInternationalCurrency(currencyParam);
+      return;
+    }
+
+    const hasEURPrice = !!(tierData?.pricing?.monthlyPriceEUR || tierData?.pricing?.yearlyPriceEUR);
+
+    if (!hasEURPrice) {
+      setInternationalCurrency("USD");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function detectInternationalCurrency() {
+      try {
+        const response = await fetch("https://ipapi.co/json/");
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        if (!cancelled && usesEuro(data.country_code)) {
+          setInternationalCurrency("EUR");
+        }
+      } catch (error) {
+        console.error("Error detecting international currency:", error);
+      }
+    }
+
+    detectInternationalCurrency();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currencyParam, tierData]);
+
   // Determinar tipo de cambio de plan
   const getPlanChangeType = () => {
     if (!currentSubscription) {
@@ -182,6 +246,72 @@ function CheckoutContent() {
 
   const planChangeType = getPlanChangeType();
 
+  // Precios según intervalo
+  const priceCOP =
+    interval === "monthly" ? tierData?.pricing?.monthlyPrice : tierData?.pricing?.yearlyPrice;
+  const priceUSD =
+    interval === "monthly" ? tierData?.pricing?.monthlyPriceUSD : tierData?.pricing?.yearlyPriceUSD;
+  const priceEUR =
+    interval === "monthly" ? tierData?.pricing?.monthlyPriceEUR : tierData?.pricing?.yearlyPriceEUR;
+  const internationalDisplayPrice = internationalCurrency === "EUR" ? priceEUR : priceUSD;
+  const displayPrice = selectedRegion === "international" ? internationalDisplayPrice : priceCOP;
+  const displayCurrency: DisplayCurrency =
+    selectedRegion === "international" ? internationalCurrency : "COP";
+
+  useEffect(() => {
+    if (selectedRegion !== "international" || selectedMethod !== "wompi_card") {
+      setConversion(null);
+      setConversionError(null);
+      setConversionLoading(false);
+      return;
+    }
+
+    if (!internationalDisplayPrice) {
+      setConversion(null);
+      setConversionError(`No hay precio configurado en ${internationalCurrency} para este plan`);
+      setConversionLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setConversionLoading(true);
+    setConversionError(null);
+
+    async function fetchConversion() {
+      try {
+        const response = await fetch(
+          `/api/currency/convert?amount=${internationalDisplayPrice}&from=${internationalCurrency}&to=COP`
+        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "No se pudo calcular la conversión a COP");
+        }
+
+        if (!cancelled) {
+          setConversion(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setConversion(null);
+          setConversionError(
+            err instanceof Error ? err.message : "No se pudo calcular la conversión a COP"
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setConversionLoading(false);
+        }
+      }
+    }
+
+    fetchConversion();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRegion, selectedMethod, internationalCurrency, internationalDisplayPrice]);
+
   const handleRegionSelect = (region: PaymentRegion) => {
     setSelectedRegion(region);
     setShowCardForm(false);
@@ -189,11 +319,11 @@ function CheckoutContent() {
     if (region === "colombia") {
       setSelectedMethod("wompi_card");
     } else {
-      setSelectedMethod("paypal_direct");
+      setSelectedMethod("wompi_card");
     }
   };
 
-  const formatPrice = (amount: number, currency: "COP" | "USD") => {
+  const formatPrice = (amount: number, currency: DisplayCurrency) => {
     if (currency === "COP") {
       return new Intl.NumberFormat("es-CO", {
         style: "currency",
@@ -203,9 +333,9 @@ function CheckoutContent() {
       }).format(amount);
     }
 
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat(currency === "EUR" ? "es-ES" : "en-US", {
       style: "currency",
-      currency: "USD",
+      currency,
     }).format(amount);
   };
 
@@ -222,14 +352,23 @@ function CheckoutContent() {
 
     setError(null);
 
-    const currency = selectedRegion === "colombia" ? "COP" : "USD";
-    const amount = selectedRegion === "colombia" ? priceCOP : priceUSD;
+    const currency = selectedRegion === "colombia" ? "COP" : internationalCurrency;
+    const amount =
+      selectedRegion === "colombia"
+        ? priceCOP
+        : internationalCurrency === "EUR"
+          ? priceEUR
+          : priceUSD;
 
     try {
       let endpoint: string;
       let body: Record<string, unknown>;
 
       if (selectedMethod === "wompi_card") {
+        if (selectedRegion === "international" && (!conversion || conversionError)) {
+          setError(conversionError || "No se pudo calcular la conversión a COP");
+          return;
+        }
         setShowCardForm(true);
         return;
       } else if (selectedMethod === "paypal_direct" || selectedMethod === "paypal_card") {
@@ -291,14 +430,31 @@ function CheckoutContent() {
     setSubmitting(true);
 
     try {
+      const amountCOP =
+        selectedRegion === "international" ? conversion?.convertedAmount || 0 : priceCOP || 0;
+      const displayAmount =
+        selectedRegion === "international"
+          ? internationalCurrency === "EUR"
+            ? priceEUR
+            : priceUSD
+          : priceCOP;
+      const displayCurrency = selectedRegion === "international" ? internationalCurrency : "COP";
+
+      if (!amountCOP) {
+        throw new Error("No se pudo calcular el monto a cobrar en COP");
+      }
+
       const response = await fetch("/api/checkout/wompi-recurring", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productId: tierId,
           productName: tierData.name,
-          amount: priceCOP,
+          amount: amountCOP,
           billingInterval: interval,
+          displayAmount,
+          displayCurrency,
+          exchangeRate: conversion?.rate,
           cardToken: cardData.cardToken,
           acceptanceToken: cardData.acceptanceToken,
           cardLastFour: cardData.lastFour,
@@ -409,14 +565,6 @@ function CheckoutContent() {
     );
   }
 
-  // Precios según intervalo
-  const priceCOP =
-    interval === "monthly" ? tierData?.pricing?.monthlyPrice : tierData?.pricing?.yearlyPrice;
-  const priceUSD =
-    interval === "monthly" ? tierData?.pricing?.monthlyPriceUSD : tierData?.pricing?.yearlyPriceUSD;
-
-  const displayPrice = selectedRegion === "international" ? priceUSD : priceCOP;
-  const displayCurrency = selectedRegion === "international" ? "USD" : "COP";
   const firstChargeDate = new Date();
   firstChargeDate.setMonth(firstChargeDate.getMonth() + 1);
   const formattedFirstChargeDate = firstChargeDate.toLocaleDateString("es-ES", {
@@ -549,6 +697,25 @@ function CheckoutContent() {
                         {formatPrice(displayPrice || 0, displayCurrency)}/{billingUnit}
                       </span>
                     </p>
+                    {selectedRegion === "international" && selectedMethod === "wompi_card" && (
+                      <div className="mt-3 rounded-xl bg-[#f8f0f5] p-3">
+                        <p className="font-dm-sans text-xs text-gray-600">
+                          Wompi cobra en COP. Equivalente al momento de compra:{" "}
+                          <span className="font-semibold text-[#654177]">
+                            {conversionLoading
+                              ? "calculando..."
+                              : conversion
+                                ? `${formatPrice(conversion.convertedAmount, "COP")}/${billingUnit}`
+                                : "no disponible"}
+                          </span>
+                        </p>
+                        {conversion && (
+                          <p className="font-dm-sans text-[11px] text-gray-500 mt-1">
+                            Tasa usada: 1 {conversion.from} = {formatPrice(conversion.rate, "COP")}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     {interval === "yearly" && (
                       <p className="font-dm-sans text-sm text-green-600 mt-2">
                         Ahorra pagando anualmente
@@ -640,7 +807,7 @@ function CheckoutContent() {
                               Internacional
                             </span>
                             <span className="font-dm-sans text-sm text-gray-500">
-                              {formatPrice(priceUSD || 0, "USD")}
+                              {formatPrice(internationalDisplayPrice || 0, internationalCurrency)}
                             </span>
                           </div>
                         </button>
@@ -689,6 +856,28 @@ function CheckoutContent() {
                           El primer mes es gratis. Luego los cobros son recurrentes cada{" "}
                           {billingUnit}.
                         </p>
+                        {selectedRegion === "international" && selectedMethod === "wompi_card" && (
+                          <div className="mt-3 rounded-xl border border-[#8A4BAF]/20 bg-[#8A4BAF]/5 p-3">
+                            <p className="font-dm-sans text-sm text-[#654177]">
+                              Se informa{" "}
+                              <span className="font-semibold">
+                                {formatPrice(internationalDisplayPrice || 0, internationalCurrency)}
+                                /{billingUnit}
+                              </span>{" "}
+                              y Wompi cobrará el equivalente en COP.
+                            </p>
+                            <p className="font-dm-sans text-xs text-gray-600 mt-1">
+                              {conversionLoading
+                                ? "Calculando conversión..."
+                                : conversion
+                                  ? `Equivalente: ${formatPrice(
+                                      conversion.convertedAmount,
+                                      "COP"
+                                    )}/${billingUnit}`
+                                  : conversionError || "Conversión no disponible"}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -724,14 +913,36 @@ function CheckoutContent() {
                         <p className="font-dm-sans text-sm text-red-600">{error}</p>
                       </div>
                     )}
+                    {conversionError &&
+                      selectedRegion === "international" &&
+                      selectedMethod === "wompi_card" && (
+                        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <p className="font-dm-sans text-sm text-amber-700">{conversionError}</p>
+                        </div>
+                      )}
 
                     {/* Submit Button */}
                     <button
                       type="button"
                       onClick={handleSubmit}
-                      disabled={!selectedMethod || !acceptedTerms || submitting}
+                      disabled={
+                        !selectedMethod ||
+                        !acceptedTerms ||
+                        submitting ||
+                        (selectedRegion === "international" &&
+                          selectedMethod === "wompi_card" &&
+                          (conversionLoading || !!conversionError))
+                      }
                       className={`w-full py-4 rounded-xl font-dm-sans font-semibold text-lg transition-colors ${
-                        selectedMethod && acceptedTerms && !submitting
+                        selectedMethod &&
+                        acceptedTerms &&
+                        !submitting &&
+                        !(
+                          selectedRegion === "international" &&
+                          selectedMethod === "wompi_card" &&
+                          (conversionLoading || !!conversionError)
+                        )
                           ? "bg-[#4944a4] text-white hover:bg-[#3d3a8a]"
                           : "bg-gray-200 text-gray-500 cursor-not-allowed"
                       }`}
@@ -751,7 +962,7 @@ function CheckoutContent() {
                       {selectedMethod === "wompi_card"
                         ? "No se cobrará hoy. El pago recurrente se procesará de forma segura por Wompi"
                         : selectedMethod?.startsWith("paypal")
-                          ? "No se cobrará hoy. PayPal iniciará los cobros al terminar el mes gratis"
+                          ? `No se cobrará hoy. PayPal iniciará los cobros en ${internationalCurrency} al terminar el mes gratis`
                           : "Selecciona una región y método de pago"}
                     </p>
                   </>

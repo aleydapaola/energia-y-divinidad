@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
+import { convertInternationalToCOP, type InternationalCurrency } from "@/lib/currency-conversion";
 import { processApprovedPayment } from "@/lib/payment-processor";
 import { prisma } from "@/lib/prisma";
 import { client } from "@/lib/sanity/client";
@@ -13,6 +14,9 @@ interface WompiRecurringBody {
   productName: string;
   amount: number; // en COP
   billingInterval: "monthly" | "yearly";
+  displayAmount?: number;
+  displayCurrency?: "COP" | InternationalCurrency;
+  exchangeRate?: number;
 
   // Token de tarjeta (obtenido client-side por WompiCardForm)
   cardToken: string;
@@ -52,6 +56,9 @@ export async function POST(request: NextRequest) {
       productName,
       amount,
       billingInterval,
+      displayAmount,
+      displayCurrency = "COP",
+      exchangeRate,
       cardToken,
       acceptanceToken,
       cardLastFour,
@@ -63,6 +70,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Faltan parámetros requeridos" }, { status: 400 });
     }
 
+    if (!["COP", "USD", "EUR"].includes(displayCurrency)) {
+      return NextResponse.json({ error: "Moneda no soportada para Wompi" }, { status: 400 });
+    }
+
     const userId = session.user.id;
     const customerEmail = session.user.email;
     if (!customerEmail) {
@@ -71,21 +82,28 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const expectedAmount = await getMembershipPrice(productId, billingInterval);
+    const expectedPrice = await getMembershipPrice(productId, billingInterval, displayCurrency);
 
-    if (!expectedAmount) {
+    if (!expectedPrice || expectedPrice.amount <= 0) {
       return NextResponse.json(
         { error: "No se pudo validar el precio de la membresía" },
         { status: 400 }
       );
     }
 
-    if (Math.round(amount) !== Math.round(expectedAmount)) {
+    const expectedAmount =
+      displayCurrency === "COP"
+        ? expectedPrice.amount
+        : (await convertInternationalToCOP(expectedPrice.amount, displayCurrency)).convertedAmount;
+
+    const amountToleranceCOP = displayCurrency === "COP" ? 0 : 1000;
+    if (Math.abs(Math.round(amount) - Math.round(expectedAmount)) > amountToleranceCOP) {
       console.warn("[WOMPI-RECURRING] Monto inválido recibido:", {
         productId,
         billingInterval,
         received: amount,
         expected: expectedAmount,
+        displayCurrency,
       });
       return NextResponse.json({ error: "Monto de membresía inválido" }, { status: 400 });
     }
@@ -148,6 +166,10 @@ export async function POST(request: NextRequest) {
           productType: "membership",
           billingInterval,
           recurringAmount: amount,
+          displayAmount: displayAmount ?? expectedPrice.amount,
+          displayCurrency,
+          exchangeRate,
+          chargedAmountCOP: amount,
           freeTrial: true,
           trialEndsAt: trialEndsAt.toISOString(),
           isGuestCheckout: false,
@@ -199,12 +221,17 @@ export async function POST(request: NextRequest) {
 
 async function getMembershipPrice(
   productId: string,
-  billingInterval: "monthly" | "yearly"
-): Promise<number | null> {
+  billingInterval: "monthly" | "yearly",
+  currency: "COP" | InternationalCurrency
+): Promise<{ amount: number; currency: "COP" | InternationalCurrency } | null> {
   const tier = await client.fetch<{
     pricing?: {
       monthlyPrice?: number;
       yearlyPrice?: number;
+      monthlyPriceUSD?: number;
+      yearlyPriceUSD?: number;
+      monthlyPriceEUR?: number;
+      yearlyPriceEUR?: number;
     };
   } | null>(
     `*[_type == "membershipTier" && _id == $productId][0]{
@@ -217,7 +244,29 @@ async function getMembershipPrice(
     return null;
   }
 
-  return billingInterval === "yearly"
-    ? tier.pricing.yearlyPrice || null
-    : tier.pricing.monthlyPrice || null;
+  if (currency === "COP") {
+    return {
+      amount:
+        billingInterval === "yearly"
+          ? tier.pricing.yearlyPrice || 0
+          : tier.pricing.monthlyPrice || 0,
+      currency,
+    };
+  }
+
+  if (currency === "EUR") {
+    const amount =
+      billingInterval === "yearly"
+        ? tier.pricing.yearlyPriceEUR || 0
+        : tier.pricing.monthlyPriceEUR || 0;
+    return amount > 0 ? { amount, currency } : null;
+  }
+
+  return {
+    amount:
+      billingInterval === "yearly"
+        ? tier.pricing.yearlyPriceUSD || 0
+        : tier.pricing.monthlyPriceUSD || 0,
+    currency,
+  };
 }

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { createPayPalSubscription, getPayPalPlanId } from "@/lib/paypal";
 import { prisma } from "@/lib/prisma";
+import { client } from "@/lib/sanity/client";
 import { getAppUrl } from "@/lib/utils";
 
 interface PayPalSubscriptionBody {
@@ -10,7 +11,7 @@ interface PayPalSubscriptionBody {
   productSlug?: string;
   productName: string;
   amount: number;
-  currency: "USD" | "COP";
+  currency: "USD" | "EUR";
   billingInterval: "monthly" | "yearly";
   guestEmail?: string;
   guestName?: string;
@@ -44,11 +45,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Faltan parámetros requeridos" }, { status: 400 });
     }
 
-    if (currency !== "USD") {
+    if (!["USD", "EUR"].includes(currency)) {
       return NextResponse.json(
-        { error: "PayPal está disponible solo para pagos internacionales en USD" },
+        { error: "PayPal está disponible solo para pagos internacionales en USD o EUR" },
         { status: 400 }
       );
+    }
+
+    const expectedAmount = await getMembershipPrice(productId, billingInterval, currency);
+    if (!expectedAmount || Math.abs(Number(amount) - expectedAmount) > 0.01) {
+      console.warn("[PAYPAL-SUB] Monto inválido recibido:", {
+        productId,
+        billingInterval,
+        currency,
+        received: amount,
+        expected: expectedAmount,
+      });
+      return NextResponse.json({ error: "Monto de membresía inválido" }, { status: 400 });
     }
 
     const userId = session.user.id;
@@ -76,11 +89,13 @@ export async function POST(request: NextRequest) {
 
     // Obtener el planId de PayPal desde env vars
     const planKey = productSlug || productId;
-    const planId = getPayPalPlanId(planKey, billingInterval);
+    const planId = getPayPalPlanId(planKey, billingInterval, currency);
     if (!planId) {
-      console.error(`[PAYPAL-SUB] Plan ID no configurado para ${planKey} / ${billingInterval}`);
+      console.error(
+        `[PAYPAL-SUB] Plan ID no configurado para ${planKey} / ${currency} / ${billingInterval}`
+      );
       return NextResponse.json(
-        { error: "Este plan no está disponible por el momento" },
+        { error: `Este plan no está disponible en ${currency} por el momento` },
         { status: 503 }
       );
     }
@@ -156,4 +171,39 @@ export async function POST(request: NextRequest) {
     console.error("[PAYPAL-SUB] Error inesperado:", error);
     return NextResponse.json({ error: "Error al procesar la solicitud" }, { status: 500 });
   }
+}
+
+async function getMembershipPrice(
+  productId: string,
+  billingInterval: "monthly" | "yearly",
+  currency: "USD" | "EUR"
+): Promise<number | null> {
+  const tier = await client.fetch<{
+    pricing?: {
+      monthlyPriceUSD?: number;
+      yearlyPriceUSD?: number;
+      monthlyPriceEUR?: number;
+      yearlyPriceEUR?: number;
+    };
+  } | null>(
+    `*[_type == "membershipTier" && _id == $productId][0]{
+      pricing
+    }`,
+    { productId }
+  );
+
+  if (!tier?.pricing) {
+    return null;
+  }
+
+  const amount =
+    currency === "EUR"
+      ? billingInterval === "yearly"
+        ? tier.pricing.yearlyPriceEUR
+        : tier.pricing.monthlyPriceEUR
+      : billingInterval === "yearly"
+        ? tier.pricing.yearlyPriceUSD
+        : tier.pricing.monthlyPriceUSD;
+
+  return amount && amount > 0 ? amount : null;
 }
