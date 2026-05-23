@@ -56,6 +56,20 @@ function parseEmails(input: unknown): string[] {
     .filter(Boolean);
 }
 
+function findDuplicateEmails(emails: string[]): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const email of emails) {
+    if (seen.has(email)) {
+      duplicates.add(email);
+    }
+    seen.add(email);
+  }
+
+  return Array.from(duplicates);
+}
+
 async function grantAccessToEmail(params: {
   email: string;
   name?: unknown;
@@ -173,10 +187,19 @@ export async function POST(
 
   const { courseId } = await params;
   const { email, emails, name } = await req.json();
-  const emailList = Array.from(new Set(parseEmails(emails ?? email)));
+  const rawEmailList = parseEmails(emails ?? email);
+  const duplicateEmails = findDuplicateEmails(rawEmailList);
+  const emailList = Array.from(new Set(rawEmailList));
 
   if (emailList.length === 0) {
     return NextResponse.json({ error: "Al menos un email es requerido" }, { status: 400 });
+  }
+
+  if (duplicateEmails.length > 0) {
+    return NextResponse.json(
+      { error: `Emails duplicados: ${duplicateEmails.join(", ")}` },
+      { status: 400 }
+    );
   }
 
   const course = await client.fetch<CourseAccessCourse | null>(
@@ -230,9 +253,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ cour
 
   const { courseId } = await params;
   const { emails } = await req.json();
-  const emailList = Array.from(new Set(parseEmails(emails)));
+  const rawEmailList = parseEmails(emails);
+  const duplicateEmails = findDuplicateEmails(rawEmailList);
+  const emailList = Array.from(new Set(rawEmailList));
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const invalidEmails = emailList.filter((email) => !emailRegex.test(email));
+
+  if (duplicateEmails.length > 0) {
+    return NextResponse.json(
+      { error: `Emails duplicados: ${duplicateEmails.join(", ")}` },
+      { status: 400 }
+    );
+  }
 
   if (invalidEmails.length > 0) {
     return NextResponse.json(

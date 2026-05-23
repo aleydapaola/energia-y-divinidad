@@ -2,7 +2,7 @@
 
 import { UserPlus, UserMinus, Users, Mail, Calendar } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 interface AccessEntry {
   userId: string;
@@ -17,6 +17,27 @@ interface CourseAccessManagerProps {
   courseId: string;
   courseTitle: string;
   initialAccessList: AccessEntry[];
+}
+
+function parseEmailList(value: string) {
+  return value
+    .split(/[\s,;]+/)
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function getDuplicateEmails(value: string) {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const email of parseEmailList(value)) {
+    if (seen.has(email)) {
+      duplicates.add(email);
+    }
+    seen.add(email);
+  }
+
+  return Array.from(duplicates);
 }
 
 export function CourseAccessManager({
@@ -35,9 +56,16 @@ export function CourseAccessManager({
   const [revoking, setRevoking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const duplicateEmails = useMemo(() => getDuplicateEmails(emails), [emails]);
 
   async function handleGrant(e: React.FormEvent) {
     e.preventDefault();
+
+    if (duplicateEmails.length > 0) {
+      setError(`Elimina emails duplicados: ${duplicateEmails.join(", ")}`);
+      return;
+    }
+
     if (
       !emails.trim() &&
       !confirm("La lista está vacía. ¿Quieres revocar el acceso a todos los usuarios?")
@@ -163,14 +191,22 @@ export function CourseAccessManager({
                   placeholder={`usuario@email.com
 otra.persona@email.com
 tercera@email.com`}
-                  required
                   rows={5}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg font-dm-sans text-sm focus:outline-none focus:ring-2 focus:ring-[#8A4BAF] focus:border-transparent resize-y"
+                  className={`w-full pl-9 pr-3 py-2 border rounded-lg font-dm-sans text-sm focus:outline-none focus:ring-2 focus:border-transparent resize-y ${
+                    duplicateEmails.length > 0
+                      ? "border-red-300 focus:ring-red-100"
+                      : "border-gray-300 focus:ring-[#8A4BAF]"
+                  }`}
                 />
               </div>
               <p className="text-xs text-gray-400 font-dm-sans mt-1">
                 Al guardar, solo los emails que queden en esta lista tendrán acceso al curso.
               </p>
+              {duplicateEmails.length > 0 && (
+                <p className="text-xs text-red-600 font-dm-sans mt-1">
+                  Email duplicado: {duplicateEmails.join(", ")}
+                </p>
+              )}
             </div>
 
             {error && (
@@ -186,7 +222,7 @@ tercera@email.com`}
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || duplicateEmails.length > 0}
               className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] disabled:opacity-50 disabled:cursor-not-allowed text-white font-dm-sans font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
             >
               {loading ? "Guardando lista..." : "Guardar lista de accesos"}
