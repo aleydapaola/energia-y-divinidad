@@ -1,7 +1,10 @@
+import { randomBytes } from "crypto";
+
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { getCourseAccessList, grantCourseAccess, revokeCourseAccess } from "@/lib/course-access";
+import { sendCourseAccessEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { client } from "@/sanity/lib/client";
 
@@ -47,30 +50,77 @@ export async function POST(
   }
 
   const { courseId } = await params;
-  const { email } = await req.json();
+  const { email, name } = await req.json();
 
   if (!email) {
     return NextResponse.json({ error: "Email requerido" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, name: true, email: true },
-  });
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  if (!user) {
-    return NextResponse.json(
-      { error: "No existe ningún usuario registrado con ese email" },
-      { status: 404 }
-    );
+  if (!emailRegex.test(normalizedEmail)) {
+    return NextResponse.json({ error: "Email inválido" }, { status: 400 });
   }
 
-  const course = await client.fetch(`*[_type == "course" && _id == $id][0] { title }`, {
-    id: courseId,
-  });
+  const course = await client.fetch(
+    `*[_type == "course" && _id == $id][0] {
+      title,
+      "slug": slug.current
+    }`,
+    { id: courseId }
+  );
 
   if (!course) {
     return NextResponse.json({ error: "Curso no encontrado" }, { status: 404 });
+  }
+
+  let user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    select: { id: true, name: true, email: true, password: true, emailVerified: true },
+  });
+  let createdUser = false;
+  let setPasswordToken: string | undefined;
+
+  if (!user) {
+    setPasswordToken = randomBytes(32).toString("hex");
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const created = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        name: typeof name === "string" && name.trim() ? name.trim() : null,
+        password: null,
+        emailVerified: null,
+      },
+      select: { id: true, name: true, email: true, password: true, emailVerified: true },
+    });
+
+    await prisma.verificationToken.create({
+      data: {
+        identifier: normalizedEmail,
+        token: setPasswordToken,
+        expires,
+      },
+    });
+
+    user = created;
+    createdUser = true;
+  } else if (!user.password || !user.emailVerified) {
+    await prisma.verificationToken.deleteMany({
+      where: { identifier: normalizedEmail },
+    });
+
+    setPasswordToken = randomBytes(32).toString("hex");
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await prisma.verificationToken.create({
+      data: {
+        identifier: normalizedEmail,
+        token: setPasswordToken,
+        expires,
+      },
+    });
   }
 
   await grantCourseAccess({
@@ -79,7 +129,25 @@ export async function POST(
     courseName: course.title,
   });
 
-  return NextResponse.json({ ok: true, user });
+  const emailResult = await sendCourseAccessEmail({
+    email: user.email,
+    name: user.name || "Usuario",
+    courseTitle: course.title,
+    courseSlug: course.slug,
+    setPasswordToken,
+  });
+
+  return NextResponse.json({
+    ok: true,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    },
+    createdUser,
+    invitationSent: Boolean(setPasswordToken),
+    emailSent: emailResult.success,
+  });
 }
 
 // DELETE /api/admin/courses/[courseId]/access — revocar acceso

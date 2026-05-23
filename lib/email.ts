@@ -512,6 +512,137 @@ export async function sendPasswordResetEmail({ email, name, token }: SendPasswor
 }
 
 // ============================================
+// EMAILS DE ACCESO A CURSOS
+// ============================================
+
+interface SendCourseAccessEmailParams {
+  email: string;
+  name: string;
+  courseTitle: string;
+  courseSlug?: string | null;
+  setPasswordToken?: string;
+}
+
+export async function sendCourseAccessEmail({
+  email,
+  name,
+  courseTitle,
+  courseSlug,
+  setPasswordToken,
+}: SendCourseAccessEmailParams) {
+  const courseUrl = courseSlug
+    ? `${APP_URL}/academia/${courseSlug}/reproducir`
+    : `${APP_URL}/mi-cuenta/cursos`;
+  const setupUrl = setPasswordToken
+    ? `${APP_URL}/auth/set-password?token=${setPasswordToken}`
+    : courseUrl;
+  const isInvitation = Boolean(setPasswordToken);
+  const subject = isInvitation
+    ? `Tu acceso al curso ${courseTitle} - Energía y Divinidad`
+    : `Ya tienes acceso al curso ${courseTitle} - Energía y Divinidad`;
+
+  if (DEV_MODE) {
+    console.log("\n========================================");
+    console.log("📧 EMAIL DE ACCESO A CURSO (Modo Desarrollo)");
+    console.log("========================================");
+    console.log(`Para: ${email}`);
+    console.log(`Nombre: ${name}`);
+    console.log(`Curso: ${courseTitle}`);
+    console.log(`Link: ${setupUrl}`);
+    console.log("========================================\n");
+
+    if (DEV_AUTO_VERIFY) {
+      return { success: true, data: { id: "dev-mode-simulated" } };
+    }
+  }
+
+  try {
+    const { data, error } = await getResendClient().emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>${subject}</title>
+          </head>
+          <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f0f5;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td align="center" style="padding: 40px 20px;">
+                  <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
+                    <tr>
+                      <td align="center" style="padding: 30px 0;">
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="background-color: #ffffff; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px rgba(138, 75, 175, 0.1);">
+                        <h2 style="margin: 0 0 20px; font-size: 24px; color: #654177; font-weight: 600;">
+                          Hola ${name},
+                        </h2>
+                        <p style="margin: 0 0 20px; font-size: 16px; color: #666666; line-height: 1.6;">
+                          Aleyda te ha dado acceso al curso <strong>${courseTitle}</strong> en Energía y Divinidad.
+                        </p>
+                        <p style="margin: 0 0 20px; font-size: 16px; color: #666666; line-height: 1.6;">
+                          ${
+                            isInvitation
+                              ? "Para entrar, primero crea tu contraseña con el enlace de abajo. Después podrás acceder al curso desde tu cuenta."
+                              : "Puedes entrar ahora desde tu cuenta y continuar el curso cuando quieras."
+                          }
+                        </p>
+                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td align="center" style="padding: 30px 0;">
+                              <a href="${setupUrl}" style="display: inline-block; padding: 16px 40px; background-color: #4944a4; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                                ${isInvitation ? "Crear mi contraseña" : "Entrar al curso"}
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                        <p style="margin: 0 0 20px; font-size: 14px; color: #999999; line-height: 1.6;">
+                          ${isInvitation ? "Este enlace expira en 7 días." : "Si el botón no funciona, entra desde Mis Cursos en tu cuenta."}
+                        </p>
+                        <p style="margin: 0; font-size: 12px; color: #999999; line-height: 1.6;">
+                          Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+                          <a href="${setupUrl}" style="color: #8A4BAF; word-break: break-all;">${setupUrl}</a>
+                        </p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td align="center" style="padding: 30px 0;">
+                        <p style="margin: 0; font-size: 12px; color: #999999;">
+                          © ${new Date().getFullYear()} Energía y Divinidad. Todos los derechos reservados.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error("Error sending course access email:", error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error sending course access email:", error);
+    return { success: false, error };
+  }
+}
+
+// ============================================
 // EMAILS DE EVENTOS
 // ============================================
 

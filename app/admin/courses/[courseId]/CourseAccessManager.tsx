@@ -26,6 +26,7 @@ export function CourseAccessManager({
 }: CourseAccessManagerProps) {
   const [accessList, setAccessList] = useState<AccessEntry[]>(initialAccessList);
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +46,7 @@ export function CourseAccessManager({
       const res = await fetch(`/api/admin/courses/${courseId}/access`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), name: name.trim() || undefined }),
       });
 
       const data = await res.json();
@@ -55,8 +56,16 @@ export function CourseAccessManager({
         return;
       }
 
-      setSuccess(`Acceso otorgado a ${data.user.email}`);
+      let successMessage = `Acceso otorgado a ${data.user.email}`;
+      if (data.createdUser) {
+        successMessage = `Cuenta creada, acceso otorgado e invitación enviada a ${data.user.email}`;
+      } else if (data.invitationSent) {
+        successMessage = `Acceso otorgado e invitación reenviada a ${data.user.email}`;
+      }
+
+      setSuccess(successMessage);
       setEmail("");
+      setName("");
 
       const refreshed = await fetch(`/api/admin/courses/${courseId}/access`);
       if (refreshed.ok) {
@@ -134,6 +143,23 @@ export function CourseAccessManager({
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm text-gray-600 font-dm-sans mb-1">
+                Nombre del usuario <span className="text-gray-400">(opcional)</span>
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setError(null);
+                  setSuccess(null);
+                }}
+                placeholder="Nombre para la invitación"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-dm-sans text-sm focus:outline-none focus:ring-2 focus:ring-[#8A4BAF] focus:border-transparent"
+              />
+            </div>
+
             {error && (
               <p className="text-sm text-red-600 font-dm-sans bg-red-50 px-3 py-2 rounded-lg">
                 {error}
@@ -155,7 +181,8 @@ export function CourseAccessManager({
           </form>
 
           <p className="text-xs text-gray-400 font-dm-sans mt-3">
-            El usuario debe estar registrado. El acceso es permanente hasta que se revoque.
+            Si el usuario no existe, se crea su cuenta y recibe un enlace para establecer
+            contraseña. El acceso es permanente hasta que se revoque.
           </p>
         </div>
 
