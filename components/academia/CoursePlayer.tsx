@@ -1,7 +1,7 @@
 "use client";
 
 import { PortableText } from "@portabletext/react";
-import { ChevronLeft, Menu, X, Award, ClipboardList } from "lucide-react";
+import { Award, CheckCircle2, ChevronLeft, ClipboardList, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -25,9 +25,31 @@ interface Resource {
   description?: string;
 }
 
+interface LessonContentBlock {
+  _key: string;
+  blockType: "text" | "video" | "audio" | "image" | "resource";
+  title?: string;
+  text?: PortableTextBlock[];
+  videoUrl?: string;
+  audioFileUrl?: string;
+  audioFileName?: string;
+  imageUrl?: string;
+  imageAlt?: string;
+  caption?: string;
+  resource?: Resource;
+}
+
+interface LessonSubmodule {
+  _key: string;
+  title: string;
+  description?: string;
+  blocks?: LessonContentBlock[];
+}
+
 interface Lesson {
   _id: string;
   title: string;
+  description?: string;
   lessonType: "video" | "live" | "text";
   videoUrl?: string;
   videoDuration?: string;
@@ -36,6 +58,7 @@ interface Lesson {
   };
   content?: PortableTextBlock[];
   resources?: Resource[];
+  submodules?: LessonSubmodule[];
   completed?: boolean;
   quizId?: string;
   requiresQuizToComplete?: boolean;
@@ -44,6 +67,7 @@ interface Lesson {
 interface Module {
   _id: string;
   title: string;
+  description?: string;
   unlockDate?: string;
   lessons: Lesson[];
 }
@@ -101,23 +125,98 @@ export function CoursePlayer({
   const currentIndex = allLessons.findIndex((l) => l._id === currentLesson._id);
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
   const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
-  const currentVideoUrl = currentLesson.videoUrl || currentLesson.liveSession?.recordingUrl;
+  const currentModuleIndex = modules.findIndex((m) =>
+    m.lessons.some((lesson) => lesson._id === currentLesson._id)
+  );
+  const currentModule = currentModuleIndex >= 0 ? modules[currentModuleIndex] : null;
+  const currentLessonIndexInModule = currentModule
+    ? currentModule.lessons.findIndex((lesson) => lesson._id === currentLesson._id)
+    : 0;
   const courseHref = getCourseHref(course.slug);
+  const currentVideoUrl = currentLesson.videoUrl || currentLesson.liveSession?.recordingUrl;
+  const isMediaLesson = currentLesson.lessonType === "video" || currentLesson.lessonType === "live";
+  const hasSubmodules = Boolean(currentLesson.submodules?.length);
 
-  const handleVideoEnd = () => {
-    if (!progress.completedLessons.includes(currentLesson._id)) {
-      onLessonComplete(currentLesson._id);
+  const handleSelectLesson = (lessonId: string) => {
+    onLessonSelect(lessonId);
+    setSidebarOpen(false);
+
+    window.setTimeout(() => {
+      document.getElementById(`lesson-${lessonId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+  };
+
+  const handleLessonComplete = (lessonId: string) => {
+    if (!progress.completedLessons.includes(lessonId)) {
+      onLessonComplete(lessonId);
     }
   };
 
   const handleMarkComplete = () => {
-    if (!progress.completedLessons.includes(currentLesson._id)) {
-      onLessonComplete(currentLesson._id);
-    }
+    handleLessonComplete(currentLesson._id);
     // Auto-advance to next lesson
     if (nextLesson) {
-      onLessonSelect(nextLesson._id);
+      handleSelectLesson(nextLesson._id);
     }
+  };
+
+  const renderContentBlock = (block: LessonContentBlock, index: number) => {
+    const blockId = `${currentLesson._id}-${block._key || index}`;
+
+    return (
+      <div key={block._key || index} className="space-y-3">
+        {block.title && (
+          <h4 className="font-dm-sans text-lg font-semibold text-[#654177]">{block.title}</h4>
+        )}
+
+        {block.blockType === "text" && block.text && (
+          <div className="prose prose-lg max-w-none overflow-hidden font-dm-sans prose-headings:text-[#654177] prose-a:text-[#4944a4]">
+            <PortableText value={block.text} />
+          </div>
+        )}
+
+        {block.blockType === "video" && block.videoUrl && (
+          <div className="overflow-hidden rounded-lg bg-black shadow-sm">
+            <LessonVideo
+              videoUrl={block.videoUrl}
+              lessonId={blockId}
+              onEnd={() => handleLessonComplete(currentLesson._id)}
+              onProgress={(seconds, position) =>
+                onProgressUpdate(currentLesson._id, seconds, position)
+              }
+            />
+          </div>
+        )}
+
+        {block.blockType === "audio" && block.audioFileUrl && (
+          <div className="rounded-lg border border-[#e7ded7] bg-white p-4">
+            <audio src={block.audioFileUrl} controls preload="metadata" className="w-full" />
+          </div>
+        )}
+
+        {block.blockType === "image" && block.imageUrl && (
+          <figure className="overflow-hidden rounded-lg border border-[#e7ded7] bg-white p-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={block.imageUrl}
+              alt={block.imageAlt || block.title || ""}
+              className="max-h-[620px] w-full object-contain"
+            />
+          </figure>
+        )}
+
+        {block.blockType === "resource" && block.resource && (
+          <LessonResources resources={[block.resource]} />
+        )}
+
+        {block.caption && (
+          <p className="font-dm-sans text-sm italic text-[#654177]/70">{block.caption}</p>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -165,10 +264,7 @@ export function CoursePlayer({
             modules={modules}
             currentLessonId={currentLesson._id}
             completedLessons={progress.completedLessons}
-            onLessonSelect={(id) => {
-              onLessonSelect(id);
-              setSidebarOpen(false);
-            }}
+            onLessonSelect={handleSelectLesson}
             dripEnabled={dripEnabled}
             defaultDripDays={defaultDripDays}
             startedAt={startedAt}
@@ -203,75 +299,134 @@ export function CoursePlayer({
           </div>
         </div>
 
-        {/* Video or Content */}
-        <div className="border-b border-[#e7ded7] bg-[#211b25] px-3 py-4 sm:px-6 lg:py-6">
-          <div className="mx-auto max-w-5xl overflow-hidden rounded-lg bg-black shadow-sm">
-            {(currentLesson.lessonType === "video" || currentLesson.lessonType === "live") &&
-            currentVideoUrl ? (
-              <LessonVideo
-                key={currentLesson._id}
-                videoUrl={currentVideoUrl}
-                lessonId={currentLesson._id}
-                onEnd={handleVideoEnd}
-                onProgress={(seconds, position) =>
-                  onProgressUpdate(currentLesson._id, seconds, position)
-                }
-              />
+        {/* Module Content */}
+        <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+          <header className="mb-8 border-b border-[#e7ded7] pb-6">
+            <p className="font-dm-sans text-xs uppercase tracking-[0.18em] text-[#a690b0]">
+              {currentModule ? `Módulo ${currentModuleIndex + 1}` : "Lección"}
+            </p>
+            <h1 className="mt-2 font-gazeta text-3xl text-[#654177] lg:text-4xl">
+              {currentLesson.title}
+            </h1>
+            {currentLesson.description ? (
+              <p className="mt-4 max-w-3xl whitespace-pre-line font-dm-sans text-base leading-7 text-[#654177]/80">
+                {currentLesson.description}
+              </p>
+            ) : currentModule?.description ? (
+              <p className="mt-4 max-w-3xl whitespace-pre-line font-dm-sans text-base leading-7 text-[#654177]/80">
+                {currentModule.description}
+              </p>
+            ) : null}
+          </header>
+
+          <div className="space-y-12">
+            {hasSubmodules ? (
+              currentLesson.submodules?.map((submodule, submoduleIndex) => (
+                <section
+                  id={`lesson-${currentLesson._id}-submodule-${submodule._key}`}
+                  key={submodule._key}
+                  className="scroll-mt-24 border-b border-[#e7ded7] pb-10"
+                >
+                  <div className="mb-6">
+                    <p className="font-dm-sans text-xs uppercase tracking-[0.14em] text-[#a690b0]">
+                      {currentModule
+                        ? `${currentModuleIndex + 1}.${currentLessonIndexInModule + 1}.${submoduleIndex + 1}`
+                        : `${submoduleIndex + 1}`}
+                    </p>
+                    <h2 className="mt-1 font-gazeta text-2xl text-[#654177] lg:text-3xl">
+                      {submodule.title}
+                    </h2>
+                    {submodule.description && (
+                      <p className="mt-3 max-w-3xl whitespace-pre-line font-dm-sans text-base leading-7 text-[#654177]/80">
+                        {submodule.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-8">
+                    {submodule.blocks?.map((block, blockIndex) =>
+                      renderContentBlock(block, blockIndex)
+                    )}
+                  </div>
+                </section>
+              ))
             ) : (
-              <div className="flex min-h-40 items-center justify-center bg-white px-6 py-10 text-center sm:min-h-48">
-                <span className="font-dm-sans text-sm text-[#654177]/70">
-                  {currentLesson.lessonType === "text"
-                    ? "Lección de texto"
-                    : "El video de esta lección no está disponible todavía"}
-                </span>
+              <section id={`lesson-${currentLesson._id}`} className="scroll-mt-24">
+                {isMediaLesson && (
+                  <div className="mb-6 overflow-hidden rounded-lg bg-black shadow-sm">
+                    {currentVideoUrl ? (
+                      <LessonVideo
+                        key={currentLesson._id}
+                        videoUrl={currentVideoUrl}
+                        lessonId={currentLesson._id}
+                        onEnd={() => handleLessonComplete(currentLesson._id)}
+                        onProgress={(seconds, position) =>
+                          onProgressUpdate(currentLesson._id, seconds, position)
+                        }
+                      />
+                    ) : (
+                      <div className="flex min-h-40 items-center justify-center bg-white px-6 py-10 text-center sm:min-h-48">
+                        <span className="font-dm-sans text-sm text-[#654177]/70">
+                          El video de esta lección no está disponible todavía
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {currentLesson.content && (
+                  <div className="prose prose-lg mb-8 max-w-none overflow-hidden font-dm-sans prose-headings:text-[#654177] prose-a:text-[#4944a4]">
+                    <PortableText value={currentLesson.content} />
+                  </div>
+                )}
+
+                {currentLesson.resources && currentLesson.resources.length > 0 && (
+                  <LessonResources resources={currentLesson.resources} />
+                )}
+              </section>
+            )}
+
+            <div className="flex justify-end border-b border-[#e7ded7] pb-10">
+              <button
+                onClick={() => handleLessonComplete(currentLesson._id)}
+                disabled={progress.completedLessons.includes(currentLesson._id)}
+                className={`inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-dm-sans text-sm font-semibold transition-colors ${
+                  progress.completedLessons.includes(currentLesson._id)
+                    ? "bg-green-50 text-green-700"
+                    : "bg-[#4944a4] text-white hover:bg-[#3d3a8a]"
+                }`}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {progress.completedLessons.includes(currentLesson._id)
+                  ? "Lección completada"
+                  : "Marcar lección completada"}
+              </button>
+            </div>
+
+            {currentLesson.quizId && (
+              <div className="rounded-lg border border-[#8A4BAF]/20 bg-[#8A4BAF]/5 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#8A4BAF]/10">
+                    <ClipboardList className="h-5 w-5 text-[#8A4BAF]" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-dm-sans font-medium text-[#654177]">Quiz de la lección</p>
+                    <p className="font-dm-sans text-sm text-gray-600">
+                      {currentLesson.requiresQuizToComplete
+                        ? "Completa el quiz para marcar esta lección como terminada"
+                        : "Pon a prueba tus conocimientos"}
+                    </p>
+                  </div>
+                  <a
+                    href={`${courseHref}/quiz/${currentLesson.quizId}?courseId=${course._id}&lessonId=${currentLesson._id}`}
+                    className="inline-flex items-center justify-center gap-2 rounded-md bg-[#8A4BAF] px-4 py-2 font-dm-sans font-semibold text-white transition-colors hover:bg-[#7a3f9e]"
+                  >
+                    Tomar Quiz
+                  </a>
+                </div>
               </div>
             )}
           </div>
-        </div>
-
-        {/* Lesson Content */}
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-          {/* Lesson Title */}
-          <h1 className="mb-4 font-gazeta text-2xl text-[#654177] lg:text-3xl">
-            {currentLesson.title}
-          </h1>
-
-          {/* Text Content */}
-          {currentLesson.content && (
-            <div className="prose prose-lg mb-8 max-w-none overflow-hidden font-dm-sans prose-headings:text-[#654177] prose-a:text-[#4944a4]">
-              <PortableText value={currentLesson.content} />
-            </div>
-          )}
-
-          {/* Resources */}
-          {currentLesson.resources && currentLesson.resources.length > 0 && (
-            <LessonResources resources={currentLesson.resources} />
-          )}
-
-          {/* Lesson Quiz CTA */}
-          {currentLesson.quizId && (
-            <div className="mt-8 p-4 bg-[#8A4BAF]/5 border border-[#8A4BAF]/20 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-[#8A4BAF]/10 rounded-full">
-                  <ClipboardList className="h-5 w-5 text-[#8A4BAF]" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-dm-sans font-medium text-[#654177]">Quiz de la lección</p>
-                  <p className="font-dm-sans text-sm text-gray-600">
-                    {currentLesson.requiresQuizToComplete
-                      ? "Completa el quiz para marcar esta lección como terminada"
-                      : "Pon a prueba tus conocimientos"}
-                  </p>
-                </div>
-                <a
-                  href={`${courseHref}/quiz/${currentLesson.quizId}?courseId=${course._id}&lessonId=${currentLesson._id}`}
-                  className="flex items-center gap-2 bg-[#8A4BAF] hover:bg-[#7a3f9e] text-white font-dm-sans font-semibold py-2 px-4 rounded-lg transition-colors"
-                >
-                  Tomar Quiz
-                </a>
-              </div>
-            </div>
-          )}
 
           {/* Course Completion / Certificate CTA */}
           {progress.completionPercentage >= 100 && quizCertificateInfo?.hasCertificate && (

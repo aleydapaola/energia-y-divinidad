@@ -9,6 +9,7 @@ import type { CourseSlug } from "@/lib/course-slug";
 interface Lesson {
   _id: string;
   title: string;
+  description?: string;
   lessonType: "video" | "live" | "text";
   videoUrl?: string;
   videoDuration?: string;
@@ -17,6 +18,7 @@ interface Lesson {
   };
   content?: any;
   resources?: any[];
+  submodules?: any[];
 }
 
 interface Module {

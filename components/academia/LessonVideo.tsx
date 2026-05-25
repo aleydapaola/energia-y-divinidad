@@ -52,8 +52,40 @@ interface YTNamespace {
 declare global {
   interface Window {
     YT: YTNamespace;
-    onYouTubeIframeAPIReady: () => void;
+    onYouTubeIframeAPIReady?: () => void;
   }
+}
+
+let youtubeApiPromise: Promise<void> | null = null;
+
+function loadYouTubeApi() {
+  if (window.YT?.Player) {
+    return Promise.resolve();
+  }
+
+  if (!youtubeApiPromise) {
+    youtubeApiPromise = new Promise((resolve) => {
+      const previousCallback = window.onYouTubeIframeAPIReady;
+
+      window.onYouTubeIframeAPIReady = () => {
+        previousCallback?.();
+        resolve();
+      };
+
+      const existingScript = document.querySelector<HTMLScriptElement>(
+        'script[src="https://www.youtube.com/iframe_api"]'
+      );
+
+      if (!existingScript) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName("script")[0];
+        firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+      }
+    });
+  }
+
+  return youtubeApiPromise;
 }
 
 function extractYouTubeId(url: string): string | null {
@@ -96,15 +128,12 @@ export function LessonVideo({
       return;
     }
 
-    // Load YouTube IFrame API
-    if (!window.YT) {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      const firstScriptTag = document.getElementsByTagName("script")[0];
-      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-    }
+    let cancelled = false;
 
     const initPlayer = () => {
+      if (cancelled) {
+        return;
+      }
       if (playerRef.current) {
         playerRef.current.destroy();
       }
@@ -144,13 +173,10 @@ export function LessonVideo({
       });
     };
 
-    if (window.YT && window.YT.Player) {
-      initPlayer();
-    } else {
-      window.onYouTubeIframeAPIReady = initPlayer;
-    }
+    loadYouTubeApi().then(initPlayer);
 
     return () => {
+      cancelled = true;
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
       }

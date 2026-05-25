@@ -221,6 +221,189 @@ export default defineType({
         },
       ],
     }),
+    defineField({
+      name: 'submodules',
+      title: 'Submódulos de la Lección',
+      type: 'array',
+      group: 'content',
+      description:
+        'Organiza la lección en bloques: texto, videos, audios, imágenes o recursos, en el orden en que deben mostrarse.',
+      of: [
+        {
+          type: 'object',
+          name: 'lessonSubmodule',
+          title: 'Submódulo',
+          fields: [
+            defineField({
+              name: 'title',
+              title: 'Título del Submódulo',
+              type: 'string',
+              validation: (Rule) => Rule.required().max(150),
+            }),
+            defineField({
+              name: 'description',
+              title: 'Descripción del Submódulo',
+              type: 'text',
+              rows: 2,
+            }),
+            defineField({
+              name: 'blocks',
+              title: 'Bloques de Contenido',
+              type: 'array',
+              validation: (Rule) =>
+                Rule.required().min(1).error('Añade al menos un bloque al submódulo'),
+              of: [
+                {
+                  type: 'object',
+                  name: 'lessonContentBlock',
+                  title: 'Bloque',
+                  fields: [
+                    defineField({
+                      name: 'blockType',
+                      title: 'Tipo de Bloque',
+                      type: 'string',
+                      options: {
+                        list: [
+                          { title: 'Texto', value: 'text' },
+                          { title: 'Video', value: 'video' },
+                          { title: 'Audio', value: 'audio' },
+                          { title: 'Imagen', value: 'image' },
+                          { title: 'Recurso/Descarga', value: 'resource' },
+                        ],
+                        layout: 'radio',
+                      },
+                      initialValue: 'text',
+                      validation: (Rule) => Rule.required(),
+                    }),
+                    defineField({
+                      name: 'title',
+                      title: 'Título del Bloque',
+                      type: 'string',
+                      validation: (Rule) => Rule.max(150),
+                    }),
+                    defineField({
+                      name: 'text',
+                      title: 'Texto',
+                      type: 'array',
+                      hidden: ({ parent }) => parent?.blockType !== 'text',
+                      of: [
+                        {
+                          type: 'block',
+                          styles: [
+                            { title: 'Normal', value: 'normal' },
+                            { title: 'Título', value: 'h2' },
+                            { title: 'Subtítulo', value: 'h3' },
+                            { title: 'H4', value: 'h4' },
+                            { title: 'Cita', value: 'blockquote' },
+                          ],
+                          lists: [
+                            { title: 'Bullet', value: 'bullet' },
+                            { title: 'Numerada', value: 'number' },
+                          ],
+                          marks: {
+                            decorators: [
+                              { title: 'Negrita', value: 'strong' },
+                              { title: 'Cursiva', value: 'em' },
+                              { title: 'Código', value: 'code' },
+                            ],
+                            annotations: [
+                              {
+                                name: 'link',
+                                type: 'object',
+                                title: 'Enlace',
+                                fields: [{ name: 'href', type: 'url', title: 'URL' }],
+                              },
+                            ],
+                          },
+                        },
+                        {
+                          type: 'image',
+                          options: { hotspot: true },
+                          fields: [
+                            { name: 'alt', type: 'string', title: 'Texto alternativo' },
+                            { name: 'caption', type: 'string', title: 'Pie de imagen' },
+                          ],
+                        },
+                      ],
+                    }),
+                    defineField({
+                      name: 'videoUrl',
+                      title: 'URL del Video',
+                      type: 'url',
+                      description: 'YouTube, Vimeo o archivo de video externo',
+                      hidden: ({ parent }) => parent?.blockType !== 'video',
+                    }),
+                    defineField({
+                      name: 'audioFile',
+                      title: 'Archivo de Audio',
+                      type: 'file',
+                      options: { accept: '.mp3,.wav,.m4a,.aac,.ogg,audio/*' },
+                      hidden: ({ parent }) => parent?.blockType !== 'audio',
+                    }),
+                    defineField({
+                      name: 'image',
+                      title: 'Imagen',
+                      type: 'image',
+                      options: { hotspot: true, accept: 'image/*' },
+                      hidden: ({ parent }) => parent?.blockType !== 'image',
+                      fields: [
+                        { name: 'alt', type: 'string', title: 'Texto alternativo' },
+                      ],
+                    }),
+                    defineField({
+                      name: 'resource',
+                      title: 'Recurso',
+                      type: 'courseResource',
+                      hidden: ({ parent }) => parent?.blockType !== 'resource',
+                    }),
+                    defineField({
+                      name: 'caption',
+                      title: 'Pie o nota',
+                      type: 'text',
+                      rows: 2,
+                      hidden: ({ parent }) =>
+                        !['video', 'audio', 'image'].includes(parent?.blockType),
+                    }),
+                  ],
+                  preview: {
+                    select: {
+                      title: 'title',
+                      blockType: 'blockType',
+                    },
+                    prepare(selection) {
+                      const icons: Record<string, string> = {
+                        text: '📝',
+                        video: '🎥',
+                        audio: '🎧',
+                        image: '🖼️',
+                        resource: '📎',
+                      }
+
+                      return {
+                        title: `${icons[selection.blockType] || '📌'} ${selection.title || 'Bloque sin título'}`,
+                      }
+                    },
+                  },
+                },
+              ],
+            }),
+          ],
+          preview: {
+            select: {
+              title: 'title',
+              blocks: 'blocks',
+            },
+            prepare(selection) {
+              const count = selection.blocks?.length || 0
+              return {
+                title: selection.title,
+                subtitle: `${count} ${count === 1 ? 'bloque' : 'bloques'}`,
+              }
+            },
+          },
+        },
+      ],
+    }),
 
     // ============================================
     // GRUPO: Recursos Adjuntos

@@ -262,6 +262,34 @@ export const FEATURED_COURSES_QUERY = groq`*[
 // Lección completa con recursos (para el reproductor)
 export const LESSON_FULL_QUERY = groq`*[_type == "courseLesson" && slug.current == $slug][0] {
   ...,
+  "submodules": submodules[] {
+    _key,
+    title,
+    description,
+    "blocks": blocks[] {
+      _key,
+      blockType,
+      title,
+      text,
+      videoUrl,
+      caption,
+      "audioFileUrl": audioFile.asset->url,
+      "audioFileName": audioFile.asset->originalFilename,
+      "imageUrl": image.asset->url,
+      "imageAlt": image.alt,
+      "resource": resource {
+        _key,
+        title,
+        resourceType,
+        file,
+        "fileUrl": file.asset->url,
+        "fileName": file.asset->originalFilename,
+        "fileSize": file.asset->size,
+        externalUrl,
+        description
+      }
+    }
+  },
   "resources": resources[] {
     _key,
     title,
@@ -278,6 +306,34 @@ export const LESSON_FULL_QUERY = groq`*[_type == "courseLesson" && slug.current 
 // Lección por ID
 export const LESSON_BY_ID_QUERY = groq`*[_type == "courseLesson" && _id == $id][0] {
   ...,
+  "submodules": submodules[] {
+    _key,
+    title,
+    description,
+    "blocks": blocks[] {
+      _key,
+      blockType,
+      title,
+      text,
+      videoUrl,
+      caption,
+      "audioFileUrl": audioFile.asset->url,
+      "audioFileName": audioFile.asset->originalFilename,
+      "imageUrl": image.asset->url,
+      "imageAlt": image.alt,
+      "resource": resource {
+        _key,
+        title,
+        resourceType,
+        file,
+        "fileUrl": file.asset->url,
+        "fileName": file.asset->originalFilename,
+        "fileSize": file.asset->size,
+        externalUrl,
+        description
+      }
+    }
+  },
   "resources": resources[] {
     _key,
     title,
