@@ -268,7 +268,13 @@ export const LESSON_FULL_QUERY = groq`*[_type == "courseLesson" && slug.current 
     description,
     "blocks": blocks[] {
       _key,
-      blockType,
+      "blockType": coalesce(blockType, select(
+        _type == "lessonTextBlock" => "text",
+        _type == "lessonVideoBlock" => "video",
+        _type == "lessonAudioBlock" => "audio",
+        _type == "lessonImageBlock" => "image",
+        _type == "lessonResourceBlock" => "resource"
+      )),
       title,
       text,
       videoUrl,
@@ -312,7 +318,13 @@ export const LESSON_BY_ID_QUERY = groq`*[_type == "courseLesson" && _id == $id][
     description,
     "blocks": blocks[] {
       _key,
-      blockType,
+      "blockType": coalesce(blockType, select(
+        _type == "lessonTextBlock" => "text",
+        _type == "lessonVideoBlock" => "video",
+        _type == "lessonAudioBlock" => "audio",
+        _type == "lessonImageBlock" => "image",
+        _type == "lessonResourceBlock" => "resource"
+      )),
       title,
       text,
       videoUrl,

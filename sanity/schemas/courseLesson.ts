@@ -255,26 +255,9 @@ export default defineType({
               of: [
                 {
                   type: 'object',
-                  name: 'lessonContentBlock',
-                  title: 'Bloque',
+                  name: 'lessonTextBlock',
+                  title: 'Texto',
                   fields: [
-                    defineField({
-                      name: 'blockType',
-                      title: 'Tipo de Bloque',
-                      type: 'string',
-                      options: {
-                        list: [
-                          { title: 'Texto', value: 'text' },
-                          { title: 'Video', value: 'video' },
-                          { title: 'Audio', value: 'audio' },
-                          { title: 'Imagen', value: 'image' },
-                          { title: 'Recurso/Descarga', value: 'resource' },
-                        ],
-                        layout: 'radio',
-                      },
-                      initialValue: 'text',
-                      validation: (Rule) => Rule.required(),
-                    }),
                     defineField({
                       name: 'title',
                       title: 'Título del Bloque',
@@ -285,7 +268,7 @@ export default defineType({
                       name: 'text',
                       title: 'Texto',
                       type: 'array',
-                      hidden: ({ parent }) => parent?.blockType !== 'text',
+                      validation: (Rule) => Rule.required(),
                       of: [
                         {
                           type: 'block',
@@ -326,62 +309,130 @@ export default defineType({
                         },
                       ],
                     }),
+                  ],
+                  preview: {
+                    select: { title: 'title' },
+                    prepare(selection) {
+                      return { title: `📝 ${selection.title || 'Texto'}` }
+                    },
+                  },
+                },
+                {
+                  type: 'object',
+                  name: 'lessonVideoBlock',
+                  title: 'Video de YouTube/Vimeo',
+                  fields: [
+                    defineField({
+                      name: 'title',
+                      title: 'Título del Bloque',
+                      type: 'string',
+                      validation: (Rule) => Rule.max(150),
+                    }),
                     defineField({
                       name: 'videoUrl',
-                      title: 'URL del Video',
+                      title: 'URL del Video de YouTube/Vimeo',
                       type: 'url',
-                      description: 'YouTube, Vimeo o archivo de video externo',
-                      hidden: ({ parent }) => parent?.blockType !== 'video',
-                    }),
-                    defineField({
-                      name: 'audioFile',
-                      title: 'Archivo de Audio',
-                      type: 'file',
-                      options: { accept: '.mp3,.wav,.m4a,.aac,.ogg,audio/*' },
-                      hidden: ({ parent }) => parent?.blockType !== 'audio',
-                    }),
-                    defineField({
-                      name: 'image',
-                      title: 'Imagen',
-                      type: 'image',
-                      options: { hotspot: true, accept: 'image/*' },
-                      hidden: ({ parent }) => parent?.blockType !== 'image',
-                      fields: [
-                        { name: 'alt', type: 'string', title: 'Texto alternativo' },
-                      ],
-                    }),
-                    defineField({
-                      name: 'resource',
-                      title: 'Recurso',
-                      type: 'courseResource',
-                      hidden: ({ parent }) => parent?.blockType !== 'resource',
+                      description:
+                        'Pega una URL de YouTube, YouTube unlisted, Vimeo o un archivo de video externo.',
+                      validation: (Rule) => Rule.required(),
                     }),
                     defineField({
                       name: 'caption',
                       title: 'Pie o nota',
                       type: 'text',
                       rows: 2,
-                      hidden: ({ parent }) =>
-                        !['video', 'audio', 'image'].includes(parent?.blockType),
                     }),
                   ],
                   preview: {
-                    select: {
-                      title: 'title',
-                      blockType: 'blockType',
-                    },
+                    select: { title: 'title', videoUrl: 'videoUrl' },
                     prepare(selection) {
-                      const icons: Record<string, string> = {
-                        text: '📝',
-                        video: '🎥',
-                        audio: '🎧',
-                        image: '🖼️',
-                        resource: '📎',
-                      }
-
-                      return {
-                        title: `${icons[selection.blockType] || '📌'} ${selection.title || 'Bloque sin título'}`,
-                      }
+                      return { title: `🎥 ${selection.title || selection.videoUrl || 'Video'}` }
+                    },
+                  },
+                },
+                {
+                  type: 'object',
+                  name: 'lessonAudioBlock',
+                  title: 'Audio',
+                  fields: [
+                    defineField({
+                      name: 'title',
+                      title: 'Título del Bloque',
+                      type: 'string',
+                      validation: (Rule) => Rule.max(150),
+                    }),
+                    defineField({
+                      name: 'audioFile',
+                      title: 'Archivo de Audio',
+                      type: 'file',
+                      options: { accept: '.mp3,.wav,.m4a,.aac,.ogg,audio/*' },
+                      validation: (Rule) => Rule.required(),
+                    }),
+                    defineField({
+                      name: 'caption',
+                      title: 'Pie o nota',
+                      type: 'text',
+                      rows: 2,
+                    }),
+                  ],
+                  preview: {
+                    select: { title: 'title' },
+                    prepare(selection) {
+                      return { title: `🎧 ${selection.title || 'Audio'}` }
+                    },
+                  },
+                },
+                {
+                  type: 'object',
+                  name: 'lessonImageBlock',
+                  title: 'Imagen',
+                  fields: [
+                    defineField({
+                      name: 'title',
+                      title: 'Título del Bloque',
+                      type: 'string',
+                      validation: (Rule) => Rule.max(150),
+                    }),
+                    defineField({
+                      name: 'image',
+                      title: 'Imagen',
+                      type: 'image',
+                      options: { hotspot: true, accept: 'image/*' },
+                      validation: (Rule) => Rule.required(),
+                      fields: [
+                        { name: 'alt', type: 'string', title: 'Texto alternativo' },
+                      ],
+                    }),
+                    defineField({
+                      name: 'caption',
+                      title: 'Pie o nota',
+                      type: 'text',
+                      rows: 2,
+                    }),
+                  ],
+                  preview: {
+                    select: { title: 'title', media: 'image' },
+                    prepare(selection) {
+                      return { title: `🖼️ ${selection.title || 'Imagen'}`, media: selection.media }
+                    },
+                  },
+                },
+                {
+                  type: 'object',
+                  name: 'lessonResourceBlock',
+                  title: 'Recurso/Descarga',
+                  fields: [
+                    defineField({
+                      name: 'resource',
+                      title: 'Recurso',
+                      type: 'courseResource',
+                      validation: (Rule) => Rule.required(),
+                    }),
+                  ],
+                  preview: {
+                    select: { title: 'resource.title', resourceType: 'resource.resourceType' },
+                    prepare(selection) {
+                      return { title: `📎 ${selection.title || selection.resourceType || 'Recurso'}` }
                     },
                   },
                 },
