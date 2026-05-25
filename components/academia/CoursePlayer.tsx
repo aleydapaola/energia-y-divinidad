@@ -5,6 +5,8 @@ import { ChevronLeft, Menu, X, Award, ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+import { getCourseHref, type CourseSlug } from "@/lib/course-slug";
+
 import { CourseProgressBar } from "./CourseProgressBar";
 import { LessonList } from "./LessonList";
 import { LessonResources } from "./LessonResources";
@@ -17,6 +19,8 @@ interface Resource {
   title: string;
   resourceType: "pdf" | "audio" | "video" | "link" | "powerpoint" | "image" | "other";
   file?: { asset: { url: string } };
+  fileUrl?: string;
+  fileName?: string;
   externalUrl?: string;
   description?: string;
 }
@@ -27,6 +31,9 @@ interface Lesson {
   lessonType: "video" | "live" | "text";
   videoUrl?: string;
   videoDuration?: string;
+  liveSession?: {
+    recordingUrl?: string;
+  };
   content?: PortableTextBlock[];
   resources?: Resource[];
   completed?: boolean;
@@ -53,7 +60,7 @@ interface CoursePlayerProps {
   course: {
     _id: string;
     title: string;
-    slug: { current: string };
+    slug: CourseSlug;
     courseType: "simple" | "modular";
   };
   modules: Module[];
@@ -94,6 +101,8 @@ export function CoursePlayer({
   const currentIndex = allLessons.findIndex((l) => l._id === currentLesson._id);
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
   const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+  const currentVideoUrl = currentLesson.videoUrl || currentLesson.liveSession?.recordingUrl;
+  const courseHref = getCourseHref(course.slug);
 
   const handleVideoEnd = () => {
     if (!progress.completedLessons.includes(currentLesson._id)) {
@@ -112,7 +121,7 @@ export function CoursePlayer({
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className="min-h-screen bg-[#f8f5f2] lg:flex">
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
@@ -123,7 +132,7 @@ export function CoursePlayer({
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:relative inset-y-0 left-0 z-50 w-80 bg-white shadow-lg transform transition-transform duration-300 lg:transform-none ${
+        className={`fixed lg:sticky inset-y-0 left-0 top-0 z-50 h-screen w-[86vw] max-w-80 transform bg-white shadow-lg transition-transform duration-300 lg:w-80 lg:max-w-none lg:transform-none ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
@@ -131,7 +140,7 @@ export function CoursePlayer({
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
           <div className="flex items-center justify-between mb-4">
             <Link
-              href={`/academia/${course.slug.current}`}
+              href={courseHref}
               className="flex items-center gap-2 text-gray-600 hover:text-[#4944a4] font-dm-sans text-sm"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -169,49 +178,67 @@ export function CoursePlayer({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0">
-        {/* Top Bar (Mobile) */}
-        <div className="lg:hidden sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center gap-4 z-30">
+      <main className="min-w-0 flex-1">
+        {/* Top Bar */}
+        <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-[#e7ded7] bg-white/95 px-3 py-3 backdrop-blur lg:px-6">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 text-gray-600 hover:text-[#4944a4]"
+            className="p-2 text-gray-600 hover:text-[#4944a4] lg:hidden"
             aria-label="Abrir menú"
           >
             <Menu className="h-6 w-6" />
           </button>
-          <h2 className="font-dm-sans font-medium text-gray-900 truncate">{currentLesson.title}</h2>
+          <Link
+            href={courseHref}
+            className="hidden items-center gap-2 rounded-md px-2 py-2 font-dm-sans text-sm text-gray-600 transition-colors hover:bg-[#f8f5f2] hover:text-[#4944a4] sm:flex"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Volver al curso
+          </Link>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-dm-sans text-xs uppercase text-gray-400">{course.title}</p>
+            <h2 className="truncate font-dm-sans font-medium text-gray-900">
+              {currentLesson.title}
+            </h2>
+          </div>
         </div>
 
         {/* Video or Content */}
-        <div className="bg-black">
-          {(currentLesson.lessonType === "video" || currentLesson.lessonType === "live") &&
-          currentLesson.videoUrl ? (
-            <LessonVideo
-              key={currentLesson._id}
-              videoUrl={currentLesson.videoUrl}
-              lessonId={currentLesson._id}
-              onEnd={handleVideoEnd}
-              onProgress={(seconds, position) =>
-                onProgressUpdate(currentLesson._id, seconds, position)
-              }
-            />
-          ) : (
-            <div className="aspect-video bg-gradient-to-br from-[#654177] to-[#4944a4] flex items-center justify-center">
-              <span className="text-white/50 font-dm-sans">Contenido de texto</span>
-            </div>
-          )}
+        <div className="border-b border-[#e7ded7] bg-[#211b25] px-3 py-4 sm:px-6 lg:py-6">
+          <div className="mx-auto max-w-5xl overflow-hidden rounded-lg bg-black shadow-sm">
+            {(currentLesson.lessonType === "video" || currentLesson.lessonType === "live") &&
+            currentVideoUrl ? (
+              <LessonVideo
+                key={currentLesson._id}
+                videoUrl={currentVideoUrl}
+                lessonId={currentLesson._id}
+                onEnd={handleVideoEnd}
+                onProgress={(seconds, position) =>
+                  onProgressUpdate(currentLesson._id, seconds, position)
+                }
+              />
+            ) : (
+              <div className="flex min-h-40 items-center justify-center bg-white px-6 py-10 text-center sm:min-h-48">
+                <span className="font-dm-sans text-sm text-[#654177]/70">
+                  {currentLesson.lessonType === "text"
+                    ? "Lección de texto"
+                    : "El video de esta lección no está disponible todavía"}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Lesson Content */}
-        <div className="p-6 lg:p-8 max-w-4xl">
+        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
           {/* Lesson Title */}
-          <h1 className="font-gazeta text-2xl lg:text-3xl text-[#654177] mb-4">
+          <h1 className="mb-4 font-gazeta text-2xl text-[#654177] lg:text-3xl">
             {currentLesson.title}
           </h1>
 
           {/* Text Content */}
-          {currentLesson.lessonType === "text" && currentLesson.content && (
-            <div className="prose prose-lg max-w-none font-dm-sans mb-8">
+          {currentLesson.content && (
+            <div className="prose prose-lg mb-8 max-w-none overflow-hidden font-dm-sans prose-headings:text-[#654177] prose-a:text-[#4944a4]">
               <PortableText value={currentLesson.content} />
             </div>
           )}
@@ -237,7 +264,7 @@ export function CoursePlayer({
                   </p>
                 </div>
                 <a
-                  href={`/academia/${course.slug.current}/quiz/${currentLesson.quizId}?courseId=${course._id}&lessonId=${currentLesson._id}`}
+                  href={`${courseHref}/quiz/${currentLesson.quizId}?courseId=${course._id}&lessonId=${currentLesson._id}`}
                   className="flex items-center gap-2 bg-[#8A4BAF] hover:bg-[#7a3f9e] text-white font-dm-sans font-semibold py-2 px-4 rounded-lg transition-colors"
                 >
                   Tomar Quiz
@@ -282,7 +309,7 @@ export function CoursePlayer({
                   quizCertificateInfo.finalQuizId &&
                   !quizCertificateInfo.hasPassedFinalQuiz ? (
                   <a
-                    href={`/academia/${course.slug.current}/quiz/${quizCertificateInfo.finalQuizId}?courseId=${course._id}`}
+                    href={`${courseHref}/quiz/${quizCertificateInfo.finalQuizId}?courseId=${course._id}`}
                     className="flex items-center gap-2 bg-[#8A4BAF] hover:bg-[#7a3f9e] text-white font-dm-sans font-semibold py-2 px-4 rounded-lg transition-colors"
                   >
                     Tomar Examen

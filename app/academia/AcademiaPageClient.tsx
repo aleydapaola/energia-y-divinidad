@@ -1,40 +1,43 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from "react";
 
-import { CourseCatalog } from '@/components/academia'
-import { useCartStore } from '@/lib/stores/cart-store'
+import { CourseCatalog } from "@/components/academia";
+import { useCartStore } from "@/lib/stores/cart-store";
+
+import type { CourseSlug } from "@/lib/course-slug";
 
 interface Course {
-  _id: string
-  title: string
-  slug: { current: string }
-  shortDescription?: string
-  coverImage?: any
-  price: number
-  priceUSD: number
-  compareAtPrice?: number
-  compareAtPriceUSD?: number
-  totalDuration?: string
-  difficulty?: 'beginner' | 'intermediate' | 'advanced'
-  courseType: 'simple' | 'modular'
-  topics?: string[]
-  instructor?: string
-  featured?: boolean
+  _id: string;
+  title: string;
+  slug: CourseSlug;
+  shortDescription?: string;
+  coverImage?: any;
+  price: number;
+  priceUSD: number;
+  compareAtPrice?: number;
+  compareAtPriceUSD?: number;
+  isFree?: boolean;
+  totalDuration?: string;
+  difficulty?: "beginner" | "intermediate" | "advanced";
+  courseType: "simple" | "modular";
+  topics?: string[];
+  instructor?: string;
+  featured?: boolean;
 }
 
 interface AcademiaPageClientProps {
-  courses: Course[]
+  courses: Course[];
 }
 
 export function AcademiaPageClient({ courses }: AcademiaPageClientProps) {
-  const currency = useCartStore((state) => state.currency)
-  const setCurrency = useCartStore((state) => state.setCurrency)
-  const [mounted, setMounted] = useState(false)
+  const currency = useCartStore((state) => state.currency);
+  const setCurrency = useCartStore((state) => state.setCurrency);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   // Prevent hydration mismatch
   if (!mounted) {
@@ -47,7 +50,7 @@ export function AcademiaPageClient({ courses }: AcademiaPageClientProps) {
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -56,21 +59,17 @@ export function AcademiaPageClient({ courses }: AcademiaPageClientProps) {
       <div className="flex justify-end mb-6">
         <div className="inline-flex bg-white rounded-lg p-1 shadow-sm">
           <button
-            onClick={() => setCurrency('COP')}
+            onClick={() => setCurrency("COP")}
             className={`px-4 py-2 rounded-md font-dm-sans text-sm font-medium transition-colors ${
-              currency === 'COP'
-                ? 'bg-[#4944a4] text-white'
-                : 'text-gray-600 hover:text-[#4944a4]'
+              currency === "COP" ? "bg-[#4944a4] text-white" : "text-gray-600 hover:text-[#4944a4]"
             }`}
           >
             COP
           </button>
           <button
-            onClick={() => setCurrency('USD')}
+            onClick={() => setCurrency("USD")}
             className={`px-4 py-2 rounded-md font-dm-sans text-sm font-medium transition-colors ${
-              currency === 'USD'
-                ? 'bg-[#4944a4] text-white'
-                : 'text-gray-600 hover:text-[#4944a4]'
+              currency === "USD" ? "bg-[#4944a4] text-white" : "text-gray-600 hover:text-[#4944a4]"
             }`}
           >
             USD
@@ -80,5 +79,5 @@ export function AcademiaPageClient({ courses }: AcademiaPageClientProps) {
 
       <CourseCatalog courses={courses} currency={currency} />
     </div>
-  )
+  );
 }

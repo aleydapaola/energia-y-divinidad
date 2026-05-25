@@ -134,6 +134,7 @@ export const LEGAL_PAGE_BY_SLUG_QUERY = groq`*[
 // Usa proyecciones para compatibilidad con campos legacy y nuevos objetos
 export const COURSES_QUERY = groq`*[
   _type == "course" &&
+  !(_id in path("drafts.**")) &&
   published == true &&
   status == "active" &&
   coalesce(visibility, "public") == "public" &&
@@ -237,6 +238,7 @@ export const COURSES_BY_IDS_QUERY = groq`*[_type == "course" && _id in $ids] {
 // Cursos destacados
 export const FEATURED_COURSES_QUERY = groq`*[
   _type == "course" &&
+  !(_id in path("drafts.**")) &&
   published == true &&
   status == "active" &&
   coalesce(visibility, "public") == "public" &&
@@ -261,10 +263,13 @@ export const FEATURED_COURSES_QUERY = groq`*[
 export const LESSON_FULL_QUERY = groq`*[_type == "courseLesson" && slug.current == $slug][0] {
   ...,
   "resources": resources[] {
+    _key,
     title,
     resourceType,
+    file,
     "fileUrl": file.asset->url,
     "fileName": file.asset->originalFilename,
+    "fileSize": file.asset->size,
     externalUrl,
     description
   }
@@ -274,10 +279,13 @@ export const LESSON_FULL_QUERY = groq`*[_type == "courseLesson" && slug.current 
 export const LESSON_BY_ID_QUERY = groq`*[_type == "courseLesson" && _id == $id][0] {
   ...,
   "resources": resources[] {
+    _key,
     title,
     resourceType,
+    file,
     "fileUrl": file.asset->url,
     "fileName": file.asset->originalFilename,
+    "fileSize": file.asset->size,
     externalUrl,
     description
   }

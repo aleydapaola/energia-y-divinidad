@@ -150,6 +150,16 @@ function SessionCheckoutContent() {
     setSelectedRegion(region);
     // Wompi manual como método por defecto para ambas regiones
     setSelectedMethod("wompi_manual");
+    setAppliedDiscount(null);
+    setDiscountInput("");
+    setDiscountError(null);
+  };
+
+  const handleMethodSelect = (method: PaymentMethodType) => {
+    setSelectedMethod(method);
+    setAppliedDiscount(null);
+    setDiscountInput("");
+    setDiscountError(null);
   };
 
   const handleSubmit = async () => {
@@ -183,27 +193,19 @@ function SessionCheckoutContent() {
       let endpoint: string;
       let body: Record<string, unknown>;
 
-      const discountFields = appliedDiscount
-        ? {
-            discountCodeId: appliedDiscount.codeId,
-            discountCode: appliedDiscount.code,
-            discountAmount: appliedDiscount.discountAmount,
-          }
-        : {};
-
       if (selectedMethod === "wompi_manual") {
         endpoint = "/api/checkout/wompi-manual";
         body = {
           productType: type === "pack" ? "pack" : "session",
           productId: "session-canalizacion",
           productName: type === "pack" ? "Pack de 8 Sesiones" : "Sesión de Canalización",
-          amount: appliedDiscount ? appliedDiscount.finalAmount : PRICES[type].COP,
+          amount: PRICES[type].COP,
           currency: "COP",
+          discountCode: appliedDiscount?.code,
           guestEmail,
           guestName: guestName || undefined,
           sessionSlug: type === "single" ? "sesion-canalizacion" : undefined,
           scheduledAt,
-          ...discountFields,
         };
       } else if (selectedMethod === "breb_manual") {
         endpoint = "/api/checkout/breb";
@@ -211,11 +213,11 @@ function SessionCheckoutContent() {
           productType: type === "pack" ? "pack" : "session",
           productId: "session-canalizacion",
           productName: type === "pack" ? "Pack de 8 Sesiones" : "Sesión de Canalización",
-          amount: appliedDiscount ? appliedDiscount.finalAmount : PRICES[type].COP,
+          amount: PRICES[type].COP,
+          discountCode: appliedDiscount?.code,
           guestEmail,
           guestName: guestName || undefined,
           scheduledAt,
-          ...discountFields,
         };
       } else {
         // PayPal - always USD
@@ -224,13 +226,13 @@ function SessionCheckoutContent() {
           productType: type === "pack" ? "pack" : "session",
           productId: "session-canalizacion",
           productName: type === "pack" ? "Pack de 8 Sesiones" : "Sesión de Canalización",
-          amount: appliedDiscount ? appliedDiscount.finalAmount : PRICES[type].USD,
+          amount: PRICES[type].USD,
           currency: "USD",
+          discountCode: appliedDiscount?.code,
           guestEmail,
           guestName: guestName || undefined,
           sessionSlug: type === "single" ? "sesion-canalizacion" : undefined,
           scheduledAt,
-          ...discountFields,
         };
       }
 
@@ -493,7 +495,7 @@ function SessionCheckoutContent() {
                         <button
                           key={option.method}
                           type="button"
-                          onClick={() => setSelectedMethod(option.method)}
+                          onClick={() => handleMethodSelect(option.method)}
                           className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
                             selectedMethod === option.method
                               ? "border-[#8A4BAF] bg-[#8A4BAF]/5"

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { getCourseHref, type CourseSlug } from "@/lib/course-slug";
 import { formatPrice } from "@/lib/stores/cart-store";
 import { urlFor } from "@/sanity/lib/image";
 
@@ -12,13 +13,14 @@ interface CourseCardProps {
   course: {
     _id: string;
     title: string;
-    slug: { current: string };
+    slug: CourseSlug;
     shortDescription?: string;
     coverImage?: any;
     price: number;
     priceUSD: number;
     compareAtPrice?: number;
     compareAtPriceUSD?: number;
+    isFree?: boolean;
     totalDuration?: string;
     difficulty?: "beginner" | "intermediate" | "advanced";
     courseType: "simple" | "modular";
@@ -46,6 +48,7 @@ export function CourseCard({ course, currency = "COP", showAddToCart = true }: C
   const price = currency === "COP" ? course.price : course.priceUSD;
   const compareAtPrice = currency === "COP" ? course.compareAtPrice : course.compareAtPriceUSD;
   const hasDiscount = compareAtPrice && compareAtPrice > price;
+  const courseHref = getCourseHref(course.slug);
 
   const discountPercentage = hasDiscount
     ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100)
@@ -54,10 +57,7 @@ export function CourseCard({ course, currency = "COP", showAddToCart = true }: C
   return (
     <article className="group bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col h-full">
       {/* Image */}
-      <Link
-        href={`/academia/${course.slug.current}`}
-        className="relative block aspect-video overflow-hidden"
-      >
+      <Link href={courseHref} className="relative block aspect-video overflow-hidden">
         {course.coverImage ? (
           <Image
             src={urlFor(course.coverImage).width(640).height(360).url()}
@@ -114,7 +114,7 @@ export function CourseCard({ course, currency = "COP", showAddToCart = true }: C
         </div>
 
         {/* Title */}
-        <Link href={`/academia/${course.slug.current}`}>
+        <Link href={courseHref}>
           <h3 className="font-gazeta text-lg text-[#654177] group-hover:text-[#8A4BAF] transition-colors line-clamp-2 mb-2">
             {course.title}
           </h3>

@@ -13,8 +13,17 @@ interface CoursePageProps {
   params: Promise<{ slug: string }>;
 }
 
+function decodeSlugParam(slug: string) {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return slug;
+  }
+}
+
 export async function generateMetadata({ params }: CoursePageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = decodeSlugParam(rawSlug);
   const course = await sanityFetch<any>({
     query: COURSE_BY_SLUG_QUERY,
     params: { slug },
@@ -57,7 +66,8 @@ export async function generateStaticParams() {
 }
 
 export default async function CoursePage({ params }: CoursePageProps) {
-  const { slug } = await params;
+  const { slug: rawSlug } = await params;
+  const slug = decodeSlugParam(rawSlug);
   const session = await auth();
 
   const course = await sanityFetch<any>({

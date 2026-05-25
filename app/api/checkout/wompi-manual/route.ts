@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
+import { applyCheckoutDiscount } from "@/lib/checkout/discounts";
+import { processApprovedPayment } from "@/lib/payment-processor";
 import { prisma } from "@/lib/prisma";
 import { generateWompiReference } from "@/lib/wompi";
 
@@ -16,9 +18,14 @@ interface CheckoutBody {
   // Guest checkout fields
   guestEmail?: string;
   guestName?: string;
+  guestPhone?: string;
+
+  discountCode?: string;
 
   // Para sesiones/eventos
   scheduledAt?: string; // ISO date string para la fecha/hora de la sesión
+  seats?: number;
+  notes?: string;
 }
 
 /**
@@ -62,8 +69,19 @@ export async function POST(request: NextRequest) {
     const session = await auth();
 
     const body: CheckoutBody = await request.json();
-    const { productType, productId, productName, amount, guestEmail, guestName, scheduledAt } =
-      body;
+    const {
+      productType,
+      productId,
+      productName,
+      amount,
+      guestEmail,
+      guestName,
+      guestPhone,
+      scheduledAt,
+      seats,
+      notes,
+      discountCode,
+    } = body;
 
     console.log(
       "[CHECKOUT/WOMPI-MANUAL] Request body:",
@@ -95,13 +113,83 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "El monto debe ser mayor a 0" }, { status: 400 });
     }
 
+    let discount: Awaited<ReturnType<typeof applyCheckoutDiscount>>;
+    try {
+      discount = await applyCheckoutDiscount({
+        discountCode,
+        userId: session?.user?.id,
+        productType,
+        amount,
+        currency: "COP",
+      });
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Código de descuento inválido" },
+        { status: 400 }
+      );
+    }
+
+    const finalAmount = discount.finalAmount;
+
+    if (finalAmount === 0) {
+      const reference = generateWompiReference("FREE");
+      const order = await prisma.order.create({
+        data: {
+          userId: isAuthenticated ? session!.user!.id : undefined,
+          guestEmail: !isAuthenticated ? guestEmail : undefined,
+          guestName: !isAuthenticated ? guestName : undefined,
+          orderNumber: reference,
+          orderType: getOrderType(productType),
+          itemId: productId,
+          itemName: productName,
+          amount: 0,
+          originalAmount: discount.originalAmount,
+          discountAmount: discount.discountAmount,
+          discountCodeId: discount.discountCodeId,
+          discountCode: discount.discountCode,
+          currency: "COP",
+          paymentMethod: "FREE",
+          paymentStatus: "COMPLETED",
+          metadata: {
+            productType,
+            isGuestCheckout: !isAuthenticated,
+            customerEmail: userEmail,
+            customerName: guestName || session?.user?.name || null,
+            customerPhone: guestPhone || null,
+            scheduledAt: scheduledAt || null,
+            seats: seats || null,
+            notes: notes || null,
+            freeOrder: true,
+          },
+        },
+        include: { user: true },
+      });
+
+      const result = await processApprovedPayment(order);
+      if (!result.success) {
+        return NextResponse.json(
+          { error: result.error || "No se pudo completar la orden gratuita" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        freeOrder: true,
+        reference,
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        redirectUrl: `/pago/confirmacion?ref=${reference}`,
+      });
+    }
+
     // Obtener el link de pago de Wompi correspondiente (puede ser null si no está configurado)
-    const paymentLinkUrl = getWompiPaymentLink(amount, productType);
+    const paymentLinkUrl = getWompiPaymentLink(finalAmount, productType);
 
     if (!paymentLinkUrl) {
       console.warn(
         "[CHECKOUT/WOMPI-MANUAL] No payment link configured for amount:",
-        amount,
+        finalAmount,
         "- proceeding without link"
       );
     }
@@ -115,7 +203,10 @@ export async function POST(request: NextRequest) {
       isGuestCheckout: !isAuthenticated,
       customerEmail: userEmail,
       customerName: guestName || session?.user?.name || null,
+      customerPhone: guestPhone || null,
       scheduledAt: scheduledAt || null,
+      seats: seats || null,
+      notes: notes || null,
       paymentMethod: "wompi_manual",
       awaitingManualConfirmation: true,
       wompiPaymentLinkUrl: paymentLinkUrl,
@@ -135,7 +226,11 @@ export async function POST(request: NextRequest) {
         orderType: getOrderType(productType),
         itemId: productId,
         itemName: productName,
-        amount: amount,
+        amount: finalAmount,
+        originalAmount: discount.originalAmount,
+        discountAmount: discount.discountAmount > 0 ? discount.discountAmount : null,
+        discountCodeId: discount.discountCodeId,
+        discountCode: discount.discountCode,
         currency: "COP", // Wompi manual solo opera en COP
         paymentMethod: "WOMPI_MANUAL",
         paymentStatus: "PENDING",

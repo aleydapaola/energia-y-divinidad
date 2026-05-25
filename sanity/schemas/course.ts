@@ -1,5 +1,14 @@
 import { defineType, defineField } from 'sanity'
 
+const slugify = (input: string) =>
+  input
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 96)
+
 export default defineType({
   name: 'course',
   title: 'Cursos',
@@ -34,6 +43,7 @@ export default defineType({
       options: {
         source: 'title',
         maxLength: 96,
+        slugify,
       },
       validation: (Rule) => Rule.required(),
     }),
@@ -190,6 +200,34 @@ export default defineType({
       title: 'Precios',
       type: 'pricing',
       group: 'pricing',
+      validation: (Rule) =>
+        Rule.custom((pricing, context) => {
+          const document = context.document as {
+            published?: boolean
+            status?: string
+            visibility?: string
+            price?: number
+          }
+
+          const isCatalogCourse =
+            document?.published === true &&
+            document?.status === 'active' &&
+            (document?.visibility ?? 'public') === 'public'
+
+          if (!isCatalogCourse) {
+            return true
+          }
+
+          const price = (pricing as { price?: number; isFree?: boolean } | undefined)?.price
+          const isFree = (pricing as { isFree?: boolean } | undefined)?.isFree === true
+          const legacyPrice = document?.price
+
+          if (!isFree && !(price && price > 0) && !(legacyPrice && legacyPrice > 0)) {
+            return 'Para aparecer en Academia, marca el curso como gratuito o añade un precio mayor que 0.'
+          }
+
+          return true
+        }),
     }),
 
     // --- Campos legacy (ocultos, para compatibilidad) ---

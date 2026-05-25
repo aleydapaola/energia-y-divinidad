@@ -56,9 +56,6 @@ declare global {
   }
 }
 
-/**
- * Extract YouTube video ID from various URL formats
- */
 function extractYouTubeId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
@@ -75,6 +72,11 @@ function extractYouTubeId(url: string): string | null {
   return null;
 }
 
+function extractVimeoId(url: string): string | null {
+  const match = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  return match ? match[1] : null;
+}
+
 export function LessonVideo({
   videoUrl,
   lessonId,
@@ -84,8 +86,10 @@ export function LessonVideo({
 }: LessonVideoProps) {
   const playerRef = useRef<YTPlayer | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastNativeProgressRef = useRef(0);
 
   const videoId = extractYouTubeId(videoUrl);
+  const vimeoId = extractVimeoId(videoUrl);
 
   useEffect(() => {
     if (!videoId) {
@@ -156,10 +160,43 @@ export function LessonVideo({
     };
   }, [videoId, lessonId, initialPosition, onEnd, onProgress]);
 
+  if (vimeoId) {
+    return (
+      <div className="aspect-video bg-black">
+        <iframe
+          src={`https://player.vimeo.com/video/${vimeoId}?autoplay=0`}
+          title="Video de la lección"
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen
+          className="h-full w-full"
+        />
+      </div>
+    );
+  }
+
   if (!videoId) {
     return (
-      <div className="aspect-video bg-gray-900 flex items-center justify-center">
-        <p className="text-white/50 font-dm-sans">Video no disponible</p>
+      <div className="aspect-video bg-black">
+        <video
+          src={videoUrl}
+          controls
+          preload="metadata"
+          className="h-full w-full"
+          onTimeUpdate={(event) => {
+            const currentTime = Math.floor(event.currentTarget.currentTime);
+            if (currentTime - lastNativeProgressRef.current >= 10) {
+              lastNativeProgressRef.current = currentTime;
+              onProgress?.(currentTime, currentTime);
+            }
+          }}
+          onEnded={(event) => {
+            const currentTime = Math.floor(event.currentTarget.currentTime);
+            onProgress?.(currentTime, currentTime);
+            onEnd?.();
+          }}
+        >
+          <track kind="captions" />
+        </video>
       </div>
     );
   }

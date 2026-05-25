@@ -1,74 +1,79 @@
-'use client'
+"use client";
 
-import { Search, Filter, X } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { Search, Filter, X } from "lucide-react";
+import { useState, useMemo } from "react";
 
-import { CourseCard } from './CourseCard'
+import { CourseCard } from "./CourseCard";
+
+import type { CourseSlug } from "@/lib/course-slug";
 
 interface Course {
-  _id: string
-  title: string
-  slug: { current: string }
-  shortDescription?: string
-  coverImage?: any
-  price: number
-  priceUSD: number
-  compareAtPrice?: number
-  compareAtPriceUSD?: number
-  totalDuration?: string
-  difficulty?: 'beginner' | 'intermediate' | 'advanced'
-  courseType: 'simple' | 'modular'
-  moduleCount?: number
-  lessonCount?: number
-  featured?: boolean
-  topics?: string[]
+  _id: string;
+  title: string;
+  slug: CourseSlug;
+  shortDescription?: string;
+  coverImage?: any;
+  price: number;
+  priceUSD: number;
+  compareAtPrice?: number;
+  compareAtPriceUSD?: number;
+  isFree?: boolean;
+  totalDuration?: string;
+  difficulty?: "beginner" | "intermediate" | "advanced";
+  courseType: "simple" | "modular";
+  moduleCount?: number;
+  lessonCount?: number;
+  featured?: boolean;
+  topics?: string[];
 }
 
 interface CourseCatalogProps {
-  courses: Course[]
-  currency?: 'COP' | 'USD'
+  courses: Course[];
+  currency?: "COP" | "USD";
 }
 
 const difficultyOptions = [
-  { value: 'all', label: 'Todos los niveles' },
-  { value: 'beginner', label: 'Principiante' },
-  { value: 'intermediate', label: 'Intermedio' },
-  { value: 'advanced', label: 'Avanzado' },
-]
+  { value: "all", label: "Todos los niveles" },
+  { value: "beginner", label: "Principiante" },
+  { value: "intermediate", label: "Intermedio" },
+  { value: "advanced", label: "Avanzado" },
+];
 
-export function CourseCatalog({ courses, currency = 'COP' }: CourseCatalogProps) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [difficultyFilter, setDifficultyFilter] = useState('all')
-  const [showFilters, setShowFilters] = useState(false)
+export function CourseCatalog({ courses, currency = "COP" }: CourseCatalogProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
 
   // Extract unique topics from courses
   const allTopics = useMemo(() => {
-    const topics = new Set<string>()
+    const topics = new Set<string>();
     courses.forEach((course) => {
-      course.topics?.forEach((topic) => topics.add(topic))
-    })
-    return Array.from(topics).sort()
-  }, [courses])
+      course.topics?.forEach((topic) => topics.add(topic));
+    });
+    return Array.from(topics).sort();
+  }, [courses]);
 
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([])
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 
   // Filter courses
   const filteredCourses = useMemo(() => {
     return courses.filter((course) => {
       // Search filter
       if (searchQuery) {
-        const query = searchQuery.toLowerCase()
+        const query = searchQuery.toLowerCase();
         const matchesSearch =
           course.title.toLowerCase().includes(query) ||
           course.shortDescription?.toLowerCase().includes(query) ||
-          course.topics?.some((t) => t.toLowerCase().includes(query))
+          course.topics?.some((t) => t.toLowerCase().includes(query));
 
-        if (!matchesSearch) {return false}
+        if (!matchesSearch) {
+          return false;
+        }
       }
 
       // Difficulty filter
-      if (difficultyFilter !== 'all' && course.difficulty !== difficultyFilter) {
-        return false
+      if (difficultyFilter !== "all" && course.difficulty !== difficultyFilter) {
+        return false;
       }
 
       // Topic filter
@@ -76,38 +81,39 @@ export function CourseCatalog({ courses, currency = 'COP' }: CourseCatalogProps)
         selectedTopics.length > 0 &&
         !selectedTopics.some((topic) => course.topics?.includes(topic))
       ) {
-        return false
+        return false;
       }
 
-      return true
-    })
-  }, [courses, searchQuery, difficultyFilter, selectedTopics])
+      return true;
+    });
+  }, [courses, searchQuery, difficultyFilter, selectedTopics]);
 
   // Sort: featured first, then by displayOrder
   const sortedCourses = useMemo(() => {
     return [...filteredCourses].sort((a, b) => {
-      if (a.featured && !b.featured) {return -1}
-      if (!a.featured && b.featured) {return 1}
-      return 0
-    })
-  }, [filteredCourses])
+      if (a.featured && !b.featured) {
+        return -1;
+      }
+      if (!a.featured && b.featured) {
+        return 1;
+      }
+      return 0;
+    });
+  }, [filteredCourses]);
 
   const toggleTopic = (topic: string) => {
     setSelectedTopics((prev) =>
-      prev.includes(topic)
-        ? prev.filter((t) => t !== topic)
-        : [...prev, topic]
-    )
-  }
+      prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic]
+    );
+  };
 
   const clearFilters = () => {
-    setSearchQuery('')
-    setDifficultyFilter('all')
-    setSelectedTopics([])
-  }
+    setSearchQuery("");
+    setDifficultyFilter("all");
+    setSelectedTopics([]);
+  };
 
-  const hasActiveFilters =
-    searchQuery || difficultyFilter !== 'all' || selectedTopics.length > 0
+  const hasActiveFilters = searchQuery || difficultyFilter !== "all" || selectedTopics.length > 0;
 
   return (
     <div>
@@ -165,8 +171,8 @@ export function CourseCatalog({ courses, currency = 'COP' }: CourseCatalogProps)
                 onClick={() => toggleTopic(topic)}
                 className={`px-3 py-1.5 rounded-full text-sm font-dm-sans transition-colors ${
                   selectedTopics.includes(topic)
-                    ? 'bg-[#4944a4] text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? "bg-[#4944a4] text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
                 {topic}
@@ -184,8 +190,8 @@ export function CourseCatalog({ courses, currency = 'COP' }: CourseCatalogProps)
                 onClick={() => toggleTopic(topic)}
                 className={`px-3 py-1.5 rounded-full text-sm font-dm-sans transition-colors ${
                   selectedTopics.includes(topic)
-                    ? 'bg-[#4944a4] text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? "bg-[#4944a4] text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
                 {topic}
@@ -198,8 +204,8 @@ export function CourseCatalog({ courses, currency = 'COP' }: CourseCatalogProps)
         {hasActiveFilters && (
           <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
             <p className="text-sm text-gray-500 font-dm-sans">
-              {sortedCourses.length}{' '}
-              {sortedCourses.length === 1 ? 'curso encontrado' : 'cursos encontrados'}
+              {sortedCourses.length}{" "}
+              {sortedCourses.length === 1 ? "curso encontrado" : "cursos encontrados"}
             </p>
             <button
               onClick={clearFilters}
@@ -225,15 +231,12 @@ export function CourseCatalog({ courses, currency = 'COP' }: CourseCatalogProps)
             No se encontraron cursos con esos criterios
           </p>
           {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="text-[#4944a4] hover:underline font-dm-sans"
-            >
+            <button onClick={clearFilters} className="text-[#4944a4] hover:underline font-dm-sans">
               Limpiar filtros
             </button>
           )}
         </div>
       )}
     </div>
-  )
+  );
 }

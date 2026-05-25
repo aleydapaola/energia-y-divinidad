@@ -1,43 +1,46 @@
-import { Metadata } from 'next'
+import { Metadata } from "next";
 
-import { Footer } from '@/components/layout/Footer'
-import { Header } from '@/components/layout/Header'
-import { auth } from '@/lib/auth'
-import { sanityFetch } from '@/sanity/lib/fetch'
-import { COURSES_QUERY } from '@/sanity/lib/queries'
+import { Footer } from "@/components/layout/Footer";
+import { Header } from "@/components/layout/Header";
+import { auth } from "@/lib/auth";
+import { sanityFetch } from "@/sanity/lib/fetch";
+import { COURSES_QUERY } from "@/sanity/lib/queries";
 
-import { AcademiaPageClient } from './AcademiaPageClient'
+import { AcademiaPageClient } from "./AcademiaPageClient";
+
+import type { CourseSlug } from "@/lib/course-slug";
 
 export const metadata: Metadata = {
-  title: 'Academia | Energía y Divinidad',
+  title: "Academia | Energía y Divinidad",
   description:
-    'Cursos y formaciones de sanación, meditación y crecimiento espiritual con Aleyda. Aprende a tu ritmo con acceso de por vida.',
-}
+    "Cursos y formaciones de sanación, meditación y crecimiento espiritual con Aleyda. Aprende a tu ritmo con acceso de por vida.",
+};
 
 interface Course {
-  _id: string
-  title: string
-  slug: { current: string }
-  shortDescription?: string
-  coverImage?: any
-  price: number
-  priceUSD: number
-  compareAtPrice?: number
-  compareAtPriceUSD?: number
-  totalDuration?: string
-  difficulty?: 'beginner' | 'intermediate' | 'advanced'
-  courseType: 'simple' | 'modular'
-  topics?: string[]
-  instructor?: string
-  featured?: boolean
+  _id: string;
+  title: string;
+  slug: CourseSlug;
+  shortDescription?: string;
+  coverImage?: any;
+  price: number;
+  priceUSD: number;
+  compareAtPrice?: number;
+  compareAtPriceUSD?: number;
+  isFree?: boolean;
+  totalDuration?: string;
+  difficulty?: "beginner" | "intermediate" | "advanced";
+  courseType: "simple" | "modular";
+  topics?: string[];
+  instructor?: string;
+  featured?: boolean;
 }
 
 export default async function AcademiaPage() {
-  const session = await auth()
+  const session = await auth();
 
   const courses = await sanityFetch<Course[]>({
     query: COURSES_QUERY,
-  })
+  });
 
   return (
     <>
@@ -50,8 +53,8 @@ export default async function AcademiaPage() {
               Academia
             </h1>
             <p className="text-white/90 text-lg lg:text-xl font-dm-sans max-w-2xl mx-auto">
-              Cursos y formaciones de sanación, meditación y crecimiento espiritual.
-              Aprende a tu ritmo con acceso de por vida.
+              Cursos y formaciones de sanación, meditación y crecimiento espiritual. Aprende a tu
+              ritmo con acceso de por vida.
             </p>
           </div>
         </section>
@@ -66,9 +69,7 @@ export default async function AcademiaPage() {
                 <p className="text-gray-500 font-dm-sans text-lg mb-4">
                   Próximamente nuevos cursos disponibles
                 </p>
-                <p className="text-gray-400 font-dm-sans">
-                  Suscríbete para recibir novedades
-                </p>
+                <p className="text-gray-400 font-dm-sans">Suscríbete para recibir novedades</p>
               </div>
             )}
           </div>
@@ -76,5 +77,5 @@ export default async function AcademiaPage() {
       </main>
       <Footer />
     </>
-  )
+  );
 }

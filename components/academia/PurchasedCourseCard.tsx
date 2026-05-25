@@ -4,6 +4,7 @@ import { Play, BookOpen } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { getCoursePlayerHref, type CourseSlug } from "@/lib/course-slug";
 import { urlFor } from "@/sanity/lib/image";
 
 import { CourseProgressBar } from "./CourseProgressBar";
@@ -12,7 +13,7 @@ interface PurchasedCourseCardProps {
   course: {
     _id: string;
     title: string;
-    slug: { current: string };
+    slug: CourseSlug;
     coverImage?: any;
     lessonCount?: number;
     totalDuration?: string;
@@ -27,10 +28,11 @@ interface PurchasedCourseCardProps {
 export function PurchasedCourseCard({ course, progress }: PurchasedCourseCardProps) {
   const isCompleted = progress.completionPercentage >= 100;
   const hasStarted = progress.completionPercentage > 0;
+  const coursePlayerHref = getCoursePlayerHref(course.slug);
 
   return (
     <Link
-      href={`/academia/${course.slug.current}/reproducir`}
+      href={coursePlayerHref}
       className="group bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col"
     >
       {/* Image */}

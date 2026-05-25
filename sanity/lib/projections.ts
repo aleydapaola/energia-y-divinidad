@@ -32,8 +32,8 @@ export const seoProjection = `
  * Prioriza campos del nuevo objeto, fallback a legacy
  */
 export const pricingProjection = `
-  "price": coalesce(pricing.price, price),
-  "priceUSD": coalesce(pricing.priceUSD, priceUSD),
+  "price": select(coalesce(pricing.isFree, false) => 0, coalesce(pricing.price, price)),
+  "priceUSD": select(coalesce(pricing.isFree, false) => 0, coalesce(pricing.priceUSD, priceUSD)),
   "compareAtPrice": coalesce(pricing.compareAtPrice, compareAtPrice),
   "compareAtPriceUSD": coalesce(pricing.compareAtPriceUSD, compareAtPriceUSD),
   "memberDiscount": coalesce(pricing.memberDiscount, memberDiscount, 0),
@@ -317,8 +317,10 @@ export const videoEmbedProjection = `
  */
 export const resourcesProjection = `
   "resources": resources[] {
+    _key,
     title,
     resourceType,
+    file,
     "fileUrl": file.asset->url,
     "fileName": file.asset->originalFilename,
     "fileSize": file.asset->size,

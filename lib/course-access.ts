@@ -124,12 +124,24 @@ export async function canAccessCourse(
     }
   }
 
-  // 3. Check if course is free (price = 0)
-  const coursePrice = await client.fetch(`*[_type == "course" && _id == $id][0] { price }`, {
-    id: courseId,
-  });
+  // 3. Check if course is free and publicly available
+  const courseAccess = await client.fetch(
+    `*[_type == "course" && _id == $id][0] {
+      published,
+      status,
+      "visibility": coalesce(visibility, "public"),
+      "isFree": coalesce(pricing.isFree, false),
+      "price": coalesce(pricing.price, price)
+    }`,
+    { id: courseId }
+  );
 
-  if (coursePrice?.price === 0) {
+  if (
+    courseAccess?.published === true &&
+    courseAccess?.status === "active" &&
+    courseAccess?.visibility === "public" &&
+    (courseAccess?.isFree === true || courseAccess?.price === 0)
+  ) {
     return { hasAccess: true, reason: "free" };
   }
 

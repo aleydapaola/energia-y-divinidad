@@ -3,11 +3,21 @@
 import { Play, Users, Shield, Clock, Lock } from "lucide-react";
 import Link from "next/link";
 
+import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { getCoursePlayerHref, type CourseSlug } from "@/lib/course-slug";
+import { formatPrice } from "@/lib/stores/cart-store";
+
 interface CourseSidebarProps {
   course: {
     _id: string;
     title: string;
-    slug: { current: string };
+    slug: CourseSlug;
+    price: number;
+    priceUSD: number;
+    compareAtPrice?: number;
+    compareAtPriceUSD?: number;
+    isFree?: boolean;
+    visibility?: "public" | "private";
     totalDuration?: string;
     lessonCount?: number;
     includedInMembership?: boolean;
@@ -20,9 +30,15 @@ interface CourseSidebarProps {
 
 export function CourseSidebar({
   course,
+  currency = "COP",
   hasAccess = false,
   hasMembership = false,
 }: CourseSidebarProps) {
+  const coursePlayerHref = getCoursePlayerHref(course.slug);
+  const isPrivate = course.visibility === "private";
+  const price = currency === "COP" ? course.price : course.priceUSD;
+  const isFree = course.isFree === true || (price || 0) === 0;
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-6 sticky top-24">
       {/* Price */}
@@ -42,6 +58,15 @@ export function CourseSidebar({
               Accede directamente con tu membresía activa
             </p>
           </div>
+        ) : !isPrivate ? (
+          <div className="space-y-1">
+            <p className="font-gazeta text-3xl text-[#4944a4]">
+              {isFree ? "Gratis" : formatPrice(price, currency)}
+            </p>
+            <p className="text-sm text-gray-500 font-dm-sans">
+              {isFree ? "Añádelo a tu cuenta por 0 COP" : "Acceso de por vida al comprar"}
+            </p>
+          </div>
         ) : (
           <div className="flex items-center gap-2 text-gray-500 font-dm-sans">
             <Lock className="h-5 w-5" />
@@ -53,12 +78,14 @@ export function CourseSidebar({
       {/* CTA */}
       {hasAccess || (hasMembership && course.includedInMembership) ? (
         <Link
-          href={`/academia/${course.slug.current}/reproducir`}
+          href={coursePlayerHref}
           className="w-full flex items-center justify-center gap-2 bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors"
         >
           <Play className="h-5 w-5" />
           Acceder al Curso
         </Link>
+      ) : !isPrivate ? (
+        <AddToCartButton course={course} variant="primary" className="w-full" />
       ) : (
         <div className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-500 font-dm-sans font-semibold py-3 px-6 rounded-lg cursor-not-allowed">
           <Lock className="h-5 w-5" />

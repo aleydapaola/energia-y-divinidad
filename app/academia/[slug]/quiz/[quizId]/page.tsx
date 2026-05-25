@@ -1,69 +1,82 @@
-import { ChevronLeft, CheckCircle } from 'lucide-react'
-import Link from 'next/link'
-import { redirect, notFound } from 'next/navigation'
+import { ChevronLeft, CheckCircle } from "lucide-react";
+import Link from "next/link";
+import { redirect, notFound } from "next/navigation";
 
-import { auth } from '@/lib/auth'
-import { hasCertificate, canIssueCertificate } from '@/lib/certificates'
-import { canAccessCourse } from '@/lib/course-access'
-import { getQuizForAttempt, canTakeQuiz, hasPassedQuiz } from '@/lib/quizzes'
-import { client } from '@/sanity/lib/client'
+import { auth } from "@/lib/auth";
+import { hasCertificate, canIssueCertificate } from "@/lib/certificates";
+import { canAccessCourse } from "@/lib/course-access";
+import { getQuizForAttempt, canTakeQuiz, hasPassedQuiz } from "@/lib/quizzes";
+import { client } from "@/sanity/lib/client";
 
-import { QuizPageClient } from './QuizPageClient'
+import { QuizPageClient } from "./QuizPageClient";
 
 interface QuizPageProps {
   params: Promise<{
-    slug: string
-    quizId: string
-  }>
+    slug: string;
+    quizId: string;
+  }>;
   searchParams: Promise<{
-    courseId?: string
-    lessonId?: string
-  }>
+    courseId?: string;
+    lessonId?: string;
+  }>;
+}
+
+function decodeSlugParam(slug: string) {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return slug;
+  }
 }
 
 export default async function QuizPage({ params, searchParams }: QuizPageProps) {
-  const session = await auth()
-  const { slug, quizId } = await params
-  const { courseId, lessonId } = await searchParams
+  const session = await auth();
+  const { slug: rawSlug, quizId } = await params;
+  const slug = decodeSlugParam(rawSlug);
+  const encodedSlug = encodeURIComponent(slug);
+  const { courseId, lessonId } = await searchParams;
 
   // Require authentication
   if (!session?.user?.id) {
-    redirect(`/auth/signin?callbackUrl=/academia/${slug}/quiz/${quizId}?courseId=${courseId}`)
+    redirect(
+      `/auth/signin?callbackUrl=/academia/${encodedSlug}/quiz/${quizId}?courseId=${courseId}`
+    );
   }
 
   // Get course ID if not provided
-  let resolvedCourseId = courseId
+  let resolvedCourseId = courseId;
   if (!resolvedCourseId) {
-    const course = await client.fetch(
-      `*[_type == "course" && slug.current == $slug][0] { _id }`,
-      { slug }
-    )
-    if (!course) {notFound()}
-    resolvedCourseId = course._id
+    const course = await client.fetch(`*[_type == "course" && slug.current == $slug][0] { _id }`, {
+      slug,
+    });
+    if (!course) {
+      notFound();
+    }
+    resolvedCourseId = course._id;
   }
 
   // Ensure resolvedCourseId is defined
   if (!resolvedCourseId) {
-    notFound()
+    notFound();
   }
 
   // Verify course access
-  const accessResult = await canAccessCourse(session.user.id, resolvedCourseId)
+  const accessResult = await canAccessCourse(session.user.id, resolvedCourseId);
   if (!accessResult.hasAccess) {
-    redirect(`/academia/${slug}?error=no_access`)
+    redirect(`/academia/${encodedSlug}?error=no_access`);
   }
 
   // Get quiz data
-  const quiz = await getQuizForAttempt(quizId)
+  const quiz = await getQuizForAttempt(quizId);
   if (!quiz) {
-    notFound()
+    notFound();
   }
 
   // Check if user can take the quiz
-  const canTake = await canTakeQuiz(session.user.id, quizId)
+  const canTake = await canTakeQuiz(session.user.id, quizId);
 
   // Check if user already passed
-  const hasPassed = await hasPassedQuiz(session.user.id, quizId)
+  const hasPassed = await hasPassedQuiz(session.user.id, quizId);
 
   // Check if this is a final quiz and if user can get certificate
   const course = await client.fetch(
@@ -75,20 +88,19 @@ export default async function QuizPage({ params, searchParams }: QuizPageProps) 
       "hasCertificate": defined(certificate)
     }`,
     { id: resolvedCourseId }
-  )
+  );
 
-  const isFinalQuiz = course?.finalQuizId === quizId
+  const isFinalQuiz = course?.finalQuizId === quizId;
 
   // Check certificate eligibility if this is the final quiz
-  let showCertificateCTA = false
-  let existingCertificate = null
+  let showCertificateCTA = false;
   if (isFinalQuiz && course?.hasCertificate) {
-    const certStatus = await hasCertificate(session.user.id, resolvedCourseId)
-    existingCertificate = certStatus.has ? certStatus : null
+    const certStatus = await hasCertificate(session.user.id, resolvedCourseId);
 
     if (!certStatus.has) {
-      const eligibility = await canIssueCertificate(session.user.id, resolvedCourseId)
-      showCertificateCTA = eligibility.canIssue || (hasPassed && eligibility.reason === 'already_issued')
+      const eligibility = await canIssueCertificate(session.user.id, resolvedCourseId);
+      showCertificateCTA =
+        eligibility.canIssue || (hasPassed && eligibility.reason === "already_issued");
     }
   }
 
@@ -107,9 +119,7 @@ export default async function QuizPage({ params, searchParams }: QuizPageProps) 
 
           <div className="bg-white rounded-xl shadow-sm border border-green-200 p-8 text-center">
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h1 className="font-gazeta text-2xl text-green-700 mb-2">
-              Ya aprobaste este quiz
-            </h1>
+            <h1 className="font-gazeta text-2xl text-green-700 mb-2">Ya aprobaste este quiz</h1>
             <p className="font-dm-sans text-gray-600 mb-6">
               Has completado este quiz exitosamente.
               {canTake.maxAttempts && (
@@ -139,14 +149,14 @@ export default async function QuizPage({ params, searchParams }: QuizPageProps) 
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-4xl mx-auto px-4">
         <Link
-          href={`/academia/${course?.slug || slug}/reproducir${lessonId ? `?lesson=${lessonId}` : ''}`}
+          href={`/academia/${course?.slug || slug}/reproducir${lessonId ? `?lesson=${lessonId}` : ""}`}
           className="inline-flex items-center gap-2 text-gray-600 hover:text-[#4944a4] font-dm-sans text-sm mb-8"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -167,5 +177,5 @@ export default async function QuizPage({ params, searchParams }: QuizPageProps) 
         />
       </div>
     </div>
-  )
+  );
 }

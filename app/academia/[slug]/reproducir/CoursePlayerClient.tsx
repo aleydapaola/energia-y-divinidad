@@ -4,12 +4,17 @@ import { useState, useEffect, useCallback } from "react";
 
 import { CoursePlayer } from "@/components/academia";
 
+import type { CourseSlug } from "@/lib/course-slug";
+
 interface Lesson {
   _id: string;
   title: string;
   lessonType: "video" | "live" | "text";
   videoUrl?: string;
   videoDuration?: string;
+  liveSession?: {
+    recordingUrl?: string;
+  };
   content?: any;
   resources?: any[];
 }
@@ -25,7 +30,7 @@ interface CoursePlayerClientProps {
   course: {
     _id: string;
     title: string;
-    slug: { current: string };
+    slug: CourseSlug;
     courseType: "simple" | "modular";
     dripEnabled?: boolean;
     defaultDripDays?: number;

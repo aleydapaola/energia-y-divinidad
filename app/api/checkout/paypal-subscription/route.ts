@@ -13,6 +13,7 @@ interface PayPalSubscriptionBody {
   amount: number;
   currency: "USD" | "EUR";
   billingInterval: "monthly" | "yearly";
+  discountCode?: string;
   guestEmail?: string;
   guestName?: string;
 }
@@ -38,8 +39,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body: PayPalSubscriptionBody = await request.json();
-    const { productId, productSlug, productName, amount, currency, billingInterval, guestName } =
-      body;
+    const {
+      productId,
+      productSlug,
+      productName,
+      amount,
+      currency,
+      billingInterval,
+      discountCode,
+      guestName,
+    } = body;
 
     if (!productId || !productName || !amount || !billingInterval) {
       return NextResponse.json({ error: "Faltan parámetros requeridos" }, { status: 400 });
@@ -48,6 +57,16 @@ export async function POST(request: NextRequest) {
     if (!["USD", "EUR"].includes(currency)) {
       return NextResponse.json(
         { error: "PayPal está disponible solo para pagos internacionales en USD o EUR" },
+        { status: 400 }
+      );
+    }
+
+    if (discountCode?.trim()) {
+      return NextResponse.json(
+        {
+          error:
+            "Los cupones de membresía no están disponibles con PayPal recurrente. Para aplicar un descuento, elige pago con tarjeta.",
+        },
         { status: 400 }
       );
     }

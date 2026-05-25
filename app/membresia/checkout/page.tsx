@@ -11,6 +11,8 @@ import {
   ArrowLeft,
   Shield,
   Check,
+  Tag,
+  XCircle,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -78,6 +80,15 @@ function CheckoutContent() {
   const [conversion, setConversion] = useState<CurrencyConversion | null>(null);
   const [conversionLoading, setConversionLoading] = useState(false);
   const [conversionError, setConversionError] = useState<string | null>(null);
+  const [discountInput, setDiscountInput] = useState("");
+  const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    code: string;
+    discountAmount: number;
+    finalAmount: number;
+    formattedDiscount: string;
+  } | null>(null);
 
   // Payment method options - Solo métodos con pago recurrente automático
   const colombiaOptions: PaymentOption[] = [
@@ -316,10 +327,66 @@ function CheckoutContent() {
     setSelectedRegion(region);
     setShowCardForm(false);
     setError(null);
+    setAppliedDiscount(null);
+    setDiscountInput("");
+    setDiscountError(null);
     if (region === "colombia") {
       setSelectedMethod("wompi_card");
     } else {
       setSelectedMethod("wompi_card");
+    }
+  };
+
+  const getDiscountBaseAmountCOP = () => {
+    if (selectedRegion === "international") {
+      return conversion?.convertedAmount || 0;
+    }
+    return priceCOP || 0;
+  };
+
+  const handleApplyDiscount = async () => {
+    const amountCOP = getDiscountBaseAmountCOP();
+    if (!discountInput.trim() || !selectedRegion || selectedMethod !== "wompi_card" || !amountCOP) {
+      return;
+    }
+
+    setIsValidatingDiscount(true);
+    setDiscountError(null);
+    setAppliedDiscount(null);
+
+    try {
+      const response = await fetch("/api/discount-codes/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: discountInput.trim(),
+          productType: "membership",
+          amount: Math.round(amountCOP),
+          currency: "COP",
+        }),
+      });
+      const data = await response.json();
+
+      if (!data.valid) {
+        setDiscountError(data.error || "Código inválido");
+        return;
+      }
+
+      if (data.finalAmount <= 0) {
+        setDiscountError("El cupón no puede dejar una membresía recurrente en $0");
+        return;
+      }
+
+      setAppliedDiscount({
+        code: data.discountCode,
+        discountAmount: data.discountAmount,
+        finalAmount: data.finalAmount,
+        formattedDiscount: data.formattedDiscount,
+      });
+    } catch {
+      setDiscountError("Error al validar el código");
+    } finally {
+      setIsValidatingDiscount(false);
     }
   };
 
@@ -455,6 +522,7 @@ function CheckoutContent() {
           displayAmount,
           displayCurrency,
           exchangeRate: conversion?.rate,
+          discountCode: appliedDiscount?.code,
           cardToken: cardData.cardToken,
           acceptanceToken: cardData.acceptanceToken,
           cardLastFour: cardData.lastFour,
@@ -694,9 +762,21 @@ function CheckoutContent() {
                     <p className="font-dm-sans text-sm text-gray-600 mt-2">
                       Primer mes gratis. Luego{" "}
                       <span className="font-semibold text-[#654177]">
-                        {formatPrice(displayPrice || 0, displayCurrency)}/{billingUnit}
+                        {formatPrice(
+                          selectedRegion === "colombia" && appliedDiscount
+                            ? appliedDiscount.finalAmount
+                            : displayPrice || 0,
+                          displayCurrency
+                        )}
+                        /{billingUnit}
                       </span>
                     </p>
+                    {appliedDiscount && selectedMethod === "wompi_card" && (
+                      <p className="font-dm-sans text-sm text-green-600 mt-2">
+                        Cupón {appliedDiscount.code}: -{appliedDiscount.formattedDiscount} sobre el
+                        cobro recurrente en COP.
+                      </p>
+                    )}
                     {selectedRegion === "international" && selectedMethod === "wompi_card" && (
                       <div className="mt-3 rounded-xl bg-[#f8f0f5] p-3">
                         <p className="font-dm-sans text-xs text-gray-600">
@@ -705,7 +785,10 @@ function CheckoutContent() {
                             {conversionLoading
                               ? "calculando..."
                               : conversion
-                                ? `${formatPrice(conversion.convertedAmount, "COP")}/${billingUnit}`
+                                ? `${formatPrice(
+                                    appliedDiscount?.finalAmount ?? conversion.convertedAmount,
+                                    "COP"
+                                  )}/${billingUnit}`
                                 : "no disponible"}
                           </span>
                         </p>
@@ -825,7 +908,12 @@ function CheckoutContent() {
                             <button
                               key={option.method}
                               type="button"
-                              onClick={() => setSelectedMethod(option.method)}
+                              onClick={() => {
+                                setSelectedMethod(option.method);
+                                setAppliedDiscount(null);
+                                setDiscountInput("");
+                                setDiscountError(null);
+                              }}
                               className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
                                 selectedMethod === option.method
                                   ? "border-[#8A4BAF] bg-[#8A4BAF]/5"
@@ -877,6 +965,92 @@ function CheckoutContent() {
                                   : conversionError || "Conversión no disponible"}
                             </p>
                           </div>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedMethod && (
+                      <div className="mb-6">
+                        <p className="font-dm-sans text-sm text-gray-600 mb-3">
+                          Código de descuento
+                        </p>
+                        {selectedMethod === "paypal_direct" || selectedMethod === "paypal_card" ? (
+                          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                            <p className="font-dm-sans text-sm text-amber-700">
+                              Los descuentos para membresía recurrente solo se pueden aplicar si
+                              eliges pago con tarjeta. No están disponibles con PayPal.
+                            </p>
+                          </div>
+                        ) : appliedDiscount ? (
+                          <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-xl">
+                            <div className="flex items-center gap-2">
+                              <Check className="w-5 h-5 text-green-600 flex-shrink-0" />
+                              <span className="font-dm-sans text-sm font-semibold text-green-700">
+                                {appliedDiscount.code}
+                              </span>
+                              <span className="font-dm-sans text-sm text-green-600">
+                                -{appliedDiscount.formattedDiscount}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAppliedDiscount(null);
+                                setDiscountInput("");
+                                setDiscountError(null);
+                              }}
+                              className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              <XCircle className="w-5 h-5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <div className="relative flex-1">
+                              <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                              <input
+                                type="text"
+                                value={discountInput}
+                                onChange={(e) => {
+                                  setDiscountInput(e.target.value.toUpperCase());
+                                  setDiscountError(null);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleApplyDiscount();
+                                  }
+                                }}
+                                placeholder="CÓDIGO"
+                                className="w-full pl-9 pr-4 py-3 rounded-xl border-2 border-gray-200 font-dm-sans text-sm focus:border-[#8A4BAF] focus:outline-none"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleApplyDiscount}
+                              disabled={
+                                !discountInput.trim() ||
+                                isValidatingDiscount ||
+                                (selectedRegion === "international" &&
+                                  (conversionLoading || !!conversionError || !conversion))
+                              }
+                              className="px-4 py-3 rounded-xl border-2 border-[#4944a4] text-[#4944a4] font-dm-sans text-sm font-semibold hover:bg-[#4944a4] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isValidatingDiscount ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                "Aplicar"
+                              )}
+                            </button>
+                          </div>
+                        )}
+                        {discountError && (
+                          <p className="mt-2 font-dm-sans text-sm text-red-500">{discountError}</p>
+                        )}
+                        {appliedDiscount && selectedMethod === "wompi_card" && (
+                          <p className="mt-2 font-dm-sans text-xs text-gray-500">
+                            Se aplicará al cobro recurrente procesado por Wompi.
+                          </p>
                         )}
                       </div>
                     )}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
+import { applyCheckoutDiscount } from "@/lib/checkout/discounts";
 import { convertInternationalToCOP, type InternationalCurrency } from "@/lib/currency-conversion";
 import { processApprovedPayment } from "@/lib/payment-processor";
 import { prisma } from "@/lib/prisma";
@@ -17,6 +18,7 @@ interface WompiRecurringBody {
   displayAmount?: number;
   displayCurrency?: "COP" | InternationalCurrency;
   exchangeRate?: number;
+  discountCode?: string;
 
   // Token de tarjeta (obtenido client-side por WompiCardForm)
   cardToken: string;
@@ -59,6 +61,7 @@ export async function POST(request: NextRequest) {
       displayAmount,
       displayCurrency = "COP",
       exchangeRate,
+      discountCode,
       cardToken,
       acceptanceToken,
       cardLastFour,
@@ -106,6 +109,29 @@ export async function POST(request: NextRequest) {
         displayCurrency,
       });
       return NextResponse.json({ error: "Monto de membresía inválido" }, { status: 400 });
+    }
+
+    let discount: Awaited<ReturnType<typeof applyCheckoutDiscount>>;
+    try {
+      discount = await applyCheckoutDiscount({
+        discountCode,
+        userId,
+        productType: "membership",
+        amount: Math.round(expectedAmount),
+        currency: "COP",
+      });
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Código de descuento inválido" },
+        { status: 400 }
+      );
+    }
+
+    if (discount.finalAmount <= 0) {
+      return NextResponse.json(
+        { error: "El cupón no puede dejar una membresía recurrente en $0" },
+        { status: 400 }
+      );
     }
 
     // Verificar si ya tiene suscripción activa con este plan
@@ -165,11 +191,12 @@ export async function POST(request: NextRequest) {
         metadata: {
           productType: "membership",
           billingInterval,
-          recurringAmount: amount,
+          recurringAmount: discount.finalAmount,
           displayAmount: displayAmount ?? expectedPrice.amount,
           displayCurrency,
           exchangeRate,
-          chargedAmountCOP: amount,
+          chargedAmountCOP: discount.finalAmount,
+          originalRecurringAmount: Math.round(expectedAmount),
           freeTrial: true,
           trialEndsAt: trialEndsAt.toISOString(),
           isGuestCheckout: false,
@@ -180,6 +207,10 @@ export async function POST(request: NextRequest) {
           wompiCardBrand: cardBrand,
           wompiStatus: "TRIAL_STARTED",
         },
+        originalAmount: discount.originalAmount,
+        discountAmount: discount.discountAmount > 0 ? discount.discountAmount : null,
+        discountCodeId: discount.discountCodeId,
+        discountCode: discount.discountCode,
       },
     });
 

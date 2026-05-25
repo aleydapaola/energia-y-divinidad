@@ -3,7 +3,7 @@
  * Servicio centralizado para procesar checkouts
  */
 
-import { validateDiscountCode, calculateDiscount } from "@/lib/discount-codes";
+import { applyCheckoutDiscount } from "@/lib/checkout/discounts";
 import { generateOrderNumber, type OrderPrefix } from "@/lib/order-utils";
 import {
   getGatewayForPayment,
@@ -136,28 +136,40 @@ export async function processCheckout(options: CheckoutOptions): Promise<Checkou
     let finalAmount = data.amount;
     let discountInfo: { id: string; code: string; amount: number } | null = null;
 
-    if (data.discountCode && userId) {
-      const discountResult = await validateDiscountCode({
-        code: data.discountCode,
-        userId,
-        productType: data.productType === "COURSE" ? "course" : "session",
-        courseIds: data.productType === "COURSE" ? [data.productId] : [],
-        amount: data.amount,
-        currency: data.currency as "COP" | "USD",
-      });
+    if (data.discountCode) {
+      const productTypeMap = {
+        SESSION: "session",
+        EVENT: "event",
+        MEMBERSHIP: "membership",
+        COURSE: "course",
+        PRODUCT: "course",
+        PREMIUM_CONTENT: "course",
+      } as const;
 
-      if (discountResult.valid && discountResult.discountCode) {
-        const discountAmount = calculateDiscount(
-          data.amount,
-          discountResult.discountCode.discountType,
-          discountResult.discountCode.discountValue
-        );
-        discountInfo = {
-          id: discountResult.discountCode._id,
-          code: data.discountCode.toUpperCase(),
-          amount: discountAmount,
+      try {
+        const discount = await applyCheckoutDiscount({
+          discountCode: data.discountCode,
+          userId,
+          productType: productTypeMap[data.productType],
+          courseIds: data.productType === "COURSE" ? [data.productId] : [],
+          amount: data.amount,
+          currency: data.currency as "COP" | "USD",
+        });
+
+        discountInfo = discount.discountCodeId
+          ? {
+              id: discount.discountCodeId,
+              code: discount.discountCode || data.discountCode.toUpperCase(),
+              amount: discount.discountAmount,
+            }
+          : null;
+        finalAmount = discount.finalAmount;
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Código de descuento inválido",
+          errorCode: "DISCOUNT_INVALID",
         };
-        finalAmount = Math.max(0, data.amount - discountAmount);
       }
     }
 

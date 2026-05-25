@@ -1,5 +1,14 @@
 import { defineType, defineField } from 'sanity'
 
+const slugify = (input: string) =>
+  input
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 96)
+
 export default defineType({
   name: 'courseLesson',
   title: 'Lecciones de Curso',
@@ -32,6 +41,7 @@ export default defineType({
       options: {
         source: 'title',
         maxLength: 96,
+        slugify,
       },
       validation: (Rule) => Rule.required(),
     }),
