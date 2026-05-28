@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  Calendar,
-  Clock,
-  Video,
-  Heart,
-  Sparkles,
-  MessageCircle,
-  Ticket,
-  CheckCircle,
-  Loader2,
-} from "lucide-react";
+import { Calendar, Clock, Video, Heart, Sparkles, MessageCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -56,15 +46,6 @@ interface SesionesPageClientProps {
   timezoneNote: string;
 }
 
-interface ValidatedPack {
-  id: string;
-  code: string;
-  packName: string;
-  sessionsTotal: number;
-  sessionsUsed: number;
-  sessionsRemaining: number;
-}
-
 export function SesionesPageClient({
   session,
   sessionDetails,
@@ -76,15 +57,6 @@ export function SesionesPageClient({
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  // Pack code redemption state
-  const [showPackCodeModal, setShowPackCodeModal] = useState(false);
-  const [packCode, setPackCode] = useState("");
-  const [validatedPack, setValidatedPack] = useState<ValidatedPack | null>(null);
-  const [isValidatingCode, setIsValidatingCode] = useState(false);
-  const [isRedeemingSession, setIsRedeemingSession] = useState(false);
 
   const handlePaymentClick = (type: "single" | "pack") => {
     // Build checkout URL with booking data
@@ -98,88 +70,6 @@ export function SesionesPageClient({
 
     // Redirect to dedicated checkout page
     router.push(`/checkout/sesion?${params.toString()}`);
-  };
-
-  // Validate pack code
-  const handleValidatePackCode = async () => {
-    if (!packCode.trim()) {
-      setError("Por favor ingresa tu codigo de pack");
-      return;
-    }
-
-    setIsValidatingCode(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/sessions/validate-pack-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: packCode }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Codigo invalido");
-      }
-
-      if (data.valid) {
-        setValidatedPack(data.packCode);
-      } else {
-        throw new Error(data.error || "Codigo invalido");
-      }
-    } catch (err: any) {
-      setError(err.message || "Error al validar el codigo");
-      setValidatedPack(null);
-    } finally {
-      setIsValidatingCode(false);
-    }
-  };
-
-  // Redeem session from pack
-  const handleRedeemSession = async () => {
-    if (!validatedPack || !selectedDate || !selectedTime) {
-      setError("Selecciona una fecha y hora para tu sesion");
-      return;
-    }
-
-    setIsRedeemingSession(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/sessions/redeem-pack", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          packCodeId: validatedPack.id,
-          date: selectedDate.toISOString().split("T")[0],
-          time: selectedTime,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Error al reservar la sesion");
-      }
-
-      // Success!
-      setSuccessMessage(data.message || "Sesion reservada exitosamente");
-      setShowPackCodeModal(false);
-      setValidatedPack(null);
-      setPackCode("");
-      setSelectedDate(null);
-      setSelectedTime(null);
-
-      // Redirect to confirmation or dashboard after a delay
-      setTimeout(() => {
-        router.push("/dashboard/sesiones");
-      }, 3000);
-    } catch (err: any) {
-      setError(err.message || "Error al reservar la sesion");
-    } finally {
-      setIsRedeemingSession(false);
-    }
   };
 
   return (
@@ -295,29 +185,6 @@ export function SesionesPageClient({
                       ${sessionDetails.priceUSD} USD | {sessionDetails.priceEUR} EUR
                     </p>
                   </div>
-                </div>
-
-                {/* Pack de 8 Sesiones - oculto temporalmente */}
-
-                {/* Redeem Pack Code Card */}
-                <div className="bg-white rounded-2xl p-6 md:p-8 shadow-lg border-2 border-dashed border-[#8A4BAF]/30">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-[#8A4BAF]/10 rounded-full flex items-center justify-center">
-                      <Ticket className="w-5 h-5 text-[#8A4BAF]" />
-                    </div>
-                    <h3 className="font-gazeta text-xl text-[#8A4BAF]">
-                      ¿Tienes un código de descuento?
-                    </h3>
-                  </div>
-                  <p className="font-dm-sans text-sm text-gray-600 mb-4">
-                    Aplícalo acá y obtén tu descuento al reservar tu sesión.
-                  </p>
-                  <button
-                    onClick={() => setShowPackCodeModal(true)}
-                    className="w-full border-2 border-[#8A4BAF] text-[#8A4BAF] py-3 rounded-lg font-dm-sans font-semibold hover:bg-[#8A4BAF]/5 transition-colors"
-                  >
-                    Aplicar Código
-                  </button>
                 </div>
               </div>
 
@@ -538,166 +405,6 @@ export function SesionesPageClient({
           </div>
         </section>
       </div>
-
-      {/* Pack Code Redemption Modal */}
-      {showPackCodeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="p-6 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#8A4BAF]/10 rounded-full flex items-center justify-center">
-                  <Ticket className="w-5 h-5 text-[#8A4BAF]" />
-                </div>
-                <h2 className="font-gazeta text-2xl text-[#8A4BAF]">Aplicar Código de Descuento</h2>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="p-6">
-              {!validatedPack ? (
-                // Code input step
-                <div>
-                  <label className="block font-dm-sans text-sm text-gray-600 mb-2">
-                    Ingresa tu código de descuento
-                  </label>
-                  <input
-                    type="text"
-                    value={packCode}
-                    onChange={(e) => setPackCode(e.target.value.toUpperCase())}
-                    placeholder="PACK-XXXXXX"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg font-dm-sans text-center text-lg tracking-wider focus:outline-none focus:border-[#8A4BAF] focus:ring-2 focus:ring-[#8A4BAF]/20"
-                  />
-                  <p className="text-xs text-gray-500 mt-2 font-dm-sans">
-                    El código fue enviado a tu email al comprar tu pack de sesiones
-                  </p>
-                </div>
-              ) : (
-                // Validated pack info
-                <div>
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                      <span className="font-dm-sans font-semibold text-green-800">
-                        Codigo valido
-                      </span>
-                    </div>
-                    <p className="font-dm-sans text-sm text-green-700">{validatedPack.packName}</p>
-                    <p className="font-dm-sans text-sm text-green-600 mt-1">
-                      Sesiones disponibles: <strong>{validatedPack.sessionsRemaining}</strong> de{" "}
-                      {validatedPack.sessionsTotal}
-                    </p>
-                  </div>
-
-                  <div className="border-t border-gray-100 pt-4">
-                    <p className="font-dm-sans text-sm text-gray-600 mb-4">
-                      Selecciona una fecha y hora en el calendario y luego confirma tu reserva.
-                    </p>
-
-                    {selectedDate && selectedTime ? (
-                      <div className="bg-[#f8f0f5] rounded-xl p-4 mb-4">
-                        <p className="font-dm-sans text-sm text-gray-600">Tu sesion:</p>
-                        <p className="font-gazeta text-lg text-[#8A4BAF]">
-                          {selectedDate.toLocaleDateString("es-CO", {
-                            weekday: "long",
-                            day: "numeric",
-                            month: "long",
-                          })}{" "}
-                          a las {selectedTime}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-amber-600 text-sm font-dm-sans mb-4">
-                        Selecciona una fecha y hora en el calendario
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="p-6 border-t border-gray-100 space-y-3">
-              {!validatedPack ? (
-                <button
-                  onClick={handleValidatePackCode}
-                  disabled={isValidatingCode || !packCode.trim()}
-                  className={`w-full py-4 rounded-xl font-dm-sans font-semibold text-lg transition-colors ${
-                    isValidatingCode || !packCode.trim()
-                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                      : "bg-[#4944a4] text-white hover:bg-[#3d3a8a]"
-                  }`}
-                >
-                  {isValidatingCode ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Validando...
-                    </span>
-                  ) : (
-                    "Validar Codigo"
-                  )}
-                </button>
-              ) : (
-                <button
-                  onClick={handleRedeemSession}
-                  disabled={isRedeemingSession || !selectedDate || !selectedTime}
-                  className={`w-full py-4 rounded-xl font-dm-sans font-semibold text-lg transition-colors ${
-                    isRedeemingSession || !selectedDate || !selectedTime
-                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                      : "bg-[#4944a4] text-white hover:bg-[#3d3a8a]"
-                  }`}
-                >
-                  {isRedeemingSession ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Reservando...
-                    </span>
-                  ) : (
-                    "Confirmar Reserva"
-                  )}
-                </button>
-              )}
-
-              <button
-                onClick={() => {
-                  setShowPackCodeModal(false);
-                  setValidatedPack(null);
-                  setPackCode("");
-                  setError(null);
-                }}
-                disabled={isValidatingCode || isRedeemingSession}
-                className="w-full py-3 rounded-xl font-dm-sans text-gray-600 hover:bg-gray-100 transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Error Toast */}
-      {error && (
-        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 font-dm-sans">
-          {error}
-          <button onClick={() => setError(null)} className="ml-4 text-white/80 hover:text-white">
-            x
-          </button>
-        </div>
-      )}
-
-      {/* Success Toast */}
-      {successMessage && (
-        <div className="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 font-dm-sans flex items-center gap-3">
-          <CheckCircle className="w-5 h-5" />
-          {successMessage}
-          <button
-            onClick={() => setSuccessMessage(null)}
-            className="ml-2 text-white/80 hover:text-white"
-          >
-            x
-          </button>
-        </div>
-      )}
     </>
   );
 }
