@@ -276,7 +276,9 @@ export function LessonList({
 
                       {/* Lesson info */}
                       <div className="flex-1 min-w-0">
-                        <p className={`font-dm-sans text-sm truncate ${titleClass}`}>
+                        <p
+                          className={`whitespace-normal break-words font-dm-sans text-sm leading-snug ${titleClass}`}
+                        >
                           {moduleIndex + 1}.{lessonIndex + 1} {lesson.title}
                         </p>
                         {dripLocked && dripAvailableAt ? (

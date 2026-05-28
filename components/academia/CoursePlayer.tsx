@@ -2,6 +2,7 @@
 
 import { PortableText } from "@portabletext/react";
 import { Award, CheckCircle2, ChevronLeft, ClipboardList, Menu, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -133,6 +134,7 @@ export function CoursePlayer({
     ? currentModule.lessons.findIndex((lesson) => lesson._id === currentLesson._id)
     : 0;
   const courseHref = getCourseHref(course.slug);
+  const topBarTitle = currentModule?.title || currentLesson.title;
   const currentVideoUrl = currentLesson.videoUrl || currentLesson.liveSession?.recordingUrl;
   const isMediaLesson = currentLesson.lessonType === "video" || currentLesson.lessonType === "live";
   const hasSubmodules = Boolean(currentLesson.submodules?.length);
@@ -276,26 +278,48 @@ export function CoursePlayer({
       {/* Main Content */}
       <main className="min-w-0 flex-1">
         {/* Top Bar */}
-        <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-[#e7ded7] bg-white/95 px-3 py-3 backdrop-blur lg:px-6">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 text-gray-600 hover:text-[#4944a4] lg:hidden"
-            aria-label="Abrir menú"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <Link
-            href={courseHref}
-            className="hidden items-center gap-2 rounded-md px-2 py-2 font-dm-sans text-sm text-gray-600 transition-colors hover:bg-[#f8f5f2] hover:text-[#4944a4] sm:flex"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Volver al curso
-          </Link>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-dm-sans text-xs uppercase text-gray-400">{course.title}</p>
-            <h2 className="truncate font-dm-sans font-medium text-gray-900">
-              {currentLesson.title}
+        <div className="sticky top-0 z-30 grid min-h-16 grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] items-center gap-2 border-b border-[#e7ded7] bg-white/95 px-3 py-3 backdrop-blur sm:gap-4 lg:px-6">
+          <div className="z-10 flex items-center gap-1 sm:gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 text-gray-600 hover:text-[#4944a4] lg:hidden"
+              aria-label="Abrir menú"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+            <Link
+              href={courseHref}
+              className="hidden items-center gap-2 rounded-md px-2 py-2 font-dm-sans text-sm text-gray-600 transition-colors hover:bg-[#f8f5f2] hover:text-[#4944a4] sm:flex"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Volver al curso
+            </Link>
+          </div>
+
+          <div className="min-w-0 px-1 text-center sm:px-6">
+            <p className="truncate font-dm-sans text-base font-bold text-[#654177] sm:text-lg">
+              {course.title}
+            </p>
+            <h2 className="truncate font-dm-sans text-xs font-medium uppercase tracking-[0.12em] text-[#a690b0]">
+              {topBarTitle}
             </h2>
+          </div>
+
+          <div className="z-10 flex justify-end">
+            <Link
+              href="/"
+              className="hidden flex-shrink-0 items-center sm:flex"
+              aria-label="Inicio"
+            >
+              <Image
+                src="/images/EnergiaDinividadHeading.png"
+                alt="Energía y Divinidad"
+                width={136}
+                height={34}
+                className="h-7 w-auto lg:h-8"
+                priority
+              />
+            </Link>
           </div>
         </div>
 
