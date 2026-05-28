@@ -210,7 +210,7 @@ export function LessonList({
                   {moduleIndex + 1}
                 </span>
                 <div className="min-w-0">
-                  <h3 className="truncate font-dm-sans text-sm font-semibold text-gray-800">
+                  <h3 className="whitespace-normal break-words font-dm-sans text-sm font-semibold leading-snug text-gray-800">
                     {courseModule.title}
                   </h3>
                   <p className="font-dm-sans text-xs text-gray-500">
