@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getCreditsBalance, redeemCredit } from "@/lib/credits";
 import { sendBookingConfirmationEmail } from "@/lib/email";
+import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
 import { prisma } from "@/lib/prisma";
 import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
 import { getSessionBySlug } from "@/lib/sanity/queries/sessions";
@@ -100,6 +101,8 @@ export async function POST(request: NextRequest) {
       await prisma.booking.delete({ where: { id: booking.id } });
       return NextResponse.json({ error: redemption.error }, { status: 400 });
     }
+
+    await syncBookingToGoogleCalendar(booking.id);
 
     // Get updated balance
     const newBalance = await getCreditsBalance(session.user.id);

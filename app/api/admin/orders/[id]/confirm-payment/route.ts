@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
+import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
 import { prisma } from "@/lib/prisma";
 import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
 
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const metadata = order.metadata as Record<string, unknown> | null;
       const scheduledAt = metadata?.scheduledAt as string | null;
 
-      await prisma.booking.create({
+      const booking = await prisma.booking.create({
         data: {
           userId: order.userId,
           bookingType: "SESSION_1_ON_1",
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           paymentStatus: "COMPLETED",
         },
       });
+      await syncBookingToGoogleCalendar(booking.id);
     }
 
     // Registrar en AuditLog

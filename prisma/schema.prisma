@@ -492,6 +492,11 @@ model Booking {
   rescheduleCount     Int       @default(0) // Veces que se ha reprogramado
   rescheduleReason    String?   // Motivo de la última reprogramación
 
+  // Google Calendar (sincronización unidireccional web -> calendario de Aleyda)
+  googleCalendarEventId   String?
+  googleCalendarSyncedAt  DateTime?
+  googleCalendarSyncError String?   @db.Text
+
   // Relaciones
   user User @relation(fields: [userId], references: [id])
 

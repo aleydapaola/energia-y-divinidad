@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from '@/lib/auth'
-import { sendRescheduleEmail } from '@/lib/email'
-import { prisma } from '@/lib/prisma'
+import { auth } from "@/lib/auth";
+import { sendRescheduleEmail } from "@/lib/email";
+import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
+import { prisma } from "@/lib/prisma";
 
 interface RouteParams {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -20,34 +21,25 @@ interface RouteParams {
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await auth()
+    const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { id } = await params
-    const body = await request.json()
-    const { newDate, reason } = body
+    const { id } = await params;
+    const body = await request.json();
+    const { newDate, reason } = body;
 
     if (!newDate) {
-      return NextResponse.json(
-        { error: 'Se requiere la nueva fecha' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "Se requiere la nueva fecha" }, { status: 400 });
     }
 
-    const newScheduledAt = new Date(newDate)
+    const newScheduledAt = new Date(newDate);
 
     // Validar que la fecha sea futura
     if (newScheduledAt <= new Date()) {
-      return NextResponse.json(
-        { error: 'La fecha debe ser futura' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "La fecha debe ser futura" }, { status: 400 });
     }
 
     // Obtener booking con usuario
@@ -55,32 +47,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       where: { id },
       include: {
         user: {
-          select: { id: true, email: true, name: true, role: true }
-        }
-      }
-    })
+          select: { id: true, email: true, name: true, role: true },
+        },
+      },
+    });
 
     if (!booking) {
-      return NextResponse.json(
-        { error: 'Reserva no encontrada' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
     }
 
     // Verificar permisos
     const currentUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, role: true, email: true, name: true }
-    })
+      select: { id: true, role: true, email: true, name: true },
+    });
 
-    const isAdmin = currentUser?.role === 'ADMIN'
-    const isOwner = booking.userId === session.user.id
+    const isAdmin = currentUser?.role === "ADMIN";
+    const isOwner = booking.userId === session.user.id;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(
-        { error: 'No tienes permiso para reprogramar esta sesión' },
+        { error: "No tienes permiso para reprogramar esta sesión" },
         { status: 403 }
-      )
+      );
     }
 
     // Restricciones para clientes (no admins)
@@ -88,29 +77,32 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // Máximo 2 reprogramaciones
       if (booking.rescheduleCount >= 2) {
         return NextResponse.json(
-          { error: 'Has alcanzado el límite de 2 reprogramaciones. Contacta con Aleyda para más cambios.' },
+          {
+            error:
+              "Has alcanzado el límite de 2 reprogramaciones. Contacta con Aleyda para más cambios.",
+          },
           { status: 400 }
-        )
+        );
       }
 
       // Mínimo 24h antes de la sesión actual
       if (booking.scheduledAt) {
-        const hoursUntilSession = (booking.scheduledAt.getTime() - Date.now()) / (1000 * 60 * 60)
+        const hoursUntilSession = (booking.scheduledAt.getTime() - Date.now()) / (1000 * 60 * 60);
         if (hoursUntilSession < 24) {
           return NextResponse.json(
-            { error: 'Las reprogramaciones deben hacerse con al menos 24 horas de anticipación' },
+            { error: "Las reprogramaciones deben hacerse con al menos 24 horas de anticipación" },
             { status: 400 }
-          )
+          );
         }
       }
     }
 
     // Solo se pueden reprogramar sesiones CONFIRMED o PENDING
-    if (!['CONFIRMED', 'PENDING'].includes(booking.status)) {
+    if (!["CONFIRMED", "PENDING"].includes(booking.status)) {
       return NextResponse.json(
         { error: `No se puede reprogramar una sesión con estado: ${booking.status}` },
         { status: 400 }
-      )
+      );
     }
 
     // Actualizar booking
@@ -126,24 +118,26 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       },
       include: {
         user: {
-          select: { id: true, email: true, name: true }
-        }
-      }
-    })
+          select: { id: true, email: true, name: true },
+        },
+      },
+    });
+
+    await syncBookingToGoogleCalendar(updatedBooking.id);
 
     // Enviar email de confirmación de reprogramación
     try {
       await sendRescheduleEmail({
         email: booking.user.email,
-        name: booking.user.name || 'Querida alma',
+        name: booking.user.name || "Querida alma",
         sessionName: booking.resourceName,
         previousDate: booking.scheduledAt,
         newDate: newScheduledAt,
-        rescheduledBy: isAdmin ? 'admin' : 'client',
+        rescheduledBy: isAdmin ? "admin" : "client",
         reason: reason,
-      })
+      });
     } catch (emailError) {
-      console.error('Error enviando email de reprogramación:', emailError)
+      console.error("Error enviando email de reprogramación:", emailError);
       // No fallar la operación si el email falla
     }
 
@@ -156,14 +150,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         rescheduleCount: updatedBooking.rescheduleCount,
         status: updatedBooking.status,
       },
-      message: 'Sesión reprogramada exitosamente'
-    })
-
+      message: "Sesión reprogramada exitosamente",
+    });
   } catch (error) {
-    console.error('Error reprogramando sesión:', error)
-    return NextResponse.json(
-      { error: 'Error al reprogramar la sesión' },
-      { status: 500 }
-    )
+    console.error("Error reprogramando sesión:", error);
+    return NextResponse.json({ error: "Error al reprogramar la sesión" }, { status: 500 });
   }
 }

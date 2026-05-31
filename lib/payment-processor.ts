@@ -22,6 +22,7 @@ import { createCourseEntitlement } from "@/lib/course-access";
 import { grantMonthlyCredits } from "@/lib/credits";
 import { recordDiscountUsage } from "@/lib/discount-codes";
 import { sendPaymentConfirmationEmail, sendAdminNotificationEmail } from "@/lib/email";
+import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
 import { prisma } from "@/lib/prisma";
 import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
 
@@ -368,6 +369,8 @@ async function createSessionBookingFromOrder(
       scheduledAt,
     },
   });
+
+  await syncBookingToGoogleCalendar(booking.id);
 
   // Si es pack, generar código
   if (isPack) {
