@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
-import { prisma } from '@/lib/prisma'
-import { getWompiApiUrl, WOMPI_CONFIG } from '@/lib/wompi'
+import { processApprovedPayment } from "@/lib/payment-processor";
+import { prisma } from "@/lib/prisma";
+import { getWompiApiUrl, WOMPI_CONFIG } from "@/lib/wompi";
 
 /**
  * GET /api/orders/[reference]/status
@@ -15,12 +16,12 @@ export async function GET(
   { params }: { params: Promise<{ reference: string }> }
 ) {
   try {
-    const { reference } = await params
-    const { searchParams } = new URL(request.url)
-    const shouldVerify = searchParams.get('verify') === 'true'
+    const { reference } = await params;
+    const { searchParams } = new URL(request.url);
+    const shouldVerify = searchParams.get("verify") === "true";
 
     if (!reference) {
-      return NextResponse.json({ error: 'Referencia requerida' }, { status: 400 })
+      return NextResponse.json({ error: "Referencia requerida" }, { status: 400 });
     }
 
     // Buscar orden por orderNumber
@@ -40,35 +41,52 @@ export async function GET(
         createdAt: true,
         updatedAt: true,
       },
-    })
+    });
 
     if (!order) {
-      return NextResponse.json({ error: 'Orden no encontrada' }, { status: 404 })
+      return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
     }
 
-    let paymentStatus = order.paymentStatus
-    const metadata = order.metadata as Record<string, any> | null
+    let paymentStatus = order.paymentStatus;
+    const metadata = order.metadata as Record<string, any> | null;
+
+    if (order.orderType === "SESSION" && paymentStatus === "COMPLETED") {
+      const fullOrder = await prisma.order.findUnique({
+        where: { id: order.id },
+        include: { user: true },
+      });
+
+      if (fullOrder) {
+        const result = await processApprovedPayment(fullOrder, { skipEmail: true });
+        if (!result.success) {
+          console.error("[ORDER/STATUS] Error reparando orden de sesión completada:", result.error);
+        }
+      }
+    }
 
     // Si el pago está pendiente y es de Wompi, verificar directamente con Wompi
-    if (shouldVerify && paymentStatus === 'PENDING' &&
-        (order.paymentMethod === 'WOMPI_CARD' || order.paymentMethod === 'WOMPI_NEQUI')) {
+    if (
+      shouldVerify &&
+      paymentStatus === "PENDING" &&
+      (order.paymentMethod === "WOMPI_CARD" || order.paymentMethod === "WOMPI_NEQUI")
+    ) {
       try {
-        const paymentLinkId = metadata?.wompiPaymentLinkId
+        const paymentLinkId = metadata?.wompiPaymentLinkId;
         if (paymentLinkId) {
-          const wompiStatus = await verifyWompiPaymentLink(paymentLinkId)
+          const wompiStatus = await verifyWompiPaymentLink(paymentLinkId);
           if (wompiStatus) {
-            paymentStatus = wompiStatus
+            paymentStatus = wompiStatus;
             // Actualizar en la base de datos si cambió
-            if (wompiStatus !== 'PENDING') {
+            if (wompiStatus !== "PENDING") {
               await prisma.order.update({
                 where: { id: order.id },
                 data: { paymentStatus: wompiStatus },
-              })
+              });
             }
           }
         }
       } catch (error) {
-        console.error('Error verifying with Wompi:', error)
+        console.error("Error verifying with Wompi:", error);
         // Continuar con el estado de la BD si falla la verificación
       }
     }
@@ -77,10 +95,10 @@ export async function GET(
       ...order,
       paymentStatus,
       amount: Number(order.amount),
-    })
+    });
   } catch (error) {
-    console.error('Error fetching order status:', error)
-    return NextResponse.json({ error: 'Error al consultar orden' }, { status: 500 })
+    console.error("Error fetching order status:", error);
+    return NextResponse.json({ error: "Error al consultar orden" }, { status: 500 });
   }
 }
 
@@ -90,56 +108,53 @@ export async function GET(
  */
 async function verifyWompiPaymentLink(
   paymentLinkId: string
-): Promise<'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | null> {
+): Promise<"PENDING" | "COMPLETED" | "FAILED" | "CANCELLED" | null> {
   if (!WOMPI_CONFIG.privateKey) {
-    return null
+    return null;
   }
 
   try {
     // Consultar transacciones del payment link
-    const response = await fetch(
-      `${getWompiApiUrl()}/payment_links/${paymentLinkId}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${WOMPI_CONFIG.privateKey}`,
-        },
-      }
-    )
+    const response = await fetch(`${getWompiApiUrl()}/payment_links/${paymentLinkId}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${WOMPI_CONFIG.privateKey}`,
+      },
+    });
 
     if (!response.ok) {
-      console.error('Error fetching payment link:', response.status, response.statusText)
-      return null
+      console.error("Error fetching payment link:", response.status, response.statusText);
+      return null;
     }
 
-    const data = await response.json()
-    const paymentLink = data.data
+    const data = await response.json();
+    const paymentLink = data.data;
 
     // Si no hay transacciones asociadas, sigue pendiente
     if (!paymentLink.transactions || paymentLink.transactions.length === 0) {
-      return 'PENDING'
+      return "PENDING";
     }
 
     // Tomar la transacción más reciente
-    const latestTransaction = paymentLink.transactions[paymentLink.transactions.length - 1]
-    const wompiStatus = latestTransaction.status
+    const latestTransaction = paymentLink.transactions[paymentLink.transactions.length - 1];
+    const wompiStatus = latestTransaction.status;
 
     // Mapear status de Wompi a nuestro modelo
     switch (wompiStatus) {
-      case 'APPROVED':
-        return 'COMPLETED'
-      case 'DECLINED':
-      case 'ERROR':
-        return 'FAILED'
-      case 'VOIDED':
-        return 'CANCELLED'
-      case 'PENDING':
+      case "APPROVED":
+        return "COMPLETED";
+      case "DECLINED":
+      case "ERROR":
+        return "FAILED";
+      case "VOIDED":
+        return "CANCELLED";
+      case "PENDING":
       default:
-        return 'PENDING'
+        return "PENDING";
     }
   } catch (error) {
-    console.error('Error calling Wompi API:', error)
-    return null
+    console.error("Error calling Wompi API:", error);
+    return null;
   }
 }

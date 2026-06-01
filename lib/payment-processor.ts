@@ -16,7 +16,7 @@
 
 import { randomBytes } from "crypto";
 
-import { PaymentMethod } from "@prisma/client";
+import { PaymentMethod, Prisma } from "@prisma/client";
 
 import { createCourseEntitlement } from "@/lib/course-access";
 import { grantMonthlyCredits } from "@/lib/credits";
@@ -201,17 +201,25 @@ async function checkForDuplicateProcessing(order: OrderWithUser, userId: string)
     case "EVENT": {
       const metadata = order.metadata || {};
       const scheduledAt = metadata.scheduledAt ? new Date(metadata.scheduledAt) : null;
+      const duplicateConditions: Prisma.BookingWhereInput[] = [
+        {
+          metadata: {
+            path: ["orderId"],
+            equals: order.id,
+          },
+        },
+      ];
+
+      if (scheduledAt) {
+        duplicateConditions.push({ scheduledAt });
+      }
 
       const existingBooking = await prisma.booking.findFirst({
         where: {
           userId,
           resourceId: order.itemId,
           paymentStatus: "COMPLETED",
-          ...(scheduledAt ? { scheduledAt } : {}),
-          metadata: {
-            path: ["orderId"],
-            equals: order.id,
-          },
+          OR: duplicateConditions,
         },
       });
       return !!existingBooking;
