@@ -117,10 +117,6 @@ export function LessonList({
   const lessonAvailability = useMemo(() => {
     const availability = new Map<string, Date | null>();
 
-    if (!dripEnabled) {
-      return availability;
-    }
-
     const courseData = { _id: courseId || "", dripEnabled, defaultDripDays };
     const effectiveStartedAt = startedAt || new Date();
 
@@ -131,6 +127,8 @@ export function LessonList({
       for (const lesson of courseModule.lessons) {
         if (moduleUnlockDate && moduleUnlockDate > new Date()) {
           availability.set(lesson._id, moduleUnlockDate);
+        } else if (!dripEnabled) {
+          availability.set(lesson._id, null);
         } else {
           const availableAt = calculateDripAvailability(
             lesson,
@@ -149,9 +147,6 @@ export function LessonList({
 
   const isDripLocked = (lessonId: string, isFreePreview?: boolean): boolean => {
     if (isFreePreview) {
-      return false;
-    }
-    if (!dripEnabled) {
       return false;
     }
     const availableAt = lessonAvailability.get(lessonId);

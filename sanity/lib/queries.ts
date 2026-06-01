@@ -173,33 +173,90 @@ export const COURSE_BY_SLUG_QUERY = groq`*[_type == "course" && slug.current == 
   "hasCertificate": defined(certificate),
   "finalQuizId": finalQuiz->._id,
   requiresFinalQuizToComplete,
-  "modules": modules[]-> {
-    _id,
-    title,
-    description,
-    order,
-    unlockDate,
-    "lessons": lessons[]-> {
-      _id,
-      title,
-      "slug": slug.current,
-      description,
-      order,
-      lessonType,
-      videoDuration,
-      isFreePreview,
-      published,
-      dripMode,
-      dripOffsetDays,
-      availableAt,
-      "quizId": quiz->._id,
-      requiresQuizToComplete,
-      "liveSession": liveSession {
-        scheduledAt,
-        estimatedDuration,
-        recordingUrl
+  "modules": modules[] {
+    ...select(
+      _type == "reference" => @-> {
+        _id,
+        title,
+        description,
+        order,
+        unlockDate,
+        "lessons": lessons[]-> {
+          _id,
+          title,
+          "slug": slug.current,
+          description,
+          order,
+          lessonType,
+          videoDuration,
+          isFreePreview,
+          published,
+          dripMode,
+          dripOffsetDays,
+          availableAt,
+          "quizId": quiz->._id,
+          requiresQuizToComplete,
+          "liveSession": liveSession {
+            scheduledAt,
+            estimatedDuration,
+            recordingUrl
+          }
+        }
+      },
+      _type == "courseModuleAssignment" => {
+        "_id": coalesce(module->_id, _key),
+        "_key": _key,
+        "title": coalesce(customTitle, module->title),
+        "description": coalesce(customDescription, module->description),
+        "order": coalesce(order, module->order),
+        "unlockDate": coalesce(unlockDate, module->unlockDate),
+        "lessons": select(
+          count(lessons) > 0 => lessons[] {
+            "_assignmentKey": _key,
+            "_id": lesson->_id,
+            "title": lesson->title,
+            "slug": lesson->slug.current,
+            "description": lesson->description,
+            "order": lesson->order,
+            "lessonType": lesson->lessonType,
+            "videoDuration": lesson->videoDuration,
+            "isFreePreview": coalesce(isFreePreview, lesson->isFreePreview),
+            "published": coalesce(published, lesson->published),
+            "dripMode": coalesce(dripMode, lesson->dripMode),
+            "dripOffsetDays": coalesce(dripOffsetDays, lesson->dripOffsetDays),
+            "availableAt": coalesce(availableAt, lesson->availableAt),
+            "quizId": lesson->quiz->_id,
+            "requiresQuizToComplete": lesson->requiresQuizToComplete,
+            "liveSession": lesson->liveSession {
+              scheduledAt,
+              estimatedDuration,
+              recordingUrl
+            }
+          },
+          module->lessons[]-> {
+            _id,
+            title,
+            "slug": slug.current,
+            description,
+            order,
+            lessonType,
+            videoDuration,
+            isFreePreview,
+            published,
+            dripMode,
+            dripOffsetDays,
+            availableAt,
+            "quizId": quiz->._id,
+            requiresQuizToComplete,
+            "liveSession": liveSession {
+              scheduledAt,
+              estimatedDuration,
+              recordingUrl
+            }
+          }
+        )
       }
-    }
+    )
   } | order(order asc),
   "simpleLesson": simpleLesson-> {
     _id,
@@ -210,9 +267,9 @@ export const COURSE_BY_SLUG_QUERY = groq`*[_type == "course" && slug.current == 
     videoDuration,
     isFreePreview,
     published,
-    dripMode,
-    dripOffsetDays,
-    availableAt,
+    "dripMode": coalesce(^.simpleLessonDripMode, dripMode),
+    "dripOffsetDays": coalesce(^.simpleLessonDripOffsetDays, dripOffsetDays),
+    "availableAt": coalesce(^.simpleLessonAvailableAt, availableAt),
     "quizId": quiz->._id,
     requiresQuizToComplete,
     "liveSession": liveSession {

@@ -325,8 +325,20 @@ async function recalculateCourseProgress(userId: string, courseId: string): Prom
     `*[_type == "course" && _id == $id][0] {
       courseType,
       "simpleLesson": simpleLesson-> { _id },
-      "modules": modules[]-> {
-        "lessons": lessons[]-> { _id }
+      "modules": modules[] {
+        ...select(
+          _type == "reference" => @-> {
+            "lessons": lessons[]-> { _id }
+          },
+          _type == "courseModuleAssignment" => {
+            "lessons": select(
+              count(lessons) > 0 => lessons[] {
+                "_id": lesson->_id
+              },
+              module->lessons[]-> { _id }
+            )
+          }
+        )
       }
     }`,
     { id: courseId }

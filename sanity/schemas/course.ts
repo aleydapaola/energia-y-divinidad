@@ -128,6 +128,44 @@ export default defineType({
       hidden: ({ parent }) => parent?.courseType !== 'simple',
       description: 'Selecciona la única lección de este curso',
     }),
+    defineField({
+      name: 'simpleLessonDripMode',
+      title: 'Modo de liberación de la lección en este curso',
+      type: 'string',
+      group: 'content',
+      hidden: ({ parent }) => parent?.courseType !== 'simple',
+      description: 'Opcional. Si se deja vacío, se usa la configuración global de la lección.',
+      options: {
+        list: [
+          { title: 'Inmediato (disponible al inscribirse)', value: 'immediate' },
+          { title: 'Días desde inscripción', value: 'offset' },
+          { title: 'Fecha fija', value: 'fixed' },
+        ],
+        layout: 'radio',
+      },
+    }),
+    defineField({
+      name: 'simpleLessonDripOffsetDays',
+      title: 'Días desde inscripción',
+      type: 'number',
+      group: 'content',
+      hidden: ({ parent }) =>
+        parent?.courseType !== 'simple' || parent?.simpleLessonDripMode !== 'offset',
+      validation: (Rule) => Rule.min(0),
+    }),
+    defineField({
+      name: 'simpleLessonAvailableAt',
+      title: 'Fecha de liberación',
+      type: 'datetime',
+      group: 'content',
+      hidden: ({ parent }) =>
+        parent?.courseType !== 'simple' || parent?.simpleLessonDripMode !== 'fixed',
+      description: 'Fecha propia de este curso para liberar la lección.',
+      options: {
+        dateFormat: 'DD/MM/YYYY',
+        timeFormat: 'HH:mm',
+      },
+    }),
 
     // Para cursos MODULARES (varios módulos)
     defineField({
@@ -136,10 +174,169 @@ export default defineType({
       type: 'array',
       group: 'content',
       hidden: ({ parent }) => parent?.courseType !== 'modular',
-      description: 'Arrastra para reordenar los módulos',
+      description:
+        'Asigna módulos al curso y configura sus fechas de activación propias. Las referencias antiguas siguen funcionando, pero para configurar fechas por curso usa "Módulo configurado para este curso".',
       of: [
         {
+          type: 'object',
+          name: 'courseModuleAssignment',
+          title: 'Módulo configurado para este curso',
+          fields: [
+            defineField({
+              name: 'module',
+              title: 'Módulo',
+              type: 'reference',
+              to: [{ type: 'courseModule' }],
+              validation: (Rule) => Rule.required(),
+            }),
+            defineField({
+              name: 'order',
+              title: 'Orden en este curso',
+              type: 'number',
+              description: 'Opcional. Si se deja vacío, se usa el orden del módulo.',
+              validation: (Rule) => Rule.min(1),
+            }),
+            defineField({
+              name: 'customTitle',
+              title: 'Título personalizado en este curso',
+              type: 'string',
+              description: 'Opcional. Si se deja vacío, se usa el título del módulo.',
+              validation: (Rule) => Rule.max(150),
+            }),
+            defineField({
+              name: 'customDescription',
+              title: 'Descripción personalizada en este curso',
+              type: 'text',
+              rows: 3,
+              description: 'Opcional. Si se deja vacío, se usa la descripción del módulo.',
+            }),
+            defineField({
+              name: 'unlockDate',
+              title: 'Fecha de activación del módulo en este curso',
+              type: 'datetime',
+              description:
+                'Opcional. Esta fecha aplica solo para este curso, aunque el módulo se reutilice en otros cursos.',
+              options: {
+                dateFormat: 'DD/MM/YYYY',
+                timeFormat: 'HH:mm',
+              },
+            }),
+            defineField({
+              name: 'lessons',
+              title: 'Lecciones configuradas para este curso',
+              type: 'array',
+              description:
+                'Opcional. Si se deja vacío, se usarán las lecciones del módulo con su configuración global. Añade lecciones aquí para configurar fechas propias en este curso.',
+              of: [
+                {
+                  type: 'object',
+                  name: 'courseLessonAssignment',
+                  title: 'Lección configurada para este curso',
+                  fields: [
+                    defineField({
+                      name: 'lesson',
+                      title: 'Lección',
+                      type: 'reference',
+                      to: [{ type: 'courseLesson' }],
+                      validation: (Rule) => Rule.required(),
+                    }),
+                    defineField({
+                      name: 'dripMode',
+                      title: 'Modo de liberación en este curso',
+                      type: 'string',
+                      description:
+                        'Opcional. Si se deja vacío, se usa la configuración global de la lección.',
+                      options: {
+                        list: [
+                          { title: 'Inmediato (disponible al inscribirse)', value: 'immediate' },
+                          { title: 'Días desde inscripción', value: 'offset' },
+                          { title: 'Fecha fija', value: 'fixed' },
+                        ],
+                        layout: 'radio',
+                      },
+                    }),
+                    defineField({
+                      name: 'dripOffsetDays',
+                      title: 'Días desde inscripción en este curso',
+                      type: 'number',
+                      hidden: ({ parent }) => parent?.dripMode !== 'offset',
+                      validation: (Rule) => Rule.min(0),
+                    }),
+                    defineField({
+                      name: 'availableAt',
+                      title: 'Fecha de liberación en este curso',
+                      type: 'datetime',
+                      hidden: ({ parent }) => parent?.dripMode !== 'fixed',
+                      options: {
+                        dateFormat: 'DD/MM/YYYY',
+                        timeFormat: 'HH:mm',
+                      },
+                    }),
+                    defineField({
+                      name: 'isFreePreview',
+                      title: 'Vista previa gratuita en este curso',
+                      type: 'boolean',
+                      description:
+                        'Opcional. Si se deja vacío, se usa la configuración global de la lección.',
+                    }),
+                    defineField({
+                      name: 'published',
+                      title: 'Publicada en este curso',
+                      type: 'boolean',
+                      description:
+                        'Opcional. Si se deja vacío, se usa la configuración global de la lección.',
+                    }),
+                  ],
+                  preview: {
+                    select: {
+                      title: 'lesson.title',
+                      dripMode: 'dripMode',
+                      availableAt: 'availableAt',
+                      dripOffsetDays: 'dripOffsetDays',
+                    },
+                    prepare(selection) {
+                      const { title, dripMode, availableAt, dripOffsetDays } = selection
+                      const dripText =
+                        dripMode === 'fixed'
+                          ? `Fecha fija: ${availableAt || 'sin fecha'}`
+                          : dripMode === 'offset'
+                            ? `${dripOffsetDays ?? 0} días desde inscripción`
+                            : dripMode === 'immediate'
+                              ? 'Inmediata'
+                              : 'Usa configuración global'
+
+                      return {
+                        title: title || 'Lección sin seleccionar',
+                        subtitle: dripText,
+                      }
+                    },
+                  },
+                },
+              ],
+            }),
+          ],
+          preview: {
+            select: {
+              title: 'module.title',
+              customTitle: 'customTitle',
+              lessons: 'lessons',
+              unlockDate: 'unlockDate',
+            },
+            prepare(selection) {
+              const { title, customTitle, lessons, unlockDate } = selection
+              const lessonCount = lessons?.length || 0
+              const lockText = unlockDate ? ` · activa: ${unlockDate}` : ''
+
+              return {
+                title: customTitle || title || 'Módulo sin seleccionar',
+                subtitle: `${lessonCount ? `${lessonCount} lecciones configuradas` : 'Usa lecciones del módulo'}${lockText}`,
+              }
+            },
+          },
+        },
+        {
           type: 'reference',
+          title: 'Referencia de módulo (legacy)',
           to: [{ type: 'courseModule' }],
         },
       ],

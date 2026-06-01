@@ -102,46 +102,67 @@ export default async function ReproducirPage({ params, searchParams }: Reproduci
   // Get user's course start date for drip calculations
   const startedAt = await getCourseStartDate(session.user.id, course._id);
 
-  // Helper function to check if a lesson is drip locked
-  const isLessonDripLocked = (lesson: any, globalIndex: number): boolean => {
-    if (!course.dripEnabled) {
-      return false;
-    }
+  // Helper function to check if a lesson is locked by module date or drip rules
+  const getLessonAvailableAt = (
+    lesson: any,
+    globalIndex: number,
+    moduleUnlockDate?: string | null
+  ): Date | null => {
     if (lesson.isFreePreview) {
-      return false;
+      return null;
     }
 
-    const availableAt = calculateDripAvailability(
+    if (moduleUnlockDate) {
+      const unlockDate = new Date(moduleUnlockDate);
+      if (unlockDate > new Date()) {
+        return unlockDate;
+      }
+    }
+
+    if (!course.dripEnabled) {
+      return null;
+    }
+
+    return calculateDripAvailability(
       lesson,
       { _id: course._id, dripEnabled: course.dripEnabled, defaultDripDays: course.defaultDripDays },
       startedAt,
       globalIndex
     );
+  };
 
+  const isLessonLocked = (
+    lesson: any,
+    globalIndex: number,
+    moduleUnlockDate?: string | null
+  ): boolean => {
+    const availableAt = getLessonAvailableAt(lesson, globalIndex, moduleUnlockDate);
     return availableAt !== null && availableAt > new Date();
   };
 
   // Find first available lesson (not drip locked)
-  const findFirstAvailableLesson = (): string => {
+  const findFirstAvailableLesson = (): string | null => {
     let globalIndex = 0;
     for (const courseModule of modules) {
       for (const lesson of courseModule.lessons || []) {
-        if (!isLessonDripLocked(lesson, globalIndex)) {
+        if (!isLessonLocked(lesson, globalIndex, courseModule.unlockDate)) {
           return lesson._id;
         }
         globalIndex++;
       }
     }
-    // Fallback to first lesson
-    return allLessons[0]._id;
+    return null;
   };
 
   // Determine current lesson
-  let currentLessonId = lessonIdParam;
+  let currentLessonId: string | null | undefined = lessonIdParam;
 
   if (!currentLessonId || !allLessons.find((l: any) => l._id === currentLessonId)) {
     // Default to first available lesson
     currentLessonId = findFirstAvailableLesson();
+    if (!currentLessonId) {
+      redirect(`/academia/${encodedSlug}`);
+    }
   } else {
     // Check if requested lesson is drip locked
     let globalIndex = 0;
@@ -149,7 +170,7 @@ export default async function ReproducirPage({ params, searchParams }: Reproduci
     for (const courseModule of modules) {
       for (const lesson of courseModule.lessons || []) {
         if (lesson._id === currentLessonId) {
-          foundLesson = { lesson, globalIndex };
+          foundLesson = { lesson, globalIndex, moduleUnlockDate: courseModule.unlockDate };
           break;
         }
         globalIndex++;
@@ -159,9 +180,15 @@ export default async function ReproducirPage({ params, searchParams }: Reproduci
       }
     }
 
-    if (foundLesson && isLessonDripLocked(foundLesson.lesson, foundLesson.globalIndex)) {
+    if (
+      foundLesson &&
+      isLessonLocked(foundLesson.lesson, foundLesson.globalIndex, foundLesson.moduleUnlockDate)
+    ) {
       // Lesson is drip locked, redirect to first available
       currentLessonId = findFirstAvailableLesson();
+      if (!currentLessonId) {
+        redirect(`/academia/${encodedSlug}`);
+      }
     }
   }
 
