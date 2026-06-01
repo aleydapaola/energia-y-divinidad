@@ -199,12 +199,19 @@ async function checkForDuplicateProcessing(order: OrderWithUser, userId: string)
 
     case "SESSION":
     case "EVENT": {
+      const metadata = order.metadata || {};
+      const scheduledAt = metadata.scheduledAt ? new Date(metadata.scheduledAt) : null;
+
       const existingBooking = await prisma.booking.findFirst({
         where: {
           userId,
           resourceId: order.itemId,
           paymentStatus: "COMPLETED",
-          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+          ...(scheduledAt ? { scheduledAt } : {}),
+          metadata: {
+            path: ["orderId"],
+            equals: order.id,
+          },
         },
       });
       return !!existingBooking;
@@ -367,6 +374,10 @@ async function createSessionBookingFromOrder(
       sessionsTotal,
       sessionsRemaining: sessionsTotal,
       scheduledAt,
+      metadata: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+      },
     },
   });
 
@@ -380,6 +391,8 @@ async function createSessionBookingFromOrder(
       where: { id: booking.id },
       data: {
         metadata: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
           packCode,
           generatedAt: new Date().toISOString(),
         },
@@ -421,6 +434,8 @@ async function createEventBookingFromOrder(
       currency: order.currency,
       scheduledAt,
       metadata: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
         seats,
       },
     },

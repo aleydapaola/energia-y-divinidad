@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
-import { prisma } from '@/lib/prisma'
+import { processApprovedPayment } from "@/lib/payment-processor";
+import { prisma } from "@/lib/prisma";
 
 /**
  * POST /api/orders/[reference]/complete
@@ -11,39 +12,39 @@ export async function POST(
   { params }: { params: Promise<{ reference: string }> }
 ) {
   try {
-    const { reference } = await params
-    const body = await request.json()
-    const { transactionId, status } = body
+    const { reference } = await params;
+    const body = await request.json();
+    const { transactionId, status } = body;
 
     if (!reference) {
-      return NextResponse.json({ error: 'Referencia requerida' }, { status: 400 })
+      return NextResponse.json({ error: "Referencia requerida" }, { status: 400 });
     }
 
     // Buscar orden
     const order = await prisma.order.findFirst({
       where: { orderNumber: reference },
-    })
+    });
 
     if (!order) {
-      return NextResponse.json({ error: 'Orden no encontrada' }, { status: 404 })
+      return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
     }
 
     // Mapear status de Wompi
-    let paymentStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REFUNDED' | 'CANCELLED'
+    let paymentStatus: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "REFUNDED" | "CANCELLED";
     switch (status) {
-      case 'APPROVED':
-        paymentStatus = 'COMPLETED'
-        break
-      case 'DECLINED':
-      case 'ERROR':
-        paymentStatus = 'FAILED'
-        break
-      case 'VOIDED':
-        paymentStatus = 'CANCELLED'
-        break
-      case 'PENDING':
+      case "APPROVED":
+        paymentStatus = "COMPLETED";
+        break;
+      case "DECLINED":
+      case "ERROR":
+        paymentStatus = "FAILED";
+        break;
+      case "VOIDED":
+        paymentStatus = "CANCELLED";
+        break;
+      case "PENDING":
       default:
-        paymentStatus = 'PENDING'
+        paymentStatus = "PENDING";
     }
 
     // Actualizar orden
@@ -58,22 +59,30 @@ export async function POST(
           completedAt: new Date().toISOString(),
         },
       },
-    })
+    });
 
     // Si el pago fue aprobado, crear los recursos correspondientes
-    if (paymentStatus === 'COMPLETED') {
+    if (paymentStatus === "COMPLETED") {
       // Nota: En producción, esto debería hacerse via webhook para mayor seguridad
       // Por ahora, confiamos en el resultado del widget para demos
-      console.log(`Orden ${reference} completada exitosamente - Transacción: ${transactionId}`)
+      const result = await processApprovedPayment(updatedOrder, {
+        transactionId,
+      });
+
+      if (!result.success) {
+        console.error("[ORDERS/COMPLETE] Error procesando pago aprobado:", result.error);
+      } else {
+        console.log(`Orden ${reference} completada exitosamente - Transacción: ${transactionId}`);
+      }
     }
 
     return NextResponse.json({
       success: true,
       paymentStatus,
       transactionId,
-    })
+    });
   } catch (error) {
-    console.error('Error completing order:', error)
-    return NextResponse.json({ error: 'Error completando orden' }, { status: 500 })
+    console.error("Error completing order:", error);
+    return NextResponse.json({ error: "Error completando orden" }, { status: 500 });
   }
 }
