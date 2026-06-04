@@ -18,6 +18,35 @@ interface TimeSlot {
   label: string;
 }
 
+const COLOMBIA_TIME_ZONE = "America/Bogota";
+const BOOKING_BLOCKING_STATUSES = ["PENDING_PAYMENT", "PENDING", "CONFIRMED"] as const;
+
+function getColombiaDateTime(date: string, time: string): Date {
+  return new Date(`${date}T${time}:00-05:00`);
+}
+
+function getColombiaDayOfWeek(date: string): number {
+  return getColombiaDateTime(date, "12:00").getUTCDay();
+}
+
+function getColombiaTimeString(date: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: COLOMBIA_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function getColombiaDateString(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: COLOMBIA_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 /**
  * GET /api/bookings/availability?date=YYYY-MM-DD&slug=session-slug
  * Returns available time slots for a specific session on a specific date
@@ -37,7 +66,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse and validate date
-    const selectedDate = new Date(dateParam);
+    const selectedDate = getColombiaDateTime(dateParam, "00:00");
     if (isNaN(selectedDate.getTime())) {
       return NextResponse.json({ error: "Invalid date format. Use YYYY-MM-DD" }, { status: 400 });
     }
@@ -77,12 +106,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if date is in the past
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const checkDate = new Date(selectedDate);
-    checkDate.setHours(0, 0, 0, 0);
+    const todayParam = getColombiaDateString(new Date());
 
-    if (checkDate < today) {
+    if (dateParam < todayParam) {
       return NextResponse.json({
         available: false,
         slots: [],
@@ -92,11 +118,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Check max advance booking
-    const maxDate = new Date();
-    maxDate.setDate(maxDate.getDate() + session.maxAdvanceBooking);
-    maxDate.setHours(0, 0, 0, 0);
+    const maxDate = getColombiaDateTime(todayParam, "00:00");
+    maxDate.setUTCDate(maxDate.getUTCDate() + session.maxAdvanceBooking);
+    const maxDateParam = getColombiaDateString(maxDate);
 
-    if (checkDate > maxDate) {
+    if (dateParam > maxDateParam) {
       return NextResponse.json({
         available: false,
         slots: [],
@@ -106,7 +132,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get available time slots for this day of week from global settings
-    const dayOfWeek = selectedDate.getDay();
+    const dayOfWeek = getColombiaDayOfWeek(dateParam);
     const daySlots = getTimeSlotsForDayOfWeek(bookingSettings?.weeklySchedule, dayOfWeek);
 
     if (!daySlots || daySlots.length === 0) {
@@ -118,22 +144,22 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get existing bookings for this date and session
-    const startOfDay = new Date(selectedDate);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(selectedDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Get existing 1:1 session bookings for this Colombia calendar date.
+    // Some historical flows store different resourceIds ("session-flexible",
+    // "session-canalizacion", Sanity id), but all 1:1 sessions share the same
+    // availability calendar.
+    const startOfDay = getColombiaDateTime(dateParam, "00:00");
+    const endOfDay = new Date(`${dateParam}T23:59:59.999-05:00`);
 
     const existingBookings = await prisma.booking.findMany({
       where: {
-        resourceId: session._id,
+        bookingType: "SESSION_1_ON_1",
         scheduledAt: {
           gte: startOfDay,
           lte: endOfDay,
         },
         status: {
-          in: ["PENDING", "CONFIRMED"],
+          in: [...BOOKING_BLOCKING_STATUSES],
         },
       },
       select: {
@@ -143,13 +169,9 @@ export async function GET(request: NextRequest) {
 
     // Convert existing bookings to set of booked times
     const bookedTimes = new Set(
-      existingBookings
-        .filter((booking) => booking.scheduledAt !== null)
-        .map((booking) => {
-          const hour = booking.scheduledAt!.getHours();
-          const minutes = booking.scheduledAt!.getMinutes();
-          return `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-        })
+      existingBookings.flatMap((booking) =>
+        booking.scheduledAt ? [getColombiaTimeString(booking.scheduledAt)] : []
+      )
     );
 
     // Generate slots based on day schedule
@@ -179,10 +201,9 @@ export async function GET(request: NextRequest) {
 
         // Check minimum lead time
         let meetsLeadTime = true;
-        if (checkDate.getTime() === today.getTime()) {
+        if (dateParam === todayParam) {
           const now = new Date();
-          const slotDateTime = new Date(selectedDate);
-          slotDateTime.setHours(hour, minute, 0, 0);
+          const slotDateTime = getColombiaDateTime(dateParam, timeString);
 
           const hoursUntilSlot = (slotDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
           meetsLeadTime = hoursUntilSlot >= session.bookingLeadTime;

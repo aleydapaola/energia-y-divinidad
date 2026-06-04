@@ -4,6 +4,7 @@ import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 
 const FROM_EMAIL = process.env.EMAIL_FROM || "Energía y Divinidad <noreply@energiaydivinidad.com>";
+const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contacto@energiaydivinidad.com";
 function resolveAppUrl(): string {
   const candidates = [
     process.env.NEXTAUTH_URL,
@@ -1680,6 +1681,231 @@ interface SendBookingConfirmationEmailParams {
   bookingId: string;
   paidWithCredit?: boolean;
   meetingLink?: string;
+}
+
+interface SendSessionBookingRequestEmailParams {
+  email: string;
+  name: string;
+  sessionName: string;
+  scheduledAt: Date;
+  duration?: number | null;
+  orderNumber: string;
+  amount?: number;
+  currency?: "COP" | "USD" | "EUR";
+  paymentMethodLabel?: string;
+  paymentLinkUrl?: string | null;
+  meetingLink?: string;
+}
+
+function formatSessionDateForColombia(date: Date) {
+  return new Intl.DateTimeFormat("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "America/Bogota",
+  }).format(date);
+}
+
+function formatEmailAmount(amount?: number, currency?: "COP" | "USD" | "EUR") {
+  if (!amount || !currency) {
+    return null;
+  }
+
+  const locale = currency === "COP" ? "es-CO" : currency === "EUR" ? "es-ES" : "en-US";
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: currency === "COP" ? 0 : 2,
+  }).format(amount);
+}
+
+export async function sendSessionBookingRequestEmail(params: SendSessionBookingRequestEmailParams) {
+  const {
+    email,
+    name,
+    sessionName,
+    scheduledAt,
+    duration,
+    orderNumber,
+    amount,
+    currency,
+    paymentMethodLabel,
+    paymentLinkUrl,
+    meetingLink,
+  } = params;
+
+  const firstName = name.trim().split(/\s+/)[0] || "Alma";
+  const formattedDate = formatSessionDateForColombia(scheduledAt);
+  const formattedAmount = formatEmailAmount(amount, currency);
+
+  if (DEV_MODE) {
+    console.log("\n========================================");
+    console.log("📧 EMAIL DE SOLICITUD DE SESIÓN (Modo Desarrollo)");
+    console.log("========================================");
+    console.log(`Para: ${email}`);
+    console.log(`Nombre: ${name}`);
+    console.log(`Sesión: ${sessionName}`);
+    console.log(`Fecha: ${formattedDate}`);
+    console.log(`Orden: ${orderNumber}`);
+    if (formattedAmount) {
+      console.log(`Total: ${formattedAmount}`);
+    }
+    console.log("========================================\n");
+
+    if (DEV_AUTO_VERIFY) {
+      return { success: true, data: { id: "dev-mode-simulated" } };
+    }
+  }
+
+  try {
+    const { data, error } = await getResendClient().emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: `Información para tu Consulta de Canalización - ${sessionName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Información para tu Consulta de Canalización</title>
+          </head>
+          <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f0f5;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td align="center" style="padding: 40px 20px;">
+                  <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
+                    <tr>
+                      <td align="center" style="padding: 30px 0;">
+                        <a href="${APP_URL}" style="text-decoration: none;">
+                          <img src="${LOGO_URL}" alt="Energía y Divinidad" style="max-width: 200px; height: auto;" />
+                        </a>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="background-color: #ffffff; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px rgba(138, 75, 175, 0.1);">
+                        <h2 style="margin: 0 0 20px; font-size: 24px; color: #654177; font-weight: 600;">
+                          Hola ${firstName},
+                        </h2>
+                        <p style="margin: 0 0 20px; font-size: 16px; color: #666666; line-height: 1.6;">
+                          Te envío la siguiente información para que la tengas presente para tu <strong>Consulta de Canalización</strong>.
+                        </p>
+
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f8f0f5; border-radius: 12px; margin-bottom: 20px;">
+                          <tr>
+                            <td style="padding: 20px;">
+                              <h3 style="margin: 0 0 15px; font-size: 18px; color: #8A4BAF;">
+                                ${sessionName}
+                              </h3>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177;">
+                                📅 <strong>Fecha:</strong> ${formattedDate}
+                              </p>
+                              ${
+                                duration
+                                  ? `<p style="margin: 0 0 8px; font-size: 14px; color: #654177;">⏱️ <strong>Duración:</strong> ${duration} minutos</p>`
+                                  : ""
+                              }
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177;">
+                                🌎 <strong>Zona horaria:</strong> America/Bogota
+                              </p>
+                              <p style="margin: 0; font-size: 14px; color: #654177;">
+                                <strong>N° de orden:</strong> ${orderNumber}
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+
+                        ${
+                          meetingLink
+                            ? `
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                          <tr>
+                            <td style="padding: 16px 20px; background-color: #eef1fa; border-radius: 12px; border-left: 4px solid #4944a4;">
+                              <p style="margin: 0 0 6px; font-size: 13px; font-weight: 600; color: #4944a4;">
+                                🔗 Enlace de la videollamada
+                              </p>
+                              <a href="${meetingLink}" style="font-size: 14px; color: #4944a4; word-break: break-all;">${meetingLink}</a>
+                            </td>
+                          </tr>
+                        </table>
+                        `
+                            : ""
+                        }
+
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                          <tr>
+                            <td style="padding: 20px; background-color: #fdf8ff; border-radius: 12px; border: 1px solid #e9d8f4;">
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.7;">🌿 Busca un lugar tranquilo y seguro, donde puedas estar en calma y sin interrupciones.</p>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.7;">🕊️ Respira profundo unos minutos y permite que tu mente se aquiete.</p>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.7;">🤍 Ten preparadas tus preguntas desde el corazón.</p>
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.7;">✨ Llega con el corazón abierto y la mente en paz.</p>
+                              <p style="margin: 0 0 14px; font-size: 14px; color: #654177; line-height: 1.7;">🌟 Permite que los Seres de Luz te acompañen y te entreguen la orientación que necesitas en este momento de tu camino.</p>
+                              <p style="margin: 0; font-size: 14px; color: #8A4BAF; font-style: italic;">Todo llega con amor, claridad y guía divina 💫</p>
+                            </td>
+                          </tr>
+                        </table>
+
+                        <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                          <tr>
+                            <td style="padding: 18px 20px; background-color: #fff8ed; border-radius: 12px; border-left: 4px solid #c0842f;">
+                              <p style="margin: 0 0 8px; font-size: 14px; color: #654177; line-height: 1.6;">
+                                🌹 Es importante que envíes tu soporte de pago respondiendo a este correo para asegurar tu espacio el día y la hora acordada.
+                              </p>
+                              ${
+                                formattedAmount
+                                  ? `<p style="margin: 0 0 8px; font-size: 14px; color: #654177;"><strong>Total:</strong> ${formattedAmount}</p>`
+                                  : ""
+                              }
+                              ${
+                                paymentMethodLabel
+                                  ? `<p style="margin: 0 0 8px; font-size: 14px; color: #654177;"><strong>Método de pago:</strong> ${paymentMethodLabel}</p>`
+                                  : ""
+                              }
+                              ${
+                                paymentLinkUrl
+                                  ? `<p style="margin: 0;"><a href="${paymentLinkUrl}" style="font-size: 14px; color: #8A4BAF; font-weight: 600;">Abrir enlace de pago</a></p>`
+                                  : ""
+                              }
+                            </td>
+                          </tr>
+                        </table>
+
+                        <p style="margin: 0; font-size: 14px; color: #999999; line-height: 1.6; text-align: center;">
+                          Con cariño,<br>
+                          <strong style="color: #8A4BAF;">Aleyda Paola</strong>
+                        </p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td align="center" style="padding: 30px 0;">
+                        <p style="margin: 0; font-size: 12px; color: #999999;">
+                          ¿Preguntas? <a href="mailto:${CONTACT_EMAIL}" style="color: #8A4BAF;">${CONTACT_EMAIL}</a>
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error("Error sending session booking request email:", error);
+      return { success: false, error };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error sending session booking request email:", error);
+    return { success: false, error };
+  }
 }
 
 export async function sendBookingConfirmationEmail(params: SendBookingConfirmationEmailParams) {

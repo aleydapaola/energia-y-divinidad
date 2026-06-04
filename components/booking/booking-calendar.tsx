@@ -184,6 +184,10 @@ export function BookingCalendar({
     if (!date) {
       return;
     }
+    const slot = availableSlots.find((availableSlot) => availableSlot.time === time);
+    if (slot && !slot.available) {
+      return;
+    }
     if (selectedTime === time) {
       onTimeChange(null);
     } else {

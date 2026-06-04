@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
-import { TimeSlot } from '@/lib/availability/time-slots';
+import { TimeSlot } from "@/lib/availability/time-slots";
 
 interface TimeSlotPickerProps {
   slots: TimeSlot[];
@@ -25,18 +25,20 @@ export default function TimeSlotPicker({
 
   // Función para convertir hora de 24h a 12h
   const convertTo12Hour = (time24: string): string => {
-    const [hours, minutes] = time24.split(':').map(Number);
-    const period = hours >= 12 ? 'pm' : 'am';
+    const [hours, minutes] = time24.split(":").map(Number);
+    const period = hours >= 12 ? "pm" : "am";
     const hours12 = hours % 12 || 12;
-    return `${hours12}:${minutes.toString().padStart(2, '0')}${period}`;
+    return `${hours12}:${minutes.toString().padStart(2, "0")}${period}`;
   };
 
   // Función para formatear el label según el formato seleccionado
   const formatTimeLabel = (label: string): string => {
-    if (is24Hour) {return label;}
+    if (is24Hour) {
+      return label;
+    }
 
     // Convertir "17:00 - 18:00" a "5:00pm - 6:00pm"
-    const [start, end] = label.split(' - ');
+    const [start, end] = label.split(" - ");
     return `${convertTo12Hour(start)} - ${convertTo12Hour(end)}`;
   };
 
@@ -58,15 +60,20 @@ export default function TimeSlotPicker({
       {/* Indicador de zona horaria y selector de formato */}
       <div className="flex items-center justify-between mb-4">
         {/* Indicador de zona horaria */}
-        {timezoneLabel && timezoneLabel !== 'Colombia' && (
+        {timezoneLabel && timezoneLabel !== "Colombia" && (
           <div className="flex items-center gap-1.5 text-sm text-[#2D4CC7] bg-[#eef1fa] px-3 py-1.5 rounded-full">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <span className="font-medium">Hora {timezoneLabel}</span>
           </div>
         )}
-        {(!timezoneLabel || timezoneLabel === 'Colombia') && <div />}
+        {(!timezoneLabel || timezoneLabel === "Colombia") && <div />}
 
         {/* Selector de formato 12h/24h */}
         <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
@@ -74,11 +81,7 @@ export default function TimeSlotPicker({
             onClick={() => setIs24Hour(false)}
             className={`
               px-3 py-1 text-sm font-medium rounded-md transition-all font-dm-sans
-              ${
-                !is24Hour
-                  ? 'bg-[#8A4BAF]/10 text-[#8A4BAF]'
-                  : 'text-gray-600 hover:text-gray-900'
-              }
+              ${!is24Hour ? "bg-[#8A4BAF]/10 text-[#8A4BAF]" : "text-gray-600 hover:text-gray-900"}
             `}
           >
             12h
@@ -87,11 +90,7 @@ export default function TimeSlotPicker({
             onClick={() => setIs24Hour(true)}
             className={`
               px-3 py-1 text-sm font-medium rounded-md transition-all font-dm-sans
-              ${
-                is24Hour
-                  ? 'bg-[#8A4BAF]/10 text-[#8A4BAF]'
-                  : 'text-gray-600 hover:text-gray-900'
-              }
+              ${is24Hour ? "bg-[#8A4BAF]/10 text-[#8A4BAF]" : "text-gray-600 hover:text-gray-900"}
             `}
           >
             24h
@@ -110,10 +109,11 @@ export default function TimeSlotPicker({
             <button
               key={slot.time}
               onClick={() => onSelectTime(slot.time)}
-              disabled={!hasDateSelected}
+              disabled={!hasDateSelected || !slot.available}
+              aria-disabled={!hasDateSelected || !slot.available}
               style={{
-                WebkitTapHighlightColor: 'rgba(138, 75, 175, 0.3)',
-                touchAction: 'manipulation',
+                WebkitTapHighlightColor: "rgba(138, 75, 175, 0.3)",
+                touchAction: "manipulation",
               }}
               className={`
                 w-full px-4 py-4 rounded-lg font-medium transition-all font-dm-sans
@@ -122,10 +122,12 @@ export default function TimeSlotPicker({
                 active:scale-[0.98]
                 ${
                   !hasDateSelected
-                    ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
-                    : selectedTime === slot.time
-                    ? 'bg-[#8A4BAF] text-white shadow-md ring-2 ring-[#8A4BAF] ring-offset-2'
-                    : 'bg-[#f8f0f5] text-[#654177] border border-[#8A4BAF]/30 shadow-sm hover:border-[#8A4BAF] hover:bg-[#efe3ed] active:bg-[#efe3ed]'
+                    ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60"
+                    : !slot.available
+                      ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed line-through opacity-70"
+                      : selectedTime === slot.time
+                        ? "bg-[#8A4BAF] text-white shadow-md ring-2 ring-[#8A4BAF] ring-offset-2"
+                        : "bg-[#f8f0f5] text-[#654177] border border-[#8A4BAF]/30 shadow-sm hover:border-[#8A4BAF] hover:bg-[#efe3ed] active:bg-[#efe3ed]"
                 }
               `}
             >

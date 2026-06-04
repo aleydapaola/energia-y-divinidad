@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { applyCheckoutDiscount } from "@/lib/checkout/discounts";
+import { sendSessionBookingRequestEmail } from "@/lib/email";
 import { processApprovedPayment } from "@/lib/payment-processor";
 import { prisma } from "@/lib/prisma";
+import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
 import { generateWompiReference } from "@/lib/wompi";
 
 interface CheckoutBody {
@@ -239,6 +241,27 @@ export async function POST(request: NextRequest) {
     });
 
     console.log("[CHECKOUT/WOMPI-MANUAL] Order created:", order.id, "reference:", reference);
+
+    if (productType === "session" && scheduledAt && userEmail) {
+      try {
+        const meetingLink = await getSessionMeetingLink();
+        await sendSessionBookingRequestEmail({
+          email: userEmail,
+          name: guestName || session?.user?.name || "Cliente",
+          sessionName: productName,
+          scheduledAt: new Date(scheduledAt),
+          duration: null,
+          orderNumber: order.orderNumber,
+          amount: finalAmount,
+          currency: "COP",
+          paymentMethodLabel: "Wompi",
+          paymentLinkUrl,
+          meetingLink,
+        });
+      } catch (emailError) {
+        console.error("[CHECKOUT/WOMPI-MANUAL] Error sending booking request email:", emailError);
+      }
+    }
 
     return NextResponse.json({
       success: true,
