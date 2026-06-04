@@ -1,6 +1,6 @@
 # Integración Google Calendar
 
-La web sigue siendo la fuente oficial de reservas. Google Calendar se usa como espejo de consulta para que Aleyda pueda ver sus sesiones desde la cuenta `alepaola8523@gmail.com`.
+La web sigue siendo la fuente oficial de reservas. Google Calendar se usa como espejo de consulta para que Aleyda pueda ver sus sesiones en el calendario **Consultas Canalización** de la cuenta `energiaydivinidad@gmail.com`.
 
 ## Preparación en Google Cloud
 
@@ -12,24 +12,34 @@ La web sigue siendo la fuente oficial de reservas. Google Calendar se usa como e
 
 ## Compartir el calendario de Aleyda
 
-Desde Google Calendar con la cuenta `alepaola8523@gmail.com`:
+Desde Google Calendar con la cuenta `energiaydivinidad@gmail.com`:
 
-1. Abrir la configuración del calendario donde deben aparecer las sesiones.
-2. Ir a **Compartir con personas o grupos específicos**.
+1. Abrir la configuración del calendario **Consultas Canalización**.
+2. Ir a **Compartir con personas o grupos específicos** o **Compartido con**.
 3. Añadir el email de la cuenta de servicio.
-4. Dar permiso **Hacer cambios en eventos**.
+4. Dar permiso **Modificar los eventos**.
 
-Para el calendario principal, el `GOOGLE_CALENDAR_ID` normalmente puede ser `alepaola8523@gmail.com`.
+Como **Consultas Canalización** no es necesariamente el calendario principal, el `GOOGLE_CALENDAR_ID` debe ser el ID interno de ese calendario:
+
+1. En la configuración de **Consultas Canalización**, ir a **Integrar calendario**.
+2. Copiar el valor **ID del calendario**.
+3. Usar ese valor como `GOOGLE_CALENDAR_ID`.
+
+Ese ID suele tener formato parecido a:
+
+```text
+xxxxxxxxxxxxxxxxxxxxxxxxxx@group.calendar.google.com
+```
 
 ## Variables de entorno
 
 Configurar en local y en Vercel:
 
 ```bash
-GOOGLE_CALENDAR_ID="alepaola8523@gmail.com"
+GOOGLE_CALENDAR_ID="xxxxxxxxxxxxxxxxxxxxxxxxxx@group.calendar.google.com"
 GOOGLE_SERVICE_ACCOUNT_EMAIL="nombre-cuenta-servicio@proyecto.iam.gserviceaccount.com"
 GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-GOOGLE_CALENDAR_TIME_ZONE="Europe/Madrid"
+GOOGLE_CALENDAR_TIME_ZONE="America/Bogota"
 ```
 
 La clave privada debe conservar los saltos de línea como `\n` si se pega en una sola línea.
