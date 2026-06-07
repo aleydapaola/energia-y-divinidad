@@ -1,11 +1,18 @@
 "use client";
 
-import { Eye, Loader2, Mail, Play, RefreshCw, Send, Users } from "lucide-react";
+import { Eye, Loader2, Mail, Play, RefreshCw, Search, Send, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { CommunicationAudienceOptions, EmailRecipientCandidate } from "@/lib/email-audiences";
 
-type AudienceType = "ALL_USERS" | "COURSE" | "MEMBERSHIP" | "EVENT";
+type AudienceType = "ALL_USERS" | "COURSE" | "MEMBERSHIP" | "EVENT" | "SELECTED_USERS";
+
+interface SelectableUser {
+  id: string;
+  name: string | null;
+  email: string;
+  activeMembership: string | null;
+}
 
 interface CampaignRow {
   id: string;
@@ -39,6 +46,7 @@ const audienceLabels: Record<AudienceType, string> = {
   COURSE: "Alumnos de un curso",
   MEMBERSHIP: "Miembros de un plan",
   EVENT: "Inscritos de un evento",
+  SELECTED_USERS: "Usuarios seleccionados",
 };
 
 export function CommunicationsClient({ options, initialCampaigns }: CommunicationsClientProps) {
@@ -49,8 +57,12 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [testEmail, setTestEmail] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+  const [userResults, setUserResults] = useState<SelectableUser[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<SelectableUser[]>([]);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [searchingUsers, setSearchingUsers] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [creating, setCreating] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -70,7 +82,9 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
     return [];
   }, [audienceType, options]);
 
-  const requiresAudienceId = audienceType !== "ALL_USERS";
+  const isSelectedUsersAudience = audienceType === "SELECTED_USERS";
+  const requiresAudienceId = audienceType !== "ALL_USERS" && !isSelectedUsersAudience;
+  const selectedUserIds = selectedUsers.map((user) => user.id);
 
   async function refreshCampaigns() {
     const res = await fetch("/api/admin/communications/campaigns");
@@ -89,7 +103,11 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       const res = await fetch("/api/admin/communications/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ audienceType, audienceId: requiresAudienceId ? audienceId : null }),
+        body: JSON.stringify({
+          audienceType,
+          audienceId: requiresAudienceId ? audienceId : null,
+          userIds: isSelectedUsersAudience ? selectedUserIds : undefined,
+        }),
       });
       const data = await res.json();
 
@@ -102,6 +120,51 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
     } finally {
       setLoadingPreview(false);
     }
+  }
+
+  async function handleUserSearch() {
+    const query = userSearch.trim();
+    if (query.length < 2) {
+      setError("Escribe al menos 2 caracteres para buscar usuarios");
+      return;
+    }
+
+    setSearchingUsers(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const params = new URLSearchParams({
+        q: query,
+        limit: "12",
+      });
+      const res = await fetch(`/api/admin/users?${params.toString()}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "No se pudo buscar usuarios");
+        return;
+      }
+
+      setUserResults(data.users ?? []);
+    } finally {
+      setSearchingUsers(false);
+    }
+  }
+
+  function addSelectedUser(user: SelectableUser) {
+    setSelectedUsers((current) => {
+      if (current.some((selected) => selected.id === user.id)) {
+        return current;
+      }
+      return [...current, user];
+    });
+    setPreview(null);
+  }
+
+  function removeSelectedUser(userId: string) {
+    setSelectedUsers((current) => current.filter((user) => user.id !== userId));
+    setPreview(null);
   }
 
   async function handleSendTest() {
@@ -147,6 +210,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
           body,
           audienceType,
           audienceId: requiresAudienceId ? audienceId : null,
+          userIds: isSelectedUsersAudience ? selectedUserIds : undefined,
         }),
       });
       const data = await res.json();
@@ -161,6 +225,11 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       setSubject("");
       setBody("");
       setPreview(null);
+      if (isSelectedUsersAudience) {
+        setSelectedUsers([]);
+        setUserResults([]);
+        setUserSearch("");
+      }
       await refreshCampaigns();
     } finally {
       setCreating(false);
@@ -188,7 +257,9 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
     }
   }
 
-  const canPreview = !requiresAudienceId || Boolean(audienceId);
+  const canPreview =
+    (!requiresAudienceId || Boolean(audienceId)) &&
+    (!isSelectedUsersAudience || selectedUsers.length > 0);
   const canCreate = title.trim() && subject.trim() && body.trim() && canPreview;
 
   return (
@@ -238,6 +309,9 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
                 onChange={(event) => {
                   setAudienceType(event.target.value as AudienceType);
                   setAudienceId("");
+                  setSelectedUsers([]);
+                  setUserResults([]);
+                  setUserSearch("");
                   setPreview(null);
                 }}
                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-dm-sans focus:outline-none focus:ring-2 focus:ring-[#8A4BAF]"
@@ -271,6 +345,108 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
               </label>
             )}
           </div>
+
+          {isSelectedUsersAudience && (
+            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <label className="block">
+                <span className="text-sm text-gray-600 font-dm-sans">Buscar usuario</span>
+                <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <input
+                      value={userSearch}
+                      onChange={(event) => setUserSearch(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          handleUserSearch();
+                        }
+                      }}
+                      placeholder="Nombre o email"
+                      className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 font-dm-sans focus:outline-none focus:ring-2 focus:ring-[#8A4BAF]"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleUserSearch}
+                    disabled={searchingUsers}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#4944a4] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#3d3a8a] disabled:opacity-50"
+                  >
+                    {searchingUsers ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                    Buscar
+                  </button>
+                </div>
+              </label>
+
+              {selectedUsers.length > 0 && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Seleccionados
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedUsers.map((user) => (
+                      <span
+                        key={user.id}
+                        className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#f8f0f5] px-3 py-1 text-sm text-[#654177]"
+                      >
+                        <span className="truncate">
+                          {user.name || "Sin nombre"} · {user.email}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeSelectedUser(user.id)}
+                          className="rounded-full p-0.5 text-[#8A4BAF] hover:bg-white"
+                          aria-label={`Quitar ${user.email}`}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {userResults.length > 0 && (
+                <div className="mt-4 max-h-72 overflow-auto rounded-lg border border-gray-200 bg-white">
+                  {userResults.map((user) => {
+                    const isSelected = selectedUsers.some((selected) => selected.id === user.id);
+                    return (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() => addSelectedUser(user)}
+                        disabled={isSelected}
+                        className="flex w-full items-center justify-between gap-3 border-b border-gray-100 px-3 py-3 text-left last:border-b-0 hover:bg-[#f8f0f5] disabled:cursor-default disabled:bg-gray-50"
+                      >
+                        <span>
+                          <span className="block text-sm font-medium text-gray-900">
+                            {user.name || "Sin nombre"}
+                          </span>
+                          <span className="block text-xs text-gray-500">{user.email}</span>
+                          {user.activeMembership && (
+                            <span className="mt-1 inline-block rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
+                              {user.activeMembership}
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${
+                            isSelected ? "bg-gray-100 text-gray-500" : "bg-[#4944a4] text-white"
+                          }`}
+                        >
+                          {isSelected ? "Añadido" : "Añadir"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <label className="block">
