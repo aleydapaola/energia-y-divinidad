@@ -14,6 +14,13 @@ import {
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_BATCH_SIZE = 25;
+const APP_URL =
+  process.env.NEXTAUTH_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  "https://www.energiaydivinidad.com";
+const LOGO_URL = "https://energia-y-divinidad.vercel.app/images/logoNoBackground.png";
+const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contacto@energiaydivinidad.com";
 
 export interface CreateEmailCampaignInput {
   createdById: string;
@@ -35,17 +42,67 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#039;");
 }
 
+function linkifyEscapedText(value: string) {
+  const escaped = escapeHtml(value);
+  return escaped.replace(
+    /(https?:\/\/[^\s<]+|www\.[^\s<]+|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi,
+    (match) => {
+      let href = `https://${match}`;
+      if (match.includes("@")) {
+        href = `mailto:${match}`;
+      } else if (match.startsWith("http")) {
+        href = match;
+      }
+
+      return `<a href="${href}" style="color:#4944a4;text-decoration:underline;text-decoration-color:#c8b8d4;">${match}</a>`;
+    }
+  );
+}
+
+function renderMessageBlocks(body: string) {
+  return body
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      const lines = block
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean);
+      const isBulletList = lines.length > 1 && lines.every((line) => /^[-*]\s+/.test(line));
+
+      if (isBulletList) {
+        return `
+          <ul style="margin:0 0 22px;padding:0 0 0 22px;color:#654177;">
+            ${lines
+              .map((line) => line.replace(/^[-*]\s+/, ""))
+              .map(
+                (line) =>
+                  `<li style="margin:0 0 10px;font-size:16px;line-height:1.7;color:#654177;">${linkifyEscapedText(line)}</li>`
+              )
+              .join("")}
+          </ul>
+        `;
+      }
+
+      return `
+        <p style="margin:0 0 20px;font-size:16px;line-height:1.75;color:#654177;">
+          ${lines.map((line) => linkifyEscapedText(line)).join("<br />")}
+        </p>
+      `;
+    })
+    .join("");
+}
+
 export function renderCampaignHtml(params: {
   subject: string;
   body: string;
   previewName?: string | null;
 }) {
+  const safeSubject = escapeHtml(params.subject);
   const greeting = params.previewName ? `Hola ${escapeHtml(params.previewName)},` : "Hola,";
-  const paragraphs = params.body
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
-    .map((paragraph) => escapeHtml(paragraph).replace(/\n/g, "<br />"));
+  const messageBlocks = renderMessageBlocks(params.body);
+  const year = new Date().getFullYear();
 
   return `
     <!DOCTYPE html>
@@ -53,30 +110,66 @@ export function renderCampaignHtml(params: {
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${escapeHtml(params.subject)}</title>
+        <title>${safeSubject}</title>
       </head>
-      <body style="margin:0;padding:0;background:#f8f0f5;font-family:Arial,sans-serif;color:#333;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8f0f5;">
+      <body style="margin:0;padding:0;background-color:#f8f0f5;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#654177;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;background-color:#f8f0f5;">
           <tr>
-            <td align="center" style="padding:32px 16px;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #eaddec;">
+            <td align="center" style="padding:40px 20px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;max-width:640px;border-collapse:collapse;">
                 <tr>
-                  <td style="padding:28px 32px;background:#654177;color:#ffffff;">
-                    <h1 style="margin:0;font-size:24px;line-height:1.3;font-weight:600;">${escapeHtml(params.subject)}</h1>
+                  <td align="center" style="padding:24px 0 30px;">
+                    <a href="${APP_URL}" style="text-decoration:none;">
+                      <img src="${LOGO_URL}" alt="Energía y Divinidad" style="display:block;max-width:190px;height:auto;border:0;" />
+                    </a>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding:32px;font-size:16px;line-height:1.7;">
-                    <p style="margin:0 0 18px;">${greeting}</p>
-                    ${paragraphs
-                      .map((paragraph) => `<p style="margin:0 0 18px;">${paragraph}</p>`)
-                      .join("")}
-                    <p style="margin:28px 0 0;color:#654177;">Con cariño,<br />Aleyda</p>
+                  <td style="background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 14px rgba(101,65,119,0.10);border:1px solid #eaddec;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;">
+                      <tr>
+                        <td style="padding:32px 38px 28px;background-color:#654177;">
+                          <p style="margin:0 0 10px;font-size:13px;letter-spacing:0;text-transform:uppercase;color:#f8f0f5;font-weight:600;">
+                            Energía y Divinidad
+                          </p>
+                          <h1 style="margin:0;font-size:26px;line-height:1.35;color:#ffffff;font-weight:600;">
+                            ${safeSubject}
+                          </h1>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:38px 38px 34px;">
+                          <p style="margin:0 0 20px;font-size:18px;line-height:1.6;color:#654177;font-weight:600;">
+                            ${greeting}
+                          </p>
+                          ${messageBlocks}
+                          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;margin-top:30px;">
+                            <tr>
+                              <td style="padding:22px;background-color:#fdf8ff;border-radius:12px;border:1px solid #e9d8f4;">
+                                <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#654177;">
+                                  Con cariño y luz,
+                                </p>
+                                <p style="margin:0;font-size:17px;line-height:1.5;color:#8A4BAF;font-weight:700;">
+                                  Aleyda Paola
+                                </p>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding:20px 32px;background:#fbf8fb;color:#777;font-size:12px;line-height:1.5;">
-                    Energía y Divinidad · Este correo se envía porque tienes una relación activa con la web.
+                  <td align="center" style="padding:28px 18px 0;">
+                    <p style="margin:0 0 10px;font-size:12px;line-height:1.6;color:#999999;">
+                      © ${year} Energía y Divinidad. Todos los derechos reservados.
+                    </p>
+                    <p style="margin:0;font-size:12px;line-height:1.6;color:#999999;">
+                      Este correo se envía porque tienes una relación activa con la web.
+                      <br />
+                      ¿Preguntas? <a href="mailto:${CONTACT_EMAIL}" style="color:#8A4BAF;text-decoration:none;">${CONTACT_EMAIL}</a>
+                    </p>
                   </td>
                 </tr>
               </table>
