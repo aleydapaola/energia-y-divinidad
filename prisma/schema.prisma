@@ -52,6 +52,8 @@ model User {
   quizAttempts     QuizAttempt[]
   certificates     Certificate[]
   perkAllocations  PerkAllocation[]
+  emailCampaigns   EmailCampaignRecipient[]
+  emailPreferences UserEmailPreferences?
 
   // Metadata
   createdAt DateTime @default(now())
@@ -1033,6 +1035,114 @@ model EmailLog {
   @@index([entityType, entityId])
   @@index([status])
   @@map("email_logs")
+}
+
+// ============================================
+// BOUNDED CONTEXT: Admin Communications
+// ============================================
+
+enum EmailCampaignStatus {
+  DRAFT
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum EmailCampaignAudienceType {
+  ALL_USERS
+  COURSE
+  MEMBERSHIP
+  EVENT
+  SELECTED_USERS
+}
+
+enum EmailRecipientStatus {
+  QUEUED
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model EmailCampaign {
+  id           String                    @id @default(cuid())
+  createdById  String
+  createdByEmail String
+
+  title        String
+  subject      String
+  body         String                    @db.Text
+  status       EmailCampaignStatus       @default(DRAFT)
+  audienceType EmailCampaignAudienceType
+  audienceId   String?
+  audienceName String?
+  audienceMeta Json?
+
+  fromEmail    String?
+  testSentAt   DateTime?
+  queuedAt     DateTime?
+  sentAt       DateTime?
+  failedAt     DateTime?
+  errorMessage String?                   @db.Text
+
+  recipients   EmailCampaignRecipient[]
+
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+
+  @@index([status])
+  @@index([audienceType, audienceId])
+  @@index([createdAt])
+  @@map("email_campaigns")
+}
+
+model EmailCampaignRecipient {
+  id               String               @id @default(cuid())
+  campaignId       String
+  userId           String?
+
+  email            String
+  name             String?
+  status           EmailRecipientStatus @default(QUEUED)
+  providerMessageId String?
+  emailLogId       String?
+  errorMessage     String?              @db.Text
+  sentAt           DateTime?
+
+  campaign         EmailCampaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user             User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@unique([campaignId, email])
+  @@index([campaignId, status])
+  @@index([email])
+  @@index([userId])
+  @@map("email_campaign_recipients")
+}
+
+model UserEmailPreferences {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+
+  marketingEmails       Boolean  @default(false)
+  courseEmails          Boolean  @default(true)
+  membershipEmails      Boolean  @default(true)
+  eventEmails           Boolean  @default(true)
+  sessionEmails         Boolean  @default(true)
+
+  marketingOptedInAt    DateTime?
+  marketingOptedOutAt   DateTime?
+  unsubscribedAllAt     DateTime?
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("user_email_preferences")
 }
 
 // ============================================

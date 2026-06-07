@@ -8,6 +8,7 @@ import {
   Ticket,
   GraduationCap,
   Tag,
+  Mail,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -103,6 +104,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             >
               <Users className="w-5 h-5 text-[#8A4BAF]" />
               <span className="font-dm-sans">Usuarios</span>
+            </Link>
+            <Link
+              href="/admin/communications"
+              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-[#f8f0f5] rounded-lg transition-colors"
+            >
+              <Mail className="w-5 h-5 text-[#8A4BAF]" />
+              <span className="font-dm-sans">Comunicaciones</span>
             </Link>
             <Link
               href="/admin/courses"
