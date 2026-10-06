@@ -21,8 +21,5 @@ export async function POST(request: NextRequest) {
 }
 
 export function GET(request: NextRequest) {
-  if (process.env.NODE_ENV !== "development") {
-    return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
-  }
   return POST(request);
 }
