@@ -5,7 +5,13 @@ import { useMemo, useState } from "react";
 
 import type { CommunicationAudienceOptions, EmailRecipientCandidate } from "@/lib/email-audiences";
 
-type AudienceType = "ALL_USERS" | "COURSE" | "MEMBERSHIP" | "EVENT" | "SELECTED_USERS";
+type AudienceType =
+  | "ALL_USERS"
+  | "COURSE"
+  | "MEMBERSHIP"
+  | "EVENT"
+  | "SELECTED_USERS"
+  | "MANUAL_EMAILS";
 
 interface SelectableUser {
   id: string;
@@ -47,6 +53,7 @@ const audienceLabels: Record<AudienceType, string> = {
   MEMBERSHIP: "Miembros de un plan",
   EVENT: "Inscritos de un evento",
   SELECTED_USERS: "Usuarios seleccionados",
+  MANUAL_EMAILS: "Direcciones de correo",
 };
 
 export function CommunicationsClient({ options, initialCampaigns }: CommunicationsClientProps) {
@@ -60,6 +67,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
   const [userSearch, setUserSearch] = useState("");
   const [userResults, setUserResults] = useState<SelectableUser[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<SelectableUser[]>([]);
+  const [manualEmails, setManualEmails] = useState("");
   const [preview, setPreview] = useState<PreviewState | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [searchingUsers, setSearchingUsers] = useState(false);
@@ -83,7 +91,9 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
   }, [audienceType, options]);
 
   const isSelectedUsersAudience = audienceType === "SELECTED_USERS";
-  const requiresAudienceId = audienceType !== "ALL_USERS" && !isSelectedUsersAudience;
+  const isManualEmailsAudience = audienceType === "MANUAL_EMAILS";
+  const requiresAudienceId =
+    audienceType !== "ALL_USERS" && !isSelectedUsersAudience && !isManualEmailsAudience;
   const selectedUserIds = selectedUsers.map((user) => user.id);
 
   async function refreshCampaigns() {
@@ -107,6 +117,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
           audienceType,
           audienceId: requiresAudienceId ? audienceId : null,
           userIds: isSelectedUsersAudience ? selectedUserIds : undefined,
+          manualEmails: isManualEmailsAudience ? manualEmails : undefined,
         }),
       });
       const data = await res.json();
@@ -211,6 +222,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
           audienceType,
           audienceId: requiresAudienceId ? audienceId : null,
           userIds: isSelectedUsersAudience ? selectedUserIds : undefined,
+          manualEmails: isManualEmailsAudience ? manualEmails : undefined,
         }),
       });
       const data = await res.json();
@@ -225,6 +237,9 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       setSubject("");
       setBody("");
       setPreview(null);
+      if (isManualEmailsAudience) {
+        setManualEmails("");
+      }
       if (isSelectedUsersAudience) {
         setSelectedUsers([]);
         setUserResults([]);
@@ -259,7 +274,8 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
 
   const canPreview =
     (!requiresAudienceId || Boolean(audienceId)) &&
-    (!isSelectedUsersAudience || selectedUsers.length > 0);
+    (!isSelectedUsersAudience || selectedUsers.length > 0) &&
+    (!isManualEmailsAudience || Boolean(manualEmails.trim()));
   const canCreate = title.trim() && subject.trim() && body.trim() && canPreview;
 
   return (
@@ -268,7 +284,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
         <div>
           <h1 className="font-gazeta text-3xl text-[#654177]">Comunicaciones</h1>
           <p className="text-gray-600 font-dm-sans mt-1">
-            Envía correos operativos a grupos de usuarios de la web
+            Envía correos a grupos de usuarios o a direcciones de correo
           </p>
         </div>
         <button
@@ -312,6 +328,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
                   setSelectedUsers([]);
                   setUserResults([]);
                   setUserSearch("");
+                  setManualEmails("");
                   setPreview(null);
                 }}
                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-dm-sans focus:outline-none focus:ring-2 focus:ring-[#8A4BAF]"
@@ -345,6 +362,31 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
               </label>
             )}
           </div>
+
+          {isManualEmailsAudience && (
+            <label className="mt-4 block">
+              <span className="text-sm text-gray-600 font-dm-sans">Destinatarios</span>
+              <textarea
+                value={manualEmails}
+                onChange={(event) => {
+                  setManualEmails(event.target.value);
+                  setPreview(null);
+                }}
+                rows={4}
+                placeholder={"persona@ejemplo.com\notra@ejemplo.com"}
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-dm-sans focus:outline-none focus:ring-2 focus:ring-[#8A4BAF]"
+                aria-describedby="manual-emails-help"
+              />
+              <span
+                id="manual-emails-help"
+                className="mt-2 block text-sm text-gray-500 font-dm-sans"
+              >
+                Escribe una o varias direcciones, separadas por comas, punto y coma o saltos de
+                línea. No es necesario que estén registradas en la web. Cada persona recibirá su
+                propio correo.
+              </span>
+            </label>
+          )}
 
           {isSelectedUsersAudience && (
             <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4">

@@ -31,6 +31,7 @@ export interface CreateEmailCampaignInput {
   audienceType: EmailCampaignAudienceType;
   audienceId?: string | null;
   userIds?: string[];
+  manualEmails?: string;
 }
 
 function escapeHtml(value: string) {
@@ -194,6 +195,7 @@ function validateCampaignInput(input: CreateEmailCampaignInput) {
   if (
     input.audienceType !== "ALL_USERS" &&
     input.audienceType !== "SELECTED_USERS" &&
+    input.audienceType !== "MANUAL_EMAILS" &&
     !input.audienceId
   ) {
     throw new Error("Selecciona una audiencia");
@@ -204,6 +206,7 @@ export async function previewCampaignAudience(params: {
   audienceType: EmailCampaignAudienceType;
   audienceId?: string | null;
   userIds?: string[];
+  manualEmails?: string;
 }) {
   const recipients = await resolveEmailAudience(params);
   return {
@@ -219,6 +222,7 @@ export async function createEmailCampaign(input: CreateEmailCampaignInput) {
     audienceType: input.audienceType,
     audienceId: input.audienceId,
     userIds: input.userIds,
+    manualEmails: input.manualEmails,
   });
 
   if (recipients.length === 0) {

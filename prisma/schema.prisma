@@ -1056,6 +1056,7 @@ enum EmailCampaignAudienceType {
   MEMBERSHIP
   EVENT
   SELECTED_USERS
+  MANUAL_EMAILS
 }
 
 enum EmailRecipientStatus {

@@ -17,11 +17,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Audiencia requerida" }, { status: 400 });
   }
 
-  const preview = await previewCampaignAudience({
-    audienceType,
-    audienceId: body.audienceId,
-    userIds: Array.isArray(body.userIds) ? body.userIds : undefined,
-  });
+  try {
+    const preview = await previewCampaignAudience({
+      audienceType,
+      audienceId: body.audienceId,
+      userIds: Array.isArray(body.userIds) ? body.userIds : undefined,
+      manualEmails: typeof body.manualEmails === "string" ? body.manualEmails : undefined,
+    });
 
-  return NextResponse.json(preview);
+    return NextResponse.json(preview);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Error calculando destinatarios" },
+      { status: 400 }
+    );
+  }
 }

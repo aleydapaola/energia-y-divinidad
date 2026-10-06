@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
       audienceType: body.audienceType as EmailCampaignAudienceType,
       audienceId: body.audienceId,
       userIds: Array.isArray(body.userIds) ? body.userIds : undefined,
+      manualEmails: typeof body.manualEmails === "string" ? body.manualEmails : undefined,
     });
 
     return NextResponse.json({

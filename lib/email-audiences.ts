@@ -1,6 +1,7 @@
 import { EmailCampaignAudienceType } from "@prisma/client";
 import { groq } from "next-sanity";
 
+import { parseManualEmails } from "@/lib/email-recipients";
 import { prisma } from "@/lib/prisma";
 import { client } from "@/sanity/lib/client";
 
@@ -26,6 +27,7 @@ export interface ResolveAudienceInput {
   audienceType: EmailCampaignAudienceType;
   audienceId?: string | null;
   userIds?: string[];
+  manualEmails?: string;
 }
 
 const allowsOperationalEmailWhere = {
@@ -122,6 +124,9 @@ export async function getCommunicationAudienceOptions(): Promise<CommunicationAu
 }
 
 export async function getAudienceName(input: ResolveAudienceInput) {
+  if (input.audienceType === "MANUAL_EMAILS") {
+    return "Direcciones de correo";
+  }
   if (input.audienceType === "ALL_USERS") {
     return "Todos los usuarios verificados";
   }
@@ -149,6 +154,29 @@ export async function getAudienceName(input: ResolveAudienceInput) {
 export async function resolveEmailAudience(
   input: ResolveAudienceInput
 ): Promise<EmailRecipientCandidate[]> {
+  if (input.audienceType === "MANUAL_EMAILS") {
+    const emails = parseManualEmails(input.manualEmails ?? "");
+    const users = await prisma.user.findMany({
+      where: { email: { in: emails, mode: "insensitive" } },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        emailPreferences: { select: { unsubscribedAllAt: true } },
+      },
+    });
+    const usersByEmail = new Map(users.map((user) => [user.email.toLowerCase(), user]));
+
+    return dedupeRecipients(
+      emails.flatMap((email) => {
+        const user = usersByEmail.get(email);
+        if (user?.emailPreferences?.unsubscribedAllAt) {
+          return [];
+        }
+        return [{ email, userId: user?.id ?? null, name: user?.name ?? null }];
+      })
+    );
+  }
   if (
     input.audienceType !== "ALL_USERS" &&
     input.audienceType !== "SELECTED_USERS" &&
