@@ -333,11 +333,11 @@ export function CoursePlayer({
               {currentLesson.title}
             </h1>
             {currentLesson.description ? (
-              <p className="mt-4 max-w-3xl whitespace-pre-line font-dm-sans text-base leading-7 text-[#654177]/80">
+              <p className="mt-4 whitespace-pre-line font-dm-sans text-base leading-7 text-[#654177]/80">
                 {currentLesson.description}
               </p>
             ) : currentModule?.description ? (
-              <p className="mt-4 max-w-3xl whitespace-pre-line font-dm-sans text-base leading-7 text-[#654177]/80">
+              <p className="mt-4 whitespace-pre-line font-dm-sans text-base leading-7 text-[#654177]/80">
                 {currentModule.description}
               </p>
             ) : null}
@@ -361,7 +361,7 @@ export function CoursePlayer({
                       {submodule.title}
                     </h2>
                     {submodule.description && (
-                      <p className="mt-3 max-w-3xl whitespace-pre-line font-dm-sans text-base leading-7 text-[#654177]/80">
+                      <p className="mt-3 whitespace-pre-line font-dm-sans text-base leading-7 text-[#654177]/80">
                         {submodule.description}
                       </p>
                     )}
