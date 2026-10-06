@@ -83,9 +83,7 @@ export function CourseContent({
   onLessonClick,
   onPreviewClick,
 }: CourseContentProps) {
-  const [expandedModules, setExpandedModules] = useState<string[]>(
-    modules?.length ? [modules[0]._id] : []
-  );
+  const [expandedModules, setExpandedModules] = useState<string[]>([]);
 
   // Calculate drip availability for all lessons
   const lessonAvailability = useMemo(() => {
@@ -272,7 +270,9 @@ export function CourseContent({
             <div key={module._id} className="border border-gray-200 rounded-lg overflow-hidden">
               {/* Module Header */}
               <button
+                type="button"
                 onClick={() => toggleModule(module._id)}
+                aria-expanded={isExpanded}
                 className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
               >
                 <div className="flex items-center gap-3">
