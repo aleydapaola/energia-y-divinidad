@@ -10,7 +10,7 @@ import {
   Clock,
   ClipboardList,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { calculateDripAvailability, type DripMode } from "@/lib/course-access";
 
@@ -70,18 +70,6 @@ const lessonTypeIcons = {
   text: FileText,
 };
 
-function getInitialExpandedModules(modules: Module[], currentModuleId?: string): string[] {
-  if (currentModuleId) {
-    return [currentModuleId];
-  }
-
-  if (modules[0]?._id) {
-    return [modules[0]._id];
-  }
-
-  return [];
-}
-
 export function LessonList({
   modules,
   currentLessonId,
@@ -92,26 +80,7 @@ export function LessonList({
   startedAt,
   courseId,
 }: LessonListProps) {
-  const currentModuleId = useMemo(
-    () =>
-      modules.find((courseModule) =>
-        courseModule.lessons.some((lesson) => lesson._id === currentLessonId)
-      )?._id,
-    [modules, currentLessonId]
-  );
-  const [expandedModules, setExpandedModules] = useState<string[]>(
-    getInitialExpandedModules(modules, currentModuleId)
-  );
-
-  useEffect(() => {
-    if (!currentModuleId) {
-      return;
-    }
-
-    setExpandedModules((prev) =>
-      prev.includes(currentModuleId) ? prev : [...prev, currentModuleId]
-    );
-  }, [currentModuleId]);
+  const [expandedModules, setExpandedModules] = useState<string[]>([]);
 
   // Calculate drip availability for all lessons
   const lessonAvailability = useMemo(() => {
