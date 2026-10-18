@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
   if (!valid || !event) {
     console.error("[WEBHOOK/PAYPAL] Signature inválida:", verifyError);
-    return NextResponse.json({ received: true, error: "Invalid signature" }, { status: 200 });
+    return NextResponse.json({ received: false, error: "Invalid signature" }, { status: 400 });
   }
 
   const eventType: string = event.event_type;
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
   if (!result.success) {
     console.error("[WEBHOOK/PAYPAL] Error procesando webhook:", result.error);
-    return NextResponse.json({ received: true, error: result.error }, { status: 200 });
+    return NextResponse.json({ received: false, error: result.error }, { status: 500 });
   }
 
   return NextResponse.json({

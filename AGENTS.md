@@ -49,3 +49,9 @@
 - Resend d’Aleyda verificat (domini energiaydivinidad.com Verified). Clau «Energía y Divinidad Preview» creada amb Sending access limitada a aquest domini i desada com a Secret RESEND_API_KEY exclusivament a Preview amb autorització explícita. La connexió original de Production/Development es conserva. PREVIEW_EMAIL_RECIPIENT=aleydapaola@proton.me exclusivament Preview. L’entrega real encara s’ha de verificar després del desplegament.
 - Verificació local: npm run test:preview (20 proves amb fetch simulat, sense accedir a serveis reals) i tsc --noEmit --incremental false. Node 22.18+ o 24 per executar les proves TypeScript sense dependències addicionals.
 - La newsletter també substitueix el destinatari pel de prova fora de producció, a més d’exigir una audiència separada. No activar Mailchimp sense aquesta configuració.
+
+## Resultat correu i preparació PayPal
+
+- Preview 99e65eba desplegada Ready a Vercel (4D3Vabu4jkPiPPHPGa7uw4Jz1Nhq). Correu de contacte de prova entregat a aleydapaola@proton.me amb [PREVIEW], registre Resend 01a150ab-df51-70f6-afe0-098058f9a5d2. Producció continua a 7b9a7ac3.
+- PayPal Developer verificat al compte Aleyda Vargas Galvis: aplicació existent «Energia y Divinidad Sandbox», compte sandbox de negoci CO. Cap webhook existent. No crear una aplicació duplicada. S’ha demanat autorització per transferir credencials a Preview i crear el token Vercel «PayPal sandbox EYD» i el webhook; pendent de resposta.
+- Preparada correcció del processament d’avisos de captura: recuperar la referència de la comanda a partir de supplementary_data.related_ids.order_id i llegir l’import de resource.amount. Els errors de verificació/processament han de retornar un estat d’error perquè PayPal pugui reintentar. La petició de verificació conserva el JSON original. No s’han canviat condicions comercials ni iniciat reemborsaments.

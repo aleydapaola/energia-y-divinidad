@@ -15,6 +15,7 @@ import {
   type CreateSubscriptionRequest,
 } from "@paypal/paypal-server-sdk";
 
+import { payPalVerificationBody } from "./paypal-webhook";
 import { assertPayPalTestEnvironment } from "./preview-safety";
 
 /**
@@ -130,6 +131,7 @@ export interface PayPalWebhookEvent {
       currency_code: string;
       value: string;
     };
+    supplementary_data?: { related_ids?: { order_id?: string } };
     purchase_units?: Array<{
       reference_id: string;
       payments?: {
@@ -384,15 +386,17 @@ export async function verifyPayPalWebhook(
       {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          transmission_id: transmissionId,
-          transmission_time: transmissionTime,
-          cert_url: certUrl,
-          auth_algo: authAlgo,
-          transmission_sig: transmissionSig,
-          webhook_id: PAYPAL_CONFIG.webhookId,
-          webhook_event: event,
-        }),
+        body: payPalVerificationBody(
+          {
+            transmission_id: transmissionId,
+            transmission_time: transmissionTime,
+            cert_url: certUrl,
+            auth_algo: authAlgo,
+            transmission_sig: transmissionSig,
+            webhook_id: PAYPAL_CONFIG.webhookId,
+          },
+          rawBody
+        ),
       }
     );
     if (!response.ok) {

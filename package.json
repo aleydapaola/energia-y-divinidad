@@ -21,7 +21,7 @@
     "postinstall": "prisma generate",
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "prepare": "husky",
-    "test:preview": "node --experimental-strip-types --test tests/preview-safety.test.mjs"
+    "test:preview": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
