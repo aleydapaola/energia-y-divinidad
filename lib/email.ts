@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
-import { Resend } from "resend";
 
+import { deliverEmail } from "@/lib/email-delivery";
 import { prisma } from "@/lib/prisma";
 
 const FROM_EMAIL = process.env.EMAIL_FROM || "Energía y Divinidad <noreply@energiaydivinidad.com>";
@@ -26,19 +26,6 @@ const LOGO_URL = "https://energia-y-divinidad.vercel.app/images/logoNoBackground
 // Modo desarrollo: si está activo, se auto-verifica el email sin enviar correo real
 const DEV_MODE = process.env.NODE_ENV === "development";
 const DEV_AUTO_VERIFY = process.env.DEV_AUTO_VERIFY_EMAIL === "true";
-
-// Lazy initialization para evitar errores en build
-let resendClient: Resend | null = null;
-
-function getResendClient(): Resend {
-  if (!resendClient) {
-    if (!process.env.RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY no está configurada");
-    }
-    resendClient = new Resend(process.env.RESEND_API_KEY);
-  }
-  return resendClient;
-}
 
 // Función auxiliar para verificar si debemos simular el envío en desarrollo
 export function shouldSimulateEmail(): boolean {
@@ -99,7 +86,7 @@ export async function sendEmailWithLogging(params: SendEmailWithLoggingParams) {
   }
 
   try {
-    const result = await getResendClient().emails.send({
+    const result = await deliverEmail({
       from: FROM_EMAIL,
       to: params.to,
       subject: params.subject,
@@ -195,7 +182,7 @@ export async function sendVerificationEmail({ email, name, token }: SendVerifica
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: email,
       subject: "Verifica tu email - Energía y Divinidad",
@@ -294,7 +281,7 @@ interface SendWelcomeEmailParams {
 
 export async function sendWelcomeEmail({ email, name }: SendWelcomeEmailParams) {
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: email,
       subject: "Bienvenida a Energía y Divinidad",
@@ -413,7 +400,7 @@ export async function sendPasswordResetEmail({ email, name, token }: SendPasswor
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: email,
       subject: "Recupera tu contraseña - Energía y Divinidad",
@@ -558,7 +545,7 @@ export async function sendCourseAccessEmail({
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: email,
       subject,
@@ -797,7 +784,7 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: email,
       subject: isPending
@@ -993,7 +980,7 @@ export async function sendEventReminder(params: EventReminderEmailParams) {
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: email,
       subject: `⏰ Recordatorio: ${eventTitle} - ${timeMessage}`,
@@ -1144,7 +1131,7 @@ export async function sendPackCodeEmail(params: SendPackCodeEmailParams) {
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: email,
       subject: `Tu Pack de ${sessionsTotal} Sesiones está listo - Energía y Divinidad`,
@@ -1351,7 +1338,7 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: email,
       subject: `Sesión reprogramada: ${sessionName} - Energía y Divinidad`,
@@ -1528,7 +1515,7 @@ export async function sendContactEmail(params: SendContactEmailParams) {
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: CONTACT_EMAIL,
       replyTo: email,
@@ -1762,7 +1749,7 @@ export async function sendSessionBookingRequestEmail(params: SendSessionBookingR
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: email,
       subject: `Información para tu Consulta de Canalización - ${sessionName}`,
@@ -1956,7 +1943,7 @@ export async function sendBookingConfirmationEmail(params: SendBookingConfirmati
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: email,
       subject: `¡Sesión confirmada! ${sessionName} - Energía y Divinidad`,
@@ -2316,7 +2303,7 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: email,
       subject: `¡Pago confirmado! ${itemName} - Energía y Divinidad`,
@@ -2618,7 +2605,7 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: email,
       subject: `Sesión cancelada: ${sessionName} - Energía y Divinidad`,
@@ -2980,7 +2967,7 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
   }
 
   try {
-    const { data, error } = await getResendClient().emails.send({
+    const { data, error } = await deliverEmail({
       from: FROM_EMAIL,
       to: ADMIN_EMAIL,
       subject,

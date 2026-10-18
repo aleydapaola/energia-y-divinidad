@@ -1,10 +1,10 @@
-import type { Metadata , Viewport } from "next";
-
 import { Open_Sans, Roboto_Slab, Playfair_Display, DM_Sans } from "next/font/google";
 import localFont from "next/font/local";
 
 import "./globals.css";
 import { SessionProvider } from "@/components/auth/SessionProvider";
+
+import type { Metadata, Viewport } from "next";
 
 const openSans = Open_Sans({
   variable: "--font-open-sans",
@@ -50,7 +50,6 @@ const ukijDiwani = localFont({
   display: "swap",
 });
 
-
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -70,11 +69,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${openSans.variable} ${robotoSlab.variable} ${rightland.variable} ${playfairDisplay.variable} ${dmSans.variable} ${gazetaItalic.variable} ${ukijDiwani.variable}`}>
+    <html
+      lang="es"
+      className={`${openSans.variable} ${robotoSlab.variable} ${rightland.variable} ${playfairDisplay.variable} ${dmSans.variable} ${gazetaItalic.variable} ${ukijDiwani.variable}`}
+    >
       <body className="font-sans antialiased">
-        <SessionProvider>
-          {children}
-        </SessionProvider>
+        {process.env.VERCEL_ENV === "preview" && (
+          <div role="status" className="bg-amber-100 px-4 py-2 text-center text-sm text-amber-950">
+            Entorno de pruebas. No realices pagos ni transferencias reales.
+          </div>
+        )}
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );

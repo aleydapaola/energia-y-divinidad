@@ -1,5 +1,7 @@
 import { createHash } from "crypto";
 
+import { assertWompiTestEnvironment } from "./preview-safety";
+
 /**
  * Wompi Payment Integration
  *
@@ -30,6 +32,7 @@ const API_URLS = {
 };
 
 export function getWompiApiUrl(): string {
+  assertWompiTestEnvironment(WOMPI_CONFIG);
   return API_URLS[WOMPI_CONFIG.environment];
 }
 
@@ -144,6 +147,7 @@ export function generateWompiIntegritySignature(
   amountInCents: number,
   currency: string = "COP"
 ): string {
+  assertWompiTestEnvironment(WOMPI_CONFIG);
   const { integritySecret } = WOMPI_CONFIG;
   if (!integritySecret) {
     throw new Error("WOMPI_INTEGRITY_SECRET no está configurado");
@@ -161,6 +165,11 @@ export function verifyWompiWebhookSignature(
   signature: string,
   timestamp: string
 ): boolean {
+  try {
+    assertWompiTestEnvironment(WOMPI_CONFIG);
+  } catch {
+    return false;
+  }
   const { eventsSecret } = WOMPI_CONFIG;
   if (!eventsSecret) {
     console.error("WOMPI_EVENTS_SECRET no está configurado");

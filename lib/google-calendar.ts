@@ -3,6 +3,8 @@ import { google, type calendar_v3 } from "googleapis";
 
 import { prisma } from "@/lib/prisma";
 
+import { isolatedCalendarId } from "./preview-safety";
+
 type BookingWithUser = Prisma.BookingGetPayload<{
   include: {
     user: {
@@ -18,7 +20,7 @@ const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 const DEFAULT_TIME_ZONE = "Europe/Madrid";
 
 function getGoogleCalendarConfig() {
-  const calendarId = process.env.GOOGLE_CALENDAR_ID;
+  const calendarId = isolatedCalendarId();
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const rawPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
 

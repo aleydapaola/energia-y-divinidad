@@ -1,3 +1,4 @@
+import { assertIsolatedSanityWrites } from "@/lib/preview-safety"
 import { sanityFetch } from '@/sanity/lib/fetch'
 import { coverImageProjection, seoProjection } from '@/sanity/lib/projections'
 
@@ -197,6 +198,7 @@ export async function getRelatedFreeContent(
  * @param id - ID del documento
  */
 export async function incrementViewCount(id: string): Promise<void> {
+  try { assertIsolatedSanityWrites(); } catch { return; }
   const query = `*[_id == $id][0].viewCount`
   const currentCount = (await client.fetch(query, { id })) || 0
 
@@ -226,5 +228,5 @@ export async function getFreeContentStats(): Promise<{
     }
   `
 
-  return await client.fetch(query)
+  return client.fetch(query)
 }

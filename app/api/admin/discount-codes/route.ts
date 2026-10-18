@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "next-sanity";
 
 import { auth } from "@/lib/auth";
+import { assertIsolatedSanityWrites } from "@/lib/preview-safety";
 import { prisma } from "@/lib/prisma";
 
 function getWriteClient() {
+  assertIsolatedSanityWrites();
   return createClient({
     projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!,
     dataset: process.env.NEXT_PUBLIC_SANITY_DATASET!,
