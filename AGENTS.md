@@ -91,3 +91,9 @@
 - El desplegament f479d6cf (EyywzpUboLXaymeySwrVih7FjzQB) ha fallat esperant pg_advisory_lock(72707369) contra l'endpoint pooled de Neon Preview, abans de compilar. No s'ha desactivat el bloqueig ni cancel·lat cap sessió de base de dades.
 - vercel-build executa scripts/migrate-vercel.mjs. Només a Vercel Preview valida el servidor de la base amb la mateixa llista de seguretat local i passa la connexió directa del mateix endpoint al procés de Prisma. Conserva credencials, base i opcions TLS; retira pgbouncer. El procés Next posterior conserva DATABASE_URL pooled. Production conserva el comportament anterior; l'execució local d'aquest script queda bloquejada.
 - 44 proves locals correctes, incloses preservació del fus, aïllament, connexió directa i rebuig de servidors no autoritzats. No s'ha connectat a cap base des dels tests locals. Verificar al desplegament que el pas de migracions acaba i que la font és la nova branca Preview abans de donar les etiquetes de cites per actives.
+
+## Pagaments manuals fora de producció
+
+- L'auditoria ha trobat que els fluxos WOMPI_MANUAL i BREB_MANUAL no passaven per les proteccions de les API sandbox: podien recuperar links o instruccions de pagament real. Fins que hi hagi un circuit de prova específic, /api/checkout/wompi-manual, /api/checkout/breb i la selecció wompi_manual del carret es rebutgen fora de Production abans de crear comandes, enviar correus o accedir als links.
+- Les pàgines /pago/wompi-pending i /pago/breb-pending mostren un avís de proves fora de Production i no les instruccions de pagament. PayPal sandbox continua disponible. Els fluxos de Production es conserven; no s'han modificat condicions comercials ni publicat a producció.
+- 48 proves correctes, incloses invocacions dels tres handlers amb dependències externes bloquejades que verifiquen el rebuig abans d'efectes laterals i el pas al flux original de validació en Production. Comprovació de tipus correcta.

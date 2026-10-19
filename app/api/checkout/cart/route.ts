@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { createCourseEntitlement } from "@/lib/course-access";
 import { validateDiscountCode, recordDiscountUsage } from "@/lib/discount-codes";
 import { createPayPalOrder } from "@/lib/paypal";
+import { isProductionEnvironment, MANUAL_PAYMENT_PREVIEW_MESSAGE } from "@/lib/preview-safety";
 import { prisma } from "@/lib/prisma";
 import { getAppUrl } from "@/lib/utils";
 import { createWompiPaymentLink, generateWompiReference } from "@/lib/wompi";
@@ -58,6 +59,10 @@ export async function POST(request: NextRequest) {
 
     const body: CheckoutBody = await request.json();
     const { items, currency, paymentMethod, discountCode } = body;
+
+    if (paymentMethod === "wompi_manual" && !isProductionEnvironment()) {
+      return NextResponse.json({ error: MANUAL_PAYMENT_PREVIEW_MESSAGE }, { status: 403 });
+    }
 
     // Validaciones básicas
     if (!items || !Array.isArray(items) || items.length === 0) {

@@ -3,6 +3,9 @@ export function isProductionEnvironment() {
   return process.env.VERCEL_ENV === "production";
 }
 
+export const MANUAL_PAYMENT_PREVIEW_MESSAGE =
+  "Este método todavía no está habilitado para pruebas. No realices transferencias ni pagos reales. Puedes usar PayPal de pruebas.";
+
 export function assertPayPalTestEnvironment(environment: string) {
   if (!isProductionEnvironment() && environment !== "sandbox") {
     throw new Error("Preview requires PayPal sandbox");

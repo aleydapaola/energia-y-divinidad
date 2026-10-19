@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { applyCheckoutDiscount } from "@/lib/checkout/discounts";
 import { sendSessionBookingRequestEmail } from "@/lib/email";
 import { processApprovedPayment } from "@/lib/payment-processor";
+import { isProductionEnvironment, MANUAL_PAYMENT_PREVIEW_MESSAGE } from "@/lib/preview-safety";
 import { prisma } from "@/lib/prisma";
 import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
 import { generateWompiReference } from "@/lib/wompi";
@@ -67,6 +68,9 @@ function getWompiPaymentLink(amount: number, productType: string): string | null
  * Solo para Colombia (COP) - pagos no recurrentes
  */
 export async function POST(request: NextRequest) {
+  if (!isProductionEnvironment()) {
+    return NextResponse.json({ error: MANUAL_PAYMENT_PREVIEW_MESSAGE }, { status: 403 });
+  }
   try {
     const session = await auth();
 
