@@ -3,7 +3,7 @@ import { google, type calendar_v3 } from "googleapis";
 
 import { prisma } from "@/lib/prisma";
 
-import { isolatedCalendarId } from "./preview-safety";
+import { isProductionEnvironment, isolatedCalendarId } from "./preview-safety";
 
 type BookingWithUser = Prisma.BookingGetPayload<{
   include: {
@@ -73,10 +73,15 @@ function buildCalendarEvent(booking: BookingWithUser): calendar_v3.Schema$Event 
   const clientName = booking.user.name || "Cliente";
   const clientEmail = booking.user.email || "Email no disponible";
   const notes = booking.userNotes ? `\n\nNotas de la clienta:\n${booking.userNotes}` : "";
+  const isTest = !isProductionEnvironment();
+  const testNotice = isTest
+    ? "PRUEBA — NO ES UNA CITA REAL.\nReserva ficticia del entorno Preview de Energía y Divinidad. No atender ni cobrar.\n\n"
+    : "";
 
   return {
-    summary: `Sesión - ${clientName}`,
+    summary: `${isTest ? "[PRUEBA — NO REAL] " : ""}Sesión - ${clientName}`,
     description:
+      testNotice +
       `Reserva creada desde Energia y Divinidad.\n\n` +
       `Sesión: ${booking.resourceName}\n` +
       `Cliente: ${clientName}\n` +
