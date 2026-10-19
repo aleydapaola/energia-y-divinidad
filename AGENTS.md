@@ -118,3 +118,8 @@
 - CORS añadido únicamente para el origen estable de Preview, con credenciales de usuario Sanity; orígenes anteriores preservados. localhost:3000 y localhost:3333 ya estaban autorizados. No se creó ni transfirió ninguna clave de escritura nueva.
 - Vercel de Aleyda: NEXT_PUBLIC_SANITY_DATASET=preview y PREVIEW_SANITY_DATASET=preview exclusivamente Preview. El valor production original conserva Production y Development; proyecto 81jpalr2 compartido. SANITY_API_TOKEN permanece fuera de Preview.
 - La guía de Sanity distingue editor de pruebas y editor real. El contenido se traslada selectivamente tras aprobación; integrar Git no copia Sanity. No publicar a Production ni reanudar pagos. Mailchimp sigue pendiente de una cuenta de pruebas separada.
+
+## Reprogramación: zona horaria explícita — 19/10/2026
+
+- Al entrar con el usuario ficticio se detectó que Mis Sesiones y el formulario de reprogramación interpretaban horas del navegador sin indicar el huso. La tarjeta muestra ahora fecha/hora de Colombia y, cuando es distinta, la conversión a la zona del dispositivo. El formulario indica Colombia (UTC−5), usa colombiaBookingInstant para enviar el instante y calcula el día mínimo según Colombia. El correo de reprogramación fija también America/Bogota y lo etiqueta.
+- No se modifican límites de reprogramación, cancelaciones, pagos ni políticas comerciales. 62 pruebas correctas, incluyendo el envío real del handler del formulario con fetch simulado desde Madrid, Tokio y Los Ángeles, renderizado de la tarjeta y correo con servidor UTC. Comprobación de tipos correcta. Verificación remota de la reserva ficticia y calendario pendiente del nuevo despliegue.

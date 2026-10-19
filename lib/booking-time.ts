@@ -61,3 +61,17 @@ export function bookingLabel12Hour(label: string): string {
     return `${hour % 12 || 12}:${minutes}${hour >= 12 ? "pm" : "am"}`;
   });
 }
+
+/** Earliest date offered by rescheduling, using Colombia's day rather than the browser's. */
+export function nextBookingDateKey(now: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: BOOKING_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value;
+  const today = new Date(`${part("year")}-${part("month")}-${part("day")}T12:00:00Z`);
+  today.setUTCDate(today.getUTCDate() + 1);
+  return today.toISOString().slice(0, 10);
+}

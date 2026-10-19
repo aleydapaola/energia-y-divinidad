@@ -1301,13 +1301,14 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
 
   const formatDate = (date: Date) =>
     date.toLocaleDateString("es-CO", {
+      timeZone: "America/Bogota",
       weekday: "long",
       day: "numeric",
       month: "long",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    });
+    }) + " (hora de Colombia)";
 
   const formattedPreviousDate = previousDate ? formatDate(previousDate) : "No programada";
   const formattedNewDate = formatDate(newDate);
