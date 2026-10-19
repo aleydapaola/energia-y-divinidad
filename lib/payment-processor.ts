@@ -25,6 +25,7 @@ import { sendPaymentConfirmationEmail, sendAdminNotificationEmail } from "@/lib/
 import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
 import { prisma } from "@/lib/prisma";
 import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
+import { resolveSessionDuration } from "@/lib/session-duration";
 
 // Tipos
 export interface OrderWithUser {
@@ -65,7 +66,35 @@ export interface ProcessPaymentResult {
  * Procesa un pago aprobado
  * Esta es la función principal que debe ser llamada cuando un pago es confirmado
  */
+/** Serialize fulfillment for capture/webhook/admin races without duplicating delivery services. */
 export async function processApprovedPayment(
+  order: OrderWithUser,
+  options?: { skipEmail?: boolean; transactionId?: string }
+): Promise<ProcessPaymentResult> {
+  if (order.paymentStatus !== "COMPLETED") {
+    return { success: false, error: "El pago no está verificado" };
+  }
+  try {
+    return await prisma.$transaction(
+      async (lock) => {
+        await lock.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fulfillment:${order.id}`}))`;
+        const fresh = await prisma.order.findUnique({
+          where: { id: order.id },
+          include: { user: true },
+        });
+        if (!fresh || !["COMPLETED", "PROCESSING"].includes(fresh.paymentStatus)) {
+          return { success: false, error: "El pago no está verificado" };
+        }
+        return processApprovedPaymentUnlocked({ ...fresh, paymentStatus: "COMPLETED" }, options);
+      },
+      { maxWait: 10000, timeout: 120000 }
+    );
+  } catch {
+    return { success: false, error: "Entrega pendiente de revisión; no repitas el pago." };
+  }
+}
+
+async function processApprovedPaymentUnlocked(
   order: OrderWithUser,
   options?: {
     skipEmail?: boolean;
@@ -76,6 +105,9 @@ export async function processApprovedPayment(
   const metadata = order.metadata || {};
   const createdResources: { type: string; id: string }[] = [];
 
+  if (order.paymentStatus !== "COMPLETED") {
+    return { success: false, error: "El pago no está verificado" };
+  }
   try {
     // 1. Manejar guest checkout: crear/encontrar usuario si no hay userId
     let userId = order.userId;
@@ -143,6 +175,20 @@ export async function processApprovedPayment(
         break;
       }
 
+      case "PRODUCT":
+      case "PREMIUM_CONTENT": {
+        const entitlement = await prisma.entitlement.create({
+          data: {
+            userId,
+            type: order.orderType,
+            resourceId: order.itemId,
+            resourceName: order.itemName,
+            orderId: order.id,
+          },
+        });
+        createdResources.push({ type: "entitlement", id: entitlement.id });
+        break;
+      }
       default:
         console.log(`[PAYMENT-PROCESSOR] Tipo de orden no manejado: ${order.orderType}`);
     }
@@ -243,6 +289,11 @@ async function checkForDuplicateProcessing(order: OrderWithUser, userId: string)
       return existingEntitlements.length === courseIds.length;
     }
 
+    case "PRODUCT":
+    case "PREMIUM_CONTENT":
+      return !!(await prisma.entitlement.findFirst({
+        where: { userId, orderId: order.id, resourceId: order.itemId, type: order.orderType },
+      }));
     default:
       return false;
   }
@@ -362,7 +413,7 @@ async function createSessionBookingFromOrder(
   const scheduledAt = metadata.scheduledAt ? new Date(metadata.scheduledAt) : null;
 
   // VALIDACIÓN: Las sesiones individuales DEBEN tener fecha programada
-  if (!isPack && !scheduledAt) {
+  if (!isPack && !scheduledAt && !metadata.scheduleAfterPayment) {
     console.error("[PAYMENT-PROCESSOR] ERROR: Sesión individual sin scheduledAt!");
     console.error("[PAYMENT-PROCESSOR] Order ID:", order.id);
     throw new Error("Las sesiones individuales requieren fecha programada (scheduledAt)");
@@ -379,6 +430,7 @@ async function createSessionBookingFromOrder(
       paymentMethod: (order.paymentMethod as PaymentMethod) || undefined,
       amount: order.amount,
       currency: order.currency,
+      duration: await resolveSessionDuration(),
       sessionsTotal,
       sessionsRemaining: sessionsTotal,
       scheduledAt,

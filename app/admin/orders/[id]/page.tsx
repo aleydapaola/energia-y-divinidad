@@ -8,24 +8,25 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-} from "lucide-react"
-import Link from "next/link"
-import { notFound } from "next/navigation"
+} from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
-import { prisma } from "@/lib/prisma"
+import { prisma } from "@/lib/prisma";
 
-import { ConfirmPaymentButton } from "./ConfirmPaymentButton"
+import { ConfirmPaymentButton } from "./ConfirmPaymentButton";
 
 interface PageProps {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
 export default async function AdminOrderDetailPage({ params }: PageProps) {
-  const { id } = await params
+  const { id } = await params;
 
   const order = await prisma.order.findUnique({
     where: { id },
     include: {
+      manualPayment: true,
       user: {
         select: {
           id: true,
@@ -34,96 +35,131 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         },
       },
     },
-  })
+  });
 
   if (!order) {
-    notFound()
+    notFound();
   }
 
   // Obtener audit logs relacionados
   const auditLogs = await prisma.auditLog.findMany({
     where: {
-      entityType: 'order',
+      entityType: "order",
       entityId: id,
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     take: 20,
-  })
+  });
 
   // Obtener email logs relacionados
   const emailLogs = await prisma.emailLog.findMany({
     where: {
-      entityType: 'order',
+      entityType: "order",
       entityId: id,
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     take: 10,
-  })
+  });
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('es-CO', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+    return date.toLocaleDateString("es-CO", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   const formatAmount = (amount: number, currency: string) => {
-    if (currency === 'USD') {
-      return `$${amount.toFixed(2)} USD`
+    if (currency === "USD") {
+      return `$${amount.toFixed(2)} USD`;
     }
-    return `$${amount.toLocaleString('es-CO')} COP`
-  }
+    return `$${amount.toLocaleString("es-CO")} COP`;
+  };
 
   const getStatusConfig = (status: string) => {
-    const config: Record<string, { color: string; bg: string; icon: React.ReactNode; label: string }> = {
-      PENDING: { color: 'text-yellow-700', bg: 'bg-yellow-100', icon: <Clock className="w-5 h-5" />, label: 'Pendiente' },
-      PROCESSING: { color: 'text-blue-700', bg: 'bg-blue-100', icon: <AlertCircle className="w-5 h-5" />, label: 'Procesando' },
-      COMPLETED: { color: 'text-green-700', bg: 'bg-green-100', icon: <CheckCircle className="w-5 h-5" />, label: 'Completado' },
-      FAILED: { color: 'text-red-700', bg: 'bg-red-100', icon: <XCircle className="w-5 h-5" />, label: 'Fallido' },
-      REFUNDED: { color: 'text-purple-700', bg: 'bg-purple-100', icon: <AlertCircle className="w-5 h-5" />, label: 'Reembolsado' },
-      CANCELLED: { color: 'text-gray-700', bg: 'bg-gray-100', icon: <XCircle className="w-5 h-5" />, label: 'Cancelado' },
-    }
-    return config[status] || config.PENDING
-  }
+    const config: Record<
+      string,
+      { color: string; bg: string; icon: React.ReactNode; label: string }
+    > = {
+      PENDING: {
+        color: "text-yellow-700",
+        bg: "bg-yellow-100",
+        icon: <Clock className="w-5 h-5" />,
+        label: "Pendiente",
+      },
+      PROCESSING: {
+        color: "text-blue-700",
+        bg: "bg-blue-100",
+        icon: <AlertCircle className="w-5 h-5" />,
+        label: "Procesando",
+      },
+      COMPLETED: {
+        color: "text-green-700",
+        bg: "bg-green-100",
+        icon: <CheckCircle className="w-5 h-5" />,
+        label: "Completado",
+      },
+      FAILED: {
+        color: "text-red-700",
+        bg: "bg-red-100",
+        icon: <XCircle className="w-5 h-5" />,
+        label: "Fallido",
+      },
+      REFUNDED: {
+        color: "text-purple-700",
+        bg: "bg-purple-100",
+        icon: <AlertCircle className="w-5 h-5" />,
+        label: "Reembolsado",
+      },
+      CANCELLED: {
+        color: "text-gray-700",
+        bg: "bg-gray-100",
+        icon: <XCircle className="w-5 h-5" />,
+        label: "Cancelado",
+      },
+    };
+    return config[status] || config.PENDING;
+  };
 
   const getPaymentMethodLabel = (method: string | null) => {
-    if (!method) {return 'N/A'}
-    const labels: Record<string, string> = {
-      WOMPI_CARD: 'Tarjeta de crédito (Wompi)',
-      WOMPI_NEQUI: 'Nequi',
-      WOMPI_PSE: 'PSE',
-      PAYPAL_DIRECT: 'PayPal',
-      PAYPAL_CARD: 'Tarjeta de crédito (PayPal)',
-      BREB_MANUAL: 'Bre-B (Llave Bancolombia)',
-      // Legacy - para órdenes históricas
-      EPAYCO_CARD: 'Tarjeta de crédito (ePayco)',
-      EPAYCO_PAYPAL: 'PayPal (ePayco)',
-      EPAYCO_PSE: 'PSE (ePayco)',
-      STRIPE: 'Stripe',
-      MANUAL_NEQUI: 'Nequi (Manual)',
-      MANUAL_TRANSFER: 'Transferencia bancaria',
-      FREE: 'Gratis',
+    if (!method) {
+      return "N/A";
     }
-    return labels[method] || method
-  }
+    const labels: Record<string, string> = {
+      WOMPI_CARD: "Tarjeta de crédito (Wompi)",
+      WOMPI_NEQUI: "Nequi",
+      WOMPI_PSE: "PSE",
+      PAYPAL_DIRECT: "PayPal",
+      PAYPAL_CARD: "Tarjeta de crédito (PayPal)",
+      BREB_MANUAL: "Bre-B / Global66",
+      // Legacy - para órdenes históricas
+      EPAYCO_CARD: "Tarjeta de crédito (ePayco)",
+      EPAYCO_PAYPAL: "PayPal (ePayco)",
+      EPAYCO_PSE: "PSE (ePayco)",
+      STRIPE: "Stripe",
+      MANUAL_NEQUI: "Nequi (Manual)",
+      MANUAL_TRANSFER: "Transferencia bancaria",
+      FREE: "Gratis",
+    };
+    return labels[method] || method;
+  };
 
   const getTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      SESSION: 'Sesión de Canalización',
-      EVENT: 'Evento',
-      MEMBERSHIP: 'Membresía',
-      COURSE: 'Curso',
-      PREMIUM_CONTENT: 'Contenido Premium',
-      PRODUCT: 'Producto',
-    }
-    return labels[type] || type
-  }
+      SESSION: "Sesión de Canalización",
+      EVENT: "Evento",
+      MEMBERSHIP: "Membresía",
+      COURSE: "Curso",
+      PREMIUM_CONTENT: "Contenido Premium",
+      PRODUCT: "Producto",
+    };
+    return labels[type] || type;
+  };
 
-  const statusConfig = getStatusConfig(order.paymentStatus)
+  const statusConfig = getStatusConfig(order.paymentStatus);
 
   return (
     <div className="space-y-6">
@@ -136,9 +172,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="font-gazeta text-2xl text-[#654177]">
-            Orden #{order.orderNumber}
-          </h1>
+          <h1 className="font-gazeta text-2xl text-[#654177]">Orden #{order.orderNumber}</h1>
           <p className="text-gray-500 font-dm-sans text-sm">
             Creada el {formatDate(order.createdAt)}
           </p>
@@ -157,12 +191,17 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                   <p className={`text-lg font-semibold ${statusConfig.color}`}>
                     {statusConfig.label}
                   </p>
-                  <p className="text-sm text-gray-600">
-                    Estado del pago
-                  </p>
+                  <p className="text-sm text-gray-600">Estado del pago</p>
                 </div>
               </div>
               {/* Botón de confirmar pago para pagos manuales pendientes */}
+              {order.manualPayment && (
+                <div className="p-4 bg-amber-50 rounded-lg mb-4 break-words">
+                  <strong>Aviso del cliente — pendiente de verificar</strong>
+                  <p>Referencia comunicada: {order.manualPayment.referenceNumber}</p>
+                  <p>No acredita el ingreso. Comprueba la cuenta Global66 antes de confirmar.</p>
+                </div>
+              )}
               <ConfirmPaymentButton
                 orderId={order.id}
                 orderNumber={order.orderNumber}
@@ -180,7 +219,9 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                 <Package className="w-5 h-5 text-[#8A4BAF] mt-0.5" />
                 <div className="flex-1">
                   <p className="font-medium text-[#654177] font-dm-sans">{order.itemName}</p>
-                  <p className="text-sm text-gray-500 font-dm-sans">{getTypeLabel(order.orderType)}</p>
+                  <p className="text-sm text-gray-500 font-dm-sans">
+                    {getTypeLabel(order.orderType)}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="font-semibold text-[#654177] font-dm-sans">
@@ -208,20 +249,21 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                   <p className="font-medium text-gray-900 font-dm-sans">{order.currency}</p>
                 </div>
                 {(() => {
-                  const meta = order.metadata as Record<string, unknown> | null
-                  const txId = meta?.transactionId as string | undefined
-                  if (!txId) {return null}
+                  const meta = order.metadata as Record<string, unknown> | null;
+                  const txId = meta?.transactionId as string | undefined;
+                  if (!txId) {
+                    return null;
+                  }
                   return (
                     <div className="col-span-2">
                       <p className="text-sm text-gray-500 font-dm-sans">ID Transacción</p>
                       <p className="font-mono text-sm text-gray-900">{txId}</p>
                     </div>
-                  )
+                  );
                 })()}
               </div>
             </div>
           </div>
-
 
           {/* Audit Log */}
           {auditLogs.length > 0 && (
@@ -258,13 +300,13 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
               <div className="flex items-center gap-3">
                 <User className="w-4 h-4 text-gray-400" />
                 <span className="text-sm font-dm-sans">
-                  {order.user?.name || order.guestName || 'Sin nombre'}
+                  {order.user?.name || order.guestName || "Sin nombre"}
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-gray-400" />
                 <span className="text-sm font-dm-sans">
-                  {order.user?.email || order.guestEmail || 'Sin email'}
+                  {order.user?.email || order.guestEmail || "Sin email"}
                 </span>
               </div>
               {order.user?.id && (
@@ -289,11 +331,15 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                       <span className="text-sm font-medium text-gray-900 font-dm-sans">
                         {log.template}
                       </span>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        log.status === 'SENT' ? 'bg-green-100 text-green-700' :
-                        log.status === 'FAILED' ? 'bg-red-100 text-red-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
+                      <span
+                        className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          log.status === "SENT"
+                            ? "bg-green-100 text-green-700"
+                            : log.status === "FAILED"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
                         {log.status}
                       </span>
                     </div>
@@ -310,5 +356,5 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -9,8 +9,6 @@ import {
   Minus,
   Plus,
   Loader2,
-  CreditCard,
-  Key,
   Tag,
   CheckCircle,
   XCircle,
@@ -22,6 +20,7 @@ import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 
 import { CheckoutHeader } from "@/components/checkout/CheckoutHeader";
+import { purchaseMethods } from "@/lib/purchase-methods";
 
 import type { PaymentMethodType } from "@/lib/membership-access";
 
@@ -64,7 +63,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [country, setCountry] = useState<"colombia" | "international">("colombia");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>("wompi_manual");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>("paypal_direct");
   const [notes, setNotes] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [discountInput, setDiscountInput] = useState("");
@@ -119,8 +118,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
     return isEarlyBird ? event.earlyBirdPrice! : event.price || 0;
   };
 
-  const getCurrency = () =>
-    country === "international" && paymentMethod?.startsWith("paypal") ? "USD" : "COP";
+  const getCurrency = () => (paymentMethod?.startsWith("paypal") ? "USD" : "COP");
   const unitPrice = getUnitPrice();
   const totalPrice = unitPrice * seats;
   const finalTotalPrice = appliedDiscount ? appliedDiscount.finalAmount : totalPrice;
@@ -160,24 +158,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
       let endpoint: string;
       let body: Record<string, unknown>;
 
-      if (paymentMethod === "wompi_manual") {
-        // Pago manual via Wompi - Link de pago genérico
-        endpoint = "/api/checkout/wompi-manual";
-        body = {
-          productType: "event",
-          productId: event._id,
-          productName: `${event.title} (${seats} cupo${seats > 1 ? "s" : ""})`,
-          amount,
-          currency,
-          discountCode: appliedDiscount?.code,
-          guestEmail: customerEmail,
-          guestName: customerName,
-          guestPhone: customerPhone,
-          scheduledAt: event.eventDate,
-          seats,
-          notes,
-        };
-      } else if (paymentMethod === "breb_manual") {
+      if (paymentMethod === "breb_manual") {
         // Pago manual via Bre-B (Colombia)
         endpoint = "/api/checkout/breb";
         body = {
@@ -189,6 +170,8 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
           guestEmail: customerEmail,
           guestName: customerName,
           scheduledAt: event.eventDate,
+          seats,
+          notes,
         };
       } else {
         // Pago via PayPal (Internacional)
@@ -482,7 +465,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Teléfono / WhatsApp *
+                    Teléfono de contacto *
                   </label>
                   <input
                     type="tel"
@@ -506,7 +489,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                         checked={country === "colombia"}
                         onChange={() => {
                           setCountry("colombia");
-                          setPaymentMethod("wompi_manual");
+                          setPaymentMethod("paypal_direct");
                           setAppliedDiscount(null);
                           setDiscountInput("");
                           setDiscountError(null);
@@ -523,7 +506,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                         checked={country === "international"}
                         onChange={() => {
                           setCountry("international");
-                          setPaymentMethod("wompi_manual");
+                          setPaymentMethod("paypal_direct");
                           setAppliedDiscount(null);
                           setDiscountInput("");
                           setDiscountError(null);
@@ -541,164 +524,29 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                     Método de pago
                   </label>
                   <div className="space-y-3">
-                    {country === "colombia" ? (
-                      <>
-                        {/* Wompi Manual Colombia */}
-                        <label
-                          className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                            paymentMethod === "wompi_manual"
-                              ? "border-[#8A4BAF] bg-[#8A4BAF]/5"
-                              : "border-gray-200 hover:border-[#8A4BAF]/30"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="wompi_manual"
-                            checked={paymentMethod === "wompi_manual"}
-                            onChange={() => handlePaymentMethodChange("wompi_manual")}
-                            className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
-                          />
-                          <CreditCard className="w-5 h-5 text-[#8A4BAF]" />
-                          <div>
-                            <span className="font-medium">Wompi (Tarjeta, PSE, Nequi, etc.)</span>
-                            <p className="text-xs text-gray-500">
-                              Todos los métodos de pago colombianos
-                            </p>
-                          </div>
-                        </label>
-
-                        {/* Bre-B Colombia */}
-                        <label
-                          className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                            paymentMethod === "breb_manual"
-                              ? "border-[#8A4BAF] bg-[#8A4BAF]/5"
-                              : "border-gray-200 hover:border-[#8A4BAF]/30"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="breb_manual"
-                            checked={paymentMethod === "breb_manual"}
-                            onChange={() => handlePaymentMethodChange("breb_manual")}
-                            className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
-                          />
-                          <Key className="w-5 h-5 text-[#8A4BAF]" />
-                          <div>
-                            <span className="font-medium">Bre-B (Llave Bancolombia)</span>
-                            <p className="text-xs text-gray-500">
-                              Transferencia instantánea sin comisión
-                            </p>
-                          </div>
-                        </label>
-
-                        {/* PayPal Colombia */}
-                        <label
-                          className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                            paymentMethod === "paypal_direct"
-                              ? "border-[#8A4BAF] bg-[#8A4BAF]/5"
-                              : "border-gray-200 hover:border-[#8A4BAF]/30"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="paypal_direct"
-                            checked={paymentMethod === "paypal_direct"}
-                            onChange={() => handlePaymentMethodChange("paypal_direct")}
-                            className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
-                          />
-                          <PayPalIcon />
-                          <div>
-                            <span className="font-medium">PayPal</span>
-                            <p className="text-xs text-gray-500">Paga con tu cuenta PayPal</p>
-                          </div>
-                        </label>
-                      </>
-                    ) : (
-                      <>
-                        {/* Wompi Manual International */}
-                        <label
-                          className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                            paymentMethod === "wompi_manual"
-                              ? "border-[#8A4BAF] bg-[#8A4BAF]/5"
-                              : "border-gray-200 hover:border-[#8A4BAF]/30"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="wompi_manual"
-                            checked={paymentMethod === "wompi_manual"}
-                            onChange={() => handlePaymentMethodChange("wompi_manual")}
-                            className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
-                          />
-                          <CreditCard className="w-5 h-5 text-[#8A4BAF]" />
-                          <div>
-                            <span className="font-medium">Wompi (Tarjeta, PSE, Nequi, etc.)</span>
-                            <p className="text-xs text-gray-500">
-                              Pagos con tarjeta o desde Colombia
-                            </p>
-                          </div>
-                        </label>
-
-                        {/* Card International via PayPal */}
-                        <label
-                          className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                            paymentMethod === "paypal_card"
-                              ? "border-[#8A4BAF] bg-[#8A4BAF]/5"
-                              : "border-gray-200 hover:border-[#8A4BAF]/30"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="paypal_card"
-                            checked={paymentMethod === "paypal_card"}
-                            onChange={() => handlePaymentMethodChange("paypal_card")}
-                            className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
-                          />
-                          <CreditCard className="w-5 h-5 text-[#8A4BAF]" />
-                          <div>
-                            <span className="font-medium">Credit/Debit Card</span>
-                            <p className="text-xs text-gray-500">
-                              Visa, Mastercard, American Express
-                            </p>
-                          </div>
-                        </label>
-
-                        {/* PayPal International */}
-                        <label
-                          className={`flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                            paymentMethod === "paypal_direct"
-                              ? "border-[#8A4BAF] bg-[#8A4BAF]/5"
-                              : "border-gray-200 hover:border-[#8A4BAF]/30"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="paypal_direct"
-                            checked={paymentMethod === "paypal_direct"}
-                            onChange={() => handlePaymentMethodChange("paypal_direct")}
-                            className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
-                          />
-                          <PayPalIcon />
-                          <div>
-                            <span className="font-medium">PayPal</span>
-                            <p className="text-xs text-gray-500">Pay with your PayPal account</p>
-                          </div>
-                        </label>
-                      </>
-                    )}
+                    {purchaseMethods(country).map((option) => (
+                      <label
+                        key={option.method}
+                        className="flex items-start gap-3 p-4 border rounded-lg cursor-pointer"
+                      >
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          checked={paymentMethod === option.method}
+                          onChange={() => handlePaymentMethodChange(option.method)}
+                          className="mt-1"
+                        />
+                        <span>
+                          <strong>{option.label}</strong>
+                          <span className="block text-sm text-gray-600">{option.description}</span>
+                        </span>
+                      </label>
+                    ))}
                   </div>
                   <p className="mt-3 text-xs text-gray-500 text-center">
-                    {paymentMethod === "wompi_manual"
-                      ? "Link de pago seguro de Wompi - Tarjeta, PSE, Nequi, Daviplata y más"
-                      : paymentMethod === "breb_manual"
-                        ? "Transferencia directa con Bre-B - Sin comisiones"
-                        : "Pago procesado de forma segura por PayPal"}
+                    {paymentMethod === "breb_manual"
+                      ? "Transferencia a Global66 pendiente de verificación"
+                      : "Pago procesado de forma segura por PayPal"}
                   </p>
                 </div>
 
@@ -831,13 +679,5 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
         </div>
       </main>
     </div>
-  );
-}
-
-function PayPalIcon() {
-  return (
-    <svg className="w-5 h-5 text-[#8A4BAF]" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z" />
-    </svg>
   );
 }

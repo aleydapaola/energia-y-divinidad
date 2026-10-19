@@ -51,7 +51,10 @@ export async function GET(request: NextRequest) {
 
     // 2. Buscar la orden en nuestra BD
     const order = await prisma.order.findFirst({
-      where: { orderNumber: reference },
+      where: {
+        orderNumber: reference,
+        paymentMethod: { in: ["WOMPI_CARD", "WOMPI_NEQUI", "WOMPI_PSE", "WOMPI_MANUAL"] },
+      },
       include: { user: true },
     });
 

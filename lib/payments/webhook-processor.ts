@@ -202,6 +202,25 @@ export async function processPaymentWebhook(
   }
 
   try {
+    if (order.paymentMethod === "BREB_MANUAL") {
+      throw new Error("Manual payment cannot be settled by a provider callback");
+    }
+    if (gatewayName === "paypal" && !order.paymentMethod.startsWith("PAYPAL")) {
+      throw new Error("PayPal notification does not belong to this payment method");
+    }
+    if (
+      verificationResult.status === "APPROVED" &&
+      (!Number.isFinite(verificationResult.amount) ||
+        verificationResult.currency !== order.currency ||
+        Math.round(Number(verificationResult.amount) * 100) !==
+          Math.round(Number(order.amount) * 100))
+    ) {
+      throw new Error("Payment amount/currency does not match the order");
+    }
+    if (order.paymentStatus === "COMPLETED" && verificationResult.status !== "APPROVED") {
+      await markEventProcessed(eventId);
+      return { success: true, processed: false, eventId };
+    }
     // 6. Actualizar orden con estado del webhook
     const paymentStatus = mapToPaymentStatus(verificationResult.status || "PENDING");
 
@@ -220,9 +239,12 @@ export async function processPaymentWebhook(
 
     // 7. Si el pago fue aprobado, procesar
     if (verificationResult.status === "APPROVED") {
-      const result = await processApprovedPayment(order as unknown as OrderWithUser, {
-        transactionId: verificationResult.transactionId,
-      });
+      const result = await processApprovedPayment(
+        { ...order, paymentStatus: "COMPLETED" } as unknown as OrderWithUser,
+        {
+          transactionId: verificationResult.transactionId,
+        }
+      );
 
       if (!result.success) {
         console.error(

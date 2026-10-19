@@ -7,7 +7,6 @@ import {
   CreditCard,
   Globe,
   Loader2,
-  Key,
   ArrowLeft,
   Shield,
   Tag,
@@ -19,6 +18,7 @@ import { useState, useEffect, Suspense } from "react";
 
 import { CheckoutHeader } from "@/components/checkout/CheckoutHeader";
 import { BOOKING_TIME_ZONE, colombiaBookingInstant } from "@/lib/booking-time";
+import { purchaseMethods } from "@/lib/purchase-methods";
 
 import type { PaymentMethodType } from "@/lib/membership-access";
 
@@ -64,10 +64,17 @@ function SessionCheckoutContent() {
   const [discountError, setDiscountError] = useState<string | null>(null);
 
   // Prices
-  const PRICES = {
-    single: { COP: 350000, USD: 100, EUR: 100 },
-    pack: { COP: 1850000, USD: 450, EUR: 420 },
-  };
+  const [PRICES, setPrices] = useState({ single: { COP: 0, USD: 0 }, pack: { COP: 0, USD: 0 } });
+  useEffect(() => {
+    fetch("/api/checkout/session-prices")
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("No se pudieron consultar los precios.");
+        }
+        setPrices(await response.json());
+      })
+      .catch(() => setError("No se pudieron consultar los precios. Recarga la página."));
+  }, []);
 
   // Auto-detect region based on timezone
   useEffect(() => {
@@ -75,7 +82,7 @@ function SessionCheckoutContent() {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       if (tz.includes("Bogota") || tz.includes("Colombia")) {
         setSelectedRegion("colombia");
-        setSelectedMethod("wompi_manual");
+        setSelectedMethod("paypal_direct");
       }
     } catch {
       // Fallback: don't auto-select
@@ -84,41 +91,20 @@ function SessionCheckoutContent() {
 
   // Validate that we have required data for single session
   useEffect(() => {
-    if (type === "single" && !colombiaBookingInstant(dateParam, time)) {
+    if (type === "single" && !!dateParam && !colombiaBookingInstant(dateParam, time)) {
       router.push("/sesiones");
     }
   }, [type, dateParam, time, router]);
 
   // Payment method options
-  const colombiaOptions: PaymentOption[] = [
-    {
-      method: "wompi_manual",
-      label: "Wompi (Tarjeta, PSE, Nequi, etc.)",
-      description: "Todos los métodos de pago colombianos",
-      icon: <CreditCard className="w-5 h-5" />,
-    },
-    {
-      method: "breb_manual",
-      label: "Bre-B (Llave Bancolombia)",
-      description: "Transferencia instantánea sin comisión",
-      icon: <Key className="w-5 h-5" />,
-    },
-  ];
-
-  const internationalOptions: PaymentOption[] = [
-    {
-      method: "wompi_manual",
-      label: "Wompi (Tarjeta, PSE, Nequi, etc.)",
-      description: "Pagos con tarjeta o desde Colombia",
-      icon: <CreditCard className="w-5 h-5" />,
-    },
-    {
-      method: "paypal_direct",
-      label: "PayPal",
-      description: "Pay with your PayPal account",
-      icon: <PayPalIcon />,
-    },
-  ];
+  const colombiaOptions: PaymentOption[] = purchaseMethods("colombia").map((option) => ({
+    ...option,
+    icon: <CreditCard className="w-5 h-5" />,
+  }));
+  const internationalOptions: PaymentOption[] = purchaseMethods("international").map((option) => ({
+    ...option,
+    icon: <CreditCard className="w-5 h-5" />,
+  }));
 
   const currentOptions = selectedRegion === "colombia" ? colombiaOptions : internationalOptions;
 
@@ -150,7 +136,7 @@ function SessionCheckoutContent() {
   const handleRegionSelect = (region: PaymentRegion) => {
     setSelectedRegion(region);
     // Wompi manual como método por defecto para ambas regiones
-    setSelectedMethod("wompi_manual");
+    setSelectedMethod("paypal_direct");
     setAppliedDiscount(null);
     setDiscountInput("");
     setDiscountError(null);
@@ -181,7 +167,7 @@ function SessionCheckoutContent() {
     setError(null);
 
     try {
-      if (type === "single" && !selectedDate) {
+      if (type === "single" && !!dateParam && !selectedDate) {
         throw new Error("Selecciona de nuevo la fecha y hora de tu sesión.");
       }
       // The selected instant is already in Colombia time, independent of the browser.
@@ -194,21 +180,7 @@ function SessionCheckoutContent() {
       let endpoint: string;
       let body: Record<string, unknown>;
 
-      if (selectedMethod === "wompi_manual") {
-        endpoint = "/api/checkout/wompi-manual";
-        body = {
-          productType: type === "pack" ? "pack" : "session",
-          productId: "session-canalizacion",
-          productName: type === "pack" ? "Pack de 8 Sesiones" : "Sesión de Canalización",
-          amount: PRICES[type].COP,
-          currency: "COP",
-          discountCode: appliedDiscount?.code,
-          guestEmail,
-          guestName: guestName || undefined,
-          sessionSlug: type === "single" ? "sesion-canalizacion" : undefined,
-          scheduledAt,
-        };
-      } else if (selectedMethod === "breb_manual") {
+      if (selectedMethod === "breb_manual") {
         endpoint = "/api/checkout/breb";
         body = {
           productType: type === "pack" ? "pack" : "session",
@@ -267,7 +239,7 @@ function SessionCheckoutContent() {
     }
   };
 
-  const currentPrice = PRICES[type];
+  const currentPrice = PRICES[type] || PRICES.single;
   const isPayPalSelected = selectedMethod === "paypal_direct";
   const useUSD = isPayPalSelected;
   const basePrice = useUSD ? currentPrice.USD : currentPrice.COP;
@@ -647,7 +619,7 @@ function SessionCheckoutContent() {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={!selectedMethod || isProcessing}
+                  disabled={!selectedMethod || isProcessing || !basePrice}
                   className={`w-full py-4 rounded-xl font-dm-sans font-semibold text-lg transition-colors ${
                     selectedMethod && !isProcessing
                       ? "bg-[#4944a4] text-white hover:bg-[#3d3a8a]"
@@ -666,13 +638,11 @@ function SessionCheckoutContent() {
 
                 {/* Gateway Info */}
                 <p className="mt-4 font-dm-sans text-xs text-center text-gray-400">
-                  {selectedMethod === "wompi_manual"
-                    ? "Link de pago seguro de Wompi - Tarjeta, PSE, Nequi, Daviplata y más"
-                    : selectedMethod?.startsWith("paypal")
-                      ? "Pago procesado de forma segura por PayPal"
-                      : selectedMethod === "breb_manual"
-                        ? "Transferencia directa con Bre-B - Sin comisiones"
-                        : "Selecciona una región y método de pago"}
+                  {selectedMethod?.startsWith("paypal")
+                    ? "Pago procesado de forma segura por PayPal"
+                    : selectedMethod === "breb_manual"
+                      ? "Transferencia a Global66 pendiente de verificación"
+                      : "Selecciona una región y método de pago"}
                 </p>
               </div>
 
@@ -695,14 +665,6 @@ function SessionCheckoutContent() {
         </div>
       </main>
     </div>
-  );
-}
-
-function PayPalIcon() {
-  return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z" />
-    </svg>
   );
 }
 

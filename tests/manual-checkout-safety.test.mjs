@@ -47,7 +47,7 @@ for (const environment of ["preview", "development", undefined]) {
       delete process.env.VERCEL_ENV;
     }
     try {
-      for (const route of ["breb", "wompi-manual", "cart"]) {
+      for (const route of ["wompi-manual", "cart"]) {
         let authCalls = 0;
         const post = loadCheckout(route, () => {
           authCalls++;
@@ -77,7 +77,7 @@ test("Production manual routes retain their original authentication and validati
   const old = process.env.VERCEL_ENV;
   process.env.VERCEL_ENV = "production";
   try {
-    for (const route of ["breb", "wompi-manual", "cart"]) {
+    for (const route of ["wompi-manual", "cart"]) {
       let authCalls = 0;
       const post = loadCheckout(route, () => {
         authCalls++;

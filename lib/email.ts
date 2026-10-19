@@ -2249,7 +2249,7 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
     default:
       productTypeText = "Producto";
       ctaText = "Ir a mi cuenta";
-      ctaLink = productLink || `${APP_URL}/mi-cuenta`;
+      ctaLink = productLink || `${APP_URL}/mi-cuenta/compras`;
   }
 
   // Mapear método de pago a texto legible

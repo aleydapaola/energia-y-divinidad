@@ -1,218 +1,134 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
 import { auth } from "@/lib/auth";
-import { sendPaymentConfirmationEmail } from "@/lib/email";
-import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
+import { processApprovedPayment } from "@/lib/payment-processor";
 import { prisma } from "@/lib/prisma";
-import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
 
-/**
- * POST /api/admin/orders/[id]/confirm-payment
- * Confirmar manualmente un pago (para Bre-B u otros pagos manuales)
- */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const session = await auth();
-    const { id } = await params;
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    // Verificar rol de admin
-    const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true, email: true },
-    });
-
-    if (currentUser?.role !== "ADMIN") {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
-
-    // Obtener datos del body (opcional: referencia de transacción)
-    let body: { transactionReference?: string; notes?: string } = {};
-    try {
-      body = await request.json();
-    } catch {
-      // Body vacío es válido
-    }
-
-    // Buscar la orden
-    const order = await prisma.order.findUnique({
-      where: { id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+  const actor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { role: true, email: true },
+  });
+  if (actor?.role !== "ADMIN") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+  const body = z
+    .object({
+      transactionReference: z.string().trim().min(3).max(120),
+      verifiedInAccount: z.literal(true),
+      notes: z.string().max(2000).optional(),
+    })
+    .safeParse(await request.json().catch(() => null));
+  if (!body.success) {
+    return NextResponse.json(
+      { error: "Comprueba el ingreso en la cuenta e indica su referencia." },
+      { status: 400 }
+    );
+  }
+  const { id } = await params;
+  const order = await prisma.order.findUnique({ where: { id }, include: { user: true } });
+  if (!order) {
+    return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+  }
+  if (
+    ![
+      "BREB_MANUAL",
+      "MANUAL_NEQUI",
+      "MANUAL_TRANSFER",
+      "MANUAL_BANCOLOMBIA",
+      "MANUAL_DAVIPLATA",
+    ].includes(order.paymentMethod)
+  ) {
+    return NextResponse.json(
+      { error: "El proveedor debe confirmar este método de pago." },
+      { status: 400 }
+    );
+  }
+  // Serialize settlement by transaction reference. A transfer cannot settle two orders.
+  const claimed = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`manual-payment:${body.data.transactionReference}`}))`;
+    const used = await tx.order.findFirst({
+      where: {
+        id: { not: id },
+        paymentMethod: order.paymentMethod,
+        paymentStatus: { in: ["PROCESSING", "COMPLETED"] },
+        metadata: { path: ["transactionReference"], equals: body.data.transactionReference },
       },
     });
-
-    if (!order) {
-      return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
+    if (used) {
+      return false;
     }
-
-    // Verificar que la orden esté pendiente
-    if (order.paymentStatus !== "PENDING") {
-      return NextResponse.json(
-        { error: `La orden no está pendiente (estado actual: ${order.paymentStatus})` },
-        { status: 400 }
-      );
-    }
-
-    // Guardar estado anterior para auditoría
-    const previousStatus = order.paymentStatus;
-
-    // Actualizar orden a COMPLETED
-    const updatedOrder = await prisma.order.update({
-      where: { id },
+    const result = await tx.order.updateMany({
+      where: { id, paymentStatus: "PENDING" },
       data: {
-        paymentStatus: "COMPLETED",
+        paymentStatus: "PROCESSING",
         metadata: {
-          ...((order.metadata as object) || {}),
-          manuallyConfirmedAt: new Date().toISOString(),
+          ...(order.metadata as object),
+          transactionReference: body.data.transactionReference,
           manuallyConfirmedBy: session.user.id,
-          transactionReference: body.transactionReference || null,
-          confirmationNotes: body.notes || null,
+          manuallyConfirmedAt: new Date().toISOString(),
+          confirmationNotes: body.data.notes || null,
         },
       },
     });
-
-    // Crear entitlement según el tipo de orden
-    if (order.userId) {
-      const entitlementData = {
-        userId: order.userId,
-        type: getEntitlementType(order.orderType),
-        resourceId: order.itemId,
-        resourceName: order.itemName,
-        orderId: order.id,
-      };
-
-      await prisma.entitlement.create({
-        data: entitlementData,
-      });
-    }
-
-    // Crear booking si es una sesión
-    if (order.orderType === "SESSION" && order.userId) {
-      const metadata = order.metadata as Record<string, unknown> | null;
-      const scheduledAt = metadata?.scheduledAt as string | null;
-
-      const booking = await prisma.booking.create({
-        data: {
-          userId: order.userId,
-          bookingType: "SESSION_1_ON_1",
-          resourceId: order.itemId,
-          resourceName: order.itemName,
-          scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-          status: "CONFIRMED",
-          amount: order.amount,
-          currency: order.currency,
-          paymentMethod: order.paymentMethod,
-          paymentStatus: "COMPLETED",
-        },
-      });
-      await syncBookingToGoogleCalendar(booking.id);
-    }
-
-    // Registrar en AuditLog
-    await prisma.auditLog.create({
+    return result.count === 1;
+  });
+  if (!claimed) {
+    return NextResponse.json(
+      { error: "Pedido ya procesado o referencia utilizada en otro pedido." },
+      { status: 409 }
+    );
+  }
+  const claimedOrder = await prisma.order.findUniqueOrThrow({
+    where: { id },
+    include: { user: true },
+  });
+  const result = await processApprovedPayment(
+    { ...claimedOrder, paymentStatus: "COMPLETED" },
+    { transactionId: body.data.transactionReference }
+  );
+  if (!result.success) {
+    await prisma.order.updateMany({
+      where: { id, paymentStatus: "PROCESSING" },
+      data: { paymentStatus: "PENDING" },
+    });
+    return NextResponse.json(
+      { error: "El pago requiere revisión. No vuelvas a cobrar; puedes reintentar la entrega." },
+      { status: 500 }
+    );
+  }
+  await prisma.$transaction(async (tx) => {
+    await tx.order.update({ where: { id }, data: { paymentStatus: "COMPLETED" } });
+    await tx.manualPayment.upsert({
+      where: { orderId: id },
+      create: {
+        orderId: id,
+        paymentMethod: order.paymentMethod,
+        referenceNumber: body.data.transactionReference,
+        approved: true,
+        approvedAt: new Date(),
+        approvedBy: session.user.id,
+      },
+      update: { approved: true, approvedAt: new Date(), approvedBy: session.user.id },
+    });
+    await tx.auditLog.create({
       data: {
         actorId: session.user.id,
-        actorEmail: currentUser.email || session.user.email || "unknown",
+        actorEmail: actor.email || "",
         entityType: "order",
-        entityId: order.id,
+        entityId: id,
         action: "MANUAL_PAYMENT_CONFIRMATION",
-        before: { paymentStatus: previousStatus },
+        before: { paymentStatus: "PENDING" },
         after: { paymentStatus: "COMPLETED" },
-        reason: body.notes || "Pago Bre-B confirmado manualmente",
-        metadata: {
-          transactionReference: body.transactionReference || null,
-        },
+        reason: body.data.notes || "Ingreso comprobado en la cuenta receptora",
+        metadata: { transactionReference: body.data.transactionReference },
       },
     });
-
-    // Enviar email de confirmación
-    const customerEmail = order.user?.email || order.guestEmail;
-    const customerName = order.user?.name || order.guestName;
-
-    if (customerEmail) {
-      try {
-        const isSession = order.orderType === "SESSION";
-        const orderMeta = order.metadata as Record<string, unknown> | null;
-        const scheduledAt = orderMeta?.scheduledAt as string | null;
-        const meetingLink = isSession ? await getSessionMeetingLink() : undefined;
-
-        await sendPaymentConfirmationEmail({
-          email: customerEmail,
-          name: customerName || "Cliente",
-          orderNumber: order.orderNumber,
-          orderType: order.orderType as
-            | "PRODUCT"
-            | "SESSION"
-            | "EVENT"
-            | "MEMBERSHIP"
-            | "PREMIUM_CONTENT"
-            | "COURSE",
-          itemName: order.itemName,
-          amount: Number(order.amount),
-          currency: order.currency as "COP" | "USD" | "EUR",
-          paymentMethod: order.paymentMethod || "BREB_MANUAL",
-          sessionDate: scheduledAt ? new Date(scheduledAt) : undefined,
-          meetingLink,
-        });
-
-        // Registrar email enviado
-        await prisma.emailLog.create({
-          data: {
-            to: customerEmail,
-            template: "order_confirmation",
-            subject: `Confirmación de pago - ${order.orderNumber}`,
-            entityType: "order",
-            entityId: order.id,
-            status: "SENT",
-            sentAt: new Date(),
-          },
-        });
-      } catch (emailError) {
-        console.error("[ADMIN] Error sending confirmation email:", emailError);
-        // No fallar la confirmación por error de email
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Pago confirmado exitosamente",
-      order: {
-        id: updatedOrder.id,
-        orderNumber: updatedOrder.orderNumber,
-        paymentStatus: updatedOrder.paymentStatus,
-      },
-    });
-  } catch (error) {
-    console.error("[ADMIN] Error confirming payment:", error);
-    return NextResponse.json({ error: "Error al confirmar el pago" }, { status: 500 });
-  }
-}
-
-function getEntitlementType(
-  orderType: string
-): "MEMBERSHIP" | "PREMIUM_CONTENT" | "EVENT" | "SESSION_BUNDLE" | "PRODUCT" | "COURSE" {
-  switch (orderType) {
-    case "MEMBERSHIP":
-      return "MEMBERSHIP";
-    case "SESSION":
-      return "SESSION_BUNDLE";
-    case "EVENT":
-      return "EVENT";
-    case "COURSE":
-      return "COURSE";
-    case "PREMIUM_CONTENT":
-      return "PREMIUM_CONTENT";
-    default:
-      return "PRODUCT";
-  }
+  });
+  return NextResponse.json({ success: true });
 }

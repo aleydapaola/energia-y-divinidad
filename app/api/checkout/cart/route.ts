@@ -1,18 +1,23 @@
-import { nanoid } from "nanoid";
+import { randomUUID } from "node:crypto";
+
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
+import { getBrebConfiguration } from "@/lib/breb";
 import { createCourseEntitlement } from "@/lib/course-access";
 import { validateDiscountCode, recordDiscountUsage } from "@/lib/discount-codes";
+import { allowOrderInBrowser } from "@/lib/order-access";
 import { createPayPalOrder } from "@/lib/paypal";
 import { isProductionEnvironment, MANUAL_PAYMENT_PREVIEW_MESSAGE } from "@/lib/preview-safety";
 import { prisma } from "@/lib/prisma";
 import { getAppUrl } from "@/lib/utils";
-import { createWompiPaymentLink, generateWompiReference } from "@/lib/wompi";
+import { createWompiPaymentLink } from "@/lib/wompi";
 import { client } from "@/sanity/lib/client";
 import { COURSES_BY_IDS_QUERY } from "@/sanity/lib/queries";
 
 type PaymentMethod =
+  | "breb_manual"
+  | "FREE"
   | "wompi_nequi"
   | "wompi_card"
   | "wompi_manual"
@@ -64,6 +69,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: MANUAL_PAYMENT_PREVIEW_MESSAGE }, { status: 403 });
     }
 
+    if (!["breb_manual", "paypal_direct", "paypal_card", "FREE"].includes(paymentMethod)) {
+      return NextResponse.json({ error: "Selecciona PayPal o Bre-B." }, { status: 400 });
+    }
+    if (
+      paymentMethod === "breb_manual" &&
+      (!getBrebConfiguration().enabled || currency !== "COP")
+    ) {
+      return NextResponse.json(
+        { error: "Bre-B requiere COP y una cuenta receptora verificada." },
+        { status: 400 }
+      );
+    }
+    if (paymentMethod.startsWith("paypal") && currency !== "USD") {
+      return NextResponse.json(
+        { error: "Selecciona el precio en USD para PayPal." },
+        { status: 400 }
+      );
+    }
     // Validaciones básicas
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "El carrito está vacío" }, { status: 400 });
@@ -75,7 +98,9 @@ export async function POST(request: NextRequest) {
 
     // Verificar que todos los cursos existen y están activos
     const courseIds = items.map((item) => item.courseId);
-    const courses = await client.fetch<CheckoutCourse[]>(COURSES_BY_IDS_QUERY, { ids: courseIds });
+    const courses = await client
+      .withConfig({ useCdn: false })
+      .fetch<CheckoutCourse[]>(COURSES_BY_IDS_QUERY, { ids: courseIds });
 
     if (courses.length !== items.length) {
       return NextResponse.json({ error: "Algunos cursos no están disponibles" }, { status: 400 });
@@ -166,7 +191,10 @@ export async function POST(request: NextRequest) {
 
     // Generar referencia
     const isWompi = paymentMethod.startsWith("wompi");
-    const reference = isWompi ? generateWompiReference("EYD") : `PP-${nanoid(10).toUpperCase()}`;
+    const reference = `${paymentMethod === "breb_manual" ? "BREB" : "PP"}-${randomUUID()}`;
+    if (paymentMethod === "breb_manual") {
+      await allowOrderInBrowser(reference);
+    }
 
     // Crear nombre del pedido
     const orderName =
@@ -238,6 +266,9 @@ export async function POST(request: NextRequest) {
     // CASO NORMAL: Pago requerido
     // ============================================
 
+    if (paymentMethod === "FREE") {
+      return NextResponse.json({ error: "El pedido requiere un pago." }, { status: 400 });
+    }
     // Crear orden pendiente
     const order = await prisma.order.create({
       data: {
@@ -264,6 +295,13 @@ export async function POST(request: NextRequest) {
     const appUrl = getAppUrl();
 
     // Procesar según método de pago
+    if (paymentMethod === "breb_manual") {
+      return NextResponse.json({
+        success: true,
+        reference,
+        redirectUrl: `/pago/breb-pending?ref=${reference}`,
+      });
+    }
     if (paymentMethod === "wompi_manual") {
       // Wompi Manual - Usar link de pago genérico desde dashboard de Wompi
       // Buscar link por monto específico o usar default
@@ -368,6 +406,10 @@ export async function POST(request: NextRequest) {
 
 function getPaymentMethodEnum(method: PaymentMethod) {
   switch (method) {
+    case "breb_manual":
+      return "BREB_MANUAL";
+    case "FREE":
+      return "FREE";
     case "wompi_nequi":
       return "WOMPI_NEQUI";
     case "wompi_card":

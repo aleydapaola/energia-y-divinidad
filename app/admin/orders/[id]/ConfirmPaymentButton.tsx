@@ -1,14 +1,14 @@
-'use client'
+"use client";
 
-import { CheckCircle, Loader2, Key } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { CheckCircle, Loader2, Key } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 interface ConfirmPaymentButtonProps {
-  orderId: string
-  orderNumber: string
-  paymentMethod: string | null
-  paymentStatus: string
+  orderId: string;
+  orderNumber: string;
+  paymentMethod: string | null;
+  paymentStatus: string;
 }
 
 export function ConfirmPaymentButton({
@@ -17,54 +17,57 @@ export function ConfirmPaymentButton({
   paymentMethod,
   paymentStatus,
 }: ConfirmPaymentButtonProps) {
-  const router = useRouter()
-  const [isConfirming, setIsConfirming] = useState(false)
-  const [showModal, setShowModal] = useState(false)
-  const [transactionReference, setTransactionReference] = useState('')
-  const [notes, setNotes] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter();
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [transactionReference, setTransactionReference] = useState("");
+  const [verifiedInAccount, setVerifiedInAccount] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   // Solo mostrar para pagos manuales pendientes
-  const isManualPayment = paymentMethod === 'BREB_MANUAL' ||
-    paymentMethod === 'MANUAL_NEQUI' ||
-    paymentMethod === 'MANUAL_TRANSFER' ||
-    paymentMethod === 'MANUAL_BANCOLOMBIA' ||
-    paymentMethod === 'MANUAL_DAVIPLATA'
+  const isManualPayment =
+    paymentMethod === "BREB_MANUAL" ||
+    paymentMethod === "MANUAL_NEQUI" ||
+    paymentMethod === "MANUAL_TRANSFER" ||
+    paymentMethod === "MANUAL_BANCOLOMBIA" ||
+    paymentMethod === "MANUAL_DAVIPLATA";
 
-  const isPending = paymentStatus === 'PENDING'
+  const isPending = paymentStatus === "PENDING";
 
   if (!isManualPayment || !isPending) {
-    return null
+    return null;
   }
 
   const handleConfirm = async () => {
-    setIsConfirming(true)
-    setError(null)
+    setIsConfirming(true);
+    setError(null);
 
     try {
       const response = await fetch(`/api/admin/orders/${orderId}/confirm-payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          transactionReference: transactionReference.trim() || undefined,
+          transactionReference: transactionReference.trim(),
+          verifiedInAccount,
           notes: notes.trim() || undefined,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al confirmar el pago')
+        throw new Error(data.error || "Error al confirmar el pago");
       }
 
-      setShowModal(false)
-      router.refresh()
+      setShowModal(false);
+      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido')
+      setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
-      setIsConfirming(false)
+      setIsConfirming(false);
     }
-  }
+  };
 
   return (
     <>
@@ -87,12 +90,8 @@ export function ConfirmPaymentButton({
                   <Key className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-gazeta text-xl text-[#654177]">
-                    Confirmar Pago
-                  </h3>
-                  <p className="text-sm text-gray-500 font-dm-sans">
-                    Orden #{orderNumber}
-                  </p>
+                  <h3 className="font-gazeta text-xl text-[#654177]">Confirmar Pago</h3>
+                  <p className="text-sm text-gray-500 font-dm-sans">Orden #{orderNumber}</p>
                 </div>
               </div>
             </div>
@@ -100,20 +99,21 @@ export function ConfirmPaymentButton({
             <div className="p-6 space-y-4">
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <p className="text-sm text-yellow-800 font-dm-sans">
-                  <strong>Importante:</strong> Confirma solo si has verificado que el pago fue recibido correctamente.
-                  Esta acción activará el acceso del cliente y enviará el email de confirmación.
+                  <strong>Importante:</strong> Confirma solo si has verificado que el pago fue
+                  recibido correctamente. Esta acción activará el acceso del cliente y enviará el
+                  email de confirmación.
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 font-dm-sans">
-                  Referencia de transacción (opcional)
+                  Referencia del ingreso en Global66 / entidad receptora
                 </label>
                 <input
                   type="text"
                   value={transactionReference}
                   onChange={(e) => setTransactionReference(e.target.value)}
-                  placeholder="Ej: Comprobante #123456"
+                  placeholder="Referencia del movimiento recibido"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg font-dm-sans focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
               </div>
@@ -131,6 +131,15 @@ export function ConfirmPaymentButton({
                 />
               </div>
 
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={verifiedInAccount}
+                  onChange={(e) => setVerifiedInAccount(e.target.checked)}
+                />
+                He comprobado el ingreso, el importe y la moneda en la cuenta receptora. Un
+                comprobante del cliente no basta.
+              </label>
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <p className="text-sm text-red-600 font-dm-sans">{error}</p>
@@ -148,7 +157,9 @@ export function ConfirmPaymentButton({
               </button>
               <button
                 onClick={handleConfirm}
-                disabled={isConfirming}
+                disabled={
+                  isConfirming || !verifiedInAccount || transactionReference.trim().length < 3
+                }
                 className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-dm-sans font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isConfirming ? (
@@ -168,5 +179,5 @@ export function ConfirmPaymentButton({
         </div>
       )}
     </>
-  )
+  );
 }

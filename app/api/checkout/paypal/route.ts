@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { applyCheckoutDiscount } from "@/lib/checkout/discounts";
+import { oneTimeCheckout } from "@/lib/checkout/one-time-checkout";
 import { processApprovedPayment } from "@/lib/payment-processor";
 import { createPayPalOrder, isPayPalConfigured } from "@/lib/paypal";
 import { prisma } from "@/lib/prisma";
@@ -46,6 +47,13 @@ interface CheckoutBody {
  * Crear orden de PayPal - Colombia e Internacional (USD/COP)
  */
 export async function POST(request: NextRequest) {
+  const candidate = await request
+    .clone()
+    .json()
+    .catch(() => ({}));
+  if (candidate.productType !== "membership") {
+    return oneTimeCheckout(request, "paypal");
+  }
   try {
     // Check if PayPal is configured
     if (!isPayPalConfigured()) {

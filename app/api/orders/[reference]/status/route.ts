@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { processApprovedPayment } from "@/lib/payment-processor";
+import { getBrebConfiguration, getOrderBrebQr } from "@/lib/breb";
+import { canAccessOrder } from "@/lib/order-access";
 import { prisma } from "@/lib/prisma";
-import { getWompiApiUrl, WOMPI_CONFIG } from "@/lib/wompi";
 
 /**
  * GET /api/orders/[reference]/status
@@ -17,8 +17,6 @@ export async function GET(
 ) {
   try {
     const { reference } = await params;
-    const { searchParams } = new URL(request.url);
-    const shouldVerify = searchParams.get("verify") === "true";
 
     if (!reference) {
       return NextResponse.json({ error: "Referencia requerida" }, { status: 400 });
@@ -29,6 +27,8 @@ export async function GET(
       where: { orderNumber: reference },
       select: {
         id: true,
+        userId: true,
+        manualPayment: { select: { referenceNumber: true, approved: true } },
         orderNumber: true,
         orderType: true,
         itemId: true,
@@ -47,114 +47,38 @@ export async function GET(
       return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
     }
 
-    let paymentStatus = order.paymentStatus;
+    if (order.paymentMethod === "BREB_MANUAL" && !(await canAccessOrder(order))) {
+      return NextResponse.json({ error: "Pedido no disponible en esta sesión." }, { status: 404 });
+    }
+    const paymentStatus = order.paymentStatus;
     const metadata = order.metadata as Record<string, any> | null;
 
-    if (order.orderType === "SESSION" && paymentStatus === "COMPLETED") {
-      const fullOrder = await prisma.order.findUnique({
-        where: { id: order.id },
-        include: { user: true },
-      });
-
-      if (fullOrder) {
-        const result = await processApprovedPayment(fullOrder, { skipEmail: true });
-        if (!result.success) {
-          console.error("[ORDER/STATUS] Error reparando orden de sesión completada:", result.error);
-        }
-      }
-    }
-
-    // Si el pago está pendiente y es de Wompi, verificar directamente con Wompi
-    if (
-      shouldVerify &&
-      paymentStatus === "PENDING" &&
-      (order.paymentMethod === "WOMPI_CARD" || order.paymentMethod === "WOMPI_NEQUI")
-    ) {
-      try {
-        const paymentLinkId = metadata?.wompiPaymentLinkId;
-        if (paymentLinkId) {
-          const wompiStatus = await verifyWompiPaymentLink(paymentLinkId);
-          if (wompiStatus) {
-            paymentStatus = wompiStatus;
-            // Actualizar en la base de datos si cambió
-            if (wompiStatus !== "PENDING") {
-              await prisma.order.update({
-                where: { id: order.id },
-                data: { paymentStatus: wompiStatus },
-              });
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error verifying with Wompi:", error);
-        // Continuar con el estado de la BD si falla la verificación
-      }
-    }
-
     return NextResponse.json({
-      ...order,
+      id: order.id,
+      orderNumber: order.orderNumber,
+      orderType: order.orderType,
+      itemName: order.itemName,
+      itemId: order.itemId,
+      currency: order.currency,
+      paymentMethod: order.paymentMethod,
+      metadata: {
+        isGuestCheckout: !!metadata?.isGuestCheckout,
+        convertedFromGuest: !!metadata?.convertedFromGuest,
+        userWasCreated: !!metadata?.userWasCreated,
+      },
+      ...(order.paymentMethod === "BREB_MANUAL"
+        ? {
+            breb: getBrebConfiguration(),
+            qrCodeUrl: getOrderBrebQr(metadata || {}, Number(order.amount)),
+            reported: !!order.manualPayment,
+            reportedReference: order.manualPayment?.referenceNumber,
+          }
+        : {}),
       paymentStatus,
       amount: Number(order.amount),
     });
   } catch (error) {
     console.error("Error fetching order status:", error);
     return NextResponse.json({ error: "Error al consultar orden" }, { status: 500 });
-  }
-}
-
-/**
- * Verificar estado de un Payment Link en Wompi
- * Consulta las transacciones asociadas al payment link
- */
-async function verifyWompiPaymentLink(
-  paymentLinkId: string
-): Promise<"PENDING" | "COMPLETED" | "FAILED" | "CANCELLED" | null> {
-  if (!WOMPI_CONFIG.privateKey) {
-    return null;
-  }
-
-  try {
-    // Consultar transacciones del payment link
-    const response = await fetch(`${getWompiApiUrl()}/payment_links/${paymentLinkId}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${WOMPI_CONFIG.privateKey}`,
-      },
-    });
-
-    if (!response.ok) {
-      console.error("Error fetching payment link:", response.status, response.statusText);
-      return null;
-    }
-
-    const data = await response.json();
-    const paymentLink = data.data;
-
-    // Si no hay transacciones asociadas, sigue pendiente
-    if (!paymentLink.transactions || paymentLink.transactions.length === 0) {
-      return "PENDING";
-    }
-
-    // Tomar la transacción más reciente
-    const latestTransaction = paymentLink.transactions[paymentLink.transactions.length - 1];
-    const wompiStatus = latestTransaction.status;
-
-    // Mapear status de Wompi a nuestro modelo
-    switch (wompiStatus) {
-      case "APPROVED":
-        return "COMPLETED";
-      case "DECLINED":
-      case "ERROR":
-        return "FAILED";
-      case "VOIDED":
-        return "CANCELLED";
-      case "PENDING":
-      default:
-        return "PENDING";
-    }
-  } catch (error) {
-    console.error("Error calling Wompi API:", error);
-    return null;
   }
 }

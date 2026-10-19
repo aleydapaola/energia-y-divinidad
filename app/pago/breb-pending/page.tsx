@@ -1,236 +1,183 @@
-'use client'
+"use client";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
-import { Loader2, CheckCircle, RefreshCw, Home, AlertCircle } from 'lucide-react'
-import Link from 'next/link'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { useState, useEffect, Suspense } from 'react'
+import { BrebPaymentInstructions } from "@/components/pago/BrebPaymentInstructions";
 
-import { BrebPaymentInstructions } from '@/components/pago/BrebPaymentInstructions'
-
-function BrebPendingContent() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-
-  const reference = searchParams?.get('ref') || ''
-
-  const [checking, setChecking] = useState(false)
-  const [status, setStatus] = useState<'pending' | 'approved'>('pending')
-  const [message, setMessage] = useState<{ type: 'info' | 'error'; text: string } | null>(null)
-  const [orderData, setOrderData] = useState<{
-    orderNumber: string
-    itemName: string
-    amount: number
-    currency: string
-  } | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  // Load order data on mount
-  useEffect(() => {
-    const loadOrderData = async () => {
-      if (!reference) {
-        setLoading(false)
-        return
-      }
-
-      try {
-        const response = await fetch(`/api/orders/${reference}/status`)
-        if (response.ok) {
-          const data = await response.json()
-          setOrderData({
-            orderNumber: data.orderNumber,
-            itemName: data.itemName,
-            amount: data.amount,
-            currency: data.currency,
-          })
-
-          // Check if already paid
-          if (data.paymentStatus === 'COMPLETED') {
-            setStatus('approved')
-            setTimeout(() => {
-              router.push(`/pago/confirmacion?ref=${reference}`)
-            }, 2000)
-          }
-        }
-      } catch (err) {
-        console.error('Error loading order:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadOrderData()
-  }, [reference, router])
-
-  const handleManualCheck = async () => {
-    setChecking(true)
-    setMessage(null)
+type Order = {
+  orderNumber: string;
+  itemName: string;
+  amount: number;
+  currency: string;
+  paymentStatus: string;
+  orderType: string;
+  reported: boolean;
+  reportedReference?: string;
+  qrCodeUrl?: string;
+  breb: { enabled: boolean; simulation: boolean; key: string; recipient: string };
+};
+function Content() {
+  const reference = useSearchParams().get("ref") || "";
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [transferReference, setTransferReference] = useState("");
+  async function refresh() {
     try {
-      const response = await fetch(`/api/orders/${reference}/status`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data.paymentStatus === 'COMPLETED') {
-          setStatus('approved')
-          setTimeout(() => {
-            router.push(`/pago/confirmacion?ref=${reference}`)
-          }, 2000)
-        } else {
-          // Show message that payment hasn't been confirmed yet
-          setMessage({
-            type: 'info',
-            text: 'El pago aún no ha sido confirmado. Por favor espera mientras lo verificamos. Si ya realizaste la transferencia, el proceso puede tomar unos minutos.',
-          })
-        }
-      } else {
-        setMessage({
-          type: 'error',
-          text: 'Error al verificar el estado del pago. Por favor intenta de nuevo.',
-        })
+      const response = await fetch(`/api/orders/${encodeURIComponent(reference)}/status`, {
+        cache: "no-store",
+      });
+      const data = await response.json();
+      if (!response.ok || !data.breb) {
+        throw new Error(data.error || "Pedido no disponible.");
       }
-    } catch (err) {
-      console.error('Error checking status:', err)
-      setMessage({
-        type: 'error',
-        text: 'Error de conexión. Por favor verifica tu internet e intenta de nuevo.',
-      })
+      setOrder(data);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo consultar el pedido.");
     } finally {
-      setChecking(false)
+      setLoading(false);
     }
   }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8f0f5]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#8A4BAF]" />
-      </div>
-    )
-  }
-
-  if (!orderData) {
-    return (
-      <div className="min-h-screen bg-[#f8f0f5] flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
-          <h1 className="font-gazeta text-2xl text-[#654177] mb-4">
-            Orden no encontrada
-          </h1>
-          <p className="font-dm-sans text-gray-600 mb-6">
-            No pudimos encontrar los datos de tu orden. Por favor verifica el enlace o contacta soporte.
-          </p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors"
-          >
-            <Home className="w-5 h-5" />
-            Volver al inicio
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
-  if (status === 'approved') {
-    return (
-      <div className="min-h-screen bg-[#f8f0f5] flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-12 h-12 text-green-600" />
-          </div>
-          <h1 className="font-gazeta text-3xl text-[#654177] mb-4">
-            ¡Pago Confirmado!
-          </h1>
-          <p className="font-dm-sans text-gray-600 mb-6">
-            Tu pago con Bre-B fue confirmado exitosamente.
-          </p>
-          <div className="flex items-center justify-center gap-2 text-gray-500">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="font-dm-sans text-sm">Redirigiendo...</span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-[#f8f0f5] py-12 px-4">
-      <div className="max-w-lg mx-auto space-y-6">
-        {/* Instrucciones de pago */}
-        <BrebPaymentInstructions
-          orderNumber={orderData.orderNumber}
-          amount={orderData.amount}
-          currency={orderData.currency}
-          itemName={orderData.itemName}
-        />
-
-        {/* Acciones */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-          <p className="font-dm-sans text-center text-gray-600">
-            ¿Ya realizaste el pago?
-          </p>
-
-          <button
-            onClick={handleManualCheck}
-            disabled={checking}
-            className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {checking ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Verificando...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-5 h-5" />
-                Ya realicé el pago
-              </>
-            )}
-          </button>
-
-          {/* Mensaje de estado */}
-          {message && (
-            <div
-              className={`p-4 rounded-lg flex items-start gap-3 ${
-                message.type === 'error'
-                  ? 'bg-red-50 border border-red-200'
-                  : 'bg-blue-50 border border-blue-200'
-              }`}
-            >
-              <AlertCircle
-                className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-                  message.type === 'error' ? 'text-red-600' : 'text-blue-600'
-                }`}
-              />
-              <p
-                className={`font-dm-sans text-sm ${
-                  message.type === 'error' ? 'text-red-700' : 'text-blue-700'
-                }`}
-              >
-                {message.text}
-              </p>
-            </div>
-          )}
-
-          <Link
-            href="/"
-            className="w-full border border-gray-300 text-gray-700 font-dm-sans py-3 px-6 rounded-lg transition-colors hover:bg-gray-50 flex items-center justify-center gap-2"
-          >
-            <Home className="w-5 h-5" />
-            Volver al inicio
-          </Link>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export default function BrebPendingPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-[#f8f0f5]">
-          <Loader2 className="w-8 h-8 animate-spin text-[#8A4BAF]" />
-        </div>
+  useEffect(() => {
+    if (reference) {
+      void refresh();
+    } else {
+      setLoading(false);
+    }
+  }, [reference]);
+  async function report(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/orders/${encodeURIComponent(reference)}/report-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referenceNumber: transferReference }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error);
       }
-    >
-      <BrebPendingContent />
+      setMessage(
+        "Aviso registrado. Tu compra sigue pendiente de verificar el ingreso. No vuelvas a pagar."
+      );
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo registrar el aviso.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const button = "rounded-xl bg-[#4944a4] text-white py-3 px-5 disabled:opacity-50 w-full";
+  if (loading) {
+    return <p className="p-8 text-center">Consultando pedido…</p>;
+  }
+  if (!order) {
+    return (
+      <div className="p-8 text-center">
+        <h1>Pedido no disponible</h1>
+        <p>
+          {message ||
+            "Abre el enlace en el navegador donde realizaste la compra o inicia sesión con tu cuenta."}
+        </p>
+        <Link href="/auth/signin">Iniciar sesión</Link>
+      </div>
+    );
+  }
+  return (
+    <main className="bg-[#f8f0f5] min-h-screen py-8 px-4">
+      <div className="max-w-xl mx-auto space-y-5">
+        {order.paymentStatus === "COMPLETED" ? (
+          <section className="bg-white p-6 rounded-2xl space-y-4">
+            <h1 className="text-2xl">Pago confirmado</h1>
+            <p>{order.itemName}</p>
+            <p>
+              La compra está verificada. Consulta tu correo y tu cuenta para acceder al contenido o
+              gestionar la reserva.
+            </p>
+            <Link
+              className="underline"
+              href={`/pago/confirmacion?ref=${encodeURIComponent(reference)}`}
+            >
+              Ver confirmación e instrucciones
+            </Link>
+          </section>
+        ) : order.paymentStatus !== "PENDING" ? (
+          <section className="bg-white p-6 rounded-2xl">
+            <h1>
+              Estado del pedido:{" "}
+              {order.paymentStatus === "PROCESSING"
+                ? "Verificando y preparando tu compra"
+                : "Pedido no disponible para pagar"}
+            </h1>
+            <p>No realices otra transferencia.</p>
+          </section>
+        ) : (
+          <>
+            <BrebPaymentInstructions {...order} configuration={order.breb} />
+            <section className="bg-white rounded-2xl p-5 space-y-4">
+              {order.reported ? (
+                <div>
+                  <h2 className="font-semibold">
+                    Transferencia comunicada — pendiente de verificación
+                  </h2>
+                  <p className="break-all">Referencia: {order.reportedReference}</p>
+                  <p>No tienes que enviar un mensaje por WhatsApp ni volver a pagar.</p>
+                </div>
+              ) : (
+                <form onSubmit={report} className="space-y-3">
+                  <h2 className="text-xl font-semibold">
+                    {order.breb.simulation
+                      ? "Simular aviso de transferencia"
+                      : "Ya hice la transferencia"}
+                  </h2>
+                  <label className="block">
+                    Referencia de la transferencia
+                    <input
+                      required
+                      minLength={3}
+                      maxLength={120}
+                      className="block border rounded-lg p-3 w-full mt-2"
+                      value={transferReference}
+                      onChange={(e) => setTransferReference(e.target.value)}
+                      placeholder={
+                        order.breb.simulation
+                          ? "PRUEBA-12345"
+                          : "Referencia que muestra tu aplicación"
+                      }
+                    />
+                  </label>
+                  <p className="text-sm">
+                    Sirve para localizar el ingreso. No activa la compra por sí sola.
+                  </p>
+                  <button className={button} disabled={busy || !order.breb.enabled}>
+                    {busy ? "Registrando…" : "Comunicar transferencia"}
+                  </button>
+                </form>
+              )}
+            </section>
+          </>
+        )}
+        <p role="status" className="text-sm">
+          {message}
+        </p>
+        <button className={button} disabled={busy} onClick={() => void refresh()}>
+          Actualizar estado del pedido
+        </button>
+        <Link className="block text-center underline" href="/mi-cuenta/compras">
+          Mis compras
+        </Link>
+      </div>
+    </main>
+  );
+}
+export default function Page() {
+  return (
+    <Suspense fallback={<p>Cargando…</p>}>
+      <Content />
     </Suspense>
-  )
+  );
 }

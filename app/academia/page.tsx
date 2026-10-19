@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import Link from "next/link";
 
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
@@ -59,6 +60,11 @@ export default async function AcademiaPage() {
           </div>
         </section>
 
+        <div className="text-center p-5">
+          <Link className="underline text-[#654177]" href="/productos">
+            Ver audios, guías y otros productos digitales
+          </Link>
+        </div>
         {/* Catalog Section */}
         <section className="py-12 lg:py-16 bg-[#f8f0f5]">
           <div className="container mx-auto px-4">

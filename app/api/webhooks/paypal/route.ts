@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { sendMembershipRenewalSuccessEmail, sendMembershipPaymentFailedEmail } from "@/lib/email";
 import { processPaymentWebhook } from "@/lib/payments";
 import { verifyPayPalWebhook } from "@/lib/paypal";
-import { isProductionEnvironment } from "@/lib/preview-safety";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -14,19 +13,13 @@ import { prisma } from "@/lib/prisma";
  * - Eventos de orden/captura (CHECKOUT.ORDER.*, PAYMENT.CAPTURE.*) → primer pago / pago puntual
  */
 export async function POST(request: NextRequest) {
-  if (!isProductionEnvironment()) {
-    return NextResponse.json(
-      { received: false, error: "PayPal Preview está pausado" },
-      { status: 503 }
-    );
-  }
   const rawBody = await request.text();
 
   const { valid, event, error: verifyError } = await verifyPayPalWebhook(request.headers, rawBody);
 
   if (!valid || !event) {
     console.error("[WEBHOOK/PAYPAL] Signature inválida:", verifyError);
-    return NextResponse.json({ received: true, error: "Invalid signature" }, { status: 200 });
+    return NextResponse.json({ received: false, error: "Invalid signature" }, { status: 400 });
   }
 
   const eventType: string = event.event_type;
@@ -47,7 +40,7 @@ export async function POST(request: NextRequest) {
 
   if (!result.success) {
     console.error("[WEBHOOK/PAYPAL] Error procesando webhook:", result.error);
-    return NextResponse.json({ received: true, error: result.error }, { status: 200 });
+    return NextResponse.json({ received: false, error: result.error }, { status: 500 });
   }
 
   return NextResponse.json({

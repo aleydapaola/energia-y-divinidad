@@ -76,7 +76,8 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         {process.env.VERCEL_ENV === "preview" && (
           <div role="status" className="bg-amber-100 px-4 py-2 text-center text-sm text-amber-950">
-            Entorno de pruebas. Las pruebas de pagos están pausadas. No realices pagos ni transferencias reales.
+            Entorno de pruebas. PayPal sandbox y Bre-B simulado. No realices pagos ni transferencias
+            reales.
           </div>
         )}
         <SessionProvider>{children}</SessionProvider>

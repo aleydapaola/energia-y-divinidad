@@ -219,6 +219,11 @@ export function BookingCard({ booking, onUpdate }: BookingCardProps) {
               )}
             </div>
 
+            {!booking.scheduledAt && (
+              <p className="text-sm text-[#654177]">
+                Pago confirmado. Elige fecha y hora desde el botón de programación de esta sesión.
+              </p>
+            )}
             {booking.scheduledAt && (
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 font-dm-sans">
                 <span className="flex items-center gap-1">
@@ -260,7 +265,7 @@ export function BookingCard({ booking, onUpdate }: BookingCardProps) {
                 className="flex items-center gap-1 px-3 py-2 border border-[#8A4BAF] text-[#8A4BAF] rounded-lg font-dm-sans text-sm hover:bg-[#8A4BAF] hover:text-white transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
-                Reprogramar
+                {booking.scheduledAt ? "Reprogramar" : "Elegir fecha y hora"}
               </button>
             )}
 

@@ -1,37 +1,38 @@
-import { ShoppingBag, Calendar, Receipt, Download } from "lucide-react"
-import { redirect } from "next/navigation"
+import { ShoppingBag, Calendar, Receipt } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export default async function MisComprasPage() {
-  const session = await auth()
+  const session = await auth();
 
   if (!session?.user?.id) {
-    redirect("/auth/signin?callbackUrl=/mi-cuenta/compras")
+    redirect("/auth/signin?callbackUrl=/mi-cuenta/compras");
   }
 
   // Obtener todas las órdenes del usuario
   const orders = await prisma.order.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
-  })
+  });
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("es-CO", {
       year: "numeric",
       month: "long",
       day: "numeric",
-    })
-  }
+    });
+  };
 
   const formatCurrency = (amount: number | any, currency: string) => {
-    const num = typeof amount === "number" ? amount : Number(amount)
+    const num = typeof amount === "number" ? amount : Number(amount);
     if (currency === "USD") {
-      return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2 })} USD`
+      return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2 })} USD`;
     }
-    return `$${num.toLocaleString("es-CO")} COP`
-  }
+    return `$${num.toLocaleString("es-CO")} COP`;
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -40,72 +41,67 @@ export default async function MisComprasPage() {
           <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
             Completado
           </span>
-        )
+        );
       case "PENDING":
         return (
           <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
             Pendiente
           </span>
-        )
+        );
       case "PROCESSING":
         return (
           <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
             Procesando
           </span>
-        )
+        );
       case "FAILED":
         return (
           <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
             Fallido
           </span>
-        )
+        );
       case "REFUNDED":
         return (
           <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
             Reembolsado
           </span>
-        )
+        );
       default:
         return (
           <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
             {status}
           </span>
-        )
+        );
     }
-  }
+  };
 
   const getOrderTypeLabel = (type: string) => {
     switch (type) {
       case "SESSION":
-        return "Sesión"
+        return "Sesión";
       case "MEMBERSHIP":
-        return "Membresía"
+        return "Membresía";
       case "EVENT":
-        return "Evento"
+        return "Evento";
       case "PRODUCT":
-        return "Producto"
+        return "Producto";
       case "PREMIUM_CONTENT":
-        return "Contenido Premium"
+        return "Contenido Premium";
       default:
-        return type
+        return type;
     }
-  }
+  };
 
   // Calcular totales
-  const completedOrders = orders.filter((o) => o.paymentStatus === "COMPLETED")
-  const totalSpent = completedOrders.reduce(
-    (sum, order) => sum + Number(order.amount),
-    0
-  )
+  const completedOrders = orders.filter((o) => o.paymentStatus === "COMPLETED");
+  const totalSpent = completedOrders.reduce((sum, order) => sum + Number(order.amount), 0);
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h1 className="font-gazeta text-3xl text-[#654177] mb-2">Mis Compras</h1>
-        <p className="text-gray-600 font-dm-sans">
-          Historial de todas tus transacciones
-        </p>
+        <p className="text-gray-600 font-dm-sans">Historial de todas tus transacciones</p>
       </div>
 
       {/* Stats */}
@@ -116,9 +112,7 @@ export default async function MisComprasPage() {
               <Receipt className="w-6 h-6 text-[#8A4BAF]" />
             </div>
             <div>
-              <p className="text-2xl font-semibold text-[#654177] font-dm-sans">
-                {orders.length}
-              </p>
+              <p className="text-2xl font-semibold text-[#654177] font-dm-sans">{orders.length}</p>
               <p className="text-sm text-gray-500 font-dm-sans">Total Órdenes</p>
             </div>
           </div>
@@ -181,9 +175,7 @@ export default async function MisComprasPage() {
                         <Calendar className="w-4 h-4" />
                         {formatDate(order.createdAt)}
                       </span>
-                      <span className="text-xs text-gray-400">
-                        #{order.orderNumber}
-                      </span>
+                      <span className="text-xs text-gray-400">#{order.orderNumber}</span>
                     </div>
                   </div>
 
@@ -197,10 +189,31 @@ export default async function MisComprasPage() {
                       </p>
                     </div>
 
+                    {order.paymentStatus === "PENDING" && order.paymentMethod === "BREB_MANUAL" && (
+                      <Link
+                        className="underline"
+                        href={`/pago/breb-pending?ref=${order.orderNumber}`}
+                      >
+                        Ver pedido / comunicar transferencia
+                      </Link>
+                    )}
                     {order.paymentStatus === "COMPLETED" && (
-                      <button className="p-2 text-gray-400 hover:text-[#8A4BAF] transition-colors">
-                        <Download className="w-5 h-5" />
-                      </button>
+                      <Link
+                        className="underline text-[#654177] py-3"
+                        href={
+                          order.orderType === "PRODUCT"
+                            ? `/mi-cuenta/productos/${encodeURIComponent(order.itemId)}`
+                            : order.orderType === "COURSE"
+                              ? "/mi-cuenta/cursos"
+                              : order.orderType === "SESSION"
+                                ? "/mi-cuenta/sesiones"
+                                : order.orderType === "EVENT"
+                                  ? "/mi-cuenta/eventos"
+                                  : "/mi-cuenta"
+                        }
+                      >
+                        Acceder
+                      </Link>
                     )}
                   </div>
                 </div>
@@ -210,9 +223,7 @@ export default async function MisComprasPage() {
         ) : (
           <div className="text-center py-12">
             <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 font-dm-sans mb-2">
-              Aún no tienes compras registradas
-            </p>
+            <p className="text-gray-500 font-dm-sans mb-2">Aún no tienes compras registradas</p>
             <p className="text-sm text-gray-400 font-dm-sans">
               Tus compras de sesiones, eventos y membresías aparecerán aquí
             </p>
@@ -220,5 +231,5 @@ export default async function MisComprasPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

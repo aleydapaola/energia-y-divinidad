@@ -19,6 +19,7 @@ import { useState, useEffect } from "react";
 
 import { DiscountCodeInput } from "@/components/cart";
 import { CheckoutHeader } from "@/components/checkout/CheckoutHeader";
+import { purchaseMethods } from "@/lib/purchase-methods";
 import { useCartStore, useCartSummary, formatPrice } from "@/lib/stores/cart-store";
 import { urlFor } from "@/sanity/lib/image";
 
@@ -40,7 +41,7 @@ export function AcademiaCheckoutClient() {
   const items = useCartStore((state) => state.items);
   const removeItem = useCartStore((state) => state.removeItem);
   const clearCart = useCartStore((state) => state.clearCart);
-  const { subtotal, discountAmount, discount, currency, isEmpty, isFree } = useCartSummary();
+  const { discountAmount, discount, currency, isEmpty, isFree } = useCartSummary();
 
   // Payment selection state (inline, no modal)
   const [selectedRegion, setSelectedRegion] = useState<PaymentRegion | null>(null);
@@ -50,41 +51,14 @@ export function AcademiaCheckoutClient() {
   const [mounted, setMounted] = useState(false);
 
   // Payment method options
-  const colombiaOptions: PaymentOption[] = [
-    {
-      method: "wompi_manual",
-      label: "Wompi (Tarjeta, PSE, Nequi, etc.)",
-      description: "Todos los métodos de pago colombianos",
-      icon: <CreditCard className="w-5 h-5" />,
-    },
-    {
-      method: "paypal_direct",
-      label: "PayPal",
-      description: "Paga con tu cuenta PayPal",
-      icon: <PayPalIcon />,
-    },
-  ];
-
-  const internationalOptions: PaymentOption[] = [
-    {
-      method: "wompi_manual",
-      label: "Wompi (Tarjeta, PSE, Nequi, etc.)",
-      description: "Pagos con tarjeta o desde Colombia",
-      icon: <CreditCard className="w-5 h-5" />,
-    },
-    {
-      method: "paypal_direct",
-      label: "PayPal",
-      description: "Pay with your PayPal account",
-      icon: <PayPalIcon />,
-    },
-    {
-      method: "paypal_card",
-      label: "Credit/Debit Card",
-      description: "Visa, Mastercard, American Express (via PayPal)",
-      icon: <CreditCard className="w-5 h-5" />,
-    },
-  ];
+  const colombiaOptions: PaymentOption[] = purchaseMethods("colombia").map((option) => ({
+    ...option,
+    icon: <CreditCard className="w-5 h-5" />,
+  }));
+  const internationalOptions: PaymentOption[] = purchaseMethods("international").map((option) => ({
+    ...option,
+    icon: <CreditCard className="w-5 h-5" />,
+  }));
 
   const currentOptions = selectedRegion === "colombia" ? colombiaOptions : internationalOptions;
 
@@ -98,7 +72,8 @@ export function AcademiaCheckoutClient() {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       if (timezone.includes("Bogota") || timezone.includes("Colombia")) {
         setSelectedRegion("colombia");
-        setSelectedMethod("wompi_manual");
+        setSelectedMethod("paypal_direct");
+        useCartStore.getState().setCurrency("USD");
       }
     } catch {
       // Fallback: don't auto-select
@@ -114,10 +89,11 @@ export function AcademiaCheckoutClient() {
 
   const handleRegionSelect = (region: PaymentRegion) => {
     setSelectedRegion(region);
+    useCartStore.getState().setCurrency("USD");
     if (region === "colombia") {
-      setSelectedMethod("wompi_manual");
+      setSelectedMethod("paypal_direct");
     } else {
-      setSelectedMethod("wompi_manual");
+      setSelectedMethod("paypal_direct");
     }
   };
 
@@ -195,9 +171,9 @@ export function AcademiaCheckoutClient() {
           items: items.map((item) => ({
             courseId: item.id,
             courseName: item.title,
-            price: selectedRegion === "colombia" ? item.price : item.priceUSD,
+            price: selectedMethod === "breb_manual" ? item.price : item.priceUSD,
           })),
-          currency: selectedRegion === "colombia" ? "COP" : "USD",
+          currency: selectedMethod === "breb_manual" ? "COP" : "USD",
           paymentMethod: selectedMethod,
           discountCode: discount?.code,
         }),
@@ -232,15 +208,11 @@ export function AcademiaCheckoutClient() {
   };
 
   // Calculate prices for display
-  const pricesCOP = subtotal - discountAmount;
-  const pricesUSD =
-    items.reduce((sum, item) => sum + (item.priceUSD || 0), 0) -
-    (discount?.discountType === "percentage"
-      ? (items.reduce((sum, item) => sum + (item.priceUSD || 0), 0) * discount.discountValue) / 100
-      : discountAmount);
+  const pricesCOP = items.reduce((sum, item) => sum + item.price, 0);
+  const pricesUSD = items.reduce((sum, item) => sum + (item.priceUSD || 0), 0);
 
-  const displayPrice = selectedRegion === "international" ? pricesUSD : pricesCOP;
-  const displayCurrency = selectedRegion === "international" ? "USD" : "COP";
+  const displayPrice = selectedMethod !== "breb_manual" ? pricesUSD : pricesCOP;
+  const displayCurrency = selectedMethod !== "breb_manual" ? "USD" : "COP";
 
   // Loading / Hydration
   if (!mounted || status === "loading") {
@@ -319,8 +291,8 @@ export function AcademiaCheckoutClient() {
                         </h3>
                         <p className="text-[#4944a4] font-dm-sans font-semibold text-sm mt-1">
                           {formatPrice(
-                            selectedRegion === "international" ? item.priceUSD : item.price,
-                            selectedRegion === "international" ? "USD" : "COP"
+                            selectedMethod !== "breb_manual" ? item.priceUSD : item.price,
+                            selectedMethod !== "breb_manual" ? "USD" : "COP"
                           )}
                         </p>
                       </div>
@@ -457,7 +429,12 @@ export function AcademiaCheckoutClient() {
                             <button
                               key={option.method}
                               type="button"
-                              onClick={() => setSelectedMethod(option.method)}
+                              onClick={() => {
+                                setSelectedMethod(option.method);
+                                useCartStore
+                                  .getState()
+                                  .setCurrency(option.method === "breb_manual" ? "COP" : "USD");
+                              }}
                               className={`w-full p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${
                                 selectedMethod === option.method
                                   ? "border-[#8A4BAF] bg-[#8A4BAF]/5"
@@ -549,11 +526,9 @@ export function AcademiaCheckoutClient() {
                 {/* Gateway Info */}
                 {!isFree && (
                   <p className="mt-4 font-dm-sans text-xs text-center text-gray-400">
-                    {selectedMethod === "wompi_manual"
-                      ? "Link de pago seguro de Wompi - Tarjeta, PSE, Nequi, Daviplata y más"
-                      : selectedMethod?.startsWith("paypal")
-                        ? "Pago procesado de forma segura por PayPal"
-                        : "Selecciona una región y método de pago"}
+                    {selectedMethod?.startsWith("paypal")
+                      ? "Pago procesado de forma segura por PayPal"
+                      : "Selecciona una región y método de pago"}
                   </p>
                 )}
 
@@ -583,13 +558,5 @@ export function AcademiaCheckoutClient() {
         </div>
       </main>
     </div>
-  );
-}
-
-function PayPalIcon() {
-  return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z" />
-    </svg>
   );
 }
