@@ -2,6 +2,7 @@ import { BookingType, type Prisma } from "@prisma/client";
 import { google, type calendar_v3 } from "googleapis";
 
 import { prisma } from "@/lib/prisma";
+import { resolveSessionDuration } from "@/lib/session-duration";
 
 import { isProductionEnvironment, isolatedCalendarId } from "./preview-safety";
 
@@ -63,13 +64,14 @@ function isSyncableSessionBooking(booking: BookingWithUser) {
   );
 }
 
-function buildCalendarEvent(booking: BookingWithUser): calendar_v3.Schema$Event {
+async function buildCalendarEvent(booking: BookingWithUser): Promise<calendar_v3.Schema$Event> {
   if (!booking.scheduledAt) {
     throw new Error("La reserva no tiene fecha programada");
   }
 
   const start = booking.scheduledAt;
-  const end = new Date(start.getTime() + (booking.duration || 60) * 60 * 1000);
+  const duration = await resolveSessionDuration(booking.duration);
+  const end = new Date(start.getTime() + duration * 60 * 1000);
   const clientName = booking.user.name || "Cliente";
   const clientEmail = booking.user.email || "Email no disponible";
   const notes = booking.userNotes ? `\n\nNotas de la clienta:\n${booking.userNotes}` : "";
@@ -150,7 +152,7 @@ export async function syncBookingToGoogleCalendar(bookingId: string) {
   }
 
   try {
-    const event = buildCalendarEvent(booking);
+    const event = await buildCalendarEvent(booking);
 
     if (booking.googleCalendarEventId) {
       await client.calendar.events.update({
