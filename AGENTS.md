@@ -74,3 +74,12 @@
 - `npm run local:check` valida sense connectar a la base. Amb els fitxers locals actuals es bloqueja correctament, abans d'iniciar l'aplicació. Això és una protecció de base de dades, no una validació de totes les credencials de serveis. No afegir-hi només la connexió de proves deixant les claus reals: preparar el conjunt complet de configuració local.
 - El script `vercel-build` es conserva; la protecció local no canvia els desplegaments de Vercel ni constitueix una autorització de publicar a producció.
 - Google Calendar verificat al compte energiaydivinidad@gmail.com. Encara no s'ha creat el calendari de Preview: Google ha requerit una nova verificació d'identitat abans de continuar. Cal un calendari de proves privat i accés de servei limitat a aquest calendari abans d'activar la sincronització.
+
+
+## Calendari separat de Preview — 2026-10-19
+
+- Compte Google verificat: energiaydivinidad@gmail.com. Calendari privat «Energía y Divinidad — Preview», fus America/Bogota, ID d94a750a191a4e86896dd3b84ce7bcaf718ca3f443b4f8b17a41ac8a8d3546a5@group.calendar.google.com.
+- El compte no tenia permisos sobre l'antic projecte Cloud energia-y-divinidad. S'ha creat energia-y-divinidad-preview i habilitat Calendar API, sense activar facturació. Identitat EYD Preview Calendar: eyd-preview-calendar@energia-y-divinidad-preview.iam.gserviceaccount.com, sense rols generals de projecte; compartició writer exclusivament del nou calendari privat, sense administrar compartició.
+- Amb autorització explícita, clau nova desada com a Secret GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY exclusivament Preview a Vercel d'Aleyda. GOOGLE_SERVICE_ACCOUNT_EMAIL i PREVIEW_GOOGLE_CALENDAR_ID nous exclusivament Preview. Els valors originals de la clau i l'adreça continuen a Production; GOOGLE_CALENDAR_ID original es conserva per a la comprovació d'aïllament. Configuració de fus Preview America/Bogota; conservar el valor original de Production.
+- Prova real contra Google executant lib/google-calendar.ts sense modificar-lo i amb magatzem de reserva en memòria (sense carregar .env ni Prisma): inserció, instant 2026-10-26T15:00:00Z = 10:00 Colòmbia, durada 90 minuts, actualització del mateix esdeveniment, absència de duplicats/assistents i eliminació final verificades. No equival a una nova compra completa des del desplegament. Reserva PayPal anterior preservada, sense cancel·lar ni reemborsar.
+- Els canvis i credencials nous són per a Preview; la publicació EYD a Production continua requerint aprovació explícita. Cap canvi de política comercial.
