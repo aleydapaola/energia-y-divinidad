@@ -12,7 +12,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,scss}\"",
     "typecheck": "tsc --noEmit",
     "validate": "npm run typecheck && npm run lint && npm run format:check",
-    "sanity": "cd sanity && sanity dev",
+    "sanity": "node scripts/run-local.mjs development sanity dev",
     "sanity:deploy": "cd sanity && sanity deploy",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "node scripts/run-local.mjs development prisma migrate dev",

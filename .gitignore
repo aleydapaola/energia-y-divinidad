@@ -82,3 +82,6 @@ TODO_*.md
 
 # Admin utilities (local only)
 /app/api/newsletter/archive-all/
+
+# Private original configuration backups; never loaded by Next or Prisma
+/.local-private/

@@ -1,15 +1,21 @@
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 
 import { assertLocalDatabaseSafety } from "./local-database-safety.mjs";
+import { assertLocalServiceSafety } from "./local-service-safety.mjs";
 
 const require = createRequire(import.meta.url);
 const { loadEnvConfig } = require("@next/env");
 const [mode, program, ...args] = process.argv.slice(2);
-const executables = { next: "next/dist/bin/next", prisma: "prisma/build/index.js" };
+const executables = {
+  next: "next/dist/bin/next",
+  prisma: "prisma/build/index.js",
+  sanity: "sanity/bin/sanity",
+};
 
 if (!["development", "production"].includes(mode) || !Object.hasOwn(executables, program)) {
-  console.error("Uso: run-local.mjs development|production next|prisma [argumentos]");
+  console.error("Uso: run-local.mjs development|production next|prisma|sanity [argumentos]");
   process.exit(1);
 }
 
@@ -28,12 +34,21 @@ try {
     throw new Error("No se ha podido leer la configuración local.");
   }
   assertLocalDatabaseSafety(process.env);
+  assertLocalServiceSafety(process.env);
 } catch (error) {
   console.error(error.message);
   process.exit(1);
 }
 
-const child = spawn(process.execPath, [require.resolve(executables[program]), ...args], {
+const executable =
+  program === "sanity"
+    ? join(dirname(require.resolve("sanity/package.json")), "bin", "sanity")
+    : require.resolve(executables[program]);
+// Avoid exhausting native file watchers when other projects/editors are open.
+if (program === "next" && args[0] === "dev") {
+  process.env.WATCHPACK_POLLING ||= "1000";
+}
+const child = spawn(process.execPath, [executable, ...args], {
   stdio: "inherit",
   env: process.env,
 });

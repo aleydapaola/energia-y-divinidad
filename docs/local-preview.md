@@ -1,37 +1,55 @@
 # Desarrollo local de Energía y Divinidad
 
-Trabajar en `preview`. `main` queda reservada para una versión concreta aprobada para producción.
+Trabajar en `preview`. `main` se publica solo tras aprobar una versión concreta.
 
-Antes de iniciar la web, ejecutar `npm run local:check`. Esta comprobación no conecta a la base de datos.
-Los comandos npm de desarrollo, compilación, servidor local, migraciones y Prisma Studio comparten la
-misma comprobación y el mismo entorno resuelto. Solo aceptan la base Neon Preview verificada de este
-proyecto, no la de Amor Sanación Alquimia ni una conexión arbitraria. Los scripts `vercel-build` y
-`postinstall` conservan su funcionamiento en Vercel.
+## Configuración de este equipo
 
-Si aparece «Inicio bloqueado», no ejecutar Next o Prisma directamente para evitarlo. Tampoco ejecutar
-Sanity Studio ni utilidades administrativas con las claves originales. La protección añadida comprueba
-la base de datos y los comandos npm indicados; no audita cualquier programa que pueda ejecutarse en el
-equipo ni valida por sí sola todas las credenciales de servicios.
+Los archivos activos `.env` y `.env.local` ya no contienen las credenciales reales anteriores.
+Los originales se conservan en `.local-private/original-env-2026-10-19/`, con permisos privados,
+fuera de Git y de los archivos que cargan Next y Prisma. No restaurarlos sobre los archivos activos.
 
-## Preparar una configuración completa de pruebas
+El perfil local usa exclusivamente:
 
-1. Conservar los archivos originales en una copia privada, fuera de las rutas que cargan Next y Prisma
-   y fuera de Git. No publicar ni mostrar sus valores.
-2. Sustituir las conexiones de base de datos de `.env` y `.env.local` por las de la rama Neon `preview`
-   de Aleyda. Revisar también variables heredadas del terminal y otros archivos `.env.*`, porque pueden
-   tener prioridad. El comando protegido transmite a Prisma el mismo entorno que ha validado.
-3. Usar una clave de sesión local independiente y URLs `http://localhost:3000` para NextAuth y la app.
-4. Configurar únicamente credenciales verificadas de sandbox y la clave Resend de Preview con
-   `PREVIEW_EMAIL_RECIPIENT=aleydapaola@proton.me`. Retirar claves reales, enlaces de pago real y planes
-   reales de suscripción de la configuración local. Los servicios sin recursos de prueba quedan sin
-   credenciales; no copiar todo el entorno Production de Vercel.
-5. Mantener Calendar, Mailchimp y escritura de Sanity sin activar hasta contar con recursos separados
-   de pruebas. No reutilizar el calendario, audiencia ni dataset de escritura de producción.
-6. Repetir `npm run local:check` antes de iniciar la web. Después validar cada servicio de prueba.
+- La base Neon Preview verificada de Aleyda, con su conexión propia.
+- Un secreto de sesión local independiente y direcciones `http://localhost:3000`.
+- El proyecto Sanity `81jpalr2`, dataset `preview`, para lectura y edición autenticada en Studio.
+- La dirección de prueba `aleydapaola@proton.me` como límite de destinatarios.
 
-La configuración local original aún necesita esta sustitución. El bloqueo actual es esperado y no
-significa que la separación de servicios ya esté terminada. `.env.example` es una referencia con
-marcadores, no contiene credenciales utilizables y no debe copiarse sobre los originales sin revisarlos.
+No contiene claves de pagos, Resend, Mailchimp, Google Calendar, Google OAuth ni escritura mediante
+API de Sanity. Esos servicios quedan desactivados localmente. Sus pruebas de integración se hacen en
+Vercel Preview con claves dedicadas; no copiar las claves reales del respaldo al entorno local.
+Los pagos están aparcados por decisión de Xavier y Aleyda.
 
-Las pruebas `npm run test:preview` usan entradas ficticias y no conectan a las bases de datos ni a los
-proveedores de pago. Publicar cambios en producción requiere la aprobación de la versión probada.
+## Arranque
+
+1. Ejecutar `npm run local:check`.
+2. Ejecutar `npm run dev` y abrir `http://localhost:3000`.
+3. Para editar contenidos, abrir `/studio`, o ejecutar `npm run sanity` para el editor independiente.
+
+El arranque local y la ruta de autenticación se han comprobado (HTTP 200). La vigilancia de archivos
+usa consultas periódicas para evitar agotar los observadores nativos cuando hay otros proyectos abiertos.
+
+Los comandos npm protegidos cargan el mismo entorno para Next, Prisma y Studio. Comprueban el servidor
+Neon, proyecto y dataset Sanity, direcciones locales y ausencia de claves externas. También detectan
+claves heredadas del terminal. Si el arranque se bloquea, corregir el entorno; no ejecutar las
+herramientas directamente para eludir la comprobación.
+
+El editor distingue «PRUEBAS — NO REAL» de «CONTENIDO REAL». Los comandos CLI de Sanity tienen por
+defecto el dataset y el nombre de alojamiento de pruebas. No desplegar un Studio independiente ni
+cambiar permisos de Sanity sin revisar el destino.
+
+## Estado de los contenidos
+
+La configuración local está preparada para `preview`, pero su creación remota sigue pendiente de
+la autorización explícita sobre lectura pública. Hasta crear y copiar ese dataset, no considerar
+validada la carga de páginas con contenidos ni la edición real. El control de base de datos y una
+consulta de lectura a Neon Preview sí se han verificado.
+
+## Publicación
+
+Publicar código y publicar contenidos son operaciones distintas. Una integración de la rama Git no
+copia el dataset de Sanity. Los cambios de contenido deben revisarse en Preview y trasladarse de forma
+selectiva a producción después de la aprobación, conservando una copia de los documentos originales.
+No importar todo el dataset de pruebas sobre producción ni copiar reservas, compras o credenciales.
+
+`npm run test:preview` utiliza dependencias simuladas y no hace pagos ni conecta a servicios externos.
