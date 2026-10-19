@@ -25,7 +25,6 @@ import { sendPaymentConfirmationEmail, sendAdminNotificationEmail } from "@/lib/
 import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
 import { prisma } from "@/lib/prisma";
 import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
-import { resolveSessionDuration } from "@/lib/session-duration";
 
 // Tipos
 export interface OrderWithUser {
@@ -383,7 +382,6 @@ async function createSessionBookingFromOrder(
       sessionsTotal,
       sessionsRemaining: sessionsTotal,
       scheduledAt,
-      duration: await resolveSessionDuration(),
       metadata: {
         orderId: order.id,
         orderNumber: order.orderNumber,

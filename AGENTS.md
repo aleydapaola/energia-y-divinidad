@@ -123,3 +123,13 @@
 
 - Al entrar con el usuario ficticio se detectó que Mis Sesiones y el formulario de reprogramación interpretaban horas del navegador sin indicar el huso. La tarjeta muestra ahora fecha/hora de Colombia y, cuando es distinta, la conversión a la zona del dispositivo. El formulario indica Colombia (UTC−5), usa colombiaBookingInstant para enviar el instante y calcula el día mínimo según Colombia. El correo de reprogramación fija también America/Bogota y lo etiqueta.
 - No se modifican límites de reprogramación, cancelaciones, pagos ni políticas comerciales. 62 pruebas correctas, incluyendo el envío real del handler del formulario con fetch simulado desde Madrid, Tokio y Los Ángeles, renderizado de la tarjeta y correo con servidor UTC. Comprobación de tipos correcta. Verificación remota de la reserva ficticia y calendario pendiente del nuevo despliegue.
+
+
+## Versión sin cambios de procesamiento de pagos — 19/10/2026
+
+- Xavier autoriza completar el trabajo restante con los pagos aparcados. Se conserva la versión anterior completa en el historial `2397d01e2e1c63345ad6e4bfe0ff49655cedbe79`. No recuperar ni activar esos cambios financieros sin revisar la decisión de Aleyda.
+- El procesador de pagos y el adaptador de PayPal se conservan exactamente como en producción `7b9a7ac3`. PayPal mantiene su comportamiento existente en Production; fuera de Production queda pausado: no crea clientes/API ni procesa avisos, y el webhook devuelve 503. Esto evita exponer en Preview la verificación antigua mientras se separan los cambios aparcados. No interpretar esta preparación como validación de seguridad o aprobación de los pagos actuales de producción.
+- Se conserva la corrección de duración del calendario para reservas sin duración guardada; se aplaza guardar la duración desde el procesador de pagos. Se mantienen horarios explícitos de Colombia y conversión local, separación de correos/Neon/Calendar/Sanity y protecciones de desarrollo local.
+- Calendario remoto de la versión 2397d01e comprobado: reserva ficticia del 26/10 cambiada a 14:00 Colombia y restaurada a 10:00, un solo evento de 90 minutos y dos correos Delivered a aleydapaola@proton.me. La reserva tiene 2 reprogramaciones y no se reinició el contador.
+- Registro de cuenta Mailchimp Free separado preparado con aleydapaola@proton.me; pendiente de que Xavier cree la contraseña y complete la activación. No hay cuenta nueva ni clave creada todavía.
+- Esta separación se prepara en Preview; Production sigue requiriendo aprobación explícita de la versión concreta.

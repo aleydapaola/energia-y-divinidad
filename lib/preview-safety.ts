@@ -4,7 +4,7 @@ export function isProductionEnvironment() {
 }
 
 export const MANUAL_PAYMENT_PREVIEW_MESSAGE =
-  "Este método todavía no está habilitado para pruebas. No realices transferencias ni pagos reales. Puedes usar PayPal de pruebas.";
+  "Este método todavía no está habilitado para pruebas. No realices transferencias ni pagos reales. Las pruebas de pagos están pausadas.";
 
 export function assertPayPalTestEnvironment(environment: string) {
   if (!isProductionEnvironment() && environment !== "sandbox") {
