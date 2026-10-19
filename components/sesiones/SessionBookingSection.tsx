@@ -1,20 +1,26 @@
-"use client"
+"use client";
 
-import { Calendar, Clock } from 'lucide-react'
-import { useState } from 'react'
+import { Calendar, Clock } from "lucide-react";
+import { useState } from "react";
 
-import { BookingCalendar } from '@/components/booking/booking-calendar'
+import { BookingCalendar } from "@/components/booking/booking-calendar";
+import { calendarDateKey } from "@/lib/booking-time";
 
-import type { Holiday, BlockedDateRange, Timezone, WeeklySchedule } from '@/lib/sanity/queries/bookingSettings'
-import type { Session } from '@/lib/sanity/queries/sessions'
+import type {
+  Holiday,
+  BlockedDateRange,
+  Timezone,
+  WeeklySchedule,
+} from "@/lib/sanity/queries/bookingSettings";
+import type { Session } from "@/lib/sanity/queries/sessions";
 
 interface SessionBookingSectionProps {
-  session: Session
-  holidays?: Holiday[]
-  blockedDates?: BlockedDateRange[]
-  timezones?: Timezone[]
-  timezoneNote?: string
-  weeklySchedule?: WeeklySchedule
+  session: Session;
+  holidays?: Holiday[];
+  blockedDates?: BlockedDateRange[];
+  timezones?: Timezone[];
+  timezoneNote?: string;
+  weeklySchedule?: WeeklySchedule;
 }
 
 export function SessionBookingSection({
@@ -25,28 +31,30 @@ export function SessionBookingSection({
   timezoneNote,
   weeklySchedule,
 }: SessionBookingSectionProps) {
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [selectedTime, setSelectedTime] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
 
   const handleDateChange = (date: Date | null) => {
-    setSelectedDate(date)
-  }
+    setSelectedDate(date);
+  };
 
   const handleTimeChange = (time: string | null) => {
-    setSelectedTime(time)
-  }
+    setSelectedTime(time);
+  };
 
   const handleContinue = () => {
-    if (!selectedDate || !selectedTime) {return}
+    if (!selectedDate || !selectedTime) {
+      return;
+    }
 
     // Format date as YYYY-MM-DD
-    const dateString = selectedDate.toISOString().split('T')[0]
+    const dateString = calendarDateKey(selectedDate);
 
     // Redirect to checkout (placeholder - will be implemented in payment phase)
-    window.location.href = `/sesiones/${session.slug.current}/reservar?date=${dateString}&time=${selectedTime}`
-  }
+    window.location.href = `/sesiones/${session.slug.current}/reservar?date=${dateString}&time=${selectedTime}`;
+  };
 
-  const canContinue = selectedDate !== null && selectedTime !== null
+  const canContinue = selectedDate !== null && selectedTime !== null;
 
   return (
     <div className="space-y-8">
@@ -59,12 +67,10 @@ export function SessionBookingSection({
             </div>
           </div>
           <div>
-            <h3 className="font-serif text-lg text-brand mb-2">
-              Selecciona Fecha y Hora
-            </h3>
+            <h3 className="font-serif text-lg text-brand mb-2">Selecciona Fecha y Hora</h3>
             <p className="text-primary/70 leading-relaxed">
-              Elige el día y horario que mejor se adapte a tu disponibilidad.
-              Todos los horarios están en zona horaria de Colombia (GMT-5).
+              Elige el día y horario que mejor se adapte a tu disponibilidad. Todos los horarios
+              están en zona horaria de Colombia (GMT-5).
             </p>
             {session.bookingLeadTime > 1 && (
               <p className="text-sm text-primary/60 mt-2">
@@ -94,9 +100,7 @@ export function SessionBookingSection({
       {/* Summary and CTA */}
       {selectedDate && selectedTime && (
         <div className="bg-brand/5 rounded-lg p-6">
-          <h3 className="font-serif text-xl text-brand mb-4">
-            Resumen de tu Reserva
-          </h3>
+          <h3 className="font-serif text-xl text-brand mb-4">Resumen de tu Reserva</h3>
 
           <div className="space-y-3 mb-6">
             <div className="flex justify-between items-center">
@@ -106,11 +110,11 @@ export function SessionBookingSection({
             <div className="flex justify-between items-center">
               <span className="text-primary/70">Fecha:</span>
               <span className="font-medium text-primary">
-                {selectedDate.toLocaleDateString('es-CO', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
+                {selectedDate.toLocaleDateString("es-CO", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
                 })}
               </span>
             </div>
@@ -125,7 +129,7 @@ export function SessionBookingSection({
             <div className="flex justify-between items-center pt-3 border-t border-primary/10">
               <span className="text-primary/70">Total:</span>
               <span className="font-bold text-brand text-xl">
-                ${session.price.toLocaleString('es-CO')} COP
+                ${session.price.toLocaleString("es-CO")} COP
               </span>
             </div>
           </div>
@@ -135,8 +139,8 @@ export function SessionBookingSection({
             disabled={!canContinue}
             className={`w-full py-4 rounded-lg text-lg font-medium transition-colors ${
               canContinue
-                ? 'bg-brand text-white hover:bg-brand/90'
-                : 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                ? "bg-brand text-white hover:bg-brand/90"
+                : "bg-gray-300 text-gray-600 cursor-not-allowed"
             }`}
           >
             Continuar con la Reserva
@@ -157,5 +161,5 @@ export function SessionBookingSection({
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -8,6 +8,7 @@ import { es as esRdp } from "react-day-picker/locale";
 import { Calendar } from "@/components/ui/calendar";
 import { isPastDate } from "@/lib/availability/blocked-dates";
 import { TimeSlot } from "@/lib/availability/time-slots";
+import { bookingTimeLabel, calendarDateKey, BOOKING_TIME_ZONE } from "@/lib/booking-time";
 import {
   type Holiday,
   type BlockedDateRange,
@@ -15,7 +16,6 @@ import {
   type WeeklySchedule,
   isHoliday,
   isInBlockedRange,
-  convertTimeFromColombia,
   isDayAvailable,
 } from "@/lib/sanity/queries/bookingSettings";
 
@@ -259,14 +259,22 @@ export function BookingCalendar({
 
   // Convertir slots a la zona horaria seleccionada
   const convertedSlots: TimeSlot[] = slotsToConvert.map((slot) => {
-    if (selectedTimezone.offsetHours === 0) {
+    if (selectedTimezone.value === BOOKING_TIME_ZONE) {
       return slot; // No conversion needed for Colombia
     }
 
     const [startTime] = slot.label.split(" - ");
     const endTime = slot.label.split(" - ")[1];
-    const convertedStart = convertTimeFromColombia(startTime, selectedTimezone.offsetHours);
-    const convertedEnd = convertTimeFromColombia(endTime, selectedTimezone.offsetHours);
+    const convertedStart = bookingTimeLabel(
+      calendarDateKey(date || new Date()),
+      startTime,
+      selectedTimezone.value
+    );
+    const convertedEnd = bookingTimeLabel(
+      calendarDateKey(date || new Date()),
+      endTime,
+      selectedTimezone.value
+    );
 
     return {
       ...slot,
@@ -513,6 +521,7 @@ export function BookingCalendar({
               onTimezoneChange={handleTimezoneChange}
               timezoneNote={timezoneNote}
               selectedTimeColombia={selectedTime}
+              selectedDate={date}
             />
           </div>
         )}

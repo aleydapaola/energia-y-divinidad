@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { BookingCalendar } from "@/components/booking/booking-calendar";
+import { calendarDateKey } from "@/lib/booking-time";
 
 import type { Holiday, BlockedDateRange, Timezone } from "@/lib/sanity/queries/bookingSettings";
 
@@ -64,7 +65,7 @@ export function SesionesPageClient({
     params.set("type", type);
 
     if (type === "single" && selectedDate && selectedTime) {
-      params.set("date", selectedDate.toISOString());
+      params.set("date", calendarDateKey(selectedDate));
       params.set("time", selectedTime);
     }
 

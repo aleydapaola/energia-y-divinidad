@@ -1,61 +1,62 @@
-import { ArrowLeft, Calendar, Clock, MapPin } from 'lucide-react'
-import { Metadata } from 'next'
-import Image from 'next/image'
-import Link from 'next/link'
-import { notFound, redirect } from 'next/navigation'
+import { ArrowLeft, Calendar, Clock, MapPin } from "lucide-react";
+import { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 
-import { Footer } from '@/components/layout/Footer'
-import { Header } from '@/components/layout/Header'
-import { CheckoutForm } from '@/components/sesiones/CheckoutForm'
-import { getSessionBySlug ,
+import { Footer } from "@/components/layout/Footer";
+import { Header } from "@/components/layout/Header";
+import { CheckoutForm } from "@/components/sesiones/CheckoutForm";
+import { BOOKING_TIME_ZONE, colombiaBookingInstant } from "@/lib/booking-time";
+import {
+  getSessionBySlug,
   getSessionTypeLabel,
   formatDuration,
-} from '@/lib/sanity/queries/sessions'
+} from "@/lib/sanity/queries/sessions";
 
 interface ReservarPageProps {
-  params: Promise<{ slug: string }>
-  searchParams: Promise<{ date?: string; time?: string }>
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ date?: string; time?: string }>;
 }
 
 export const metadata: Metadata = {
-  title: 'Reservar Sesión | Energía y Divinidad',
-  description: 'Completa tu reserva de sesión individual',
-}
+  title: "Reservar Sesión | Energía y Divinidad",
+  description: "Completa tu reserva de sesión individual",
+};
 
 export default async function ReservarPage({ params, searchParams }: ReservarPageProps) {
-  const { slug } = await params
-  const { date, time } = await searchParams
+  const { slug } = await params;
+  const { date, time } = await searchParams;
 
   // Validate required parameters
   if (!date || !time) {
-    redirect(`/sesiones/${slug}`)
+    redirect(`/sesiones/${slug}`);
   }
 
   // Get session from Sanity
-  const session = await getSessionBySlug(slug)
+  const session = await getSessionBySlug(slug);
 
-  if (!session || session.status !== 'active') {
-    notFound()
+  if (!session || session.status !== "active") {
+    notFound();
   }
 
   // Parse date
-  const selectedDate = new Date(date)
-  if (isNaN(selectedDate.getTime())) {
-    redirect(`/sesiones/${slug}`)
+  const selectedDate = colombiaBookingInstant(date, time);
+  if (!selectedDate) {
+    redirect(`/sesiones/${slug}`);
   }
 
   // Format date for display
-  const formattedDate = selectedDate.toLocaleDateString('es-CO', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  const formattedDate = selectedDate.toLocaleDateString("es-CO", {
+    timeZone: BOOKING_TIME_ZONE,
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   // Combine date and time for full datetime
-  const [hours, minutes] = time.split(':').map(Number)
-  const scheduledDateTime = new Date(selectedDate)
-  scheduledDateTime.setHours(hours, minutes, 0, 0)
+  const scheduledDateTime = selectedDate;
 
   return (
     <>
@@ -63,145 +64,137 @@ export default async function ReservarPage({ params, searchParams }: ReservarPag
       <div className="min-h-screen bg-background">
         {/* Back Button */}
         <div className="container mx-auto px-4 py-6">
-        <Link
-          href={`/sesiones/${slug}`}
-          className="inline-flex items-center gap-2 text-brand hover:text-brand/80 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Volver a la Sesión</span>
-        </Link>
-      </div>
+          <Link
+            href={`/sesiones/${slug}`}
+            className="inline-flex items-center gap-2 text-brand hover:text-brand/80 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Volver a la Sesión</span>
+          </Link>
+        </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 pb-16">
-        <div className="max-w-5xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="font-gazeta text-4xl sm:text-5xl text-[#654177] mb-4">
-              Completa tu Reserva
-            </h1>
-            <p className="text-primary/70 text-lg font-dm-sans">
-              Estás a un paso de reservar tu sesión
-            </p>
-          </div>
+        {/* Main Content */}
+        <div className="container mx-auto px-4 pb-16">
+          <div className="max-w-5xl mx-auto">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h1 className="font-gazeta text-4xl sm:text-5xl text-[#654177] mb-4">
+                Completa tu Reserva
+              </h1>
+              <p className="text-primary/70 text-lg font-dm-sans">
+                Estás a un paso de reservar tu sesión
+              </p>
+            </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Session Summary */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow-md p-6 sticky top-6">
-                <h2 className="font-gazeta text-xl text-[#8A4BAF] mb-4">
-                  Resumen de tu Reserva
-                </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left Column - Session Summary */}
+              <div className="lg:col-span-1">
+                <div className="bg-white rounded-lg shadow-md p-6 sticky top-6">
+                  <h2 className="font-gazeta text-xl text-[#8A4BAF] mb-4">Resumen de tu Reserva</h2>
 
-                {/* Session Image */}
-                <div className="relative aspect-square rounded-lg overflow-hidden mb-4 bg-gradient-to-br from-[#8A4BAF]/20 to-[#2D4CC7]/20">
-                  {session.mainImage?.asset?.url ? (
-                    <Image
-                      src={session.mainImage.asset.url}
-                      alt={session.mainImage.alt || session.title}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-6xl">🔮</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Session Details */}
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-xs text-primary/60 uppercase tracking-wide mb-1">
-                      Sesión
-                    </p>
-                    <p className="font-medium text-primary">{session.title}</p>
-                    <p className="text-sm text-primary/70">
-                      {getSessionTypeLabel(session.sessionType)}
-                    </p>
-                  </div>
-
-                  <div className="flex items-start gap-2">
-                    <Calendar className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs text-primary/60 uppercase tracking-wide mb-1">
-                        Fecha
-                      </p>
-                      <p className="text-sm font-medium text-primary">
-                        {formattedDate}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2">
-                    <Clock className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs text-primary/60 uppercase tracking-wide mb-1">
-                        Hora
-                      </p>
-                      <p className="text-sm font-medium text-primary">
-                        {time} (Hora de Colombia GMT-5)
-                      </p>
-                      <p className="text-xs text-primary/60">
-                        Duración: {formatDuration(session.duration)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs text-primary/60 uppercase tracking-wide mb-1">
-                        Modalidad
-                      </p>
-                      <p className="text-sm font-medium text-primary">
-                        {session.deliveryMethod === 'video_call' && 'Videollamada Online'}
-                        {session.deliveryMethod === 'phone_call' && 'Llamada Telefónica'}
-                        {session.deliveryMethod === 'in_person' && 'Presencial'}
-                        {session.deliveryMethod === 'hybrid' && 'Híbrido'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-primary/10">
-                    <div className="flex justify-between items-baseline mb-2">
-                      <span className="text-sm text-primary/70">Precio (COP)</span>
-                      <span className="font-bold text-xl text-brand">
-                        ${session.price.toLocaleString('es-CO')}
-                      </span>
-                    </div>
-                    {session.priceUSD && (
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-sm text-primary/70">Precio (USD)</span>
-                        <span className="font-medium text-lg text-brand">
-                          ${session.priceUSD}
-                        </span>
+                  {/* Session Image */}
+                  <div className="relative aspect-square rounded-lg overflow-hidden mb-4 bg-gradient-to-br from-[#8A4BAF]/20 to-[#2D4CC7]/20">
+                    {session.mainImage?.asset?.url ? (
+                      <Image
+                        src={session.mainImage.asset.url}
+                        alt={session.mainImage.alt || session.title}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-6xl">🔮</span>
                       </div>
                     )}
-                    {session.memberDiscount && session.memberDiscount > 0 && (
-                      <p className="text-xs text-brand mt-2">
-                        {session.memberDiscount}% descuento disponible para miembros
+                  </div>
+
+                  {/* Session Details */}
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-primary/60 uppercase tracking-wide mb-1">Sesión</p>
+                      <p className="font-medium text-primary">{session.title}</p>
+                      <p className="text-sm text-primary/70">
+                        {getSessionTypeLabel(session.sessionType)}
                       </p>
-                    )}
+                    </div>
+
+                    <div className="flex items-start gap-2">
+                      <Calendar className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-primary/60 uppercase tracking-wide mb-1">
+                          Fecha
+                        </p>
+                        <p className="text-sm font-medium text-primary">{formattedDate}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2">
+                      <Clock className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-primary/60 uppercase tracking-wide mb-1">Hora</p>
+                        <p className="text-sm font-medium text-primary">
+                          {time} (Hora de Colombia GMT-5)
+                        </p>
+                        <p className="text-xs text-primary/60">
+                          Duración: {formatDuration(session.duration)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2">
+                      <MapPin className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-primary/60 uppercase tracking-wide mb-1">
+                          Modalidad
+                        </p>
+                        <p className="text-sm font-medium text-primary">
+                          {session.deliveryMethod === "video_call" && "Videollamada Online"}
+                          {session.deliveryMethod === "phone_call" && "Llamada Telefónica"}
+                          {session.deliveryMethod === "in_person" && "Presencial"}
+                          {session.deliveryMethod === "hybrid" && "Híbrido"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-primary/10">
+                      <div className="flex justify-between items-baseline mb-2">
+                        <span className="text-sm text-primary/70">Precio (COP)</span>
+                        <span className="font-bold text-xl text-brand">
+                          ${session.price.toLocaleString("es-CO")}
+                        </span>
+                      </div>
+                      {session.priceUSD && (
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-sm text-primary/70">Precio (USD)</span>
+                          <span className="font-medium text-lg text-brand">
+                            ${session.priceUSD}
+                          </span>
+                        </div>
+                      )}
+                      {session.memberDiscount && session.memberDiscount > 0 && (
+                        <p className="text-xs text-brand mt-2">
+                          {session.memberDiscount}% descuento disponible para miembros
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Right Column - Checkout Form */}
-            <div className="lg:col-span-2">
-              <CheckoutForm
-                session={session}
-                scheduledDateTime={scheduledDateTime}
-                formattedDate={formattedDate}
-                formattedTime={time}
-              />
+              {/* Right Column - Checkout Form */}
+              <div className="lg:col-span-2">
+                <CheckoutForm
+                  session={session}
+                  scheduledDateTime={scheduledDateTime}
+                  formattedDate={formattedDate}
+                  formattedTime={time}
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
-      </div>
       <Footer />
     </>
-  )
+  );
 }

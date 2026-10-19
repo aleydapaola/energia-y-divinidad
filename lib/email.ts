@@ -1908,14 +1908,7 @@ export async function sendBookingConfirmationEmail(params: SendBookingConfirmati
     meetingLink,
   } = params;
 
-  const formattedDate = scheduledAt.toLocaleDateString("es-CO", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedDate = `${formatSessionDateForColombia(scheduledAt)} (hora de Colombia)`;
 
   const paymentNote = paidWithCredit
     ? "✨ Esta sesión fue reservada con un crédito de tu membresía."
@@ -2197,13 +2190,7 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
             <td style="padding: 8px 0;">
               <span style="font-size: 14px; color: #666;">Fecha programada:</span>
               <span style="float: right; font-size: 14px; color: #654177; font-weight: 600;">
-                ${sessionDate.toLocaleDateString("es-CO", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                ${formatSessionDateForColombia(sessionDate)} (hora de Colombia)
               </span>
             </td>
           </tr>
@@ -2883,7 +2870,7 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
       <tr>
         <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
           <span style="color: #666;">📅 Fecha programada:</span>
-          <strong style="float: right; color: #333;">${formatDate(sessionDate)}</strong>
+          <strong style="float: right; color: #333;">${formatSessionDateForColombia(sessionDate)} (hora de Colombia)</strong>
         </td>
       </tr>
     `;

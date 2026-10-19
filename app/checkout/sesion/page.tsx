@@ -18,6 +18,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 
 import { CheckoutHeader } from "@/components/checkout/CheckoutHeader";
+import { BOOKING_TIME_ZONE, colombiaBookingInstant } from "@/lib/booking-time";
 
 import type { PaymentMethodType } from "@/lib/membership-access";
 
@@ -39,7 +40,7 @@ function SessionCheckoutContent() {
   const dateParam = searchParams?.get("date") || "";
   const time = searchParams?.get("time") || "";
   // Parse date
-  const selectedDate = dateParam ? new Date(dateParam) : null;
+  const selectedDate = colombiaBookingInstant(dateParam, time);
 
   // State
   const [selectedRegion, setSelectedRegion] = useState<PaymentRegion | null>(null);
@@ -83,7 +84,7 @@ function SessionCheckoutContent() {
 
   // Validate that we have required data for single session
   useEffect(() => {
-    if (type === "single" && (!dateParam || !time)) {
+    if (type === "single" && !colombiaBookingInstant(dateParam, time)) {
       router.push("/sesiones");
     }
   }, [type, dateParam, time, router]);
@@ -180,13 +181,13 @@ function SessionCheckoutContent() {
     setError(null);
 
     try {
-      // Build scheduled date/time
+      if (type === "single" && !selectedDate) {
+        throw new Error("Selecciona de nuevo la fecha y hora de tu sesión.");
+      }
+      // The selected instant is already in Colombia time, independent of the browser.
       let scheduledAt: string | undefined;
       if (type === "single" && selectedDate && time) {
-        const [hours, minutes] = time.split(":").map(Number);
-        const scheduledDateTime = new Date(selectedDate);
-        scheduledDateTime.setHours(hours, minutes, 0, 0);
-        scheduledAt = scheduledDateTime.toISOString();
+        scheduledAt = selectedDate.toISOString();
       }
 
       // Determine endpoint and body
@@ -368,11 +369,12 @@ function SessionCheckoutContent() {
                         <Calendar className="w-5 h-5 text-[#8A4BAF]" />
                         <span className="font-dm-sans text-gray-700">
                           {selectedDate.toLocaleDateString("es-CO", {
+                            timeZone: BOOKING_TIME_ZONE,
                             weekday: "long",
                             day: "numeric",
                             month: "long",
                           })}{" "}
-                          a las {time}
+                          a las {time} (hora de Colombia)
                         </span>
                       </div>
                     )}

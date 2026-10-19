@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { TimeSlot } from "@/lib/availability/time-slots";
+import { bookingLabel12Hour } from "@/lib/booking-time";
 
 interface TimeSlotPickerProps {
   slots: TimeSlot[];
@@ -23,24 +24,7 @@ export default function TimeSlotPicker({
 }: TimeSlotPickerProps) {
   const [is24Hour, setIs24Hour] = useState(true);
 
-  // Función para convertir hora de 24h a 12h
-  const convertTo12Hour = (time24: string): string => {
-    const [hours, minutes] = time24.split(":").map(Number);
-    const period = hours >= 12 ? "pm" : "am";
-    const hours12 = hours % 12 || 12;
-    return `${hours12}:${minutes.toString().padStart(2, "0")}${period}`;
-  };
-
-  // Función para formatear el label según el formato seleccionado
-  const formatTimeLabel = (label: string): string => {
-    if (is24Hour) {
-      return label;
-    }
-
-    // Convertir "17:00 - 18:00" a "5:00pm - 6:00pm"
-    const [start, end] = label.split(" - ");
-    return `${convertTo12Hour(start)} - ${convertTo12Hour(end)}`;
-  };
+  const formatTimeLabel = (label: string): string => (is24Hour ? label : bookingLabel12Hour(label));
 
   // Usar los slots que vienen (ya convertidos a la zona horaria desde booking-calendar)
   const displaySlots = slots;

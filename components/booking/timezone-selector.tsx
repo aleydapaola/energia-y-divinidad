@@ -1,90 +1,93 @@
-'use client'
+"use client";
 
-import { Globe } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Globe } from "lucide-react";
+import { useState, useEffect } from "react";
 
-import { type Timezone, convertTimeFromColombia, isNextDay, isPreviousDay } from '@/lib/sanity/queries/bookingSettings'
+import {
+  BOOKING_TIME_ZONE,
+  bookingTimeInZone,
+  bookingTimeLabel,
+  calendarDateKey,
+} from "@/lib/booking-time";
+import { type Timezone, convertTimeFromColombia } from "@/lib/sanity/queries/bookingSettings";
 
 interface TimezoneSelectorProps {
-  timezones: Timezone[]
-  selectedTimezone: Timezone | null
-  onTimezoneChange: (timezone: Timezone) => void
-  timezoneNote?: string
-  selectedTimeColombia?: string | null // Hora seleccionada en hora Colombia
+  selectedDate?: Date;
+  timezones: Timezone[];
+  selectedTimezone: Timezone | null;
+  onTimezoneChange: (timezone: Timezone) => void;
+  timezoneNote?: string;
+  selectedTimeColombia?: string | null; // Hora seleccionada en hora Colombia
 }
 
 // Zonas horarias por defecto si no hay configuradas en Sanity
 const DEFAULT_TIMEZONES: Timezone[] = [
   {
-    label: 'Colombia',
-    value: 'America/Bogota',
+    label: "Colombia",
+    value: "America/Bogota",
     offsetHours: 0,
     isDefault: true,
   },
   {
-    label: 'Mexico',
-    value: 'America/Mexico_City',
+    label: "Mexico",
+    value: "America/Mexico_City",
     offsetHours: -1,
     isDefault: false,
   },
   {
-    label: 'Argentina',
-    value: 'America/Argentina/Buenos_Aires',
+    label: "Argentina",
+    value: "America/Argentina/Buenos_Aires",
     offsetHours: 2,
     isDefault: false,
   },
   {
-    label: 'Espana',
-    value: 'Europe/Madrid',
+    label: "Espana",
+    value: "Europe/Madrid",
     offsetHours: 6,
     isDefault: false,
   },
-]
+];
 
-const STORAGE_KEY = 'energia-divinidad-timezone'
+const STORAGE_KEY = "energia-divinidad-timezone";
 
 export function TimezoneSelector({
   timezones,
   selectedTimezone,
   onTimezoneChange,
-  timezoneNote = 'La sesion sera en hora de Colombia (GMT-5)',
+  timezoneNote = "La sesion sera en hora de Colombia (GMT-5)",
   selectedTimeColombia,
+  selectedDate,
 }: TimezoneSelectorProps) {
-  const availableTimezones = timezones.length > 0 ? timezones : DEFAULT_TIMEZONES
+  const availableTimezones = timezones.length > 0 ? timezones : DEFAULT_TIMEZONES;
 
   // Cargar preferencia de localStorage al montar
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      const savedTz = availableTimezones.find(tz => tz.value === saved)
+      const savedTz = availableTimezones.find((tz) => tz.value === saved);
       if (savedTz && !selectedTimezone) {
-        onTimezoneChange(savedTz)
+        onTimezoneChange(savedTz);
       }
     }
-  }, [availableTimezones, onTimezoneChange, selectedTimezone])
+  }, [availableTimezones, onTimezoneChange, selectedTimezone]);
 
   const handleSelect = (timezone: Timezone) => {
-    onTimezoneChange(timezone)
-    localStorage.setItem(STORAGE_KEY, timezone.value)
-  }
+    onTimezoneChange(timezone);
+    localStorage.setItem(STORAGE_KEY, timezone.value);
+  };
 
   // Calcular hora convertida si hay una hora seleccionada
   const getConvertedTimeDisplay = () => {
-    if (!selectedTimeColombia || !selectedTimezone) {return null}
-    if (selectedTimezone.offsetHours === 0) {return null} // Es Colombia, no mostrar
+    if (!selectedTimeColombia || !selectedTimezone) {
+      return null;
+    }
+    if (selectedTimezone.value === BOOKING_TIME_ZONE) {
+      return null;
+    }
+    return `${bookingTimeLabel(calendarDateKey(selectedDate || new Date()), selectedTimeColombia, selectedTimezone.value)} en ${selectedTimezone.label}`;
+  };
 
-    const convertedTime = convertTimeFromColombia(selectedTimeColombia, selectedTimezone.offsetHours)
-    const nextDay = isNextDay(selectedTimeColombia, selectedTimezone.offsetHours)
-    const prevDay = isPreviousDay(selectedTimeColombia, selectedTimezone.offsetHours)
-
-    let dayNote = ''
-    if (nextDay) {dayNote = ' (dia siguiente)'}
-    if (prevDay) {dayNote = ' (dia anterior)'}
-
-    return `${convertedTime}${dayNote} en ${selectedTimezone.label}`
-  }
-
-  const convertedTimeDisplay = getConvertedTimeDisplay()
+  const convertedTimeDisplay = getConvertedTimeDisplay();
 
   return (
     <div className="bg-white rounded-xl p-4 border border-[#8A4BAF]/10">
@@ -97,12 +100,12 @@ export function TimezoneSelector({
       {/* Timezone buttons */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         {availableTimezones.map((tz) => {
-          const isSelected = selectedTimezone?.value === tz.value
-          const offsetLabel = tz.offsetHours === 0
-            ? 'GMT-5'
-            : tz.offsetHours > 0
-              ? `GMT${-5 + tz.offsetHours > 0 ? '+' : ''}${-5 + tz.offsetHours}`
-              : `GMT${-5 + tz.offsetHours}`
+          const isSelected = selectedTimezone?.value === tz.value;
+          const offsetLabel = bookingTimeInZone(
+            calendarDateKey(selectedDate || new Date()),
+            selectedTimeColombia || "12:00",
+            tz.value
+          ).offsetLabel;
 
           return (
             <button
@@ -110,16 +113,16 @@ export function TimezoneSelector({
               onClick={() => handleSelect(tz)}
               className={`px-3 py-2 rounded-lg font-dm-sans text-sm transition-all ${
                 isSelected
-                  ? 'bg-[#8A4BAF] text-white shadow-md'
-                  : 'bg-[#f8f0f5] text-[#654177] hover:bg-[#8A4BAF]/10'
+                  ? "bg-[#8A4BAF] text-white shadow-md"
+                  : "bg-[#f8f0f5] text-[#654177] hover:bg-[#8A4BAF]/10"
               }`}
             >
               <span className="font-medium">{tz.label}</span>
-              <span className={`block text-xs ${isSelected ? 'text-white/80' : 'text-gray-500'}`}>
+              <span className={`block text-xs ${isSelected ? "text-white/80" : "text-gray-500"}`}>
                 {offsetLabel}
               </span>
             </button>
-          )
+          );
         })}
       </div>
 
@@ -136,30 +139,28 @@ export function TimezoneSelector({
       )}
 
       {/* Note */}
-      <p className="font-dm-sans text-sm text-gray-500 text-center">
-        {timezoneNote}
-      </p>
+      <p className="font-dm-sans text-sm text-gray-500 text-center">{timezoneNote}</p>
     </div>
-  )
+  );
 }
 
 // Hook para gestionar el estado del timezone
 export function useTimezone(timezones: Timezone[]) {
-  const availableTimezones = timezones.length > 0 ? timezones : DEFAULT_TIMEZONES
-  const defaultTz = availableTimezones.find(tz => tz.isDefault) || availableTimezones[0]
+  const availableTimezones = timezones.length > 0 ? timezones : DEFAULT_TIMEZONES;
+  const defaultTz = availableTimezones.find((tz) => tz.isDefault) || availableTimezones[0];
 
-  const [selectedTimezone, setSelectedTimezone] = useState<Timezone>(defaultTz)
+  const [selectedTimezone, setSelectedTimezone] = useState<Timezone>(defaultTz);
 
   // Cargar preferencia de localStorage
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      const savedTz = availableTimezones.find(tz => tz.value === saved)
+      const savedTz = availableTimezones.find((tz) => tz.value === saved);
       if (savedTz) {
-        setSelectedTimezone(savedTz)
+        setSelectedTimezone(savedTz);
       }
     }
-  }, [availableTimezones])
+  }, [availableTimezones]);
 
   return {
     selectedTimezone,
@@ -167,5 +168,5 @@ export function useTimezone(timezones: Timezone[]) {
     availableTimezones,
     convertTime: (timeColombia: string) =>
       convertTimeFromColombia(timeColombia, selectedTimezone.offsetHours),
-  }
+  };
 }

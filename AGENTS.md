@@ -57,3 +57,11 @@
 - Preparada correcció del processament d’avisos de captura: recuperar la referència de la comanda a partir de supplementary_data.related_ids.order_id i llegir l’import de resource.amount. Els errors de verificació/processament han de retornar un estat d’error perquè PayPal pugui reintentar. La petició de verificació conserva el JSON original. No s’han canviat condicions comercials ni iniciat reemborsaments.
 
 - Comprovació de tipus repetida després del commit 9e4841d8: correcta. Les 29 proves locals prèvies continuen aplicables; cap canvi nou de codi en aquesta configuració.
+
+## Correcció horària de sessions — 2026-10-19, només Preview
+
+- Les dues entrades de reserva transmeten el dia civil YYYY-MM-DD, sense convertir la mitjanit del navegador a UTC. El checkout combina aquest dia amb l’hora de Colòmbia (-05:00) i etiqueta explícitament el fus. Els enllaços antics amb dates ambigües tornen a la selecció de sessió.
+- El selector d’horaris usa el fus IANA i la data de reserva: respecta l’horari d’estiu/hivern i indica canvis de dia. Els correus de confirmació de sessió i els avisos administratius mostren hora de Colòmbia.
+- 35 proves locals correctes (inclouen Madrid, Bogotà, Los Angeles, Tòquio, UTC, dates invàlides, canvi d’hora i format 12h amb canvi de dia). Tipus i lint revisats; lint conserva avisos previs. No s’ha executat cap base de producció ni canviat polítiques comercials.
+- El desplegament anterior 086be5ec de documentació va fallar amb P1002 en adquirir un bloqueig de migracions a la base de Preview; la versió funcional 9e4841d8 sí que constava Ready. Verificar el desplegament nou abans de fer el pagament fictici; no desactivar els bloquejos de migració.
+- PayPal ha tornat a demanar iniciar sessió per accedir als Sandbox Accounts. La prova completa de pagament, webhook, registre únic de reserva i entrega del correu continua pendent.
