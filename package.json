@@ -20,7 +20,7 @@
     "prisma:studio": "node scripts/run-local.mjs development prisma studio",
     "local:check": "node scripts/run-local.mjs development next --version",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build",
+    "vercel-build": "prisma generate && node scripts/migrate-vercel.mjs && next build",
     "prepare": "husky",
     "test:preview": "node --experimental-strip-types --test tests/*.test.mjs"
   },

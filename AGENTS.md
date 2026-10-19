@@ -85,3 +85,9 @@
 - Els canvis i credencials nous són per a Preview; la publicació EYD a Production continua requerint aprovació explícita. Cap canvi de política comercial.
 
 - Distinció visual reforçada a petició de Xavier: calendari reanomenat i verificat després de recarregar com «PRUEBAS — NO REAL — Energía y Divinidad», descripció explícita de reserves fictícies. Fora de Production, cada esdeveniment afegeix [PRUEBA — NO REAL] al títol i un avís al començament de la descripció. Els esdeveniments de Production conserven el format original. No enviar cap missatge a Aleyda sense instrucció explícita.
+
+## Migracions de Vercel Preview — correcció del bloqueig P1002
+
+- El desplegament f479d6cf (EyywzpUboLXaymeySwrVih7FjzQB) ha fallat esperant pg_advisory_lock(72707369) contra l'endpoint pooled de Neon Preview, abans de compilar. No s'ha desactivat el bloqueig ni cancel·lat cap sessió de base de dades.
+- vercel-build executa scripts/migrate-vercel.mjs. Només a Vercel Preview valida el servidor de la base amb la mateixa llista de seguretat local i passa la connexió directa del mateix endpoint al procés de Prisma. Conserva credencials, base i opcions TLS; retira pgbouncer. El procés Next posterior conserva DATABASE_URL pooled. Production conserva el comportament anterior; l'execució local d'aquest script queda bloquejada.
+- 44 proves locals correctes, incloses preservació del fus, aïllament, connexió directa i rebuig de servidors no autoritzats. No s'ha connectat a cap base des dels tests locals. Verificar al desplegament que el pas de migracions acaba i que la font és la nova branca Preview abans de donar les etiquetes de cites per actives.
