@@ -1,10 +1,22 @@
 # Guia de Sanity Studio - Energia y Divinidad
 
-## Como Acceder
+## Elegir el entorno antes de editar
 
-1. Abre tu navegador y ve a: **https://energiaydivinidad.sanity.studio/**
-2. Haz clic en "Iniciar sesion con Google"
-3. Usa tu cuenta **energiaydivinidad@gmail.com**
+Para preparar cambios, abre el [editor de PRUEBAS](https://energia-y-divinidad-git-preview-aleyda-paola-vargas-projects.vercel.app/studio).
+Primero puede pedir acceso a Vercel; después inicia sesión en Sanity con tu cuenta autorizada.
+Comprueba el título **«Energía y Divinidad — PRUEBAS — NO REAL»** antes de editar.
+El botón «Publish» de este editor publica únicamente en la copia de pruebas.
+
+Revisa el resultado en la [web de Preview](https://energia-y-divinidad-git-preview-aleyda-paola-vargas-projects.vercel.app/).
+Las reservas del calendario «PRUEBAS — NO REAL — Energía y Divinidad» también son ficticias.
+Los pagos están aparcados mientras se define la nueva configuración.
+
+El [editor habitual](https://energiaydivinidad.sanity.studio/) corresponde a los contenidos reales.
+No utilizarlo para pruebas. La copia nueva no modifica ese editor ni sus contenidos.
+
+Después de aprobar un cambio, se trasladan únicamente los documentos y archivos necesarios a
+producción, guardando los originales. Publicar código desde Git no copia los contenidos de Sanity.
+No sustituir toda la base real por la copia de pruebas.
 
 ---
 

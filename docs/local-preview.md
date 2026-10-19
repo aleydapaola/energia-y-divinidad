@@ -40,10 +40,14 @@ cambiar permisos de Sanity sin revisar el destino.
 
 ## Estado de los contenidos
 
-La configuración local está preparada para `preview`, pero su creación remota sigue pendiente de
-la autorización explícita sobre lectura pública. Hasta crear y copiar ese dataset, no considerar
-validada la carga de páginas con contenidos ni la edición real. El control de base de datos y una
-consulta de lectura a Neon Preview sí se han verificado.
+El dataset público `81jpalr2/preview` está creado y verificado: 198 documentos de contenido
+publicado y 187 archivos e imágenes copiados al propio dataset de pruebas. No incluye borradores,
+cupones ni documentos marcados como no publicados. No introducir datos personales en este espacio público.
+
+Una modificación de prueba y su retirada se verificaron en Preview sin modificar ninguna revisión
+de los documentos de producción. Todas las referencias se resuelven y los archivos apuntan a Preview.
+El editor permite el origen local y la dirección estable de Vercel Preview, con inicio de sesión de Sanity.
+No se ha copiado ninguna clave de escritura del CMS a Vercel Preview.
 
 ## Publicación
 
