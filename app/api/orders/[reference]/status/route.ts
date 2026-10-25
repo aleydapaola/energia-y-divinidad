@@ -47,7 +47,7 @@ export async function GET(
       return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
     }
 
-    if (order.paymentMethod === "BREB_MANUAL" && !(await canAccessOrder(order))) {
+    if (!(await canAccessOrder(order))) {
       return NextResponse.json({ error: "Pedido no disponible en esta sesión." }, { status: 404 });
     }
     const paymentStatus = order.paymentStatus;

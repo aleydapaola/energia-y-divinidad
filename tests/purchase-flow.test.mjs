@@ -416,6 +416,48 @@ test("PayPal capture binds the provider order and checks completed state, amount
   }
 });
 
+test("order status requires access for PayPal as well as Bre-B before returning purchase details", async () => {
+  for (const paymentMethod of ["PAYPAL_DIRECT", "BREB_MANUAL"]) {
+    for (const access of [false, true]) {
+      let brebReads = 0;
+      const { GET } = load("app/api/orders/[reference]/status/route.ts", {
+        "@/lib/order-access": { canAccessOrder: async () => access },
+        "@/lib/breb": {
+          getBrebConfiguration: () => {
+            brebReads++;
+            return { simulation: true };
+          },
+          getOrderBrebQr: () => null,
+        },
+        "@/lib/prisma": {
+          prisma: {
+            order: {
+              findFirst: async () => ({
+                id: "test-only",
+                userId: "owner",
+                orderNumber: "test-reference",
+                paymentMethod,
+                paymentStatus: "PENDING",
+                amount: 20,
+                currency: "USD",
+                itemName: "Test product",
+                metadata: { isGuestCheckout: true },
+              }),
+            },
+          },
+        },
+      });
+      const response = await GET(new Request("https://preview.test"), {
+        params: Promise.resolve({ reference: "test-reference" }),
+      });
+      assert.equal(response.status, access ? 200 : 404);
+      const body = await response.json();
+      assert.equal(body.itemName, access ? "Test product" : undefined);
+      assert.equal(brebReads, access && paymentMethod === "BREB_MANUAL" ? 1 : 0);
+    }
+  }
+});
+
 test("guest order access requires the signed browser capability or the actual account owner", async () => {
   const saved = process.env.AUTH_SECRET;
   process.env.AUTH_SECRET = "unit-test-secret-never-used-externally";
