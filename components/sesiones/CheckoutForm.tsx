@@ -5,7 +5,6 @@ import {
   Phone,
   User,
   MapPin,
-  CreditCard,
   AlertCircle,
   Loader2,
   Coins,
@@ -17,6 +16,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
+import { purchaseMethods } from "@/lib/purchase-methods";
 import { Session } from "@/lib/sanity/queries/sessions";
 
 import type { PaymentMethodType } from "@/lib/membership-access";
@@ -87,11 +87,7 @@ export function CheckoutForm({
     setAppliedDiscount(null);
     setDiscountInput("");
     setDiscountError(null);
-    if (selectedCountry === "colombia") {
-      setPaymentMethod("wompi_manual");
-    } else {
-      setPaymentMethod("wompi_manual");
-    }
+    setPaymentMethod("paypal_direct");
     // Clear country error when selected
     if (errors.country) {
       setErrors((prev) => ({ ...prev, country: "" }));
@@ -121,9 +117,8 @@ export function CheckoutForm({
     }).format(amount);
   };
 
-  const currentCurrency: "COP" | "USD" =
-    country === "internacional" && paymentMethod?.startsWith("paypal") ? "USD" : "COP";
-  const baseAmount = currentCurrency === "COP" ? session.price : session.priceUSD || session.price;
+  const currentCurrency: "COP" | "USD" = paymentMethod === "breb_manual" ? "COP" : "USD";
+  const baseAmount = currentCurrency === "COP" ? session.price : session.priceUSD || 0;
   const finalAmount = appliedDiscount ? appliedDiscount.finalAmount : baseAmount;
 
   const handleApplyDiscount = async () => {
@@ -212,6 +207,10 @@ export function CheckoutForm({
     if (!validateForm()) {
       return;
     }
+    if (!payWithCredit && !["breb_manual", "paypal_direct"].includes(paymentMethod)) {
+      setErrors({ submit: "Selecciona PayPal o Bre-B." });
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -242,55 +241,20 @@ export function CheckoutForm({
       const currency = currentCurrency;
       const amount = baseAmount;
 
-      // Determinar endpoint según método de pago
-      let endpoint: string;
-      let body: any;
-
-      if (paymentMethod === "wompi_manual") {
-        // Pago manual via Wompi - Link de pago genérico
-        endpoint = "/api/checkout/wompi-manual";
-        body = {
-          productType: "session",
-          productId: session._id,
-          productName: session.title,
-          amount,
-          currency,
-          discountCode: appliedDiscount?.code,
-          guestEmail: formData.email,
-          guestName: formData.name,
-          guestPhone: formData.phone,
-          sessionSlug: session.slug.current,
-          scheduledAt: scheduledDateTime.toISOString(),
-        };
-      } else if (paymentMethod === "breb_manual") {
-        // Pago manual via Bre-B (Colombia) - Transferencia con llave
-        endpoint = "/api/checkout/breb";
-        body = {
-          productType: "session",
-          productId: session._id,
-          productName: session.title,
-          amount,
-          discountCode: appliedDiscount?.code,
-          guestEmail: formData.email,
-          guestName: formData.name,
-          scheduledAt: scheduledDateTime.toISOString(),
-        };
-      } else {
-        // Pago via PayPal (Internacional)
-        endpoint = "/api/checkout/paypal";
-        body = {
-          productType: "session",
-          productId: session._id,
-          productName: session.title,
-          amount,
-          currency,
-          discountCode: appliedDiscount?.code,
-          guestEmail: formData.email,
-          guestName: formData.name,
-          sessionSlug: session.slug.current,
-          scheduledAt: scheduledDateTime.toISOString(),
-        };
-      }
+      const endpoint =
+        paymentMethod === "breb_manual" ? "/api/checkout/breb" : "/api/checkout/paypal";
+      const body = {
+        productType: "session",
+        productId: session._id,
+        amount,
+        currency,
+        discountCode: appliedDiscount?.code,
+        guestEmail: formData.email,
+        guestName: formData.name,
+        guestPhone: formData.phone,
+        notes: formData.notes,
+        scheduledAt: scheduledDateTime.toISOString(),
+      };
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -305,8 +269,8 @@ export function CheckoutForm({
       }
 
       // Redirect según respuesta
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
+      if (data.approvalUrl) {
+        window.location.href = data.approvalUrl;
       } else if (data.redirectUrl) {
         router.push(data.redirectUrl);
       }
@@ -320,48 +284,14 @@ export function CheckoutForm({
   };
 
   // Opciones de pago según país
-  const paymentOptions =
-    country === "colombia"
-      ? [
-          {
-            value: "wompi_manual" as PaymentMethodType,
-            label: "Wompi (Tarjeta, PSE, Nequi, etc.)",
-            description: "Todos los métodos de pago colombianos",
-            icon: <CreditCard className="w-5 h-5" />,
-          },
-          {
-            value: "breb_manual" as PaymentMethodType,
-            label: "Bre-B (Llave Bancolombia)",
-            description: "Transferencia instantánea sin comisión",
-            icon: <Key className="w-5 h-5" />,
-          },
-          {
-            value: "paypal_direct" as PaymentMethodType,
-            label: "PayPal",
-            description: "Paga con tu cuenta PayPal",
-            icon: <PayPalIcon />,
-          },
-        ]
-      : [
-          {
-            value: "wompi_manual" as PaymentMethodType,
-            label: "Wompi (Tarjeta, PSE, Nequi, etc.)",
-            description: "Pagos con tarjeta o desde Colombia",
-            icon: <CreditCard className="w-5 h-5" />,
-          },
-          {
-            value: "paypal_card" as PaymentMethodType,
-            label: "Credit/Debit Card",
-            description: "Visa, Mastercard, American Express",
-            icon: <CreditCard className="w-5 h-5" />,
-          },
-          {
-            value: "paypal_direct" as PaymentMethodType,
-            label: "PayPal",
-            description: "Pay with your PayPal account",
-            icon: <PayPalIcon />,
-          },
-        ];
+  const paymentOptions = purchaseMethods(country === "colombia" ? "colombia" : "international").map(
+    (option) => ({
+      value: option.method,
+      label: option.label,
+      description: option.description,
+      icon: option.method === "breb_manual" ? <Key className="w-5 h-5" /> : <PayPalIcon />,
+    })
+  );
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -504,11 +434,9 @@ export function CheckoutForm({
 
             {/* Info de pasarela */}
             <p className="mt-3 text-xs text-gray-500 text-center">
-              {paymentMethod === "wompi_manual"
-                ? "Link de pago seguro de Wompi - Tarjeta, PSE, Nequi, Daviplata y más"
-                : paymentMethod === "breb_manual"
-                  ? "Transferencia directa con Bre-B - Sin comisiones"
-                  : "Pago procesado de forma segura por PayPal"}
+              {paymentMethod === "breb_manual"
+                ? "Transferencia Bre-B a Global66. La compra se activa al verificar el ingreso."
+                : "Pago procesado de forma segura por PayPal"}
             </p>
           </div>
         )}

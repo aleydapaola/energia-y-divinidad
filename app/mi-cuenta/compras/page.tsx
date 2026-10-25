@@ -15,6 +15,7 @@ export default async function MisComprasPage() {
   // Obtener todas las órdenes del usuario
   const orders = await prisma.order.findMany({
     where: { userId: session.user.id },
+    include: { manualPayment: { select: { referenceNumber: true } } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -34,7 +35,7 @@ export default async function MisComprasPage() {
     return `$${num.toLocaleString("es-CO")} COP`;
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, method: string, reported: boolean) => {
     switch (status) {
       case "COMPLETED":
         return (
@@ -42,12 +43,19 @@ export default async function MisComprasPage() {
             Completado
           </span>
         );
-      case "PENDING":
+      case "PENDING": {
+        let pendingLabel = "Pendiente de pago";
+        if (method === "BREB_MANUAL") {
+          pendingLabel = reported
+            ? "Ingreso pendiente de verificación"
+            : "Pendiente de transferencia";
+        }
         return (
           <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
-            Pendiente
+            {pendingLabel}
           </span>
         );
+      }
       case "PROCESSING":
         return (
           <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
@@ -83,6 +91,8 @@ export default async function MisComprasPage() {
         return "Membresía";
       case "EVENT":
         return "Evento";
+      case "COURSE":
+        return "Curso";
       case "PRODUCT":
         return "Producto";
       case "PREMIUM_CONTENT":
@@ -94,7 +104,20 @@ export default async function MisComprasPage() {
 
   // Calcular totales
   const completedOrders = orders.filter((o) => o.paymentStatus === "COMPLETED");
-  const totalSpent = completedOrders.reduce((sum, order) => sum + Number(order.amount), 0);
+  const totalsByCurrency = completedOrders.reduce<Record<string, number>>((totals, order) => {
+    totals[order.currency] = (totals[order.currency] || 0) + Number(order.amount);
+    return totals;
+  }, {});
+
+  const paymentMethodLabel = (method: string) => {
+    if (method === "BREB_MANUAL") {
+      return "Bre-B · Global66";
+    }
+    if (method.startsWith("PAYPAL")) {
+      return "PayPal";
+    }
+    return method.replaceAll("_", " ");
+  };
 
   return (
     <div className="space-y-8">
@@ -138,10 +161,16 @@ export default async function MisComprasPage() {
               <span className="text-[#8A4BAF] font-bold font-dm-sans">$</span>
             </div>
             <div>
-              <p className="text-lg font-semibold text-[#654177] font-dm-sans">
-                ${totalSpent.toLocaleString("es-CO")}
-              </p>
-              <p className="text-sm text-gray-500 font-dm-sans">Total Invertido</p>
+              {Object.entries(totalsByCurrency).length ? (
+                Object.entries(totalsByCurrency).map(([currency, amount]) => (
+                  <p key={currency} className="text-lg font-semibold text-[#654177] font-dm-sans">
+                    {formatCurrency(amount, currency)}
+                  </p>
+                ))
+              ) : (
+                <p className="text-lg font-semibold text-[#654177] font-dm-sans">—</p>
+              )}
+              <p className="text-sm text-gray-500 font-dm-sans">Total confirmado</p>
             </div>
           </div>
         </div>
@@ -167,7 +196,11 @@ export default async function MisComprasPage() {
                       <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-dm-sans">
                         {getOrderTypeLabel(order.orderType)}
                       </span>
-                      {getStatusBadge(order.paymentStatus)}
+                      {getStatusBadge(
+                        order.paymentStatus,
+                        order.paymentMethod,
+                        !!order.manualPayment?.referenceNumber
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 font-dm-sans">
@@ -185,7 +218,7 @@ export default async function MisComprasPage() {
                         {formatCurrency(order.amount, order.currency)}
                       </p>
                       <p className="text-xs text-gray-400 font-dm-sans">
-                        {order.paymentMethod.replace("_", " ")}
+                        {paymentMethodLabel(order.paymentMethod)}
                       </p>
                     </div>
 
@@ -197,6 +230,15 @@ export default async function MisComprasPage() {
                         Ver pedido / comunicar transferencia
                       </Link>
                     )}
+                    {order.paymentStatus === "PENDING" &&
+                      order.paymentMethod.startsWith("PAYPAL") && (
+                        <Link
+                          className="underline"
+                          href={`/pago/confirmacion?ref=${encodeURIComponent(order.orderNumber)}`}
+                        >
+                          Ver estado
+                        </Link>
+                      )}
                     {order.paymentStatus === "COMPLETED" && (
                       <Link
                         className="underline text-[#654177] py-3"
@@ -225,7 +267,7 @@ export default async function MisComprasPage() {
             <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 font-dm-sans mb-2">Aún no tienes compras registradas</p>
             <p className="text-sm text-gray-400 font-dm-sans">
-              Tus compras de sesiones, eventos y membresías aparecerán aquí
+              Tus compras de cursos, eventos, guías digitales y sesiones aparecerán aquí
             </p>
           </div>
         )}

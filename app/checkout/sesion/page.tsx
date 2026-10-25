@@ -384,16 +384,6 @@ function SessionCheckoutContent() {
                         ~${currentPrice.USD} USD
                       </p>
                     )}
-                    {selectedRegion === "international" && selectedMethod === "wompi_manual" && (
-                      <p className="font-dm-sans text-xs text-[#8A4BAF] text-right mt-1">
-                        Tu banco convertirá de COP a tu moneda local
-                      </p>
-                    )}
-                    {selectedMethod === "wompi_manual" && (
-                      <p className="font-dm-sans text-xs text-green-600 text-right mt-1">
-                        Podrás elegir: Tarjeta, PSE, Nequi, Daviplata...
-                      </p>
-                    )}
                   </div>
                 </div>
 

@@ -252,6 +252,16 @@ function ConfirmacionContent() {
     checkPaymentStatus();
   }, [reference, refPayco, wompiTransactionId, paypalToken, paypalPayerId]);
 
+  const pendingMessage = () => {
+    if (paymentMethod === "BREB_MANUAL") {
+      return "Aleyda comprobará el ingreso en Global66 antes de activar la compra. Puedes consultar el pedido y comunicar la referencia aquí mismo.";
+    }
+    if (paymentMethod === "WOMPI_NEQUI") {
+      return "Se envió una solicitud de pago a tu app Nequi. Por favor apruébala para completar la compra.";
+    }
+    return "El pago aún no está confirmado. Consulta el estado antes de volver a intentarlo.";
+  };
+
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f8f0f5]">
@@ -295,6 +305,28 @@ function ConfirmacionContent() {
                   </p>
                 </div>
               )}
+              {orderData?.orderType === "SESSION" && (
+                <p className="font-dm-sans text-sm text-gray-600 mb-6">
+                  Consulta Mis Sesiones para ver la reserva y coordinar la fecha y hora si aún no
+                  estaban seleccionadas.
+                </p>
+              )}
+              {orderData?.orderType === "EVENT" && (
+                <p className="font-dm-sans text-sm text-gray-600 mb-6">
+                  Tu plaza está confirmada. Consulta Mis Eventos y el correo de confirmación para
+                  las instrucciones de participación.
+                </p>
+              )}
+              {orderData?.orderType === "COURSE" && (
+                <p className="font-dm-sans text-sm text-gray-600 mb-6">
+                  Ya puedes acceder al curso desde Mis Cursos.
+                </p>
+              )}
+              {orderData?.orderType === "PRODUCT" && (
+                <p className="font-dm-sans text-sm text-gray-600 mb-6">
+                  Tu producto digital está disponible en Mis Compras.
+                </p>
+              )}
             </>
           )}
 
@@ -304,11 +336,7 @@ function ConfirmacionContent() {
                 <Clock className="w-12 h-12 text-yellow-600" />
               </div>
               <h1 className="font-gazeta text-3xl text-[#654177] mb-4">Pago en Proceso</h1>
-              <p className="font-dm-sans text-gray-600 mb-6">
-                {paymentMethod === "WOMPI_NEQUI"
-                  ? "Se envió una solicitud de pago a tu app Nequi. Por favor apruébala para completar la compra."
-                  : "Tu pago está siendo verificado. Esto puede tomar unos segundos."}
-              </p>
+              <p className="font-dm-sans text-gray-600 mb-6">{pendingMessage()}</p>
               {reference && (
                 <div className="bg-[#eef1fa] rounded-lg p-4 mb-6">
                   <p className="font-dm-sans text-sm text-gray-600">
@@ -427,9 +455,30 @@ function ConfirmacionContent() {
               </Link>
             )}
 
-            {status === "success" && orderData?.orderType === "PRODUCT" && (
-              <Link className="block underline p-3" href="/mi-cuenta/compras">
+            {status === "success" && orderData?.orderType === "EVENT" && !isGuestCheckout && (
+              <Link
+                href="/mi-cuenta/eventos"
+                className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                Ver mi inscripción
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            )}
+
+            {status === "success" && orderData?.orderType === "PRODUCT" && !isGuestCheckout && (
+              <Link
+                className="block underline p-3"
+                href={`/mi-cuenta/productos/${encodeURIComponent(orderData.itemId)}`}
+              >
                 Acceder a mi producto digital
+              </Link>
+            )}
+            {status === "pending" && paymentMethod === "BREB_MANUAL" && (
+              <Link
+                className="block underline p-3"
+                href={`/pago/breb-pending?ref=${encodeURIComponent(reference)}`}
+              >
+                Ver instrucciones y estado del pedido
               </Link>
             )}
             {status === "failed" && (
