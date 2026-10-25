@@ -21,7 +21,7 @@ export function getPreviewTermsPage(env: Record<string, string | undefined> = pr
     ["h2", "1. Titular y contacto"],
     [
       "normal",
-      "Proyecto: Energía y Divinidad, energiaydivinidad.com. Titular indicada: Aelyda Paola Vargas Galvis. Contacto: contacto@energiaydivinidad.com y +57 315 116 5921. NIT y dirección de notificación judicial: pendientes de confirmación.",
+      "Proyecto: Energía y Divinidad, energiaydivinidad.com. Titular: Aleyda Paola Vargas Galvis. Cédula de ciudadanía: 53.102.423. Contacto: contacto@energiaydivinidad.com y +57 315 116 5921. NIT y dirección de notificación judicial: pendientes de confirmación.",
     ],
     ["h2", "2. Información de la compra y confirmación"],
     [
