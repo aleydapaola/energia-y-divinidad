@@ -1,34 +1,38 @@
-import { Calendar, Clock, Video } from "lucide-react"
-import Link from "next/link"
-import { redirect } from "next/navigation"
+import { Calendar } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-import { BookingsList } from "./BookingsList"
+import { BookingsList } from "./BookingsList";
 
 export default async function MisSesionesPage() {
-  const session = await auth()
+  const session = await auth();
 
   if (!session?.user?.id) {
-    redirect("/auth/signin?callbackUrl=/mi-cuenta/sesiones")
+    redirect("/auth/signin?callbackUrl=/mi-cuenta/sesiones");
   }
 
   // Obtener todas las reservas del usuario
   const bookings = await prisma.booking.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, bookingType: "SESSION_1_ON_1" },
     orderBy: { scheduledAt: "desc" },
-  })
+  });
 
   // Separar en próximas, pasadas y canceladas
-  const now = new Date()
+  const now = new Date();
   const upcomingBookings = bookings.filter(
-    (b) => b.scheduledAt && new Date(b.scheduledAt) >= now && b.status !== "CANCELLED"
-  )
+    (b) =>
+      b.status !== "CANCELLED" &&
+      (b.scheduledAt
+        ? new Date(b.scheduledAt) >= now
+        : b.status === "CONFIRMED" && (!b.sessionsTotal || b.sessionsTotal === 1))
+  );
   const pastBookings = bookings.filter(
     (b) => b.scheduledAt && new Date(b.scheduledAt) < now && b.status !== "CANCELLED"
-  )
-  const cancelledBookings = bookings.filter((b) => b.status === "CANCELLED")
+  );
+  const cancelledBookings = bookings.filter((b) => b.status === "CANCELLED");
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("es-CO", {
@@ -36,25 +40,49 @@ export default async function MisSesionesPage() {
       year: "numeric",
       month: "long",
       day: "numeric",
-    })
-  }
+    });
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "CONFIRMED":
-        return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Confirmada</span>
+        return (
+          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+            Confirmada
+          </span>
+        );
       case "PENDING":
-        return <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">Pendiente</span>
+        return (
+          <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+            Pendiente
+          </span>
+        );
       case "COMPLETED":
-        return <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Completada</span>
+        return (
+          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+            Completada
+          </span>
+        );
       case "CANCELLED":
-        return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">Cancelada</span>
+        return (
+          <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+            Cancelada
+          </span>
+        );
       case "NO_SHOW":
-        return <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">No asistió</span>
+        return (
+          <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+            No asistió
+          </span>
+        );
       default:
-        return <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">{status}</span>
+        return (
+          <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
+            {status}
+          </span>
+        );
     }
-  }
+  };
 
   // Serialize bookings for client component
   const serializedUpcomingBookings = upcomingBookings.map((b) => ({
@@ -64,7 +92,7 @@ export default async function MisSesionesPage() {
     scheduledAt: b.scheduledAt,
     duration: b.duration,
     rescheduleCount: b.rescheduleCount,
-  }))
+  }));
 
   return (
     <div className="space-y-8">
@@ -73,9 +101,7 @@ export default async function MisSesionesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-gazeta text-3xl text-[#654177] mb-2">Mis Sesiones</h1>
-            <p className="text-gray-600 font-dm-sans">
-              Gestiona tus sesiones de canalización
-            </p>
+            <p className="text-gray-600 font-dm-sans">Gestiona tus sesiones de canalización</p>
           </div>
           <Link
             href="/sesiones"
@@ -95,9 +121,7 @@ export default async function MisSesionesPage() {
         ) : (
           <div className="text-center py-12">
             <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 font-dm-sans mb-4">
-              No tienes sesiones programadas
-            </p>
+            <p className="text-gray-500 font-dm-sans mb-4">No tienes sesiones programadas</p>
             <Link
               href="/sesiones"
               className="inline-flex items-center gap-2 px-6 py-3 bg-[#4944a4] text-white rounded-lg font-dm-sans hover:bg-[#3d3a8a] transition-colors"
@@ -121,9 +145,7 @@ export default async function MisSesionesPage() {
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-700 font-dm-sans">
-                      {booking.resourceName}
-                    </p>
+                    <p className="font-medium text-gray-700 font-dm-sans">{booking.resourceName}</p>
                     {getStatusBadge(booking.status)}
                   </div>
                   {booking.scheduledAt && (
@@ -150,9 +172,7 @@ export default async function MisSesionesPage() {
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-lg opacity-60"
               >
                 <div>
-                  <p className="font-medium text-gray-500 font-dm-sans">
-                    {booking.resourceName}
-                  </p>
+                  <p className="font-medium text-gray-500 font-dm-sans">{booking.resourceName}</p>
                   {booking.scheduledAt && (
                     <p className="text-sm text-gray-400 font-dm-sans">
                       {formatDate(booking.scheduledAt)}
@@ -171,5 +191,5 @@ export default async function MisSesionesPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

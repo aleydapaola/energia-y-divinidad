@@ -18,7 +18,8 @@ El perfil local usa exclusivamente:
 No contiene claves de pagos, Resend, Mailchimp, Google Calendar, Google OAuth ni escritura mediante
 API de Sanity. Esos servicios quedan desactivados localmente. Sus pruebas de integración se hacen en
 Vercel Preview con claves dedicadas; no copiar las claves reales del respaldo al entorno local.
-Los pagos están aparcados por decisión de Xavier y Aleyda.
+Los pagos se han retomado en Vercel Preview por petición de Xavier y Aleyda: PayPal sandbox
+y Bre-B simulado. El entorno local conserva las claves externas desactivadas.
 
 ## Arranque
 

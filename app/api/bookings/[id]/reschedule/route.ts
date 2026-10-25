@@ -37,6 +37,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const newScheduledAt = new Date(newDate);
 
+    if (Number.isNaN(newScheduledAt.getTime())) {
+      return NextResponse.json({ error: "La fecha no es válida" }, { status: 400 });
+    }
+
     // Validar que la fecha sea futura
     if (newScheduledAt <= new Date()) {
       return NextResponse.json({ error: "La fecha debe ser futura" }, { status: 400 });
@@ -72,10 +76,24 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    if (booking.bookingType !== "SESSION_1_ON_1") {
+      return NextResponse.json(
+        { error: "Esta acción solo está disponible para sesiones individuales" },
+        { status: 400 }
+      );
+    }
+
+    if (!isAdmin && !booking.scheduledAt && booking.status !== "CONFIRMED") {
+      return NextResponse.json(
+        { error: "La sesión debe estar confirmada antes de elegir fecha" },
+        { status: 400 }
+      );
+    }
+
     // Restricciones para clientes (no admins)
     if (!isAdmin) {
       // Máximo 2 reprogramaciones
-      if (booking.rescheduleCount >= 2) {
+      if (booking.scheduledAt && booking.rescheduleCount >= 2) {
         return NextResponse.json(
           {
             error:
@@ -113,7 +131,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         scheduledAt: newScheduledAt,
         rescheduledAt: new Date(),
         rescheduledBy: isAdmin ? session.user.id : null, // null = cliente, id = admin
-        rescheduleCount: { increment: 1 },
+        // Choosing the first date is not a change to an existing appointment.
+        ...(booking.scheduledAt ? { rescheduleCount: { increment: 1 } } : {}),
         rescheduleReason: reason || null,
       },
       include: {

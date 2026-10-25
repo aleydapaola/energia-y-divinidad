@@ -99,11 +99,11 @@ export function BookingCard({ booking, onUpdate }: BookingCardProps) {
     if (!["CONFIRMED", "PENDING"].includes(booking.status)) {
       return false;
     }
+    if (!booking.scheduledAt) {
+      return booking.status === "CONFIRMED";
+    }
     if (booking.rescheduleCount >= 2) {
       return false;
-    }
-    if (!booking.scheduledAt) {
-      return true;
     }
     const hoursUntil = (new Date(booking.scheduledAt).getTime() - Date.now()) / (1000 * 60 * 60);
     return hoursUntil >= 24;
@@ -299,11 +299,13 @@ export function BookingCard({ booking, onUpdate }: BookingCardProps) {
       {showRescheduleModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <h3 className="font-gazeta text-xl text-[#654177] mb-4">Reprogramar Sesión</h3>
+            <h3 className="font-gazeta text-xl text-[#654177] mb-4">
+              {booking.scheduledAt ? "Reprogramar Sesión" : "Elegir fecha y hora"}
+            </h3>
 
             <p className="text-sm text-gray-600 mb-4 font-dm-sans">
               Selecciona una nueva fecha y hora de Colombia (UTC−5) para tu sesión.
-              {booking.rescheduleCount === 1 && (
+              {booking.scheduledAt && booking.rescheduleCount === 1 && (
                 <span className="block mt-1 text-amber-600">
                   Esta será tu última reprogramación disponible.
                 </span>

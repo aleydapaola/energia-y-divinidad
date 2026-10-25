@@ -39,6 +39,7 @@ function load(path, dependencies = {}) {
 }
 const booking = {
   id: "test-only",
+  bookingType: "SESSION_1_ON_1",
   resourceName: "Test",
   status: "CONFIRMED",
   scheduledAt: new Date("2026-10-26T15:00:00Z"),
@@ -196,6 +197,74 @@ test("card and API require both fewer than two changes and at least 24 hours, in
     }
   } finally {
     Date.now = originalNow;
+  }
+});
+
+test("choosing the first date preserves two changes and cannot schedule an unconfirmed session or an event", async () => {
+  for (const scenario of [
+    {
+      status: "CONFIRMED",
+      bookingType: "SESSION_1_ON_1",
+      date: "2099-11-01T15:00:00Z",
+      allowed: true,
+    },
+    {
+      status: "PENDING",
+      bookingType: "SESSION_1_ON_1",
+      date: "2099-11-01T15:00:00Z",
+      allowed: false,
+    },
+    { status: "CONFIRMED", bookingType: "EVENT", date: "2099-11-01T15:00:00Z", allowed: false },
+    { status: "CONFIRMED", bookingType: "SESSION_1_ON_1", date: "invalid-date", allowed: false },
+  ]) {
+    let writes = 0,
+      calendarCalls = 0,
+      emailCalls = 0;
+    const candidate = {
+      ...booking,
+      ...scenario,
+      scheduledAt: null,
+      userId: "test-user",
+      user: { email: "test@example.com", name: "Test" },
+    };
+    const { PATCH } = load("app/api/bookings/[id]/reschedule/route.ts", {
+      "@/lib/auth": { auth: async () => ({ user: { id: "test-user" } }) },
+      "@/lib/prisma": {
+        prisma: {
+          user: { findUnique: async () => ({ role: "USER" }) },
+          booking: {
+            findUnique: async () => candidate,
+            update: async ({ data }) => {
+              writes++;
+              assert.equal(data.rescheduleCount, undefined);
+              return { ...candidate, ...data };
+            },
+          },
+        },
+      },
+      "@/lib/google-calendar": {
+        syncBookingToGoogleCalendar: async () => {
+          calendarCalls++;
+        },
+      },
+      "@/lib/email": {
+        sendRescheduleEmail: async ({ previousDate }) => {
+          emailCalls++;
+          assert.equal(previousDate, null);
+        },
+      },
+    });
+    const response = await PATCH(
+      { json: async () => ({ newDate: scenario.date }) },
+      {
+        params: Promise.resolve({ id: booking.id }),
+      }
+    );
+    assert.equal(response.status, scenario.allowed ? 200 : 400, JSON.stringify(scenario));
+    assert.deepEqual([writes, calendarCalls, emailCalls], scenario.allowed ? [1, 1, 1] : [0, 0, 0]);
+    if (scenario.allowed) {
+      assert.equal((await response.json()).booking.rescheduleCount, 0);
+    }
   }
 });
 

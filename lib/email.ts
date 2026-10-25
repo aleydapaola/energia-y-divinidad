@@ -1324,8 +1324,12 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
 
   const rescheduledByText =
     rescheduledBy === "admin"
-      ? "Tu sesión ha sido reprogramada por Aleyda Paola."
-      : "Has reprogramado tu sesión exitosamente.";
+      ? previousDate
+        ? "Tu sesión ha sido reprogramada por Aleyda Paola."
+        : "Aleyda Paola ha programado tu sesión."
+      : previousDate
+        ? "Has reprogramado tu sesión exitosamente."
+        : "Has elegido la fecha y hora de tu sesión. Conservas tus 2 cambios de fecha disponibles.";
 
   if (DEV_MODE) {
     console.log("\n========================================");

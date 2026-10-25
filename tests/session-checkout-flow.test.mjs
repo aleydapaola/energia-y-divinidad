@@ -125,3 +125,43 @@ test("the same session checkout sends Colombian Bre-B buyers to a pending order 
     globalThis.fetch = originalFetch;
   }
 });
+
+test("a confirmed individual session bought without a date remains visible to choose its first slot", async () => {
+  function BookingsList() {
+    return null;
+  }
+  const fixtures = [
+    {
+      id: "paid-unscheduled",
+      resourceName: "Paid session",
+      status: "CONFIRMED",
+      scheduledAt: null,
+      sessionsTotal: 1,
+      rescheduleCount: 0,
+    },
+    { id: "unpaid-unscheduled", status: "PENDING", scheduledAt: null, sessionsTotal: 1 },
+    { id: "cancelled-unscheduled", status: "CANCELLED", scheduledAt: null, sessionsTotal: 1 },
+    { id: "pack-parent", status: "CONFIRMED", scheduledAt: null, sessionsTotal: 8 },
+    { id: "future-session", status: "CONFIRMED", scheduledAt: new Date("2099-01-01T15:00:00Z") },
+  ];
+  const { default: Page } = load("app/mi-cuenta/sesiones/page.tsx", {
+    "@/lib/auth": { auth: async () => ({ user: { id: "test-user" } }) },
+    "@/lib/prisma": {
+      prisma: {
+        booking: {
+          findMany: async ({ where }) => {
+            assert.deepEqual(where, { userId: "test-user", bookingType: "SESSION_1_ON_1" });
+            return fixtures;
+          },
+        },
+      },
+    },
+    "./BookingsList": { BookingsList },
+  });
+  const tree = await Page();
+  const list = nodes(tree).find((node) => node.type === BookingsList);
+  assert.deepEqual(
+    list.props.bookings.map((item) => item.id),
+    ["paid-unscheduled", "future-session"]
+  );
+});
