@@ -6,11 +6,12 @@ El detalle de los ocho recorridos de compra y sus comprobaciones está en [la ma
 
 | Orden | Trabajo | Criterio de cierre | Estado |
 | --- | --- | --- | --- |
+| 0 | URL de revisión estable | preview.energiaydivinidad.com vinculado a preview; HTTPS, navegación, acceso y noindex comprobados; dominio real preservado | Subdominio verificado y vinculado; DNS y HTTPS correctos; URLs de la rama actualizadas; desplegar y comprobar noindex y navegación |
 | 1 | Recuperar Neon Preview y el despliegue | Proyecto y rama aislada verificados; consulta de lectura correcta; build Ready; Mis Sesiones accesible | Completado: conexiones recuperadas, Mis Sesiones accesible y política desplegada Ready |
-| 2 | Política de sesiones y términos | Máximo 2 cambios con ≥24 h; cuatro supuestos confirmados; devolución manual clara; página de términos accesible | Política y primera fecha Ready; /terminos responde y muestra el borrador; completar datos fiscales y revisión final |
+| 2 | Política de sesiones y páginas legales | Máximo 2 cambios con ≥24 h; cuatro supuestos confirmados; devolución manual clara; cuatro páginas legales accesibles y revisadas | Política y primera fecha Ready; términos identifican a la titular por cédula; borradores de privacidad, cookies y aviso preparados; completar NIT, dirección y revisión final |
 | 3 | Compras y entrega | Sesiones, cursos, eventos y productos digitales probados con PayPal sandbox y Bre-B simulado; entrega única; correos y calendario comprobados | Bre-B pendiente y PayPal sandbox inicial probados para producto ficticio; completar confirmación y entrega, sesiones, cursos y eventos |
 | 4 | Newsletter aislada | Cuenta y audiencia de pruebas verificadas; alta de prueba sin tocar contactos reales | Falta iniciar sesión en la cuenta separada y configurar clave/audiencia de pruebas |
-| 5 | Revisión editorial y de regresión | Enlaces, contenido, horarios, cuenta y panel comprobados; material de pruebas identificado | Pendiente |
+| 5 | Revisión editorial y de regresión | Enlaces, contenido, horarios, cuenta y panel comprobados; material de pruebas identificado | Primera revisión HTTP: 12 páginas públicas correctas, 3 legales 404 y cuenta/panel redirigen al acceso; corregir los 404 y verificar tras despliegue; falta revisión visual completa |
 | 6 | Preparación de Production | Clave y destinatario Global66 confirmados por Aleyda; commit y contenido revisados; referencia de reversión; aprobación explícita | Pendiente de validación y aprobación; no publicar |
 
 ## Límites de ejecución
@@ -49,3 +50,17 @@ El detalle de los ocho recorridos de compra y sus comprobaciones está en [la ma
 - El dominio real www.energiaydivinidad.com continúa Ready en dpl_4Kwyq1ERrbCFxuhYxpJBTxC7rDbc, el despliegue anterior. No se ha integrado main, cambiado configuración de Production, realizado transferencia ni iniciado devolución alguna.
 - Queda abierto el resto de la matriz: captura y webhook PayPal, confirmación ADMIN Bre-B, entrega de los cuatro tipos de producto y comprobación de correos/calendario; cuenta y audiencia Mailchimp separadas; datos fiscales y condiciones de los demás productos; revisión editorial y aprobación final de Production. Estas comprobaciones no se sustituyen por las 85 pruebas automáticas.
 - Este cierre actualiza la documentación local de seguimiento después del despliegue; no añade cambios de aplicación a la versión Ready anterior.
+
+## Nueva ejecución solicitada: acceso de revisión y tareas restantes
+
+1. Preparar el subdominio, preservar protección y separación de servicios, ajustar URLs solo de la rama preview, desplegar noindex y verificar dominio/commit servido.
+2. Resolver las tres páginas legales ausentes mediante borradores exclusivos de Preview basados en las funciones verificadas del sitio. Conservar cualquier política existente en el CMS y su comportamiento en Production. Quedan pendientes datos fiscales, dirección, autorizaciones y revisión de plazos y condiciones particulares.
+3. Repetir la revisión HTTP de páginas y navegación en el subdominio; verificar acceso de cuenta, pedidos y panel. Revisar visualmente los cambios y registrar límites de la comprobación.
+4. Continuar la matriz de compras cuando estén disponibles las sesiones correctas de comprador PayPal sandbox y ADMIN de pruebas. No crear credenciales, elevar cuentas ni aprobar pagos reales para sortear esta dependencia.
+5. Completar Mailchimp cuando esté disponible la cuenta separada: audiencia propia, clave limitada a Preview, alta con doble confirmación y baja verificadas. Mantener las protecciones actuales hasta entonces.
+6. Completar información legal y datos reales de Global66 con Aleyda; presentar una versión concreta revisada para aprobación de Production. No publicar por una solicitud ordinaria de cambios.
+
+- Preparado en Vercel preview.energiaydivinidad.com con gitBranch=preview y verified=true, proyecto/equipo de Aleyda. El DNS resuelve al CNAME recomendado 00f7cbdf9da58472.vercel-dns-017.com; HTTPS responde y mantiene la redirección de protección de Vercel. No ha sido necesario modificar DNS en DonDominio.
+- NEXT_PUBLIC_APP_URL: modificada solo la excepción existente para preview. NEXTAUTH_URL: nueva excepción para esa misma rama, conservando el valor global y los ámbitos originales. Ambas apuntan a https://preview.energiaydivinidad.com. El webhook sandbox existente se mantiene en su dirección autorizada anterior.
+- La primera revisión HTTP de 17 rutas encuentra 12 públicas con HTTP 200 y aviso de pruebas, 3 legales con 404 y 2 privadas con redirección de acceso. No aparecen enlaces href al dominio real en esas respuestas. Son comprobaciones de respuesta y enlaces, no una validación visual completa ni de compras.
+- La instrucción X-Robots-Tag noindex,nofollow se prepara explícitamente en Next solo para VERCEL_ENV=preview, porque Vercel no la garantiza en dominios personalizados de ramas. Prueba de configuración verifica que Production y desarrollo no reciben este cambio.

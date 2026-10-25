@@ -29,6 +29,51 @@ const previewEnv = {
   PREVIEW_SANITY_DATASET: "preview",
 };
 
+test("other legal drafts remain isolated and share the confirmed holder identification", () => {
+  const { getPreviewLegalPage } = load("lib/preview-legal-pages.ts", { "./preview-terms": draft });
+  for (const slug of ["privacidad", "cookies", "aviso-legal"]) {
+    const page = getPreviewLegalPage(slug, previewEnv);
+    assert.equal(page.slug.current, slug);
+    assert.ok(page.title.includes("borrador de pruebas"));
+    const text = page.content
+      .flatMap((block) => block.children.map((span) => span.text))
+      .join("\n");
+    assert.ok(text.includes(draft.PREVIEW_HOLDER_IDENTIFICATION));
+    for (const env of [
+      { ...previewEnv, VERCEL_ENV: "production" },
+      { ...previewEnv, NEXT_PUBLIC_SANITY_DATASET: "production" },
+      { ...previewEnv, PREVIEW_SANITY_DATASET: undefined },
+    ]) {
+      assert.equal(getPreviewLegalPage(slug, env), null);
+    }
+  }
+});
+
+test("legal resolver preserves published CMS policies and propagates network failures", async () => {
+  for (const slug of ["privacidad", "cookies", "aviso-legal"]) {
+    const cms = { _id: "existing-cms-policy", title: "Existing approved policy" };
+    let result = cms;
+    const { getLegalPage } = load("lib/legal-pages.ts", {
+      "@/sanity/lib/fetch": {
+        sanityFetch: async ({ params }) => {
+          assert.deepEqual(params, { slug });
+          if (result instanceof Error) {
+            throw result;
+          }
+          return result;
+        },
+      },
+      "@/sanity/lib/queries": { LEGAL_PAGE_BY_SLUG_QUERY: "test-query" },
+      "./preview-legal-pages": { getPreviewLegalPage: () => ({ _id: "review-draft" }) },
+    });
+    assert.equal(await getLegalPage(slug), cms);
+    result = null;
+    assert.deepEqual(await getLegalPage(slug), { _id: "review-draft" });
+    result = new Error("Network failure");
+    await assert.rejects(getLegalPage(slug), /Network failure/);
+  }
+});
+
 test("terms draft is available only for isolated Preview/local contents and never Production", () => {
   const page = draft.getPreviewTermsPage(previewEnv);
   assert.equal(page.version, draft.PREVIEW_TERMS_VERSION);

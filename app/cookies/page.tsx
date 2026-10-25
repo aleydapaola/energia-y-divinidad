@@ -1,50 +1,27 @@
-import { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { Metadata } from "next";
+import { notFound } from "next/navigation";
 
-import { Footer } from '@/components/layout/Footer'
-import { Header } from '@/components/layout/Header'
-import LegalPageContent from '@/components/legal/LegalPageContent'
-import { sanityFetch } from '@/sanity/lib/fetch'
-import { LEGAL_PAGE_BY_SLUG_QUERY } from '@/sanity/lib/queries'
-
-interface LegalPage {
-  _id: string
-  title: string
-  slug: { current: string }
-  pageType: string
-  content: any[]
-  version: string | null
-  lastUpdated: string | null
-  seo: {
-    metaTitle?: string
-    metaDescription?: string
-  } | null
-}
+import { Footer } from "@/components/layout/Footer";
+import { Header } from "@/components/layout/Header";
+import LegalPageContent from "@/components/legal/LegalPageContent";
+import { getLegalPage } from "@/lib/legal-pages";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await sanityFetch<LegalPage | null>({
-    query: LEGAL_PAGE_BY_SLUG_QUERY,
-    params: { slug: 'cookies' },
-    tags: ['page', 'legal'],
-  })
+  const page = await getLegalPage("cookies");
 
   return {
-    title: page?.seo?.metaTitle || page?.title || 'Política de Cookies',
+    title: page?.seo?.metaTitle || page?.title || "Política de Cookies",
     description:
       page?.seo?.metaDescription ||
-      'Información sobre el uso de cookies en el sitio web de Energía y Divinidad.',
-  }
+      "Información sobre el uso de cookies en el sitio web de Energía y Divinidad.",
+  };
 }
 
 export default async function CookiesPage() {
-  const page = await sanityFetch<LegalPage | null>({
-    query: LEGAL_PAGE_BY_SLUG_QUERY,
-    params: { slug: 'cookies' },
-    tags: ['page', 'legal'],
-  })
+  const page = await getLegalPage("cookies");
 
   if (!page) {
-    notFound()
+    notFound();
   }
 
   return (
@@ -62,5 +39,5 @@ export default async function CookiesPage() {
       </main>
       <Footer />
     </>
-  )
+  );
 }

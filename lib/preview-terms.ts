@@ -1,6 +1,8 @@
 import { INDIVIDUAL_SESSION_POLICY, SESSION_RESCHEDULE_POLICY } from "./session-policy";
 
 export const PREVIEW_TERMS_VERSION = "preview-2026-10-25";
+export const PREVIEW_HOLDER_IDENTIFICATION =
+  "Proyecto: Energía y Divinidad, energiaydivinidad.com. Titular: Aleyda Paola Vargas Galvis. Cédula de ciudadanía: 53.102.423. Contacto: contacto@energiaydivinidad.com y +57 315 116 5921. NIT y dirección de notificación judicial: pendientes de confirmación.";
 
 /** A review draft for the isolated test environment; never a Production fallback. */
 export function getPreviewTermsPage(env: Record<string, string | undefined> = process.env) {
@@ -19,10 +21,7 @@ export function getPreviewTermsPage(env: Record<string, string | undefined> = pr
       "Este borrador se utiliza exclusivamente para las compras ficticias de este entorno. Está pendiente completar la identificación fiscal, la dirección de notificación judicial y la revisión de las condiciones de los demás productos antes de publicarlo como condiciones de contratación reales.",
     ],
     ["h2", "1. Titular y contacto"],
-    [
-      "normal",
-      "Proyecto: Energía y Divinidad, energiaydivinidad.com. Titular: Aleyda Paola Vargas Galvis. Cédula de ciudadanía: 53.102.423. Contacto: contacto@energiaydivinidad.com y +57 315 116 5921. NIT y dirección de notificación judicial: pendientes de confirmación.",
-    ],
+    ["normal", PREVIEW_HOLDER_IDENTIFICATION],
     ["h2", "2. Información de la compra y confirmación"],
     [
       "normal",
