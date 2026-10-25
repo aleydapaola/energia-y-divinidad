@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
+import { colombiaBookingInstant } from "@/lib/booking-time";
 import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
-import { prisma } from "@/lib/prisma";
+import {
+  assertSessionTimeAvailable,
+  schedulingConfig,
+  withSessionCalendar,
+  SessionSchedulingError,
+} from "@/lib/session-scheduling";
 
 interface RedeemRequest {
   packCodeId: string;
@@ -31,7 +37,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Use a transaction to ensure atomicity
-    const result = await prisma.$transaction(async (tx) => {
+    const scheduledAt = colombiaBookingInstant(date, time);
+    if (!scheduledAt) {
+      return NextResponse.json({ error: "Fecha/hora inválida" }, { status: 400 });
+    }
+    const config = await schedulingConfig();
+    const result = await withSessionCalendar(async (tx) => {
       // Get the pack code with lock
       const packCode = await tx.sessionPackCode.findUnique({
         where: { id: packCodeId },
@@ -62,25 +73,8 @@ export async function POST(request: NextRequest) {
         throw new Error("Ya has usado todas las sesiones de este pack");
       }
 
-      // Parse and validate date/time
-      const scheduledAt = new Date(`${date}T${time}:00`);
-      if (isNaN(scheduledAt.getTime())) {
-        throw new Error("Fecha/hora inválida");
-      }
-
-      // Check if the slot is still available
-      const existingBooking = await tx.booking.findFirst({
-        where: {
-          scheduledAt,
-          status: {
-            in: ["PENDING", "CONFIRMED"],
-          },
-        },
-      });
-
-      if (existingBooking) {
-        throw new Error("Este horario ya está reservado. Por favor selecciona otro.");
-      }
+      // Preserve this pack's existing 60-minute session offer.
+      await assertSessionTimeAvailable(tx, config, scheduledAt, { duration: 60 });
 
       // Create the booking (already paid via pack)
       const booking = await tx.booking.create({
@@ -134,6 +128,9 @@ export async function POST(request: NextRequest) {
       message: `Sesión reservada exitosamente. Te quedan ${result.sessionsRemaining} sesiones en tu pack.`,
     });
   } catch (error: any) {
+    if (error instanceof SessionSchedulingError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("Error redeeming pack session:", error);
     return NextResponse.json(
       { error: error.message || "Error al canjear la sesión" },

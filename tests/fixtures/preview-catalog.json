@@ -1,0 +1,121 @@
+[
+  {
+    "_id": "eyd-preview-course-checkout-lesson",
+    "_type": "courseLesson",
+    "title": "PRUEBA — Lección de texto — NO REAL",
+    "slug": {
+      "_type": "slug",
+      "current": "prueba-leccion-checkout"
+    },
+    "description": "Contenido ficticio exclusivo de Preview para comprobar compra y acceso. No es una formación ni un encuentro real.",
+    "lessonType": "text",
+    "content": [
+      {
+        "_type": "block",
+        "_key": "test-block",
+        "style": "normal",
+        "markDefs": [],
+        "children": [
+          {
+            "_type": "span",
+            "_key": "test-span",
+            "marks": [],
+            "text": "Has accedido al contenido de prueba de la lección. No contiene información privada."
+          }
+        ]
+      }
+    ],
+    "order": 1,
+    "isFreePreview": false,
+    "published": true
+  },
+  {
+    "_id": "eyd-preview-course-checkout-test",
+    "_type": "course",
+    "title": "PRUEBA — Curso de compra — NO REAL",
+    "slug": {
+      "_type": "slug",
+      "current": "prueba-curso-checkout"
+    },
+    "shortDescription": "Contenido ficticio exclusivo de Preview para comprobar compra y acceso. No es una formación ni un encuentro real.",
+    "description": [
+      {
+        "_type": "block",
+        "_key": "test-block",
+        "style": "normal",
+        "markDefs": [],
+        "children": [
+          {
+            "_type": "span",
+            "_key": "test-span",
+            "marks": [],
+            "text": "Contenido ficticio exclusivo de Preview para comprobar compra y acceso. No es una formación ni un encuentro real."
+          }
+        ]
+      }
+    ],
+    "courseType": "simple",
+    "simpleLesson": {
+      "_type": "reference",
+      "_ref": "eyd-preview-course-checkout-lesson"
+    },
+    "simpleLessonDripMode": "immediate",
+    "dripEnabled": false,
+    "pricing": {
+      "_type": "pricing",
+      "price": 80000,
+      "priceUSD": 20,
+      "isFree": false
+    },
+    "status": "active",
+    "published": true,
+    "visibility": "public",
+    "featured": false,
+    "displayOrder": 999,
+    "totalDuration": "1 minuto",
+    "difficulty": "beginner",
+    "includedInMembership": false
+  },
+  {
+    "_id": "eyd-preview-event-checkout-test",
+    "_type": "event",
+    "title": "PRUEBA — Taller de compra — NO REAL",
+    "slug": {
+      "_type": "slug",
+      "current": "prueba-taller-checkout"
+    },
+    "description": [
+      {
+        "_type": "block",
+        "_key": "test-block",
+        "style": "normal",
+        "markDefs": [],
+        "children": [
+          {
+            "_type": "span",
+            "_key": "test-span",
+            "marks": [],
+            "text": "Contenido ficticio exclusivo de Preview para comprobar compra y acceso. No es una formación ni un encuentro real. La fecha es ficticia y no hay reunión, asistentes ni invitaciones reales."
+          }
+        ]
+      }
+    ],
+    "eventType": "workshop_online",
+    "eventDate": "2026-12-15T15:00:00Z",
+    "endDate": "2026-12-15T16:00:00Z",
+    "locationType": "online",
+    "pricing": {
+      "_type": "pricing",
+      "price": 80000,
+      "priceUSD": 20,
+      "isFree": false
+    },
+    "capacity": 20,
+    "availableSpots": 20,
+    "maxPerBooking": 1,
+    "status": "upcoming",
+    "published": true,
+    "featured": false,
+    "includedInMembership": false
+  }
+]

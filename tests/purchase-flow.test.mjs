@@ -215,10 +215,11 @@ test("Preview never exposes financial key/QR; production requires verified Globa
     }
   }
 });
-function checkoutHarness() {
+function checkoutHarness(scheduling = {}) {
   const orders = [];
   let delivered = 0;
   const checkout = load("lib/checkout/one-time-checkout.ts", {
+    "@/lib/session-scheduling": scheduling,
     "@/lib/auth": {
       auth: async () => ({ user: { id: "customer", email: "preview@example.com" } }),
     },
@@ -411,6 +412,7 @@ test("shared fulfillment rejects an unverified order before any external effects
       "@/lib/prisma",
       "@/lib/sanity/queries/sessionConfig",
       "@/lib/session-duration",
+      "@/lib/session-scheduling",
     ].map((n) => [n, {}])
   );
   const { processApprovedPayment } = load("lib/payment-processor.ts", deps);
@@ -558,5 +560,26 @@ test("guest order access requires the signed browser capability or the actual ac
     } else {
       process.env.AUTH_SECRET = saved;
     }
+  }
+});
+
+test("an occupied session slot is rejected before starting either payment provider", async () => {
+  for (const method of ["breb", "paypal"]) {
+    let checked = 0;
+    const h = checkoutHarness({
+      schedulingConfig: async () => ({}),
+      assertSessionTimeAvailable: async () => {
+        checked++;
+        throw new Error("Este horario ya no está disponible");
+      },
+    });
+    const response = await h.oneTimeCheckout(
+      req({ productType: "session", productId: base._id, scheduledAt: "2099-11-01T15:00:00Z" }),
+      method
+    );
+    assert.equal(response.status, 400);
+    assert.equal(checked, 1);
+    assert.equal(h.orders.length, 0);
+    assert.equal(h.delivered(), 0);
   }
 });

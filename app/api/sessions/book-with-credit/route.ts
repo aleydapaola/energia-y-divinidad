@@ -7,6 +7,11 @@ import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
 import { prisma } from "@/lib/prisma";
 import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
 import { getSessionBySlug } from "@/lib/sanity/queries/sessions";
+import {
+  assertSessionTimeAvailable,
+  withSessionCalendar,
+  SessionSchedulingError,
+} from "@/lib/session-scheduling";
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,36 +76,36 @@ export async function POST(request: NextRequest) {
     }
 
     // Create booking with credit payment
-    const booking = await prisma.booking.create({
-      data: {
-        userId: session.user.id,
-        bookingType: "SESSION_1_ON_1",
-        resourceId: sessionData._id,
-        resourceName: sessionData.title,
-        status: "CONFIRMED",
-        paymentStatus: "COMPLETED",
-        paymentMethod: "FREE", // Indicates credit redemption
-        amount: 0,
-        currency: "COP",
-        scheduledAt: scheduledDate,
-        duration: sessionData.duration,
-        metadata: {
-          paidWithCredit: true,
-          originalPrice: sessionData.price,
-          originalPriceUSD: sessionData.priceUSD,
-          sessionSlug: sessionSlug,
+    const booking = await withSessionCalendar(async (tx) => {
+      await assertSessionTimeAvailable(tx, sessionData, scheduledDate);
+      const created = await tx.booking.create({
+        data: {
+          userId: session.user.id,
+          bookingType: "SESSION_1_ON_1",
+          resourceId: sessionData._id,
+          resourceName: sessionData.title,
+          status: "CONFIRMED",
+          paymentStatus: "COMPLETED",
+          paymentMethod: "FREE", // Indicates credit redemption
+          amount: 0,
+          currency: "COP",
+          scheduledAt: scheduledDate,
+          duration: sessionData.duration,
+          metadata: {
+            paidWithCredit: true,
+            originalPrice: sessionData.price,
+            originalPriceUSD: sessionData.priceUSD,
+            sessionSlug: sessionSlug,
+          },
         },
-      },
+      });
+
+      const redemption = await redeemCredit(session.user!.id, created.id, tx);
+      if (!redemption.success) {
+        throw new SessionSchedulingError(redemption.error || "No se pudo canjear el crédito", 400);
+      }
+      return created;
     });
-
-    // Redeem credit
-    const redemption = await redeemCredit(session.user.id, booking.id);
-
-    if (!redemption.success) {
-      // Rollback booking if credit redemption fails
-      await prisma.booking.delete({ where: { id: booking.id } });
-      return NextResponse.json({ error: redemption.error }, { status: 400 });
-    }
 
     await syncBookingToGoogleCalendar(booking.id);
 
@@ -141,6 +146,9 @@ export async function POST(request: NextRequest) {
       creditsRemaining: newBalance.available,
     });
   } catch (error) {
+    if (error instanceof SessionSchedulingError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error("[API/book-with-credit] Error:", error);
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }

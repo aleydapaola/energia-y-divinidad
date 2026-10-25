@@ -43,7 +43,7 @@ export async function quoteCatalogItem(input: {
       : currency === "COP"
         ? doc.price
         : doc.priceUSD;
-  let scheduledAt = input.scheduledAt || null;
+  let scheduledAt = productType === "pack" ? null : input.scheduledAt || null;
   let seats = 1;
   if (productType === "event") {
     seats = input.seats ?? 1;

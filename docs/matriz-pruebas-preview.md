@@ -25,3 +25,12 @@ Seguimiento del plan de cierre del 25/10/2026. Las pruebas locales con dependenc
 ## Accesos pendientes
 
 La confirmación remota de Bre-B necesita una sesión ADMIN de pruebas. PayPal necesita completar la aprobación con el comprador sandbox correspondiente. No elevar cuentas ni crear credenciales nuevas por iniciativa propia para superar estos pasos. Mailchimp requiere iniciar sesión en la cuenta separada y verificar su audiencia antes de activar la newsletter.
+
+La inspección posterior de Neon Preview confirma que no existe ningún ADMIN, solo un USER. Crear una administración dedicada requiere autorización específica; no basta iniciar sesión. Además, todos los cursos del dataset están marcados como privados y no hay eventos futuros comprables: preparar ejemplos sintéticos separados antes de completar esas filas, sin abrir cursos privados ni redatar eventos reales. En f8672ed5 se verifica remotamente el rechazo de un curso privado y un evento pasado (400), la consulta anónima de reservas (401), la retirada de la creación antigua (410) y la indisponibilidad de newsletter sin configurar (503). Estas comprobaciones no sustituyen ninguna de las ocho entregas pendientes.
+
+
+### Agenda compartida — 25/10/2026
+
+Implementació de franges i comprovació de solapaments compartida al servidor. Prova real de Neon Preview: dues peticions a una franja, una sola reserva assignada; primera data no consumeix canvi; dos canvis simultanis preserven el màxim de dos. Només reserves efímeres pròpies, retirades al final; serveis externs no carregats. Proves automàtiques addicionals: buffers, durades guardades i llegades, canvi de dia Colòmbia, festius i bloquejos, antelació de demà, fora de graella, segons, autorització privada, reactivació ADMIN ocupada, idempotència per ordre i segon pagament amb franja perduda.
+
+La prevalidació de checkout no reté la franja: entrega amb franja perduda pendent de revisió. Resta resoldre-ho abans de Production. Les proves de Neon no acrediten Google Calendar simultani, correu Delivered o les vuit compres completes.

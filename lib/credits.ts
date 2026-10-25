@@ -5,33 +5,33 @@
  * Credits are granted monthly and can be redeemed when booking 1:1 sessions.
  */
 
-import { CreditReason } from '@prisma/client'
+import { CreditReason, type Prisma } from "@prisma/client";
 
-import { prisma } from '@/lib/prisma'
-import { getMembershipTierById } from '@/lib/sanity/queries/membership'
+import { prisma } from "@/lib/prisma";
+import { getMembershipTierById } from "@/lib/sanity/queries/membership";
 
 // ============================================
 // TYPES
 // ============================================
 
 export interface CreditBalance {
-  available: number
-  pending: number // Credits expiring within 7 days
-  total: number
+  available: number;
+  pending: number; // Credits expiring within 7 days
+  total: number;
   nextExpiration?: {
-    date: Date
-    amount: number
-  }
+    date: Date;
+    amount: number;
+  };
 }
 
 export interface CreditTransaction {
-  id: string
-  amount: number
-  reason: CreditReason
-  referenceId?: string
-  expiresAt?: Date
-  createdAt: Date
-  notes?: string
+  id: string;
+  amount: number;
+  reason: CreditReason;
+  referenceId?: string;
+  expiresAt?: Date;
+  createdAt: Date;
+  notes?: string;
 }
 
 // ============================================
@@ -42,26 +42,29 @@ export interface CreditTransaction {
  * Get user's current credit balance.
  * Only counts unexpired GRANT credits minus REDEEM entries using FIFO.
  */
-export async function getCreditsBalance(userId: string): Promise<CreditBalance> {
-  const now = new Date()
-  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+export async function getCreditsBalance(
+  userId: string,
+  db: Pick<Prisma.TransactionClient, "creditsLedger"> = prisma
+): Promise<CreditBalance> {
+  const now = new Date();
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   // Get all credit entries for user
-  const entries = await prisma.creditsLedger.findMany({
+  const entries = await db.creditsLedger.findMany({
     where: { userId },
-    orderBy: { createdAt: 'asc' },
-  })
+    orderBy: { createdAt: "asc" },
+  });
 
   // Separate grants and redemptions
-  const grants: { amount: number; expiresAt: Date | null; createdAt: Date }[] = []
-  let totalRedeemed = 0
+  const grants: { amount: number; expiresAt: Date | null; createdAt: Date }[] = [];
+  let totalRedeemed = 0;
 
   for (const entry of entries) {
     if (
-      entry.reason === 'MONTHLY_GRANT' ||
-      entry.reason === 'PROMO_GRANT' ||
-      entry.reason === 'ADMIN_ADJUSTMENT' ||
-      entry.reason === 'REFUND'
+      entry.reason === "MONTHLY_GRANT" ||
+      entry.reason === "PROMO_GRANT" ||
+      entry.reason === "ADMIN_ADJUSTMENT" ||
+      entry.reason === "REFUND"
     ) {
       if (entry.amount > 0) {
         // Check if expired
@@ -70,36 +73,36 @@ export async function getCreditsBalance(userId: string): Promise<CreditBalance> 
             amount: entry.amount,
             expiresAt: entry.expiresAt,
             createdAt: entry.createdAt,
-          })
+          });
         }
       } else {
         // Negative adjustment counts as redemption
-        totalRedeemed += Math.abs(entry.amount)
+        totalRedeemed += Math.abs(entry.amount);
       }
-    } else if (entry.reason === 'REDEEM') {
-      totalRedeemed += Math.abs(entry.amount)
+    } else if (entry.reason === "REDEEM") {
+      totalRedeemed += Math.abs(entry.amount);
     }
   }
 
   // Apply redemptions using FIFO (oldest grants first)
-  let available = 0
-  let pending = 0
-  let nextExpiration: { date: Date; amount: number } | undefined
+  let available = 0;
+  let pending = 0;
+  let nextExpiration: { date: Date; amount: number } | undefined;
 
-  let remainingRedemptions = totalRedeemed
+  let remainingRedemptions = totalRedeemed;
   for (const grant of grants) {
     if (remainingRedemptions >= grant.amount) {
-      remainingRedemptions -= grant.amount
+      remainingRedemptions -= grant.amount;
     } else {
-      const remainingInGrant = grant.amount - remainingRedemptions
-      remainingRedemptions = 0
-      available += remainingInGrant
+      const remainingInGrant = grant.amount - remainingRedemptions;
+      remainingRedemptions = 0;
+      available += remainingInGrant;
 
       // Check if expiring soon (within 7 days)
       if (grant.expiresAt && grant.expiresAt <= sevenDaysFromNow) {
-        pending += remainingInGrant
+        pending += remainingInGrant;
         if (!nextExpiration || grant.expiresAt < nextExpiration.date) {
-          nextExpiration = { date: grant.expiresAt, amount: remainingInGrant }
+          nextExpiration = { date: grant.expiresAt, amount: remainingInGrant };
         }
       }
     }
@@ -110,7 +113,7 @@ export async function getCreditsBalance(userId: string): Promise<CreditBalance> 
     pending,
     total: available,
     nextExpiration,
-  }
+  };
 }
 
 // ============================================
@@ -128,48 +131,48 @@ export async function grantMonthlyCredits(
   // Get subscription to find tier
   const subscription = await prisma.subscription.findUnique({
     where: { id: subscriptionId },
-  })
+  });
 
   if (!subscription) {
-    throw new Error(`Subscription ${subscriptionId} not found`)
+    throw new Error(`Subscription ${subscriptionId} not found`);
   }
 
   // Get tier from Sanity to know how many credits to grant
-  const tier = await getMembershipTierById(subscription.membershipTierId)
+  const tier = await getMembershipTierById(subscription.membershipTierId);
 
   if (!tier) {
-    console.warn(`[CREDITS] Membership tier ${subscription.membershipTierId} not found in Sanity`)
-    return { granted: 0, expiresAt: null }
+    console.warn(`[CREDITS] Membership tier ${subscription.membershipTierId} not found in Sanity`);
+    return { granted: 0, expiresAt: null };
   }
 
   // Use oneOnOneSessionsIncluded as the credits count
-  const creditsToGrant = tier.benefits?.oneOnOneSessionsIncluded || 0
-  const expireDays = tier.benefits?.creditsExpireDays ?? 30
+  const creditsToGrant = tier.benefits?.oneOnOneSessionsIncluded || 0;
+  const expireDays = tier.benefits?.creditsExpireDays ?? 30;
 
   if (creditsToGrant <= 0) {
-    console.log(`[CREDITS] Tier ${tier.name} has no session credits configured`)
-    return { granted: 0, expiresAt: null }
+    console.log(`[CREDITS] Tier ${tier.name} has no session credits configured`);
+    return { granted: 0, expiresAt: null };
   }
 
   // Calculate expiration date
-  const expiresAt = expireDays > 0 ? new Date(Date.now() + expireDays * 24 * 60 * 60 * 1000) : null
+  const expiresAt = expireDays > 0 ? new Date(Date.now() + expireDays * 24 * 60 * 60 * 1000) : null;
 
   // Check for duplicate grant in same period (prevent double-granting)
-  const periodStart = subscription.currentPeriodStart
+  const periodStart = subscription.currentPeriodStart;
   const existingGrant = await prisma.creditsLedger.findFirst({
     where: {
       userId,
       subscriptionId,
-      reason: 'MONTHLY_GRANT',
+      reason: "MONTHLY_GRANT",
       createdAt: { gte: periodStart },
     },
-  })
+  });
 
   if (existingGrant) {
     console.log(
       `[CREDITS] Credits already granted for subscription ${subscriptionId} in current period`
-    )
-    return { granted: 0, expiresAt: null }
+    );
+    return { granted: 0, expiresAt: null };
   }
 
   // Create credit entry
@@ -177,18 +180,18 @@ export async function grantMonthlyCredits(
     data: {
       userId,
       amount: creditsToGrant,
-      reason: 'MONTHLY_GRANT',
+      reason: "MONTHLY_GRANT",
       subscriptionId,
       expiresAt,
       notes: `Créditos mensuales - ${tier.name}`,
     },
-  })
+  });
 
   console.log(
-    `[CREDITS] Granted ${creditsToGrant} credits to user ${userId} (expires: ${expiresAt?.toISOString() || 'never'})`
-  )
+    `[CREDITS] Granted ${creditsToGrant} credits to user ${userId} (expires: ${expiresAt?.toISOString() || "never"})`
+  );
 
-  return { granted: creditsToGrant, expiresAt }
+  return { granted: creditsToGrant, expiresAt };
 }
 
 // ============================================
@@ -201,51 +204,52 @@ export async function grantMonthlyCredits(
  */
 export async function redeemCredit(
   userId: string,
-  bookingId: string
+  bookingId: string,
+  db: Pick<Prisma.TransactionClient, "creditsLedger" | "booking"> = prisma
 ): Promise<{ success: boolean; error?: string }> {
   // Check balance
-  const balance = await getCreditsBalance(userId)
+  const balance = await getCreditsBalance(userId, db);
 
   if (balance.available < 1) {
-    return { success: false, error: 'No hay créditos disponibles' }
+    return { success: false, error: "No hay créditos disponibles" };
   }
 
   // Verify booking exists and belongs to user
-  const booking = await prisma.booking.findUnique({
+  const booking = await db.booking.findUnique({
     where: { id: bookingId },
-  })
+  });
 
   if (!booking || booking.userId !== userId) {
-    return { success: false, error: 'Reserva no encontrada' }
+    return { success: false, error: "Reserva no encontrada" };
   }
 
   // Check if already redeemed for this booking
-  const existingRedemption = await prisma.creditsLedger.findFirst({
+  const existingRedemption = await db.creditsLedger.findFirst({
     where: {
       userId,
       bookingId,
-      reason: 'REDEEM',
+      reason: "REDEEM",
     },
-  })
+  });
 
   if (existingRedemption) {
-    return { success: false, error: 'Crédito ya canjeado para esta reserva' }
+    return { success: false, error: "Crédito ya canjeado para esta reserva" };
   }
 
   // Create redemption entry
-  await prisma.creditsLedger.create({
+  await db.creditsLedger.create({
     data: {
       userId,
       amount: -1,
-      reason: 'REDEEM',
+      reason: "REDEEM",
       bookingId,
       notes: `Canje para ${booking.resourceName}`,
     },
-  })
+  });
 
-  console.log(`[CREDITS] Credit redeemed by user ${userId} for booking ${bookingId}`)
+  console.log(`[CREDITS] Credit redeemed by user ${userId} for booking ${bookingId}`);
 
-  return { success: true }
+  return { success: true };
 }
 
 /**
@@ -261,13 +265,13 @@ export async function refundCredit(
     where: {
       userId,
       bookingId,
-      reason: 'REDEEM',
+      reason: "REDEEM",
     },
-  })
+  });
 
   if (!redemption) {
     // Booking was not paid with credit
-    return { success: true, refunded: false }
+    return { success: true, refunded: false };
   }
 
   // Check if already refunded
@@ -275,13 +279,13 @@ export async function refundCredit(
     where: {
       userId,
       bookingId,
-      reason: 'REFUND',
+      reason: "REFUND",
     },
-  })
+  });
 
   if (existingRefund) {
     // Already refunded
-    return { success: true, refunded: false }
+    return { success: true, refunded: false };
   }
 
   // Create refund entry with 30-day expiration
@@ -289,16 +293,16 @@ export async function refundCredit(
     data: {
       userId,
       amount: 1,
-      reason: 'REFUND',
+      reason: "REFUND",
       bookingId,
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      notes: 'Devolución por cancelación de reserva',
+      notes: "Devolución por cancelación de reserva",
     },
-  })
+  });
 
-  console.log(`[CREDITS] Credit refunded to user ${userId} for cancelled booking ${bookingId}`)
+  console.log(`[CREDITS] Credit refunded to user ${userId} for cancelled booking ${bookingId}`);
 
-  return { success: true, refunded: true }
+  return { success: true, refunded: true };
 }
 
 // ============================================
@@ -314,9 +318,9 @@ export async function getCreditsHistory(
 ): Promise<CreditTransaction[]> {
   const entries = await prisma.creditsLedger.findMany({
     where: { userId },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     take: limit,
-  })
+  });
 
   return entries.map((entry) => ({
     id: entry.id,
@@ -326,7 +330,7 @@ export async function getCreditsHistory(
     expiresAt: entry.expiresAt || undefined,
     createdAt: entry.createdAt,
     notes: entry.notes || undefined,
-  }))
+  }));
 }
 
 /**
@@ -335,20 +339,20 @@ export async function getCreditsHistory(
  * already excludes expired credits.
  */
 export async function expireCredits(): Promise<{ expired: number }> {
-  const now = new Date()
+  const now = new Date();
 
   // Count expired grants (for logging)
   const expiredCount = await prisma.creditsLedger.count({
     where: {
-      reason: { in: ['MONTHLY_GRANT', 'PROMO_GRANT', 'ADMIN_ADJUSTMENT', 'REFUND'] },
+      reason: { in: ["MONTHLY_GRANT", "PROMO_GRANT", "ADMIN_ADJUSTMENT", "REFUND"] },
       amount: { gt: 0 },
       expiresAt: { lte: now },
     },
-  })
+  });
 
-  console.log(`[CREDITS] ${expiredCount} credit entries have expired`)
+  console.log(`[CREDITS] ${expiredCount} credit entries have expired`);
 
-  return { expired: expiredCount }
+  return { expired: expiredCount };
 }
 
 // ============================================
@@ -367,20 +371,22 @@ export async function adminAdjustCredits(
 ): Promise<void> {
   const expiresAt = expiresInDays
     ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
-    : null
+    : null;
 
   await prisma.creditsLedger.create({
     data: {
       userId,
       amount,
-      reason: 'ADMIN_ADJUSTMENT',
+      reason: "ADMIN_ADJUSTMENT",
       expiresAt,
       notes,
       createdBy: adminUserId,
     },
-  })
+  });
 
-  console.log(`[CREDITS] Admin ${adminUserId} adjusted credits for user ${userId}: ${amount > 0 ? '+' : ''}${amount}`)
+  console.log(
+    `[CREDITS] Admin ${adminUserId} adjusted credits for user ${userId}: ${amount > 0 ? "+" : ""}${amount}`
+  );
 }
 
 /**
@@ -390,9 +396,9 @@ export async function wasBookingPaidWithCredit(bookingId: string): Promise<boole
   const redemption = await prisma.creditsLedger.findFirst({
     where: {
       bookingId,
-      reason: 'REDEEM',
+      reason: "REDEEM",
     },
-  })
+  });
 
-  return !!redemption
+  return !!redemption;
 }

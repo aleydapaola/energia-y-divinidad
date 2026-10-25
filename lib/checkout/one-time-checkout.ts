@@ -12,6 +12,7 @@ import { processApprovedPayment } from "@/lib/payment-processor";
 import { createPayPalOrder, isPayPalConfigured } from "@/lib/paypal";
 import { prisma } from "@/lib/prisma";
 import { applyRateLimit } from "@/lib/rate-limit";
+import { assertSessionTimeAvailable, schedulingConfig } from "@/lib/session-scheduling";
 import { getAppUrl } from "@/lib/utils";
 
 const inputSchema = z.object({
@@ -54,6 +55,15 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
     }
     const currency = method === "breb" ? "COP" : "USD";
     const quote = await quoteCatalogItem({ ...body, currency });
+    // A preflight avoids starting payment for an unavailable slot. Fulfillment
+    // checks again under the calendar lock; this check is not a payment hold.
+    if (body.productType === "session" && body.scheduledAt) {
+      await assertSessionTimeAvailable(
+        prisma,
+        await schedulingConfig(),
+        new Date(body.scheduledAt)
+      );
+    }
     if (
       body.amount !== undefined &&
       Math.round(body.amount * 100) !== Math.round(quote.amount * 100)

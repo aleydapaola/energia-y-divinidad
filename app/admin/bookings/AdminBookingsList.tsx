@@ -16,6 +16,9 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { BOOKING_TIME_ZONE, colombiaBookingInstant } from "@/lib/booking-time";
+import { colombiaDateKey } from "@/lib/session-slots";
+
 interface BookingData {
   id: string;
   userId: string;
@@ -100,6 +103,7 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("es-CO", {
+      timeZone: BOOKING_TIME_ZONE,
       weekday: "short",
       day: "numeric",
       month: "short",
@@ -109,6 +113,7 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
 
   const formatTime = (dateStr: string) => {
     return new Date(dateStr).toLocaleTimeString("es-CO", {
+      timeZone: BOOKING_TIME_ZONE,
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -173,7 +178,10 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
     setError(null);
 
     try {
-      const newDateTime = new Date(`${newDate}T${newTime}:00`);
+      const newDateTime = colombiaBookingInstant(newDate, newTime);
+      if (!newDateTime) {
+        throw new Error("La fecha u hora seleccionada no es válida");
+      }
 
       const response = await fetch(`/api/admin/bookings/${selectedBooking.id}/reschedule`, {
         method: "POST",
@@ -278,10 +286,7 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
     }
   };
 
-  const getMinDate = () => {
-    const today = new Date();
-    return today.toISOString().split("T")[0];
-  };
+  const getMinDate = () => colombiaDateKey(new Date());
 
   return (
     <>
@@ -502,7 +507,9 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nueva fecha</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nueva fecha (Colombia)
+                </label>
                 <input
                   type="date"
                   value={newDate}
@@ -513,7 +520,9 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nueva hora</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nueva hora (Colombia, UTC−5)
+                </label>
                 <input
                   type="time"
                   value={newTime}

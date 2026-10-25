@@ -5,6 +5,7 @@ import { test } from "node:test";
 
 import * as bookingTime from "../lib/booking-time.ts";
 import * as sessionPolicy from "../lib/session-policy.ts";
+import { loadScheduling, singleBookingDb } from "./helpers/session-scheduling.mjs";
 
 const require = createRequire(import.meta.url);
 const React = require("react");
@@ -16,6 +17,9 @@ function load(path, dependencies = {}) {
   mod.require = (name) => {
     if (Object.hasOwn(dependencies, name)) {
       return dependencies[name];
+    }
+    if (name === "@/lib/session-scheduling") {
+      return loadScheduling(dependencies["@/lib/prisma"].prisma);
     }
     if (name === "@/lib/session-policy") {
       return sessionPolicy;
@@ -87,7 +91,19 @@ test("actual reschedule form submits the chosen Colombia instant independently o
       let index = 0,
         submitted,
         updated = false;
-      const values = [true, false, "2026-10-26", "14:00", "test", false, null, zone];
+      const values = [
+        true,
+        false,
+        "2026-10-26",
+        "14:00",
+        "test",
+        false,
+        null,
+        zone,
+        [{ time: "14:00", label: "14:00 - 15:30", available: true }],
+        false,
+        null,
+      ];
       const { BookingCard } = load("app/mi-cuenta/sesiones/BookingCard.tsx", {
         "@/lib/booking-time": bookingTime,
         react: { useState: () => [values[index++], () => {}], useEffect() {} },
@@ -164,16 +180,9 @@ test("card and API require both fewer than two changes and at least 24 hours, in
       const { PATCH } = load("app/api/bookings/[id]/reschedule/route.ts", {
         "@/lib/auth": { auth: async () => ({ user: { id: "test-user" } }) },
         "@/lib/prisma": {
-          prisma: {
-            user: { findUnique: async () => ({ id: "test-user", role: "USER" }) },
-            booking: {
-              findUnique: async () => candidate,
-              update: async ({ data }) => {
-                writes++;
-                return { ...candidate, ...data };
-              },
-            },
-          },
+          prisma: singleBookingDb(candidate, () => {
+            writes++;
+          }),
         },
         "@/lib/google-calendar": {
           syncBookingToGoogleCalendar: async () => {
@@ -230,17 +239,10 @@ test("choosing the first date preserves two changes and cannot schedule an uncon
     const { PATCH } = load("app/api/bookings/[id]/reschedule/route.ts", {
       "@/lib/auth": { auth: async () => ({ user: { id: "test-user" } }) },
       "@/lib/prisma": {
-        prisma: {
-          user: { findUnique: async () => ({ role: "USER" }) },
-          booking: {
-            findUnique: async () => candidate,
-            update: async ({ data }) => {
-              writes++;
-              assert.equal(data.rescheduleCount, undefined);
-              return { ...candidate, ...data };
-            },
-          },
-        },
+        prisma: singleBookingDb(candidate, (data) => {
+          writes++;
+          assert.equal(data.rescheduleCount, undefined);
+        }),
       },
       "@/lib/google-calendar": {
         syncBookingToGoogleCalendar: async () => {

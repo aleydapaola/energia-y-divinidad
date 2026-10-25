@@ -30,10 +30,54 @@ export function BookingCard({ booking, onUpdate }: BookingCardProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [browserTimeZone, setBrowserTimeZone] = useState<string | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<
+    { time: string; label: string; available: boolean }[]
+  >([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsMessage, setSlotsMessage] = useState<string | null>(null);
 
   useEffect(() => {
     setBrowserTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
   }, []);
+
+  useEffect(() => {
+    setNewTime("");
+    setAvailableSlots([]);
+    setSlotsMessage(null);
+    setSlotsLoading(false);
+    if (!showRescheduleModal || !newDate) {
+      return;
+    }
+    const controller = new AbortController();
+    setSlotsLoading(true);
+    fetch(`/api/bookings/${booking.id}/availability?date=${encodeURIComponent(newDate)}`, {
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "No se pudo consultar la agenda");
+        }
+        if (controller.signal.aborted) {
+          return;
+        }
+        setAvailableSlots(data.slots || []);
+        if (!data.available) {
+          setSlotsMessage(data.reason || "No quedan horas disponibles para este día");
+        }
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          setSlotsMessage(error.message);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setSlotsLoading(false);
+        }
+      });
+    return () => controller.abort();
+  }, [showRescheduleModal, newDate, booking.id]);
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("es-CO", {
@@ -334,12 +378,27 @@ export function BookingCard({ booking, onUpdate }: BookingCardProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Nueva hora (Colombia, UTC−5)
                 </label>
-                <input
-                  type="time"
+                <select
                   value={newTime}
                   onChange={(e) => setNewTime(e.target.value)}
+                  disabled={slotsLoading || !newDate}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8A4BAF]"
-                />
+                >
+                  <option value="">
+                    {slotsLoading ? "Consultando horarios…" : "Selecciona una hora disponible"}
+                  </option>
+                  {availableSlots.map((slot) => (
+                    <option key={slot.time} value={slot.time} disabled={!slot.available}>
+                      {slot.label}
+                      {slot.available ? "" : " · No disponible"}
+                    </option>
+                  ))}
+                </select>
+                {slotsMessage && (
+                  <p role="status" className="mt-2 text-sm text-gray-600">
+                    {slotsMessage}
+                  </p>
+                )}
               </div>
 
               {proposedInstant && browserTimeZone && browserTimeZone !== BOOKING_TIME_ZONE && (
@@ -378,7 +437,7 @@ export function BookingCard({ booking, onUpdate }: BookingCardProps) {
               </button>
               <button
                 onClick={handleReschedule}
-                disabled={loading || !newDate || !newTime}
+                disabled={loading || slotsLoading || !newDate || !newTime}
                 className="flex-1 px-4 py-2 bg-[#4944a4] text-white rounded-lg font-dm-sans hover:bg-[#3d3a8a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (

@@ -26,6 +26,11 @@ import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
 import { prisma } from "@/lib/prisma";
 import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
 import { resolveSessionDuration } from "@/lib/session-duration";
+import {
+  assertSessionTimeAvailable,
+  schedulingConfig,
+  withSessionCalendar,
+} from "@/lib/session-scheduling";
 
 // Tipos
 export interface OrderWithUser {
@@ -245,8 +250,6 @@ async function checkForDuplicateProcessing(order: OrderWithUser, userId: string)
 
     case "SESSION":
     case "EVENT": {
-      const metadata = order.metadata || {};
-      const scheduledAt = metadata.scheduledAt ? new Date(metadata.scheduledAt) : null;
       const duplicateConditions: Prisma.BookingWhereInput[] = [
         {
           metadata: {
@@ -256,9 +259,8 @@ async function checkForDuplicateProcessing(order: OrderWithUser, userId: string)
         },
       ];
 
-      if (scheduledAt) {
-        duplicateConditions.push({ scheduledAt });
-      }
+      // A different paid order at the same time is not a duplicate delivery.
+      // Only the order reference makes fulfillment idempotent.
 
       const existingBooking = await prisma.booking.findFirst({
         where: {
@@ -410,7 +412,7 @@ async function createSessionBookingFromOrder(
   const sessionsTotal = isPack ? 8 : 1;
 
   // Obtener la fecha programada desde metadata
-  const scheduledAt = metadata.scheduledAt ? new Date(metadata.scheduledAt) : null;
+  const scheduledAt = !isPack && metadata.scheduledAt ? new Date(metadata.scheduledAt) : null;
 
   // VALIDACIÓN: Las sesiones individuales DEBEN tener fecha programada
   if (!isPack && !scheduledAt && !metadata.scheduleAfterPayment) {
@@ -419,27 +421,33 @@ async function createSessionBookingFromOrder(
     throw new Error("Las sesiones individuales requieren fecha programada (scheduledAt)");
   }
 
-  const booking = await prisma.booking.create({
-    data: {
-      userId,
-      bookingType: "SESSION_1_ON_1",
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      status: "CONFIRMED",
-      paymentStatus: "COMPLETED",
-      paymentMethod: (order.paymentMethod as PaymentMethod) || undefined,
-      amount: order.amount,
-      currency: order.currency,
-      duration: await resolveSessionDuration(),
-      sessionsTotal,
-      sessionsRemaining: sessionsTotal,
-      scheduledAt,
-      metadata: {
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-      },
-    },
-  });
+  const duration = await resolveSessionDuration();
+  const data: Prisma.BookingUncheckedCreateInput = {
+    userId,
+    bookingType: "SESSION_1_ON_1",
+    resourceId: order.itemId,
+    resourceName: order.itemName,
+    status: "CONFIRMED",
+    paymentStatus: "COMPLETED",
+    paymentMethod: (order.paymentMethod as PaymentMethod) || undefined,
+    amount: order.amount,
+    currency: order.currency,
+    duration,
+    sessionsTotal,
+    sessionsRemaining: sessionsTotal,
+    scheduledAt,
+    metadata: { orderId: order.id, orderNumber: order.orderNumber },
+  };
+  const config = scheduledAt ? await schedulingConfig() : null;
+  const booking =
+    scheduledAt && config
+      ? await withSessionCalendar(async (tx) => {
+          await assertSessionTimeAvailable(tx, config, scheduledAt, { duration });
+          return tx.booking.create({ data });
+        })
+      : await prisma.booking.create({
+          data,
+        });
 
   await syncBookingToGoogleCalendar(booking.id);
 

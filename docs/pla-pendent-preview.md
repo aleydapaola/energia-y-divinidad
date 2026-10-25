@@ -4,10 +4,10 @@ Actualitzat el 25/10/2026. URL: https://preview.energiaydivinidad.com. Treball n
 
 | Ordre | Tasca | Execució i criteri de tancament | Dependència |
 | --- | --- | --- | --- |
-| 1 | Tancar l'API antiga de reserves | Correcció en curs: consulta amb sessió i propietat o ADMIN; retirar la creació antiga que acceptava imports del navegador. Proves locals i comprovació remota abans de donar-la per tancada. | Cap per preparar i provar Preview |
-| 2 | Preus i newsletter de proves | Preparat: checkout utilitza la mateixa projecció de preus del CMS que les fitxes; newsletter sense compte de proves retorna indisponibilitat sense cap alta. Desplegar i verificar. | Cap per aquesta preparació; Mailchimp separat per activar enviaments |
-| 3 | Disponibilitat i concurrència de sessions | Revisió iniciada: la reprogramació encara no valida la franja contra la disponibilitat i el calendari compara inicis en lloc de tots els solapaments. Cal unificar horaris, durades, marges, festius i validació al servidor; protegir canvis simultanis i comprovar que els límits de dos canvis i 24 hores es mantenen. No considerar-ho validat per les proves horàries anteriors. | Implementació i proves específiques abans de proposar Production |
-| 4 | Preparar continguts i administració de proves | Inventari de Neon Preview: un usuari USER i cap ADMIN. Al catàleg, els cursos estan marcats com a privats i tots els esdeveniments són passats. Preparar un curs i un esdeveniment sintètics, clarament identificats, exclusivament al dataset preview; no obrir cursos privats ni canviar dates d'esdeveniments reals. | Autorització específica per crear un compte ADMIN dedicat; contrasenya introduïda per l'usuari |
+| 1 | Tancar l'API antiga de reserves | Completat a Preview f8672ed5: consulta amb sessió i propietat o ADMIN; creació antiga retirada. 401 anònim i 410 en el flux antic verificats remotament. | Revisar compatibilitat amb consumidors externs abans d'aprovar Production |
+| 2 | Preus i newsletter de proves | Completada la preparació a Preview: mateixa projecció de preus que les fitxes, proves GROQ de format nou/antic i gratuïtat; newsletter sense compte de proves retorna 503 sense alta. Preus manipulats rebutjats amb 400 en ambdós mètodes. | Mailchimp separat per activar i provar els enviaments |
+| 3 | Disponibilitat i concurrència de sessions | Implementat al codi: horari compartit de Colòmbia, durades, marges, festius, franges bloquejades, antelació i solapaments parcials. Reprogramació, crèdits, bescanvi de packs, entrega de sessions pagades i reactivació ADMIN comparteixen bloqueig transaccional. Prova amb Neon Preview: una guanyadora de dues peticions per a la mateixa franja; data inicial sense consumir canvis; dos canvis simultanis respecten el límit de dos. Pendents desplegament i recorregut remot autenticat. | Implementació i proves específiques abans de proposar Production |
+| 4 | Preparar continguts i administració de proves | Creats a Sanity 81jpalr2/preview un curs de text i un taller futurs amb «PRUEBA — NO REAL», sense reunions ni informació personal. Cap curs privat ni esdeveniment anterior substituït. El compte ADMIN dedicat continua pendent de l'alta normal de l'usuari. | Autoritzat amb «endavant»; pendent alta normal i contrasenya introduïda per l'usuari |
 | 5 | Completar la matriu de compres | Quatre tipus de compra × PayPal sandbox/Bre-B simulat. Verificar captura o confirmació, entrega única, permisos, correu Delivered i calendari de sessions. Iniciar un pagament o retornar 200 no acredita entrega. | Comprador sandbox, ADMIN de proves i continguts sintètics; mai pagaments reals |
 | 6 | Newsletter real de proves | Completar activació/accés de Mailchimp separat, verificar audiència pròpia, desar clau només a Preview i comprovar alta amb doble confirmació i baixa. | Compte Mailchimp separat; no reutilitzar l'audiència real |
 | 7 | Revisió visual i legal | Recórrer compte, compra i panell amb sessió i en mòbil. Completar dades fiscals i adreça pública, condicions particulars, autoritzacions i terminis dels borradors. | Dades d'Aleyda i revisió dels textos |
@@ -17,10 +17,27 @@ Actualitzat el 25/10/2026. URL: https://preview.energiaydivinidad.com. Treball n
 
 Es proposa un compte nou i separat del client fictici, identificat com a administració de proves, només a Neon Preview. No s'eleva el rol del compte existent. Cap compte ni permís de Production es modifica. Tots els correus continuen limitats a aleydapaola@proton.me. La contrasenya la defineix l'usuari, fora del xat i del repositori.
 
-Crear aquest accés administratiu requereix autorització específica. Aquest pla deixa preparada la decisió; no ha creat cap compte ni credencial.
+Identitat proposada: «PRUEBA — ADMIN — NO REAL», correu de compte `aleydapaola+preview-admin@proton.me`, rol ADMIN exclusivament a la base de Preview. L'usuari fa l'alta i la verificació normals i introdueix la contrasenya; després de l'autorització es comprova que el compte és el nou de proves abans d'assignar-hi el rol. El reenviament de Preview continua portant els correus a l'únic destinatari autoritzat, `aleydapaola@proton.me`.
+
+Xavier ha autoritzat aquesta preparació amb «endavant». Encara no s’ha creat cap credencial ni s’ha elevat el rol d’un usuari existent; falta completar l’alta normal del nou compte. Proton admet aquest àlies amb + sense configurar una bústia nova.
 
 ## Editor Sanity
 
 El Studio continua accessible des de la URL tècnica de Preview ja autoritzada. Afegir CORS amb credencials per al subdomini continua pendent de l'aprovació concreta demanada anteriorment; no és necessari per navegar per la web ni per continuar les correccions de codi.
 
 El registre anterior i la matriu detallada es conserven a [plan-preview-2026-10-25.md](plan-preview-2026-10-25.md) i [matriz-pruebas-preview.md](matriz-pruebas-preview.md).
+
+## Resultat verificat d'aquesta primera fase
+
+- Commit f8672ed5c44498e44170fa93225665be0d8825fa Ready a Vercel, desplegament dpl_BUYh1nkFpoF1ohHNNU7x9XxCfLyf. Equip, projecte, repositori i branca preview comprovats; el subdomini serveix aquest commit.
+- 96 proves automàtiques, tipus i hooks de lint/format correctes. Respostes remotes: consulta anònima de reserves 401, creació antiga 410, newsletter no configurada 503, preus manipulats 400, confirmació de pagament sense sessió 401, curs privat i esdeveniment passat 400.
+- Preview conserva redirecció de protecció 302 sense autenticar i noindex en les rutes comprovades. Production continua a 7b9a7ac3 i dpl_4Kwyq1ERrbCFxuhYxpJBTxC7rDbc.
+- Cap compte o credencial nou, canvi de reserves, captura, transferència, devolució o enviament de correu en les proves d'aquesta fase. La disponibilitat al servidor i les entregues completes continuen pendents; no donar-les per validades a partir d'aquests resultats.
+
+## Disponibilitat: límits de la verificació
+
+La comprovació anterior a iniciar el pagament no és una retenció temporal de la franja. L’entrega torna a validar-la sota bloqueig: una altra compra pagada que hagi perdut la franja queda pendent de revisió, sense crear una cita duplicada ni donar-se falsament per entregada. Abans de publicar Production cal resoldre i provar aquest cas comercial (retenció amb caducitat o elecció posterior al pagament); no cobrar dues vegades ni canviar la data sense avisar. Les vies antigues WOMPI_MANUAL/Nequi queden fora de la matriu aprovada: WOMPI_MANUAL està bloquejat a Preview i l’entrada antiga /api/checkout/session es retira amb 410.
+
+La prova de concurrència és sobre les dades de Neon Preview; no acredita sincronització remota simultània de Google Calendar ni entrega real de correus. S’han retirat només les reserves efímeres de la prova, preservant les reserves anteriors i els seus comptadors.
+
+Fixtures de Sanity: `eyd-preview-course-checkout-test`, `eyd-preview-course-checkout-lesson`, `eyd-preview-event-checkout-test`. Slugs `prueba-curso-checkout` i `prueba-taller-checkout`; preus ficticis 80.000 COP / 20 USD. No traslladar-les a Production.
