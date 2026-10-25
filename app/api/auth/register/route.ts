@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { sendVerificationEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
+import { getTermsPage } from "@/lib/terms";
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,8 +65,9 @@ export async function POST(request: NextRequest) {
     // Hash de la contraseña
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Versión inicial de términos (se puede obtener de Sanity en el futuro)
-    const currentTermsVersion = "1.0";
+    // Preview consent must refer to its review draft rather than Production terms.
+    const currentTermsVersion =
+      process.env.VERCEL_ENV === "production" ? "1.0" : (await getTermsPage())?.version || "1.0";
 
     const normalizedEmail = email.toLowerCase();
     const verificationToken = randomBytes(32).toString("hex");

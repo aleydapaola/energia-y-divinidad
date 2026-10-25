@@ -1,50 +1,28 @@
-import { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { Metadata } from "next";
+import { notFound } from "next/navigation";
 
-import { Footer } from '@/components/layout/Footer'
-import { Header } from '@/components/layout/Header'
-import LegalPageContent from '@/components/legal/LegalPageContent'
-import { sanityFetch } from '@/sanity/lib/fetch'
-import { LEGAL_PAGE_BY_SLUG_QUERY } from '@/sanity/lib/queries'
-
-interface LegalPage {
-  _id: string
-  title: string
-  slug: { current: string }
-  pageType: string
-  content: any[]
-  version: string | null
-  lastUpdated: string | null
-  seo: {
-    metaTitle?: string
-    metaDescription?: string
-  } | null
-}
+import { Footer } from "@/components/layout/Footer";
+import { Header } from "@/components/layout/Header";
+import LegalPageContent from "@/components/legal/LegalPageContent";
+import { getTermsPage } from "@/lib/terms";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await sanityFetch<LegalPage | null>({
-    query: LEGAL_PAGE_BY_SLUG_QUERY,
-    params: { slug: 'terminos' },
-    tags: ['page', 'legal'],
-  })
+  const page = await getTermsPage();
 
   return {
-    title: page?.seo?.metaTitle || page?.title || 'Términos y Condiciones',
+    title: page?.seo?.metaTitle || page?.title || "Términos y Condiciones",
     description:
       page?.seo?.metaDescription ||
-      'Lee los términos y condiciones de uso de los servicios de Energía y Divinidad.',
-  }
+      "Lee los términos y condiciones de uso de los servicios de Energía y Divinidad.",
+    robots: page?._id === "eyd-preview-terms-review" ? { index: false, follow: false } : undefined,
+  };
 }
 
 export default async function TerminosPage() {
-  const page = await sanityFetch<LegalPage | null>({
-    query: LEGAL_PAGE_BY_SLUG_QUERY,
-    params: { slug: 'terminos' },
-    tags: ['page', 'legal'],
-  })
+  const page = await getTermsPage();
 
   if (!page) {
-    notFound()
+    notFound();
   }
 
   return (
@@ -62,5 +40,5 @@ export default async function TerminosPage() {
       </main>
       <Footer />
     </>
-  )
+  );
 }
