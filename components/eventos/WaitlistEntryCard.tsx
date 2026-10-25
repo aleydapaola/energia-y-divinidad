@@ -1,168 +1,166 @@
-'use client'
+"use client";
 
-import { Calendar, MapPin, Video, Clock, Users, Loader2, CheckCircle, X } from 'lucide-react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { Calendar, MapPin, Video, Clock, Users, Loader2, CheckCircle, X } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { formatEventDate } from "@/lib/event-time";
 
 interface WaitlistEntryWithEvent {
-  id: string
-  eventId: string
-  position: number
-  seatsRequested: number
-  status: 'WAITING' | 'OFFER_PENDING'
-  offerExpiresAt: string | null
-  createdAt: string
+  id: string;
+  eventId: string;
+  position: number;
+  seatsRequested: number;
+  status: "WAITING" | "OFFER_PENDING";
+  offerExpiresAt: string | null;
+  createdAt: string;
   event: {
-    title: string
-    slug: string
-    eventDate: string
-    locationType: 'online' | 'in_person'
+    title: string;
+    slug: string;
+    eventDate: string;
+    locationType: "online" | "in_person";
     venue?: {
-      name?: string
-      city?: string
-    }
+      name?: string;
+      city?: string;
+    };
     mainImage?: {
       asset?: {
-        url?: string
-      }
-      alt?: string
-    }
-  } | null
+        url?: string;
+      };
+      alt?: string;
+    };
+  } | null;
 }
 
 interface WaitlistEntryCardProps {
-  entry: WaitlistEntryWithEvent
-  onUpdate?: () => void
+  entry: WaitlistEntryWithEvent;
+  onUpdate?: () => void;
 }
 
 export default function WaitlistEntryCard({ entry, onUpdate }: WaitlistEntryCardProps) {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Calculate time remaining for offers
   const getTimeRemaining = () => {
-    if (!entry.offerExpiresAt) {return null}
-    const expiresAt = new Date(entry.offerExpiresAt)
-    const now = new Date()
-    const diffMs = expiresAt.getTime() - now.getTime()
+    if (!entry.offerExpiresAt) {
+      return null;
+    }
+    const expiresAt = new Date(entry.offerExpiresAt);
+    const now = new Date();
+    const diffMs = expiresAt.getTime() - now.getTime();
 
-    if (diffMs <= 0) {return 'Expirado'}
+    if (diffMs <= 0) {
+      return "Expirado";
+    }
 
-    const hours = Math.floor(diffMs / (1000 * 60 * 60))
-    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
     if (hours > 0) {
-      return `${hours}h ${minutes}m restantes`
+      return `${hours}h ${minutes}m restantes`;
     }
-    return `${minutes} minutos restantes`
-  }
+    return `${minutes} minutos restantes`;
+  };
 
   const handleAccept = async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const response = await fetch(`/api/waitlist/${entry.id}/accept`, {
-        method: 'POST',
-      })
+        method: "POST",
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Error al aceptar la oferta')
-        return
+        setError(data.error || "Error al aceptar la oferta");
+        return;
       }
 
       // Redirect to payment or confirmation
       if (data.redirectUrl) {
-        router.push(data.redirectUrl)
+        router.push(data.redirectUrl);
       } else {
-        router.refresh()
-        onUpdate?.()
+        router.refresh();
+        onUpdate?.();
       }
-    } catch (err) {
-      setError('Error de conexión. Intenta de nuevo.')
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleDecline = async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const response = await fetch(`/api/waitlist/${entry.id}/decline`, {
-        method: 'POST',
-      })
+        method: "POST",
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Error al rechazar la oferta')
-        return
+        setError(data.error || "Error al rechazar la oferta");
+        return;
       }
 
-      router.refresh()
-      onUpdate?.()
-    } catch (err) {
-      setError('Error de conexión. Intenta de nuevo.')
+      router.refresh();
+      onUpdate?.();
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleLeave = async () => {
-    if (!entry.event) {return}
+    if (!entry.event) {
+      return;
+    }
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const response = await fetch(`/api/events/${entry.eventId}/waitlist`, {
-        method: 'DELETE',
-      })
+        method: "DELETE",
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Error al salir de la lista')
-        return
+        setError(data.error || "Error al salir de la lista");
+        return;
       }
 
-      router.refresh()
-      onUpdate?.()
-    } catch (err) {
-      setError('Error de conexión. Intenta de nuevo.')
+      router.refresh();
+      onUpdate?.();
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const formatEventDate = (date: string) => {
-    return new Date(date).toLocaleDateString('es-CO', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-
-  const isOfferPending = entry.status === 'OFFER_PENDING'
-  const timeRemaining = getTimeRemaining()
+  const isOfferPending = entry.status === "OFFER_PENDING";
+  const timeRemaining = getTimeRemaining();
 
   if (!entry.event) {
-    return null
+    return null;
   }
 
   return (
     <div
       className={`bg-white rounded-xl overflow-hidden shadow-md border-2 ${
-        isOfferPending ? 'border-green-400' : 'border-transparent'
+        isOfferPending ? "border-green-400" : "border-transparent"
       }`}
     >
       <div className="flex flex-col sm:flex-row">
@@ -201,9 +199,7 @@ export default function WaitlistEntryCard({ entry, onUpdate }: WaitlistEntryCard
             href={`/eventos/${entry.event.slug}`}
             className="block hover:text-[#8A4BAF] transition-colors"
           >
-            <h3 className="font-gazeta text-lg text-[#654177] mb-2">
-              {entry.event.title}
-            </h3>
+            <h3 className="font-gazeta text-lg text-[#654177] mb-2">{entry.event.title}</h3>
           </Link>
 
           <div className="space-y-1 text-sm text-gray-600 mb-3">
@@ -213,7 +209,7 @@ export default function WaitlistEntryCard({ entry, onUpdate }: WaitlistEntryCard
             </div>
 
             <div className="flex items-center gap-2">
-              {entry.event.locationType === 'online' ? (
+              {entry.event.locationType === "online" ? (
                 <>
                   <Video className="w-4 h-4 text-[#2D4CC7]" />
                   <span>Evento online (Zoom)</span>
@@ -221,9 +217,7 @@ export default function WaitlistEntryCard({ entry, onUpdate }: WaitlistEntryCard
               ) : (
                 <>
                   <MapPin className="w-4 h-4 text-[#2D4CC7]" />
-                  <span>
-                    {entry.event.venue?.name || entry.event.venue?.city || 'Presencial'}
-                  </span>
+                  <span>{entry.event.venue?.name || entry.event.venue?.city || "Presencial"}</span>
                 </>
               )}
             </div>
@@ -271,7 +265,7 @@ export default function WaitlistEntryCard({ entry, onUpdate }: WaitlistEntryCard
           )}
 
           {/* Waiting - show position and leave option */}
-          {entry.status === 'WAITING' && (
+          {entry.status === "WAITING" && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">
                 Te notificaremos cuando haya un cupo disponible
@@ -281,11 +275,7 @@ export default function WaitlistEntryCard({ entry, onUpdate }: WaitlistEntryCard
                 disabled={loading}
                 className="text-sm text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
               >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  'Salir'
-                )}
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salir"}
               </button>
             </div>
           )}
@@ -294,5 +284,5 @@ export default function WaitlistEntryCard({ entry, onUpdate }: WaitlistEntryCard
         </div>
       </div>
     </div>
-  )
+  );
 }

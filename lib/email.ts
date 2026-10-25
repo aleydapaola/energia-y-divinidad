@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 
 import { deliverEmail } from "@/lib/email-delivery";
+import { formatEventDate } from "@/lib/event-time";
 import { prisma } from "@/lib/prisma";
 import {
   INDIVIDUAL_SESSION_POLICY,
@@ -687,14 +688,7 @@ export async function sendEventBookingConfirmation(params: EventBookingEmailPara
   const isPending = paymentStatus === "PENDING";
   const isOnline = eventType === "online";
 
-  const formattedDate = new Date(eventDate).toLocaleDateString("es-CO", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedDate = formatEventDate(eventDate);
 
   const formattedAmount =
     currency === "USD"
@@ -958,13 +952,7 @@ export async function sendEventReminder(params: EventReminderEmailParams) {
   } = params;
 
   const isOnline = eventType === "online";
-  const formattedDate = new Date(eventDate).toLocaleDateString("es-CO", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedDate = formatEventDate(eventDate);
 
   const timeMessage =
     hoursUntil <= 1
@@ -2242,13 +2230,7 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
             <td style="padding: 8px 0;">
               <span style="font-size: 14px; color: #666;">Fecha del evento:</span>
               <span style="float: right; font-size: 14px; color: #654177; font-weight: 600;">
-                ${eventDate.toLocaleDateString("es-CO", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                ${formatEventDate(eventDate)}
               </span>
             </td>
           </tr>
@@ -2866,16 +2848,6 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
         ? new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(amount)
         : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
 
-  const formatDate = (date: Date) =>
-    date.toLocaleDateString("es-CO", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
   // Configurar textos según tipo de venta
   const saleTypeConfig: Record<SaleType, { emoji: string; label: string; color: string }> = {
     SESSION: { emoji: "🔮", label: "Sesión de Canalización", color: "#8A4BAF" },
@@ -2952,7 +2924,7 @@ export async function sendAdminNotificationEmail(params: AdminNotificationParams
       <tr>
         <td style="padding: 10px 15px; border-bottom: 1px solid #eee;">
           <span style="color: #666;">📅 Fecha del evento:</span>
-          <strong style="float: right; color: #333;">${eventDate ? formatDate(eventDate) : "Por definir"}</strong>
+          <strong style="float: right; color: #333;">${eventDate ? formatEventDate(eventDate) : "Por definir"}</strong>
         </td>
       </tr>
       <tr>
@@ -3180,14 +3152,7 @@ interface WaitlistJoinedEmailParams {
 export async function sendWaitlistJoinedEmail(params: WaitlistJoinedEmailParams) {
   const { email, name, eventTitle, eventDate, position, seatsRequested } = params;
 
-  const formattedDate = new Date(eventDate).toLocaleDateString("es-CO", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedDate = formatEventDate(eventDate);
 
   const seatsText = seatsRequested > 1 ? `${seatsRequested} cupos` : "1 cupo";
 
@@ -3315,22 +3280,9 @@ interface WaitlistOfferEmailParams {
 export async function sendWaitlistOfferEmail(params: WaitlistOfferEmailParams) {
   const { email, name, eventTitle, eventDate, seats, expiresAt } = params;
 
-  const formattedDate = new Date(eventDate).toLocaleDateString("es-CO", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedDate = formatEventDate(eventDate);
 
-  const formattedExpiry = expiresAt.toLocaleDateString("es-CO", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedExpiry = formatEventDate(expiresAt);
 
   const seatsText = seats > 1 ? `${seats} cupos` : "1 cupo";
 

@@ -10,6 +10,8 @@ import { client } from '../client'
 
 import type { EventPerk } from '@/types/events'
 
+export { formatEventDate } from '@/lib/event-time'
+
 
 // Interface para Event (actualizada con objetos reutilizables)
 export interface Event {
@@ -420,27 +422,6 @@ export function getEventStatusLabel(status: Event['status']): string {
  */
 export function getLocationTypeLabel(locationType: Event['locationType']): string {
   return locationType === 'online' ? 'Online (Zoom)' : 'Presencial'
-}
-
-/**
- * Format event date
- */
-export function formatEventDate(dateString: string, includeTime: boolean = true): string {
-  const date = new Date(dateString)
-
-  const options: Intl.DateTimeFormatOptions = {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }
-
-  if (includeTime) {
-    options.hour = '2-digit'
-    options.minute = '2-digit'
-  }
-
-  return date.toLocaleDateString('es-CO', options)
 }
 
 /**

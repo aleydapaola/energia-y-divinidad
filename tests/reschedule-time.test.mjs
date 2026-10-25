@@ -4,6 +4,7 @@ import { createRequire, Module } from "node:module";
 import { test } from "node:test";
 
 import * as bookingTime from "../lib/booking-time.ts";
+import * as eventTime from "../lib/event-time.ts";
 import * as sessionPolicy from "../lib/session-policy.ts";
 import { loadScheduling, singleBookingDb } from "./helpers/session-scheduling.mjs";
 
@@ -23,6 +24,9 @@ function load(path, dependencies = {}) {
     }
     if (name === "@/lib/session-policy") {
       return sessionPolicy;
+    }
+    if (name === "@/lib/event-time") {
+      return eventTime;
     }
     if (name === "@/components/booking/SessionPolicy") {
       return load("components/booking/SessionPolicy.tsx");
@@ -50,6 +54,94 @@ const booking = {
   duration: 90,
   rescheduleCount: 0,
 };
+
+test("event dates keep Colombia's time and civil day across server/browser zones", () => {
+  const saved = process.env.TZ;
+  try {
+    for (const zone of ["UTC", "Europe/Madrid", "Asia/Tokyo", "America/Los_Angeles"]) {
+      process.env.TZ = zone;
+      const display = eventTime.formatEventDate("2026-12-15T15:00:00Z");
+      assert.match(display, /15 de diciembre de 2026.*10:00.*hora de Colombia, UTC−5/);
+      const dateOnly = eventTime.formatEventDate("2026-12-16T02:00:00Z", false);
+      assert.match(dateOnly, /15 de diciembre de 2026/);
+      assert.doesNotMatch(dateOnly, /hora|UTC|02:00/);
+    }
+  } finally {
+    if (saved === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = saved;
+    }
+  }
+});
+
+test("event receipts, reminders, admin and waitlist emails preserve Colombia's displayed time", async () => {
+  const saved = process.env.TZ;
+  const messages = [];
+  const email = load("lib/email.ts", {
+    "@/lib/email-delivery": {
+      deliverEmail: async (data) => {
+        messages.push(data);
+        return { data: { id: "test" }, error: null };
+      },
+    },
+    "@/lib/prisma": {
+      prisma: { emailLog: { create: async () => ({ id: "test" }), update: async () => ({}) } },
+    },
+  });
+  const params = {
+    email: "test@example.com",
+    name: "Test",
+    eventTitle: "Fictional event",
+    eventDate: "2026-12-15T15:00:00Z",
+    eventType: "online",
+    orderNumber: "TEST-ONLY",
+    seats: 1,
+    amount: 20,
+    currency: "USD",
+    paymentStatus: "COMPLETED",
+  };
+  try {
+    for (const zone of ["UTC", "Europe/Madrid", "Asia/Tokyo"]) {
+      process.env.TZ = zone;
+      const first = messages.length;
+      await email.sendEventBookingConfirmation(params);
+      await email.sendEventReminder({ ...params, hoursUntil: 24 });
+      await email.sendPaymentConfirmationEmail({
+        ...params,
+        orderType: "EVENT",
+        itemName: params.eventTitle,
+        eventDate: new Date(params.eventDate),
+        paymentMethod: "PAYPAL_DIRECT",
+      });
+      await email.sendAdminNotificationEmail({
+        ...params,
+        saleType: "EVENT",
+        customerName: params.name,
+        customerEmail: params.email,
+        itemName: params.eventTitle,
+        eventDate: new Date(params.eventDate),
+        paymentMethod: "PAYPAL_DIRECT",
+      });
+      await email.sendWaitlistJoinedEmail({ ...params, position: 1, seatsRequested: 1 });
+      await email.sendWaitlistOfferEmail({
+        ...params,
+        expiresAt: new Date("2026-12-14T15:00:00Z"),
+      });
+      assert.equal(messages.length - first, 6);
+      for (const message of messages.slice(first)) {
+        assert.match(message.html, /15 de diciembre de 2026.*10:00.*hora de Colombia, UTC−5/);
+      }
+    }
+  } finally {
+    if (saved === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = saved;
+    }
+  }
+});
+
 function nodes(node) {
   if (Array.isArray(node)) {
     return node.flatMap(nodes);
