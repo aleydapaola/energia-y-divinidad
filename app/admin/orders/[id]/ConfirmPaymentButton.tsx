@@ -9,6 +9,7 @@ interface ConfirmPaymentButtonProps {
   orderNumber: string;
   paymentMethod: string | null;
   paymentStatus: string;
+  simulation?: boolean;
 }
 
 export function ConfirmPaymentButton({
@@ -16,6 +17,7 @@ export function ConfirmPaymentButton({
   orderNumber,
   paymentMethod,
   paymentStatus,
+  simulation = false,
 }: ConfirmPaymentButtonProps) {
   const router = useRouter();
   const [isConfirming, setIsConfirming] = useState(false);
@@ -77,7 +79,7 @@ export function ConfirmPaymentButton({
         className="w-full bg-green-600 hover:bg-green-700 text-white font-dm-sans font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         <CheckCircle className="w-5 h-5" />
-        Confirmar Pago Manual
+        {simulation ? "Confirmar simulación" : "Confirmar Pago Manual"}
       </button>
 
       {/* Modal de confirmación */}
@@ -90,7 +92,9 @@ export function ConfirmPaymentButton({
                   <Key className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-gazeta text-xl text-[#654177]">Confirmar Pago</h3>
+                  <h3 className="font-gazeta text-xl text-[#654177]">
+                    {simulation ? "Confirmar simulación" : "Confirmar Pago"}
+                  </h3>
                   <p className="text-sm text-gray-500 font-dm-sans">Orden #{orderNumber}</p>
                 </div>
               </div>
@@ -99,21 +103,26 @@ export function ConfirmPaymentButton({
             <div className="p-6 space-y-4">
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <p className="text-sm text-yellow-800 font-dm-sans">
-                  <strong>Importante:</strong> Confirma solo si has verificado que el pago fue
-                  recibido correctamente. Esta acción activará el acceso del cliente y enviará el
-                  email de confirmación.
+                  {simulation
+                    ? "PRUEBA — NO REAL. Esta confirmación simula el ingreso, activa el acceso de prueba y envía el correo de Preview. No se recibe ni se mueve dinero."
+                    : "Confirma solo si has verificado que el pago fue recibido correctamente. Esta acción activará el acceso del cliente y enviará el email de confirmación."}
                 </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 font-dm-sans">
-                  Referencia del ingreso en Global66 / entidad receptora
+                  {simulation
+                    ? "Referencia ficticia de la simulación"
+                    : "Referencia del ingreso en Global66 / entidad receptora"}
                 </label>
                 <input
                   type="text"
                   value={transactionReference}
                   onChange={(e) => setTransactionReference(e.target.value)}
-                  placeholder="Referencia del movimiento recibido"
+                  placeholder={
+                    simulation ? "PRUEBA-NO-REAL-..." : "Referencia del movimiento recibido"
+                  }
+                  maxLength={120}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg font-dm-sans focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
               </div>
@@ -127,6 +136,7 @@ export function ConfirmPaymentButton({
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Notas adicionales sobre la confirmación..."
                   rows={2}
+                  maxLength={2000}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg font-dm-sans focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
                 />
               </div>
@@ -137,8 +147,9 @@ export function ConfirmPaymentButton({
                   checked={verifiedInAccount}
                   onChange={(e) => setVerifiedInAccount(e.target.checked)}
                 />
-                He comprobado el ingreso, el importe y la moneda en la cuenta receptora. Un
-                comprobante del cliente no basta.
+                {simulation
+                  ? "He revisado los datos ficticios de esta simulación. No se ha recibido dinero real."
+                  : "He comprobado el ingreso, el importe y la moneda en la cuenta receptora. Un comprobante del cliente no basta."}
               </label>
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">

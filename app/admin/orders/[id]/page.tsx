@@ -41,6 +41,11 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  const simulation =
+    process.env.VERCEL_ENV !== "production" &&
+    order.paymentMethod === "BREB_MANUAL" &&
+    (order.metadata as { brebSimulation?: boolean } | null)?.brebSimulation === true;
+
   // Obtener audit logs relacionados
   const auditLogs = await prisma.auditLog.findMany({
     where: {
@@ -199,7 +204,11 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                 <div className="p-4 bg-amber-50 rounded-lg mb-4 break-words">
                   <strong>Aviso del cliente — pendiente de verificar</strong>
                   <p>Referencia comunicada: {order.manualPayment.referenceNumber}</p>
-                  <p>No acredita el ingreso. Comprueba la cuenta Global66 antes de confirmar.</p>
+                  <p>
+                    {simulation
+                      ? "Aviso ficticio de Preview. No acredita ni solicita una transferencia real."
+                      : "No acredita el ingreso. Comprueba la cuenta Global66 antes de confirmar."}
+                  </p>
                 </div>
               )}
               <ConfirmPaymentButton
@@ -207,6 +216,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                 orderNumber={order.orderNumber}
                 paymentMethod={order.paymentMethod}
                 paymentStatus={order.paymentStatus}
+                simulation={simulation}
               />
             </div>
           </div>
