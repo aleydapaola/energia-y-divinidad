@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { BookingCalendar } from "@/components/booking/booking-calendar";
+import { SessionPolicy } from "@/components/booking/SessionPolicy";
 import { calendarDateKey } from "@/lib/booking-time";
 
 import type { Holiday, BlockedDateRange, Timezone } from "@/lib/sanity/queries/bookingSettings";
@@ -325,10 +326,9 @@ export function SesionesPageClient({
                       />
                     </svg>
                   </summary>
-                  <p className="mt-4 font-dm-sans text-gray-600 leading-relaxed">
-                    Puedes cancelar o reprogramar con al menos 24 horas de anticipacion sin ningun
-                    cargo. Cambios con menos de 24 horas estan sujetos a disponibilidad.
-                  </p>
+                  <div className="mt-4 leading-relaxed">
+                    <SessionPolicy />
+                  </div>
                 </details>
 
                 <details className="bg-white rounded-xl shadow-md p-6 group">

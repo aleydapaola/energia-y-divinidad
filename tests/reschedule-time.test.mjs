@@ -4,6 +4,7 @@ import { createRequire, Module } from "node:module";
 import { test } from "node:test";
 
 import * as bookingTime from "../lib/booking-time.ts";
+import * as sessionPolicy from "../lib/session-policy.ts";
 
 const require = createRequire(import.meta.url);
 const React = require("react");
@@ -12,7 +13,18 @@ const ts = require("typescript");
 function load(path, dependencies = {}) {
   const filename = new URL("../" + path, import.meta.url).pathname;
   const mod = new Module(filename);
-  mod.require = (name) => (Object.hasOwn(dependencies, name) ? dependencies[name] : require(name));
+  mod.require = (name) => {
+    if (Object.hasOwn(dependencies, name)) {
+      return dependencies[name];
+    }
+    if (name === "@/lib/session-policy") {
+      return sessionPolicy;
+    }
+    if (name === "@/components/booking/SessionPolicy") {
+      return load("components/booking/SessionPolicy.tsx");
+    }
+    return require(name);
+  };
   mod._compile(
     ts.transpileModule(readFileSync(filename, "utf8"), {
       compilerOptions: {
@@ -113,6 +125,151 @@ test("earliest reschedule day follows Colombia at UTC midnight and year boundari
   assert.equal(bookingTime.nextBookingDateKey(new Date("2027-01-01T05:00:00Z")), "2027-01-02");
   assert.equal(bookingTime.nextBookingDateKey(new Date("2028-03-01T02:00:00Z")), "2028-03-01");
 });
+
+test("card and API require both fewer than two changes and at least 24 hours, including the boundary", async () => {
+  const originalNow = Date.now;
+  const now = new Date("2099-10-25T15:00:00Z").getTime();
+  Date.now = () => now;
+  try {
+    for (const scenario of [
+      { hours: 24, count: 1, status: "CONFIRMED", allowed: true },
+      { hours: 24 - 1 / 3600, count: 0, status: "CONFIRMED", allowed: false },
+      { hours: 48, count: 2, status: "CONFIRMED", allowed: false },
+      { hours: 48, count: 0, status: "NO_SHOW", allowed: false },
+    ]) {
+      let writes = 0,
+        calendarCalls = 0,
+        emails = 0;
+      const candidate = {
+        ...booking,
+        userId: "test-user",
+        user: { email: "test@example.com", name: "Test" },
+        status: scenario.status,
+        scheduledAt: new Date(now + scenario.hours * 3600000),
+        rescheduleCount: scenario.count,
+      };
+      const { BookingCard } = load("app/mi-cuenta/sesiones/BookingCard.tsx", {
+        "@/lib/booking-time": bookingTime,
+      });
+      const html = renderToStaticMarkup(
+        React.createElement(BookingCard, {
+          booking: candidate,
+          onUpdate() {},
+        })
+      );
+      assert.equal(/>Reprogramar<\/button>/.test(html), scenario.allowed, JSON.stringify(scenario));
+      assert.match(html, /Ambas condiciones deben cumplirse/);
+      assert.match(html, /a elección del cliente/);
+      const { PATCH } = load("app/api/bookings/[id]/reschedule/route.ts", {
+        "@/lib/auth": { auth: async () => ({ user: { id: "test-user" } }) },
+        "@/lib/prisma": {
+          prisma: {
+            user: { findUnique: async () => ({ id: "test-user", role: "USER" }) },
+            booking: {
+              findUnique: async () => candidate,
+              update: async ({ data }) => {
+                writes++;
+                return { ...candidate, ...data };
+              },
+            },
+          },
+        },
+        "@/lib/google-calendar": {
+          syncBookingToGoogleCalendar: async () => {
+            calendarCalls++;
+          },
+        },
+        "@/lib/email": {
+          sendRescheduleEmail: async () => {
+            emails++;
+          },
+        },
+      });
+      const response = await PATCH(
+        { json: async () => ({ newDate: "2099-11-01T15:00:00Z" }) },
+        {
+          params: Promise.resolve({ id: candidate.id }),
+        }
+      );
+      assert.equal(response.status, scenario.allowed ? 200 : 400);
+      assert.deepEqual([writes, calendarCalls, emails], scenario.allowed ? [1, 1, 1] : [0, 0, 0]);
+    }
+  } finally {
+    Date.now = originalNow;
+  }
+});
+
+test("individual cancellation email states refund rights without claiming money was returned", async () => {
+  const messages = [];
+  const { sendCancellationEmail } = load("lib/email.ts", {
+    "@/lib/email-delivery": {
+      deliverEmail: async (data) => {
+        messages.push(data);
+        return { data: { id: "test" }, error: null };
+      },
+    },
+    "@/lib/prisma": { prisma: {} },
+  });
+  for (const isIndividualSession of [true, false]) {
+    await sendCancellationEmail({
+      email: "test@example.com",
+      name: "Test",
+      sessionName: "Test",
+      scheduledDate: new Date("2026-10-26T15:00:00Z"),
+      cancelledBy: "admin",
+      isIndividualSession,
+    });
+  }
+  assert.match(messages[0].html, /Reembolso íntegro o cambio de fecha, a elección del cliente/);
+  assert.match(messages[0].html, /Cancelar la reserva no ejecuta la devolución del dinero/);
+  assert.match(messages[0].html, /Sin reembolso automático/);
+  assert.match(messages[0].html, /10:00/);
+  assert.match(messages[0].html, /hora de Colombia/);
+  assert.doesNotMatch(messages[1].html, /Reembolso íntegro/);
+});
+
+test("paid-session and credit-booking emails include the policy without changing other purchase types", async () => {
+  const messages = [];
+  const email = load("lib/email.ts", {
+    "@/lib/email-delivery": {
+      deliverEmail: async (data) => {
+        messages.push(data);
+        return { data: { id: "test" }, error: null };
+      },
+    },
+    "@/lib/prisma": { prisma: {} },
+  });
+  for (const orderType of ["SESSION", "EVENT", "COURSE", "PRODUCT", "MEMBERSHIP"]) {
+    await email.sendPaymentConfirmationEmail({
+      email: "test@example.com",
+      name: "Test",
+      orderNumber: "TEST-ONLY",
+      orderType,
+      itemName: "Test",
+      amount: 100,
+      currency: "USD",
+      paymentMethod: "PAYPAL_DIRECT",
+    });
+    const message = messages.at(-1);
+    assert.equal(message.html.includes("Reembolso íntegro"), orderType === "SESSION");
+    assert.equal(
+      message.html.includes("Ambas condiciones deben cumplirse"),
+      orderType === "SESSION"
+    );
+  }
+  await email.sendBookingConfirmationEmail({
+    email: "test@example.com",
+    name: "Test",
+    sessionName: "Test",
+    scheduledAt: new Date("2026-10-26T15:00:00Z"),
+    duration: 90,
+    deliveryMethod: "online",
+    bookingId: "test",
+    paidWithCredit: true,
+  });
+  assert.match(messages.at(-1).html, /Reembolso íntegro/);
+  assert.match(messages.at(-1).html, /un máximo de 2 veces/);
+});
 test("reschedule email uses Colombia time even when the server runs in UTC", async () => {
   const saved = process.env.TZ;
   process.env.TZ = "UTC";
@@ -138,6 +295,7 @@ test("reschedule email uses Colombia time even when the server runs in UTC", asy
     assert.match(message.html, /26 de octubre de 2026/);
     assert.match(message.html, /10:00/);
     assert.match(message.html, /hora de Colombia/);
+    assert.match(message.html, /Ambas condiciones deben cumplirse/);
   } finally {
     if (saved === undefined) {
       delete process.env.TZ;

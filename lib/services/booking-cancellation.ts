@@ -258,6 +258,7 @@ export async function cancelBooking(options: CancellationOptions): Promise<Cance
           reason: reason,
           packSessionReturned: refunded.packSessions || false,
           creditRefunded: refunded.credits || false,
+          isIndividualSession: booking.bookingType === "SESSION_1_ON_1",
         });
         console.log(`[CANCELLATION] Email enviado a ${booking.user.email}`);
       } catch (emailError) {

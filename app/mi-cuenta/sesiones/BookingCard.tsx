@@ -3,7 +3,9 @@
 import { Calendar, Clock, Video, AlertCircle, RefreshCw, X, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { SessionPolicy } from "@/components/booking/SessionPolicy";
 import { BOOKING_TIME_ZONE, colombiaBookingInstant, nextBookingDateKey } from "@/lib/booking-time";
+import { SESSION_REFUND_CONTACT } from "@/lib/session-policy";
 
 interface BookingData {
   id: string;
@@ -288,20 +290,9 @@ export function BookingCard({ booking, onUpdate }: BookingCardProps) {
           </div>
         </div>
 
-        {/* Warning if approaching 24h limit */}
-        {booking.scheduledAt &&
-          (() => {
-            const hoursUntil =
-              (new Date(booking.scheduledAt).getTime() - Date.now()) / (1000 * 60 * 60);
-            if (hoursUntil > 24 && hoursUntil <= 48) {
-              return (
-                <p className="mt-3 text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg font-dm-sans">
-                  Tienes hasta 24h antes de la sesión para reprogramar o cancelar sin costo.
-                </p>
-              );
-            }
-            return null;
-          })()}
+        <div className="mt-4 border-t border-[#8A4BAF]/20 pt-4">
+          <SessionPolicy />
+        </div>
       </div>
 
       {/* Reschedule Modal */}
@@ -410,6 +401,13 @@ export function BookingCard({ booking, onUpdate }: BookingCardProps) {
 
             <p className="text-sm text-gray-600 mb-4 font-dm-sans">
               ¿Estás segura de que deseas cancelar esta sesión? Esta acción no se puede deshacer.
+            </p>
+            <p className="text-sm text-gray-600 mb-4 font-dm-sans">
+              Con al menos 24 horas de anticipación, tienes derecho a un reembolso íntegro o a
+              cambiar la fecha. {SESSION_REFUND_CONTACT}{" "}
+              <a href="/contacto" className="text-[#8A4BAF] underline">
+                Contactar con Aleyda
+              </a>
             </p>
 
             {error && (

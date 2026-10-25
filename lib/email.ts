@@ -2,6 +2,15 @@ import { Prisma } from "@prisma/client";
 
 import { deliverEmail } from "@/lib/email-delivery";
 import { prisma } from "@/lib/prisma";
+import {
+  INDIVIDUAL_SESSION_POLICY,
+  SESSION_REFUND_CONTACT,
+  SESSION_RESCHEDULE_POLICY,
+} from "@/lib/session-policy";
+
+const SESSION_POLICY_HTML = INDIVIDUAL_SESSION_POLICY.map(
+  ({ label, text }) => `<strong>${label}:</strong> ${text}`
+).join("<br>");
 
 const FROM_EMAIL = process.env.EMAIL_FROM || "Energía y Divinidad <noreply@energiaydivinidad.com>";
 const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contacto@energiaydivinidad.com";
@@ -1436,6 +1445,10 @@ export async function sendRescheduleEmail(params: SendRescheduleEmailParams) {
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
                           <tr>
                             <td align="center" style="padding: 30px 0;">
+                              <p style="font-size: 14px; color: #666666; line-height: 1.6;">
+                                ${SESSION_POLICY_HTML}<br><br>${SESSION_RESCHEDULE_POLICY}<br>
+                                <a href="${APP_URL}/contacto">Contactar con Aleyda para reembolsos o excepciones</a>
+                              </p>
                               <a href="${APP_URL}/mi-cuenta/sesiones" style="display: inline-block; padding: 16px 40px; background-color: #4944a4; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
                                 Ver mis sesiones
                               </a>
@@ -2091,7 +2104,9 @@ export async function sendBookingConfirmationEmail(params: SendBookingConfirmati
                     <tr>
                       <td style="padding: 30px 0; text-align: center;">
                         <p style="margin: 0 0 10px; font-size: 12px; color: #999999;">
-                          Si necesitas reprogramar o cancelar tu sesión, hazlo con al menos 24 horas de anticipación.
+                          ${SESSION_POLICY_HTML}<br><br>
+                          ${SESSION_RESCHEDULE_POLICY}<br>
+                          <a href="${APP_URL}/contacto">Contactar con Aleyda para reembolsos o excepciones</a>
                         </p>
                         <p style="margin: 0; font-size: 12px; color: #999999;">
                           ${new Date().getFullYear()} Energía y Divinidad. Todos los derechos reservados.
@@ -2452,6 +2467,15 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
                           <tr>
                             <td align="center" style="padding: 20px 0;">
+                              ${
+                                orderType === "SESSION"
+                                  ? `
+                              <p style="font-size: 14px; color: #666666; line-height: 1.6;">
+                                ${SESSION_POLICY_HTML}<br><br>${SESSION_RESCHEDULE_POLICY}<br>
+                                <a href="${APP_URL}/contacto">Contactar con Aleyda para reembolsos o excepciones</a>
+                              </p>`
+                                  : ""
+                              }
                               <a href="${ctaLink}" style="display: inline-block; padding: 16px 40px; background-color: #4944a4; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
                                 ${ctaText}
                               </a>
@@ -2537,6 +2561,7 @@ interface SendCancellationEmailParams {
   reason?: string;
   packSessionReturned?: boolean;
   creditRefunded?: boolean;
+  isIndividualSession?: boolean;
 }
 
 export async function sendCancellationEmail(params: SendCancellationEmailParams) {
@@ -2549,17 +2574,19 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
     reason,
     packSessionReturned,
     creditRefunded,
+    isIndividualSession = false,
   } = params;
 
   const formattedDate = scheduledDate
     ? scheduledDate.toLocaleDateString("es-CO", {
+        timeZone: "America/Bogota",
         weekday: "long",
         day: "numeric",
         month: "long",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-      })
+      }) + " (hora de Colombia)"
     : "No programada";
 
   const cancelledByText =
@@ -2639,6 +2666,17 @@ export async function sendCancellationEmail(params: SendCancellationEmailParams)
                         <p style="margin: 0 0 20px; font-size: 16px; color: #666666; line-height: 1.6;">
                           ${cancelledByText}
                         </p>
+
+                        ${
+                          isIndividualSession
+                            ? `
+                        <p style="font-size: 14px; color: #666666; line-height: 1.6;">
+                          ${SESSION_POLICY_HTML}<br><br>
+                          ${SESSION_REFUND_CONTACT}
+                          <a href="${APP_URL}/contacto">Contactar con Aleyda</a>
+                        </p>`
+                            : ""
+                        }
 
                         <!-- Session Details -->
                         <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #fef2f2; border-radius: 12px; margin-bottom: 20px;">

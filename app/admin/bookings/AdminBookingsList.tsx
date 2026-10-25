@@ -1,7 +1,6 @@
-'use client'
+"use client";
 
 import {
-  Calendar,
   Clock,
   User,
   Mail,
@@ -10,274 +9,279 @@ import {
   Check,
   AlertCircle,
   Search,
-  Filter,
   Loader2,
   ChevronDown,
   ChevronUp,
-} from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 interface BookingData {
-  id: string
-  userId: string
-  userName: string | null
-  userEmail: string
-  resourceName: string
-  bookingType: string
-  status: string
-  scheduledAt: string | null
-  duration: number | null
-  paymentStatus: string | null
-  paymentMethod: string | null
-  amount: number | null
-  currency: string | null
-  rescheduleCount: number
-  cancellationReason: string | null
-  adminNotes: string | null
-  createdAt: string
+  id: string;
+  userId: string;
+  userName: string | null;
+  userEmail: string;
+  resourceName: string;
+  bookingType: string;
+  status: string;
+  scheduledAt: string | null;
+  duration: number | null;
+  paymentStatus: string | null;
+  paymentMethod: string | null;
+  amount: number | null;
+  currency: string | null;
+  rescheduleCount: number;
+  cancellationReason: string | null;
+  adminNotes: string | null;
+  createdAt: string;
 }
 
 interface AdminBookingsListProps {
-  initialBookings: BookingData[]
+  initialBookings: BookingData[];
 }
 
-type StatusFilter = 'ALL' | 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
-type TimeFilter = 'ALL' | 'UPCOMING' | 'PAST' | 'TODAY'
+type StatusFilter = "ALL" | "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+type TimeFilter = "ALL" | "UPCOMING" | "PAST" | "TODAY";
 
 export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
-  const router = useRouter()
-  const [bookings, setBookings] = useState(initialBookings)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('UPCOMING')
-  const [expandedBooking, setExpandedBooking] = useState<string | null>(null)
+  const router = useRouter();
+  const [bookings] = useState(initialBookings);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>("UPCOMING");
+  const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
 
   // Modal states
-  const [showRescheduleModal, setShowRescheduleModal] = useState(false)
-  const [showCancelModal, setShowCancelModal] = useState(false)
-  const [showStatusModal, setShowStatusModal] = useState(false)
-  const [selectedBooking, setSelectedBooking] = useState<BookingData | null>(null)
-  const [newDate, setNewDate] = useState('')
-  const [newTime, setNewTime] = useState('')
-  const [reason, setReason] = useState('')
-  const [newStatus, setNewStatus] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<BookingData | null>(null);
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("");
+  const [reason, setReason] = useState("");
+  const [newStatus, setNewStatus] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Filter bookings
   const filteredBookings = bookings.filter((booking) => {
     // Search filter
     const searchMatch =
-      searchTerm === '' ||
+      searchTerm === "" ||
       booking.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.resourceName.toLowerCase().includes(searchTerm.toLowerCase())
+      booking.resourceName.toLowerCase().includes(searchTerm.toLowerCase());
 
     // Status filter
-    const statusMatch = statusFilter === 'ALL' || booking.status === statusFilter
+    const statusMatch = statusFilter === "ALL" || booking.status === statusFilter;
 
     // Time filter
-    let timeMatch = true
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    let timeMatch = true;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
     if (booking.scheduledAt) {
-      const scheduledDate = new Date(booking.scheduledAt)
-      if (timeFilter === 'UPCOMING') {
-        timeMatch = scheduledDate >= now && booking.status !== 'CANCELLED'
-      } else if (timeFilter === 'PAST') {
-        timeMatch = scheduledDate < now
-      } else if (timeFilter === 'TODAY') {
-        timeMatch = scheduledDate >= today && scheduledDate < tomorrow
+      const scheduledDate = new Date(booking.scheduledAt);
+      if (timeFilter === "UPCOMING") {
+        timeMatch = scheduledDate >= now && booking.status !== "CANCELLED";
+      } else if (timeFilter === "PAST") {
+        timeMatch = scheduledDate < now;
+      } else if (timeFilter === "TODAY") {
+        timeMatch = scheduledDate >= today && scheduledDate < tomorrow;
       }
-    } else if (timeFilter !== 'ALL') {
-      timeMatch = false
+    } else if (timeFilter !== "ALL") {
+      timeMatch = false;
     }
 
-    return searchMatch && statusMatch && timeMatch
-  })
+    return searchMatch && statusMatch && timeMatch;
+  });
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-CO', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })
-  }
+    return new Date(dateStr).toLocaleDateString("es-CO", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   const formatTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+    return new Date(dateStr).toLocaleTimeString("es-CO", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      PENDING: 'bg-yellow-100 text-yellow-700',
-      CONFIRMED: 'bg-green-100 text-green-700',
-      COMPLETED: 'bg-blue-100 text-blue-700',
-      CANCELLED: 'bg-red-100 text-red-700',
-      NO_SHOW: 'bg-gray-100 text-gray-700',
-      PENDING_PAYMENT: 'bg-orange-100 text-orange-700',
-    }
+      PENDING: "bg-yellow-100 text-yellow-700",
+      CONFIRMED: "bg-green-100 text-green-700",
+      COMPLETED: "bg-blue-100 text-blue-700",
+      CANCELLED: "bg-red-100 text-red-700",
+      NO_SHOW: "bg-gray-100 text-gray-700",
+      PENDING_PAYMENT: "bg-orange-100 text-orange-700",
+    };
     const labels: Record<string, string> = {
-      PENDING: 'Pendiente',
-      CONFIRMED: 'Confirmada',
-      COMPLETED: 'Completada',
-      CANCELLED: 'Cancelada',
-      NO_SHOW: 'No asistió',
-      PENDING_PAYMENT: 'Pago pendiente',
-    }
+      PENDING: "Pendiente",
+      CONFIRMED: "Confirmada",
+      COMPLETED: "Completada",
+      CANCELLED: "Cancelada",
+      NO_SHOW: "No asistió",
+      PENDING_PAYMENT: "Pago pendiente",
+    };
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-700'}`}>
+      <span
+        className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || "bg-gray-100 text-gray-700"}`}
+      >
         {labels[status] || status}
       </span>
-    )
-  }
+    );
+  };
 
   const openRescheduleModal = (booking: BookingData) => {
-    setSelectedBooking(booking)
-    setShowRescheduleModal(true)
-    setError(null)
-    setNewDate('')
-    setNewTime('')
-    setReason('')
-  }
+    setSelectedBooking(booking);
+    setShowRescheduleModal(true);
+    setError(null);
+    setNewDate("");
+    setNewTime("");
+    setReason("");
+  };
 
   const openCancelModal = (booking: BookingData) => {
-    setSelectedBooking(booking)
-    setShowCancelModal(true)
-    setError(null)
-    setReason('')
-  }
+    setSelectedBooking(booking);
+    setShowCancelModal(true);
+    setError(null);
+    setReason("");
+  };
 
   const openStatusModal = (booking: BookingData) => {
-    setSelectedBooking(booking)
-    setNewStatus(booking.status)
-    setShowStatusModal(true)
-    setError(null)
-  }
+    setSelectedBooking(booking);
+    setNewStatus(booking.status);
+    setShowStatusModal(true);
+    setError(null);
+  };
 
   const handleReschedule = async () => {
     if (!selectedBooking || !newDate || !newTime) {
-      setError('Por favor selecciona fecha y hora')
-      return
+      setError("Por favor selecciona fecha y hora");
+      return;
     }
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
-      const newDateTime = new Date(`${newDate}T${newTime}:00`)
+      const newDateTime = new Date(`${newDate}T${newTime}:00`);
 
       const response = await fetch(`/api/admin/bookings/${selectedBooking.id}/reschedule`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           newDate: newDateTime.toISOString(),
-          reason: reason || 'Reprogramada por Aleyda',
+          reason: reason || "Reprogramada por Aleyda",
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al reprogramar')
+        throw new Error(data.error || "Error al reprogramar");
       }
 
-      setShowRescheduleModal(false)
-      router.refresh()
+      setShowRescheduleModal(false);
+      router.refresh();
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleCancel = async () => {
-    if (!selectedBooking) {return}
+    if (!selectedBooking) {
+      return;
+    }
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const response = await fetch(`/api/admin/bookings/${selectedBooking.id}/cancel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          reason: reason || 'Cancelada por administrador',
+          reason: reason || "Cancelada por administrador",
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al cancelar')
+        throw new Error(data.error || "Error al cancelar");
       }
 
-      setShowCancelModal(false)
-      router.refresh()
+      setShowCancelModal(false);
+      router.refresh();
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleStatusChange = async () => {
-    if (!selectedBooking || !newStatus) {return}
+    if (!selectedBooking || !newStatus) {
+      return;
+    }
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       // Usar endpoint específico según el nuevo estado
-      let endpoint = ''
+      let endpoint = "";
       switch (newStatus) {
-        case 'COMPLETED':
-          endpoint = `/api/admin/bookings/${selectedBooking.id}/complete`
-          break
-        case 'NO_SHOW':
-          endpoint = `/api/admin/bookings/${selectedBooking.id}/no-show`
-          break
-        case 'CANCELLED':
-          endpoint = `/api/admin/bookings/${selectedBooking.id}/cancel`
-          break
+        case "COMPLETED":
+          endpoint = `/api/admin/bookings/${selectedBooking.id}/complete`;
+          break;
+        case "NO_SHOW":
+          endpoint = `/api/admin/bookings/${selectedBooking.id}/no-show`;
+          break;
+        case "CANCELLED":
+          endpoint = `/api/admin/bookings/${selectedBooking.id}/cancel`;
+          break;
         default:
           // Fallback al endpoint genérico de status
-          endpoint = `/api/admin/bookings/${selectedBooking.id}/status`
+          endpoint = `/api/admin/bookings/${selectedBooking.id}/status`;
       }
 
       const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al cambiar estado')
+        throw new Error(data.error || "Error al cambiar estado");
       }
 
-      setShowStatusModal(false)
-      router.refresh()
+      setShowStatusModal(false);
+      router.refresh();
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const getMinDate = () => {
-    const today = new Date()
-    return today.toISOString().split('T')[0]
-  }
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  };
 
   return (
     <>
@@ -336,7 +340,9 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
               <div key={booking.id} className="hover:bg-gray-50">
                 <div
                   className="p-4 cursor-pointer"
-                  onClick={() => setExpandedBooking(expandedBooking === booking.id ? null : booking.id)}
+                  onClick={() =>
+                    setExpandedBooking(expandedBooking === booking.id ? null : booking.id)
+                  }
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -347,9 +353,7 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
                         <p className="font-medium text-[#654177] font-dm-sans">
                           {booking.userName || booking.userEmail}
                         </p>
-                        <p className="text-sm text-gray-500 font-dm-sans">
-                          {booking.resourceName}
-                        </p>
+                        <p className="text-sm text-gray-500 font-dm-sans">{booking.resourceName}</p>
                       </div>
                     </div>
 
@@ -400,29 +404,24 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
                           </p>
                         )}
                         {booking.adminNotes && (
-                          <p className="text-gray-600">
-                            Notas: {booking.adminNotes}
-                          </p>
+                          <p className="text-gray-600">Notas: {booking.adminNotes}</p>
                         )}
                       </div>
 
                       <div className="space-y-2 text-sm font-dm-sans">
                         {booking.amount && (
                           <p className="text-gray-600">
-                            Monto: {booking.currency === 'COP'
-                              ? `$${booking.amount.toLocaleString('es-CO')} COP`
+                            Monto:{" "}
+                            {booking.currency === "COP"
+                              ? `$${booking.amount.toLocaleString("es-CO")} COP`
                               : `$${booking.amount} USD`}
                           </p>
                         )}
                         {booking.paymentMethod && (
-                          <p className="text-gray-600">
-                            Método: {booking.paymentMethod}
-                          </p>
+                          <p className="text-gray-600">Método: {booking.paymentMethod}</p>
                         )}
                         {booking.paymentStatus && (
-                          <p className="text-gray-600">
-                            Pago: {booking.paymentStatus}
-                          </p>
+                          <p className="text-gray-600">Pago: {booking.paymentStatus}</p>
                         )}
                         <p className="text-gray-400 text-xs">
                           Creada: {formatDate(booking.createdAt)}
@@ -434,8 +433,8 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
                     <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200">
                       <button
                         onClick={(e) => {
-                          e.stopPropagation()
-                          openStatusModal(booking)
+                          e.stopPropagation();
+                          openStatusModal(booking);
                         }}
                         className="flex items-center gap-1 px-3 py-2 bg-[#4944a4] text-white rounded-lg text-sm hover:bg-[#3d3a8a] transition-colors"
                       >
@@ -443,12 +442,12 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
                         Cambiar Estado
                       </button>
 
-                      {['CONFIRMED', 'PENDING'].includes(booking.status) && (
+                      {["CONFIRMED", "PENDING"].includes(booking.status) && (
                         <>
                           <button
                             onClick={(e) => {
-                              e.stopPropagation()
-                              openRescheduleModal(booking)
+                              e.stopPropagation();
+                              openRescheduleModal(booking);
                             }}
                             className="flex items-center gap-1 px-3 py-2 border border-[#8A4BAF] text-[#8A4BAF] rounded-lg text-sm hover:bg-[#8A4BAF] hover:text-white transition-colors"
                           >
@@ -458,8 +457,8 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
 
                           <button
                             onClick={(e) => {
-                              e.stopPropagation()
-                              openCancelModal(booking)
+                              e.stopPropagation();
+                              openCancelModal(booking);
                             }}
                             className="flex items-center gap-1 px-3 py-2 border border-red-300 text-red-600 rounded-lg text-sm hover:bg-red-50 transition-colors"
                           >
@@ -488,9 +487,7 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
       {showRescheduleModal && selectedBooking && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <h3 className="font-gazeta text-xl text-[#654177] mb-4">
-              Reprogramar Sesión
-            </h3>
+            <h3 className="font-gazeta text-xl text-[#654177] mb-4">Reprogramar Sesión</h3>
 
             <div className="bg-[#f8f0f5] p-3 rounded-lg mb-4">
               <p className="font-medium text-[#654177] text-sm">
@@ -500,16 +497,12 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
             </div>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-                {error}
-              </div>
+              <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">{error}</div>
             )}
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nueva fecha
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nueva fecha</label>
                 <input
                   type="date"
                   value={newDate}
@@ -520,9 +513,7 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nueva hora
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nueva hora</label>
                 <input
                   type="time"
                   value={newTime}
@@ -564,7 +555,7 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
                     Reprogramando...
                   </>
                 ) : (
-                  'Confirmar'
+                  "Confirmar"
                 )}
               </button>
             </div>
@@ -576,9 +567,15 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
       {showCancelModal && selectedBooking && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <h3 className="font-gazeta text-xl text-red-600 mb-4">
-              Cancelar Sesión
-            </h3>
+            <h3 className="font-gazeta text-xl text-red-600 mb-4">Cancelar Sesión</h3>
+
+            {selectedBooking.bookingType === "SESSION_1_ON_1" && (
+              <p className="text-sm text-gray-600 mb-4">
+                Si Aleyda cancela, el cliente elige entre reembolso íntegro o cambio de fecha.
+                Confirma su elección antes de cancelar. Cancelar la reserva no devuelve el dinero:
+                tramita el reembolso por el medio de pago original y registra su referencia.
+              </p>
+            )}
 
             <div className="bg-red-50 p-3 rounded-lg mb-4">
               <p className="font-medium text-red-700 text-sm">
@@ -587,15 +584,14 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
               <p className="text-xs text-red-600">{selectedBooking.resourceName}</p>
               {selectedBooking.scheduledAt && (
                 <p className="text-xs text-red-600">
-                  {formatDate(selectedBooking.scheduledAt)} - {formatTime(selectedBooking.scheduledAt)}
+                  {formatDate(selectedBooking.scheduledAt)} -{" "}
+                  {formatTime(selectedBooking.scheduledAt)}
                 </p>
               )}
             </div>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-                {error}
-              </div>
+              <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">{error}</div>
             )}
 
             <div>
@@ -630,7 +626,7 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
                     Cancelando...
                   </>
                 ) : (
-                  'Sí, Cancelar'
+                  "Sí, Cancelar"
                 )}
               </button>
             </div>
@@ -642,9 +638,7 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
       {showStatusModal && selectedBooking && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <h3 className="font-gazeta text-xl text-[#654177] mb-4">
-              Cambiar Estado
-            </h3>
+            <h3 className="font-gazeta text-xl text-[#654177] mb-4">Cambiar Estado</h3>
 
             <div className="bg-[#f8f0f5] p-3 rounded-lg mb-4">
               <p className="font-medium text-[#654177] text-sm">
@@ -654,15 +648,11 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
             </div>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-                {error}
-              </div>
+              <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">{error}</div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nuevo estado
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nuevo estado</label>
               <select
                 value={newStatus}
                 onChange={(e) => setNewStatus(e.target.value)}
@@ -695,7 +685,7 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
                     Guardando...
                   </>
                 ) : (
-                  'Guardar'
+                  "Guardar"
                 )}
               </button>
             </div>
@@ -703,5 +693,5 @@ export function AdminBookingsList({ initialBookings }: AdminBookingsListProps) {
         </div>
       )}
     </>
-  )
+  );
 }
