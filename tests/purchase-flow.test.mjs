@@ -54,8 +54,74 @@ function catalog(doc = base) {
   const query = { fetch: async () => doc };
   return load("lib/checkout/catalog-quote.ts", {
     "@/sanity/lib/client": { client: { withConfig: () => query } },
+    "@/sanity/lib/projections": load("sanity/lib/projections.ts"),
   });
 }
+test("checkout evaluates the same CMS price projection as catalog pages, including legacy fallback", async () => {
+  const { parse, evaluate } = require("groq-js");
+  for (const kind of ["course", "event", "product", "session"]) {
+    for (const nested of [true, false]) {
+      const doc = {
+        ...base,
+        _type: kind === "session" ? "sessionConfig" : kind,
+        status: "active",
+        published: true,
+        eventDate: "2099-01-01T15:00:00Z",
+        price: 80000,
+        priceUSD: 20,
+        ...(nested ? { pricing: { price: 120000, priceUSD: 30 } } : {}),
+      };
+      const quote = load("lib/checkout/catalog-quote.ts", {
+        "@/sanity/lib/projections": load("sanity/lib/projections.ts"),
+        "@/sanity/lib/client": {
+          client: {
+            withConfig: () => ({
+              fetch: async (query, params) =>
+                (await evaluate(parse(query), { dataset: [doc], params })).get(),
+            }),
+          },
+        },
+      });
+      for (const currency of ["COP", "USD"]) {
+        const result = await quote.quoteCatalogItem({
+          productType: kind,
+          productId: doc._id,
+          currency,
+        });
+        assert.equal(
+          result.amount,
+          currency === "COP" ? (nested ? 120000 : 80000) : nested ? 30 : 20
+        );
+      }
+    }
+  }
+});
+
+test("a CMS item marked free cannot be charged its obsolete legacy price", async () => {
+  const { parse, evaluate } = require("groq-js");
+  const doc = {
+    ...base,
+    _type: "course",
+    published: true,
+    status: "active",
+    pricing: { isFree: true },
+  };
+  const quote = load("lib/checkout/catalog-quote.ts", {
+    "@/sanity/lib/projections": load("sanity/lib/projections.ts"),
+    "@/sanity/lib/client": {
+      client: {
+        withConfig: () => ({
+          fetch: async (query, params) =>
+            (await evaluate(parse(query), { dataset: [doc], params })).get(),
+        }),
+      },
+    },
+  });
+  await assert.rejects(
+    quote.quoteCatalogItem({ productType: "course", productId: doc._id, currency: "COP" }),
+    /Precio en COP no configurado/
+  );
+});
 test("server quotes all digital formats from existing catalog, ignores browser pricing, rejects physical/private/unavailable products", async () => {
   for (const kind of ["digital", "ebook", "audio", "course"]) {
     const q = await catalog({ ...base, productType: kind }).quoteCatalogItem({

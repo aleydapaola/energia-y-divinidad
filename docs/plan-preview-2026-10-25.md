@@ -2,16 +2,18 @@
 
 Autorizado por Xavier: preparar el plan y ponerlo en marcha. Trabajar en `preview` y conservar los cambios locales de la política de sesiones. Production requiere aprobar una versión concreta después de revisar Preview.
 
+Las prioridades de la ejecución más reciente y sus dependencias están en [el plan vigente de trabajo pendiente](pla-pendent-preview.md). El registro de este documento conserva las verificaciones y el historial anteriores.
+
 El detalle de los ocho recorridos de compra y sus comprobaciones está en [la matriz de pruebas remotas](matriz-pruebas-preview.md).
 
 | Orden | Trabajo | Criterio de cierre | Estado |
 | --- | --- | --- | --- |
-| 0 | URL de revisión estable | preview.energiaydivinidad.com vinculado a preview; HTTPS, navegación, acceso y noindex comprobados; dominio real preservado | Subdominio verificado y vinculado; DNS y HTTPS correctos; URLs de la rama actualizadas; desplegar y comprobar noindex y navegación |
+| 0 | URL de revisión estable | preview.energiaydivinidad.com vinculado a preview; HTTPS, navegación, acceso y noindex comprobados; dominio real preservado | Completado en fbf14c07 Ready: subdominio, URLs, redirecciones, HTTPS y noindex verificados; Studio conserva la URL técnica pendiente de aprobar CORS |
 | 1 | Recuperar Neon Preview y el despliegue | Proyecto y rama aislada verificados; consulta de lectura correcta; build Ready; Mis Sesiones accesible | Completado: conexiones recuperadas, Mis Sesiones accesible y política desplegada Ready |
-| 2 | Política de sesiones y páginas legales | Máximo 2 cambios con ≥24 h; cuatro supuestos confirmados; devolución manual clara; cuatro páginas legales accesibles y revisadas | Política y primera fecha Ready; términos identifican a la titular por cédula; borradores de privacidad, cookies y aviso preparados; completar NIT, dirección y revisión final |
+| 2 | Política de sesiones y páginas legales | Máximo 2 cambios con ≥24 h; cuatro supuestos confirmados; devolución manual clara; cuatro páginas legales accesibles y revisadas | Política y primera fecha Ready; cuatro borradores legales HTTP 200 en el subdominio; identidad compartida; completar NIT, dirección, autorizaciones, plazos y revisión final |
 | 3 | Compras y entrega | Sesiones, cursos, eventos y productos digitales probados con PayPal sandbox y Bre-B simulado; entrega única; correos y calendario comprobados | Bre-B pendiente y PayPal sandbox inicial probados para producto ficticio; completar confirmación y entrega, sesiones, cursos y eventos |
 | 4 | Newsletter aislada | Cuenta y audiencia de pruebas verificadas; alta de prueba sin tocar contactos reales | Falta iniciar sesión en la cuenta separada y configurar clave/audiencia de pruebas |
-| 5 | Revisión editorial y de regresión | Enlaces, contenido, horarios, cuenta y panel comprobados; material de pruebas identificado | Primera revisión HTTP: 12 páginas públicas correctas, 3 legales 404 y cuenta/panel redirigen al acceso; corregir los 404 y verificar tras despliegue; falta revisión visual completa |
+| 5 | Revisión editorial y de regresión | Enlaces, contenido, horarios, cuenta y panel comprobados; material de pruebas identificado | Segunda revisión: 15 páginas públicas HTTP 200, cuenta/panel redirigen dentro de Preview; noindex y rechazos de API correctos; privacidad revisada en navegador; falta revisión visual completa y recorridos con sesión |
 | 6 | Preparación de Production | Clave y destinatario Global66 confirmados por Aleyda; commit y contenido revisados; referencia de reversión; aprobación explícita | Pendiente de validación y aprobación; no publicar |
 
 ## Límites de ejecución
@@ -64,3 +66,12 @@ El detalle de los ocho recorridos de compra y sus comprobaciones está en [la ma
 - NEXT_PUBLIC_APP_URL: modificada solo la excepción existente para preview. NEXTAUTH_URL: nueva excepción para esa misma rama, conservando el valor global y los ámbitos originales. Ambas apuntan a https://preview.energiaydivinidad.com. El webhook sandbox existente se mantiene en su dirección autorizada anterior.
 - La primera revisión HTTP de 17 rutas encuentra 12 públicas con HTTP 200 y aviso de pruebas, 3 legales con 404 y 2 privadas con redirección de acceso. No aparecen enlaces href al dominio real en esas respuestas. Son comprobaciones de respuesta y enlaces, no una validación visual completa ni de compras.
 - La instrucción X-Robots-Tag noindex,nofollow se prepara explícitamente en Next solo para VERCEL_ENV=preview, porque Vercel no la garantiza en dominios personalizados de ramas. Prueba de configuración verifica que Production y desarrollo no reciben este cambio.
+
+## Resultado de esta ejecución
+
+- fbf14c071bcaf2bf6c989c7f87e45b60168fb8fb Ready en dpl_py7JkX62kGZwQ44PaSxdf1Vk2SDH. Vercel confirma proyecto prj_unjgBqGNUdLMP4TtRdvBMqKgxmcV, repositorio aleydapaola/energia-y-divinidad, ref preview, target Preview y alias preview.energiaydivinidad.com apuntando a ese mismo commit. La URL técnica permanece como segundo alias.
+- 88 pruebas automáticas, tipos y hooks de lint/formato correctos. En el subdominio: 15 rutas públicas devuelven 200; cuenta y ADMIN devuelven 307 al acceso dentro del mismo dominio; los proveedores de autenticación usan el subdominio. No hay href al dominio real en las respuestas revisadas. Home y rutas privadas llevan noindex,nofollow.
+- Las tres rutas legales que daban 404 ahora muestran sus borradores. Se revisa privacidad en el navegador: contenido y aviso de pruebas legibles y enlaces dentro del subdominio. No equivale a revisar todos los tamaños de pantalla o flujos autenticados.
+- API remota: precio alterado rechazado con 400 tanto en PayPal como Bre-B; confirmación ADMIN sin sesión rechazada con 401. No se ha realizado captura, transferencia, devolución ni confirmación de pago en esta ejecución. Las ocho entregas de la matriz siguen pendientes de sus pruebas completas.
+- Revisión automática rechaza añadir CORS con credenciales al nuevo origen de Sanity por requerir autorización específica. No se ejecuta. El editor de pruebas conserva la URL técnica anterior ya autorizada; la web del subdominio funciona. Pendiente de aprobación concreta para habilitar /studio desde el subdominio.
+- Próximas dependencias: sesiones de comprador PayPal sandbox, ADMIN de pruebas y Mailchimp separado; NIT y dirección pública de Aleyda y revisión legal; llave/destinatario reales de Global66 y aprobación concreta de Production. El acceso confirmado a DonDominio no sustituye esas dependencias.

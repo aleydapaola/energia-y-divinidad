@@ -16,6 +16,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (!MAILCHIMP_API_KEY || !MAILCHIMP_LIST_ID || !MAILCHIMP_SERVER_PREFIX) {
+      if (process.env.VERCEL_ENV !== "production") {
+        return NextResponse.json(
+          { error: "La newsletter de pruebas todavía no está disponible." },
+          { status: 503 }
+        );
+      }
       console.error("Mailchimp environment variables not configured");
       return NextResponse.json({ error: "Error de configuración del servidor" }, { status: 500 });
     }

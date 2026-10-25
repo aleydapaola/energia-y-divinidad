@@ -16,7 +16,7 @@ Seguimiento del plan de cierre del 25/10/2026. Las pruebas locales con dependenc
 ## Comprobaciones transversales
 
 - El estado del pedido solo se consulta desde su cuenta propietaria o el navegador que lo creó. Verificado remotamente en bc904182 con el pedido PayPal ficticio: 200 con cookie firmada y 404 sin ella, sin detalles de compra en el rechazo. La cookie se utiliza exclusivamente en el dominio donde se creó el pedido.
-- Los importes y monedas proceden del catálogo del servidor; una modificación del precio enviada por el navegador debe rechazarse antes de crear o confirmar un pago.
+- Los importes y monedas proceden del catálogo del servidor; una modificación del precio enviada por el navegador debe rechazarse antes de crear o confirmar un pago. Verificado remotamente en fbf14c07 desde preview.energiaydivinidad.com: importe alterado rechazado con 400 en PayPal y Bre-B. La confirmación ADMIN sin sesión devuelve 401. Estas pruebas no validan captura ni entrega.
 - Una referencia reportada por el cliente no equivale a un ingreso. La confirmación de Bre-B en Preview es una simulación expresamente identificada, nunca una declaración sobre una transferencia real.
 - Verificar el registro único de entrega y los reintentos. No marcar un correo como Delivered por la mera respuesta satisfactoria de un handler.
 - En sesiones, comprobar disponibilidad y posibles solapamientos al elegir o cambiar horario, el instante en Colombia, la conversión local, la duración y el evento único. Las 2 reprogramaciones de la reserva ficticia anterior se conservan: no reiniciar el contador para facilitar la prueba.

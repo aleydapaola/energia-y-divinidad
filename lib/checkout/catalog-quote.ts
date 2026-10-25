@@ -1,4 +1,5 @@
 import { client } from "@/sanity/lib/client";
+import { pricingProjection } from "@/sanity/lib/projections";
 
 export type PurchaseKind = "session" | "pack" | "event" | "product" | "course";
 export const SESSION_PACK_PRICES = { COP: 1850000, USD: 450 }; // Existing published offer, unchanged.
@@ -26,7 +27,7 @@ export async function quoteCatalogItem(input: {
     maxPerBooking?: number;
     capacity?: number;
     visibility?: string;
-  } | null>(`*[_type == $type && published == true && !(status in ["paused", "sold_out", "discontinued", "coming_soon", "inactive"]) && !(_id in path("drafts.**")) && ($type == "sessionConfig" || _id == $id)][0]{_id,title,price,priceUSD,productType,earlyBirdPrice,earlyBirdDeadline,eventDate,maxPerBooking,capacity,visibility}`, { type, id: productId });
+  } | null>(`*[_type == $type && published == true && !(status in ["paused", "sold_out", "discontinued", "coming_soon", "inactive"]) && !(_id in path("drafts.**")) && ($type == "sessionConfig" || _id == $id)][0]{_id,title,${pricingProjection},productType,earlyBirdPrice,earlyBirdDeadline,eventDate,maxPerBooking,capacity,visibility}`, { type, id: productId });
   if (!doc || doc.visibility === "private") {
     throw new Error("Producto no disponible.");
   }
