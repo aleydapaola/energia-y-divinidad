@@ -583,3 +583,50 @@ test("an occupied session slot is rejected before starting either payment provid
     assert.equal(h.delivered(), 0);
   }
 });
+
+test("digital product pages display the same nested or legacy CMS price that checkout charges", async () => {
+  const { parse, evaluate } = require("groq-js");
+  const { renderToStaticMarkup } = require("react-dom/server");
+  for (const nested of [true, false]) {
+    const doc = {
+      ...base,
+      _type: "product",
+      published: true,
+      status: "active",
+      slug: { current: "test-product" },
+      ...(nested ? { pricing: { price: 120000, priceUSD: 30 } } : {}),
+    };
+    const fetch = async (query, params) =>
+      (await evaluate(parse(query), { dataset: [doc], params })).get();
+    const deps = {
+      "@/sanity/lib/client": { client: { fetch, withConfig: () => ({ fetch }) } },
+      "@/sanity/lib/projections": load("sanity/lib/projections.ts"),
+      "next/navigation": {
+        notFound() {
+          throw new Error("Unexpected missing product");
+        },
+      },
+      "next/link": { default: "a" },
+      "@portabletext/react": { PortableText: "section" },
+      "@/components/layout/Header": { Header: () => null },
+      "@/components/layout/Footer": { Footer: () => null },
+      "@/lib/auth": { auth: async () => null },
+      "./DigitalProductCheckout": { DigitalProductCheckout: () => null },
+    };
+    const quote = await load("lib/checkout/catalog-quote.ts", deps).quoteCatalogItem({
+      productType: "product",
+      productId: doc._id,
+      currency: "USD",
+    });
+    const detail = await load("app/productos/[slug]/page.tsx", deps).default({
+      params: Promise.resolve({ slug: doc.slug.current }),
+    });
+    const form = detail.props.children.props.children.find((n) => n?.props?.product);
+    assert.equal(form.props.product.priceUSD, quote.amount);
+    assert.equal(form.props.product.price, nested ? 120000 : 80000);
+    const listing = await load("app/productos/page.tsx", deps).default();
+    const html = renderToStaticMarkup(listing);
+    assert.match(html, nested ? /120\.000 COP/ : /80\.000 COP/);
+    assert.match(html, nested ? /30.*USD/ : /20.*USD/);
+  }
+});

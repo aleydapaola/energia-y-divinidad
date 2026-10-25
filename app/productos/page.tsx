@@ -4,6 +4,7 @@ import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { auth } from "@/lib/auth";
 import { client } from "@/sanity/lib/client";
+import { pricingProjection } from "@/sanity/lib/projections";
 export const dynamic = "force-dynamic";
 export default async function Products() {
   const products = await client.fetch<
@@ -16,7 +17,7 @@ export default async function Products() {
       priceUSD?: number;
     }[]
   >(
-    `*[_type == "product" && published == true && status == "active" && productType in ["digital","ebook","audio","course"]]{_id,title,slug,shortDescription,price,priceUSD}`
+    `*[_type == "product" && published == true && status == "active" && productType in ["digital","ebook","audio","course"]]{_id,title,slug,shortDescription,${pricingProjection}}`
   );
   return (
     <>

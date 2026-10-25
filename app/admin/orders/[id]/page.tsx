@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { BOOKING_TIME_ZONE } from "@/lib/booking-time";
 import { prisma } from "@/lib/prisma";
 
 import { ConfirmPaymentButton } from "./ConfirmPaymentButton";
@@ -68,6 +69,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("es-CO", {
+      timeZone: BOOKING_TIME_ZONE,
       weekday: "long",
       day: "numeric",
       month: "long",
@@ -177,9 +179,11 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="font-gazeta text-2xl text-[#654177]">Orden #{order.orderNumber}</h1>
+          <h1 className="font-dm-sans font-semibold text-2xl text-[#654177] break-all">
+            Orden #{order.orderNumber}
+          </h1>
           <p className="text-gray-500 font-dm-sans text-sm">
-            Creada el {formatDate(order.createdAt)}
+            Creada el {formatDate(order.createdAt)} (hora de Colombia)
           </p>
         </div>
       </div>

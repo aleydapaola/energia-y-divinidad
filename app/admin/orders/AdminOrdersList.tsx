@@ -15,6 +15,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, Fragment } from "react";
 
+import { BOOKING_TIME_ZONE } from "@/lib/booking-time";
+
 interface OrderData {
   id: string;
   orderNumber: string;
@@ -82,6 +84,7 @@ export function AdminOrdersList({ initialOrders }: AdminOrdersListProps) {
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("es-CO", {
+      timeZone: BOOKING_TIME_ZONE,
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -350,7 +353,7 @@ export function AdminOrdersList({ initialOrders }: AdminOrdersListProps) {
                     <td className="px-4 py-4">{getStatusBadge(order.paymentStatus)}</td>
                     <td className="px-4 py-4">
                       <span className="text-sm text-gray-500 font-dm-sans">
-                        {formatDate(order.createdAt)}
+                        {formatDate(order.createdAt)} (Colombia)
                       </span>
                     </td>
                     <td className="px-4 py-4">

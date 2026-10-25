@@ -3,13 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { client } from "@/sanity/lib/client";
+import { pricingProjection } from "@/sanity/lib/projections";
 
 import { DigitalProductCheckout } from "./DigitalProductCheckout";
 export const dynamic = "force-dynamic";
 export default async function Product({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await client.fetch(
-    `*[_type == "product" && (slug.current == $slug || _id == $slug) && published == true && status == "active" && productType in ["digital","ebook","audio","course"]][0]{_id,title,shortDescription,description,price,priceUSD,whatYouGet}`,
+    `*[_type == "product" && (slug.current == $slug || _id == $slug) && published == true && status == "active" && productType in ["digital","ebook","audio","course"]][0]{_id,title,shortDescription,description,${pricingProjection},whatYouGet}`,
     { slug }
   );
   if (!product) {

@@ -34,3 +34,10 @@ La inspección posterior de Neon Preview confirma que no existe ningún ADMIN, s
 Implementació de franges i comprovació de solapaments compartida al servidor. Prova real de Neon Preview: dues peticions a una franja, una sola reserva assignada; primera data no consumeix canvi; dos canvis simultanis preserven el màxim de dos. Només reserves efímeres pròpies, retirades al final; serveis externs no carregats. Proves automàtiques addicionals: buffers, durades guardades i llegades, canvi de dia Colòmbia, festius i bloquejos, antelació de demà, fora de graella, segons, autorització privada, reactivació ADMIN ocupada, idempotència per ordre i segon pagament amb franja perduda.
 
 La prevalidació de checkout no reté la franja: entrega amb franja perduda pendent de revisió. Resta resoldre-ho abans de Production. Les proves de Neon no acrediten Google Calendar simultani, correu Delivered o les vuit compres completes.
+
+
+### Bre-B remot des del panell ADMIN
+
+Quatre comandes sintètiques completades a d41e1e81, només Preview: producte un entitlement PRODUCT; curs un COURSE; taller una reserva CONFIRMED i un EVENT; sessió una reserva CONFIRMED de 90 minuts el 2/11 a les 10:00 Colòmbia, comptador zero i Google sincronitzat sense error. Una auditoria per comanda. Confirmacions i avisos rebuts amb [PREVIEW] a l’única bústia autoritzada; rebut de sessió amb referència, data i política comprovades, i rebut de producte amb enllaç a Preview. Sense transferències reals.
+
+Pendents: consulta del calendari extern per contrastar inici/final i absència de duplicats; accés a continguts amb sessió del client; captures PayPal amb el comprador Personal CO nou autoritzat per Xavier i creat al tauler d’Aleyda. No reutilitzar el comprador que Xavier identifica com a usat a ASA. La prova de curs PayPal usa un curs sintètic separat per verificar una compra nova. Les comandes PayPal preparades, sense captura, no acrediten entrega.
