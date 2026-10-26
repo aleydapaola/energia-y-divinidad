@@ -243,3 +243,84 @@ test("the checkout page never receives the QR in JSON, only a flag", () => {
   assert.equal(source.includes("global66Qr"), false);
   assert.equal(source.includes("qrCodeUrl"), false);
 });
+
+function renderInstructions(values, props) {
+  const filename = new URL("../components/pago/BrebPaymentInstructions.tsx", import.meta.url)
+    .pathname;
+  let index = 0;
+  const mod = new Module(filename);
+  mod.require = (name) => {
+    if (name === "react") {
+      return { useState: () => [values[index++], () => {}] };
+    }
+    return require(name);
+  };
+  mod._compile(
+    ts.transpileModule(readFileSync(filename, "utf8"), {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2022,
+        jsx: ts.JsxEmit.ReactJSX,
+      },
+    }).outputText,
+    filename
+  );
+  return mod.exports.BrebPaymentInstructions(props);
+}
+
+const baseProps = {
+  orderNumber: "BREB-QA",
+  amount: 80000,
+  currency: "COP",
+  itemName: "Producto de prueba",
+  configuration: {
+    enabled: true,
+    simulation: true,
+    key: "@PRUEBA-NO-REAL",
+    keyType: "alias",
+    recipient: "PRUEBA — NO ENVIAR DINERO",
+    amountMode: "customer-entered",
+  },
+  qrAvailable: true,
+};
+
+test("the payment page shows the QR, the key and the exact amount the customer must type", () => {
+  const { renderToStaticMarkup } = require("react-dom/server");
+  const preview = renderToStaticMarkup(renderInstructions([""], baseProps));
+  assert.ok(preview.includes("SIMULACIÓN — NO ENVÍES DINERO"));
+  assert.ok(preview.includes("/api/orders/BREB-QA/breb-qr"), "QR served from its own route");
+  assert.ok(preview.includes("@PRUEBA-NO-REAL"), "fake preview key");
+  assert.ok(preview.includes("Escribe el importe exacto"));
+  assert.ok(preview.includes("80.000 COP"));
+  assert.ok(preview.includes("llave Bre-B alfanumérica"), "alias wording");
+
+  const live = renderToStaticMarkup(
+    renderInstructions([""], {
+      ...baseProps,
+      configuration: {
+        ...baseProps.configuration,
+        simulation: false,
+        key: "@CLIENTE123",
+        recipient: "Aleyda Paola Vargas Galvis",
+      },
+    })
+  );
+  assert.equal(live.includes("SIMULACIÓN"), false);
+  assert.ok(live.includes("Aleyda Paola Vargas Galvis"));
+  assert.ok(live.includes("@CLIENTE123"));
+
+  const withoutQr = renderToStaticMarkup(
+    renderInstructions([""], { ...baseProps, qrAvailable: false })
+  );
+  assert.equal(withoutQr.includes("/breb-qr"), false);
+  assert.ok(withoutQr.includes("Transfiere con la llave Bre-B"));
+
+  const disabled = renderToStaticMarkup(
+    renderInstructions([""], {
+      ...baseProps,
+      configuration: { ...baseProps.configuration, enabled: false },
+    })
+  );
+  assert.ok(disabled.includes("Bre-B aún no está disponible"));
+  assert.equal(disabled.includes("/breb-qr"), false);
+});
