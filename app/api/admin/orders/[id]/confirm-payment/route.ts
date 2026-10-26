@@ -20,13 +20,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const body = z
     .object({
       transactionReference: z.string().trim().min(3).max(120),
+      // The account QR carries no amount, so the operator must state what arrived.
+      receivedAmount: z.number().positive().finite(),
       verifiedInAccount: z.literal(true),
+      amountDiscrepancyReason: z.string().trim().min(5).max(500).optional(),
       notes: z.string().max(2000).optional(),
     })
     .safeParse(await request.json().catch(() => null));
   if (!body.success) {
     return NextResponse.json(
-      { error: "Comprueba el ingreso en la cuenta e indica su referencia." },
+      { error: "Comprueba el ingreso en la cuenta e indica su referencia e importe." },
       { status: 400 }
     );
   }
@@ -34,6 +37,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const order = await prisma.order.findUnique({ where: { id }, include: { user: true } });
   if (!order) {
     return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+  }
+  const expectedAmount = Math.round(Number(order.amount) * 100) / 100;
+  const receivedAmount = Math.round(body.data.receivedAmount * 100) / 100;
+  const amountMatches = receivedAmount === expectedAmount;
+  if (!amountMatches && !body.data.amountDiscrepancyReason) {
+    return NextResponse.json(
+      {
+        error: `El importe recibido (${receivedAmount} ${order.currency}) no coincide con el del pedido (${expectedAmount} ${order.currency}). No se confirma: revisa el ingreso o justifica la diferencia.`,
+        expectedAmount,
+        receivedAmount,
+      },
+      { status: 409 }
+    );
   }
   if (
     ![
@@ -70,6 +86,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         metadata: {
           ...(order.metadata as object),
           transactionReference: body.data.transactionReference,
+          receivedAmount,
+          amountMatches,
+          amountDiscrepancyReason: amountMatches ? null : body.data.amountDiscrepancyReason || null,
           manuallyConfirmedBy: session.user.id,
           manuallyConfirmedAt: new Date().toISOString(),
           confirmationNotes: body.data.notes || null,
@@ -125,8 +144,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         action: "MANUAL_PAYMENT_CONFIRMATION",
         before: { paymentStatus: "PENDING" },
         after: { paymentStatus: "COMPLETED" },
-        reason: body.data.notes || "Ingreso comprobado en la cuenta receptora",
-        metadata: { transactionReference: body.data.transactionReference },
+        reason:
+          body.data.amountDiscrepancyReason ||
+          body.data.notes ||
+          "Ingreso comprobado en la cuenta receptora",
+        metadata: {
+          transactionReference: body.data.transactionReference,
+          expectedAmount,
+          receivedAmount,
+          amountMatches,
+        },
       },
     });
   });

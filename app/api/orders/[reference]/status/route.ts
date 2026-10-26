@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getBrebConfiguration, getOrderBrebQr } from "@/lib/breb";
+import { getBrebConfiguration } from "@/lib/breb";
 import { canAccessOrder } from "@/lib/order-access";
 import { prisma } from "@/lib/prisma";
 
@@ -52,6 +52,8 @@ export async function GET(
     }
     const paymentStatus = order.paymentStatus;
     const metadata = order.metadata as Record<string, any> | null;
+    // Resolved once: the QR flag and the key come from the same configuration.
+    const breb = order.paymentMethod === "BREB_MANUAL" ? getBrebConfiguration() : null;
 
     return NextResponse.json({
       id: order.id,
@@ -66,10 +68,10 @@ export async function GET(
         convertedFromGuest: !!metadata?.convertedFromGuest,
         userWasCreated: !!metadata?.userWasCreated,
       },
-      ...(order.paymentMethod === "BREB_MANUAL"
+      ...(breb
         ? {
-            breb: getBrebConfiguration(),
-            qrCodeUrl: getOrderBrebQr(metadata || {}, Number(order.amount)),
+            breb,
+            qrAvailable: breb.qrConfigured,
             reported: !!order.manualPayment,
             reportedReference: order.manualPayment?.referenceNumber,
           }

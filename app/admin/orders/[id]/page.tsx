@@ -221,6 +221,8 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                 paymentMethod={order.paymentMethod}
                 paymentStatus={order.paymentStatus}
                 simulation={simulation}
+                expectedAmount={Number(order.amount)}
+                currency={order.currency}
               />
             </div>
           </div>

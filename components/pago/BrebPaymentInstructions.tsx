@@ -2,21 +2,39 @@
 
 import { useState } from "react";
 
+import type { BrebKeyType } from "@/lib/breb";
+
 interface Props {
   orderNumber: string;
   amount: number;
   currency: string;
   itemName: string;
-  configuration: { enabled: boolean; simulation: boolean; key: string; recipient: string };
-  qrCodeUrl?: string | null;
+  configuration: {
+    enabled: boolean;
+    simulation: boolean;
+    key: string;
+    keyType: BrebKeyType | null;
+    recipient: string;
+    amountMode: "customer-entered";
+  };
+  qrAvailable?: boolean;
 }
+
+/** Banks ask for the key type first, so the wording follows what was configured. */
+const KEY_HINTS: Record<BrebKeyType, string> = {
+  phone: "Elige «llave Bre-B por teléfono» y pega el número.",
+  email: "Elige «llave Bre-B por correo» y pega la dirección.",
+  alias: "Elige «llave Bre-B alfanumérica» y pega el alias, con la @ incluida.",
+  document: "Elige «llave Bre-B por documento» y pega el número.",
+};
+
 export function BrebPaymentInstructions({
   orderNumber,
   amount,
   currency,
   itemName,
   configuration,
-  qrCodeUrl,
+  qrAvailable = false,
 }: Props) {
   const [message, setMessage] = useState("");
   async function copy(value: string, label: string) {
@@ -27,6 +45,8 @@ export function BrebPaymentInstructions({
       setMessage("No se pudo copiar. Selecciona el texto y cópialo manualmente.");
     }
   }
+  const amountText = `${new Intl.NumberFormat("es-CO").format(amount)} ${currency}`;
+  const qrSrc = `/api/orders/${encodeURIComponent(orderNumber)}/breb-qr`;
   const box = "rounded-xl border border-purple-100 bg-purple-50 p-4 space-y-2";
   return (
     <section className="bg-white rounded-2xl border p-5 sm:p-7 space-y-5">
@@ -36,9 +56,14 @@ export function BrebPaymentInstructions({
       </div>
       <div className={box}>
         <h2 className="font-semibold break-words">{itemName}</h2>
-        <p className="text-2xl font-semibold">
-          {new Intl.NumberFormat("es-CO").format(amount)} {currency}
-        </p>
+        <p className="text-2xl font-semibold">{amountText}</p>
+        <button
+          type="button"
+          className="underline min-h-11"
+          onClick={() => copy(String(amount), "Importe")}
+        >
+          Copiar importe
+        </button>
         <p className="text-sm break-all">Referencia: {orderNumber}</p>
         <button
           type="button"
@@ -52,29 +77,73 @@ export function BrebPaymentInstructions({
         <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl">
           <strong>SIMULACIÓN — NO ENVÍES DINERO</strong>
           <p>
-            Prueba el aviso de transferencia con una referencia ficticia. No mostramos llaves ni QR
-            bancarios reales.
+            Prueba el aviso de transferencia con una referencia ficticia. La llave y el QR que
+            aparecen aquí no son datos bancarios reales y no sirven para pagar.
           </p>
         </div>
-      ) : !configuration.enabled ? (
+      ) : null}
+      {!configuration.enabled ? (
         <p role="alert">Bre-B aún no está disponible. No realices ninguna transferencia.</p>
       ) : (
         <>
-          <ol className="list-decimal pl-5 space-y-3">
-            <li>Abre la zona Bre-B de tu aplicación bancaria o financiera.</li>
-            <li>Copia la llave y comprueba que el destinatario coincide con el mostrado aquí.</li>
-            <li>
-              Introduce el importe exacto en COP. Si tu aplicación admite una nota, incluye la
-              referencia del pedido.
-            </li>
-            <li>Confirma la transferencia en tu aplicación y guarda su referencia.</li>
-          </ol>
+          <div className="p-4 bg-amber-50 border border-amber-300 rounded-xl">
+            <strong>Escribe el importe exacto: {amountText}</strong>
+            <p>
+              El QR y la llave no llevan el importe incorporado. Si transfieres otra cantidad, el
+              pedido no se podrá verificar y tendrás que reclamarla.
+            </p>
+          </div>
+          {qrAvailable && (
+            <div className="text-center space-y-2">
+              <p className="font-semibold">Escanea el QR desde tu aplicación bancaria</p>
+              {/* Static account QR issued by Global66. It carries no amount. */}
+              <img
+                src={qrSrc}
+                alt="QR Bre-B de Global66 para pagar este pedido"
+                className="w-56 h-56 object-contain mx-auto bg-white p-2 border rounded-xl"
+              />
+              <a
+                className="underline min-h-11 inline-block"
+                href={qrSrc}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Abrir el QR para guardarlo
+              </a>
+              <p className="text-sm text-gray-600">
+                Comprueba que el destinatario es <strong>{configuration.recipient}</strong> y que tu
+                aplicación te pide el importe.
+              </p>
+            </div>
+          )}
+          <div className="space-y-2">
+            <p className="font-semibold">
+              {qrAvailable ? "O transfiere con la llave Bre-B" : "Transfiere con la llave Bre-B"}
+            </p>
+            <ol className="list-decimal pl-5 space-y-3">
+              <li>Abre la zona Bre-B de tu aplicación bancaria o financiera.</li>
+              <li>
+                {configuration.keyType
+                  ? KEY_HINTS[configuration.keyType]
+                  : "Introduce la llave Bre-B que aparece abajo."}
+              </li>
+              <li>
+                Comprueba que el destinatario coincide con{" "}
+                <strong>{configuration.recipient}</strong>.
+              </li>
+              <li>
+                Introduce el importe exacto en COP: <strong>{amountText}</strong>. Si tu aplicación
+                admite una nota, incluye la referencia del pedido.
+              </li>
+              <li>Confirma la transferencia en tu aplicación y guarda su referencia.</li>
+            </ol>
+          </div>
           <div className={box}>
             <p>
               Destinatario: <strong>{configuration.recipient}</strong>
             </p>
             <p>Entidad receptora: Global66</p>
-            <p className="font-mono break-all">{configuration.key}</p>
+            <p className="font-mono break-all text-lg">{configuration.key}</p>
             <button
               type="button"
               className="underline min-h-11"
@@ -82,39 +151,7 @@ export function BrebPaymentInstructions({
             >
               Copiar llave Bre-B
             </button>
-            <button
-              type="button"
-              className="underline min-h-11 ml-4"
-              onClick={() => copy(String(amount), "Importe")}
-            >
-              Copiar importe
-            </button>
           </div>
-          {qrCodeUrl ? (
-            <div className="text-center">
-              <p>
-                QR verificado para este pedido. Comprueba importe y destinatario en tu aplicación.
-              </p>
-              {/* Bank image is used unchanged; never generate a generic text QR. */}
-              <img
-                src={qrCodeUrl}
-                alt="QR Bre-B del pedido"
-                className="w-56 h-56 object-contain mx-auto"
-              />
-              <a
-                className="underline min-h-11 inline-block"
-                href={qrCodeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Abrir QR para guardarlo
-              </a>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-600">
-              QR todavía no disponible para este pedido. Utiliza la llave verificada.
-            </p>
-          )}
         </>
       )}
       <p aria-live="polite" className="text-sm">

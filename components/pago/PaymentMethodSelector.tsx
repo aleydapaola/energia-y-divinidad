@@ -103,8 +103,8 @@ export function PaymentMethodSelector({
         },
         {
           method: "breb_manual",
-          label: "Bre-B (Llave Bancolombia)",
-          description: "Transferencia instantánea sin comisión",
+          label: "Bre-B · Global66",
+          description: "Transferencia instantánea en COP · llave o QR",
           icon: <Key className="w-6 h-6" />,
         },
         {

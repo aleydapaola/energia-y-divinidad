@@ -14,8 +14,15 @@ type Order = {
   orderType: string;
   reported: boolean;
   reportedReference?: string;
-  qrCodeUrl?: string;
-  breb: { enabled: boolean; simulation: boolean; key: string; recipient: string };
+  qrAvailable?: boolean;
+  breb: {
+    enabled: boolean;
+    simulation: boolean;
+    key: string;
+    keyType: "phone" | "email" | "alias" | "document" | null;
+    recipient: string;
+    amountMode: "customer-entered";
+  };
 };
 function Content() {
   const reference = useSearchParams().get("ref") || "";
@@ -47,6 +54,15 @@ function Content() {
       setLoading(false);
     }
   }, [reference]);
+  // Keep polling only while the transfer is unverified. The static account QR
+  // is served separately, so this refresh stays lightweight.
+  useEffect(() => {
+    if (!order || order.paymentStatus !== "PENDING") {
+      return;
+    }
+    const timer = setInterval(() => void refresh(), 30000);
+    return () => clearInterval(timer);
+  }, [order?.paymentStatus, reference]);
   async function report(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);

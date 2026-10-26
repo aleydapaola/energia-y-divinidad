@@ -165,46 +165,59 @@ test("events take their date/price from catalog and validate seat count", async 
     );
   }
 });
-test("Preview never exposes financial key/QR; production requires verified Global66 data; single-use QR expires", () => {
+test("Preview never exposes the real Bre-B key or QR; production fails closed without a valid key", () => {
   const names = [
     "VERCEL_ENV",
     "GLOBAL66_BREB_VERIFIED",
     "GLOBAL66_BREB_KEY",
+    "GLOBAL66_BREB_KEY_TYPE",
     "GLOBAL66_BREB_RECIPIENT",
+    "GLOBAL66_BREB_QR_DATA_URL",
+    "GLOBAL66_BREB_QR_URL",
+    "PREVIEW_BREB_QR_URL",
     "NEXT_PUBLIC_BANCOLOMBIA_BREB_KEY",
   ];
   const saved = Object.fromEntries(names.map((k) => [k, process.env[k]]));
   try {
-    const { getBrebConfiguration, getOrderBrebQr } = load("lib/breb.ts");
+    const breb = load("lib/breb.ts");
     Object.assign(process.env, {
       VERCEL_ENV: "preview",
       GLOBAL66_BREB_VERIFIED: "true",
-      GLOBAL66_BREB_KEY: "REAL-KEY",
-      GLOBAL66_BREB_RECIPIENT: "Real owner",
+      GLOBAL66_BREB_KEY: "@EJEMPLO123",
+      GLOBAL66_BREB_KEY_TYPE: "alias",
+      GLOBAL66_BREB_RECIPIENT: "Aleyda Paola Vargas Galvis",
+      GLOBAL66_BREB_QR_URL: "https://example.com/bank.png",
       NEXT_PUBLIC_BANCOLOMBIA_BREB_KEY: "OLD-KEY",
     });
-    const qr = {
-      global66Qr: {
-        verified: true,
-        currency: "COP",
-        amount: 80000,
-        expiresAt: "2099-01-01",
-        url: "https://example.com/bank.png",
-      },
-    };
-    assert.equal(getBrebConfiguration().key, "");
-    assert.equal(getBrebConfiguration().simulation, true);
-    assert.equal(getOrderBrebQr(qr, 80000), null);
+    // Preview: simulation, fake key, and never the real QR.
+    assert.equal(breb.getBrebConfiguration().simulation, true);
+    assert.equal(breb.getBrebConfiguration().key, "@PRUEBA-NO-REAL");
+    assert.equal(breb.getBrebConfiguration().qrConfigured, false);
+    assert.equal(breb.getBrebQrSource(), null);
+    // An isolated Preview QR is required, and it must differ from Production.
+    process.env.PREVIEW_BREB_QR_URL = "https://example.com/bank.png";
+    assert.equal(breb.getBrebQrSource(), null);
+    process.env.PREVIEW_BREB_QR_URL = "https://example.com/preview-fake.png";
+    assert.equal(breb.getBrebQrSource(), "https://example.com/preview-fake.png");
+    assert.equal(breb.getBrebConfiguration().qrConfigured, true);
+
     process.env.VERCEL_ENV = "production";
     delete process.env.GLOBAL66_BREB_VERIFIED;
-    assert.equal(getBrebConfiguration().enabled, false);
-    assert.equal(getBrebConfiguration().key, "");
+    assert.equal(breb.getBrebConfiguration().enabled, false);
+    assert.equal(breb.getBrebConfiguration().key, "");
     process.env.GLOBAL66_BREB_VERIFIED = "true";
-    assert.equal(getBrebConfiguration().key, "REAL-KEY");
-    assert.equal(getOrderBrebQr(qr, 80000), qr.global66Qr.url);
-    assert.equal(getOrderBrebQr(qr, 79999), null);
-    qr.global66Qr.expiresAt = "2000-01-01";
-    assert.equal(getOrderBrebQr(qr, 80000), null);
+    assert.equal(breb.getBrebConfiguration().enabled, true);
+    assert.equal(breb.getBrebConfiguration().key, "@EJEMPLO123");
+    assert.equal(breb.getBrebConfiguration().keyMasked, "@E*******23");
+    // A key that does not match its declared type disables Bre-B instead of guessing.
+    process.env.GLOBAL66_BREB_KEY = "@EJEMPLO 123";
+    assert.equal(breb.getBrebConfiguration().enabled, false);
+    process.env.GLOBAL66_BREB_KEY = "@EJEMPLO123";
+    process.env.GLOBAL66_BREB_KEY_TYPE = "phone";
+    assert.equal(breb.getBrebConfiguration().enabled, false);
+    process.env.GLOBAL66_BREB_KEY_TYPE = "alias";
+    process.env.GLOBAL66_BREB_RECIPIENT = "";
+    assert.equal(breb.getBrebConfiguration().enabled, false);
   } finally {
     for (const k of names) {
       if (saved[k] === undefined) {
@@ -352,6 +365,8 @@ test("manual confirmation requires admin + explicit bank verification and only c
     paymentStatus: status,
     metadata: {},
     userId: "u",
+    amount: 100000,
+    currency: "COP",
   });
   const db = {
     user: { findUnique: async () => ({ role, email: "admin@example.com" }) },
@@ -390,11 +405,29 @@ test("manual confirmation requires admin + explicit bank verification and only c
     },
   });
   const ctx = { params: Promise.resolve({ id: "o" }) };
-  const body = { transactionReference: "BANK-123", verifiedInAccount: true };
+  const body = {
+    transactionReference: "BANK-123",
+    receivedAmount: 100000,
+    verifiedInAccount: true,
+  };
   assert.equal((await POST(req(body), ctx)).status, 403);
   role = "ADMIN";
   assert.equal((await POST(req({ ...body, verifiedInAccount: false }), ctx)).status, 400);
-  assert.equal((await POST(req(body), ctx)).status, 200);
+  // The QR and the key carry no amount, so the received total is checked here.
+  assert.equal((await POST(req({ ...body, receivedAmount: 90000 }), ctx)).status, 409);
+  assert.equal(
+    (
+      await POST(
+        req({
+          ...body,
+          receivedAmount: 90000,
+          amountDiscrepancyReason: "Ingreso parcial acordado",
+        }),
+        ctx
+      )
+    ).status,
+    200
+  );
   assert.equal(status, "COMPLETED");
   assert.equal(deliveries, 1);
   assert.equal(audits, 1);

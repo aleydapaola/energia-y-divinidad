@@ -10,6 +10,8 @@ interface ConfirmPaymentButtonProps {
   paymentMethod: string | null;
   paymentStatus: string;
   simulation?: boolean;
+  expectedAmount?: number;
+  currency?: string;
 }
 
 export function ConfirmPaymentButton({
@@ -18,14 +20,27 @@ export function ConfirmPaymentButton({
   paymentMethod,
   paymentStatus,
   simulation = false,
+  expectedAmount,
+  currency = "COP",
 }: ConfirmPaymentButtonProps) {
   const router = useRouter();
   const [isConfirming, setIsConfirming] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [transactionReference, setTransactionReference] = useState("");
+  const [receivedAmount, setReceivedAmount] = useState("");
+  const [amountDiscrepancyReason, setAmountDiscrepancyReason] = useState("");
   const [verifiedInAccount, setVerifiedInAccount] = useState(false);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const parsedReceived = Number.parseFloat(receivedAmount.replace(",", "."));
+  const hasReceived = Number.isFinite(parsedReceived) && parsedReceived > 0;
+  // The static QR carries no amount, so the transferred total is checked here.
+  const amountMatches =
+    hasReceived && expectedAmount !== undefined
+      ? Math.round(parsedReceived * 100) === Math.round(expectedAmount * 100)
+      : true;
+  const needsReason = hasReceived && !amountMatches;
 
   // Solo mostrar para pagos manuales pendientes
   const isManualPayment =
@@ -51,7 +66,9 @@ export function ConfirmPaymentButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           transactionReference: transactionReference.trim(),
+          receivedAmount: parsedReceived,
           verifiedInAccount,
+          amountDiscrepancyReason: needsReason ? amountDiscrepancyReason.trim() : undefined,
           notes: notes.trim() || undefined,
         }),
       });
@@ -129,6 +146,47 @@ export function ConfirmPaymentButton({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 font-dm-sans">
+                  Importe realmente recibido ({currency}) · obligatorio
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  value={receivedAmount}
+                  onChange={(e) => setReceivedAmount(e.target.value)}
+                  placeholder={expectedAmount !== undefined ? String(expectedAmount) : "0.00"}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg font-dm-sans focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 font-dm-sans mt-1">
+                  {expectedAmount !== undefined
+                    ? `El pedido es de ${expectedAmount} ${currency}. El QR y la llave no llevan importe, así que confirma la cantidad que aparece en el movimiento.`
+                    : "Indica la cantidad que aparece en el movimiento recibido."}
+                </p>
+              </div>
+
+              {needsReason && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-2">
+                  <p className="text-sm text-red-700 font-dm-sans font-semibold">
+                    El importe no coincide con el del pedido
+                    {expectedAmount !== undefined ? ` (${expectedAmount} ${currency})` : ""}.
+                  </p>
+                  <label className="block text-sm font-medium text-gray-700 font-dm-sans">
+                    Motivo de la diferencia · obligatorio
+                  </label>
+                  <textarea
+                    value={amountDiscrepancyReason}
+                    onChange={(e) => setAmountDiscrepancyReason(e.target.value)}
+                    placeholder="Por ejemplo: ingreso parcial acordado con la clienta, o devolución pendiente."
+                    rows={2}
+                    maxLength={500}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg font-dm-sans focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 font-dm-sans">
                   Notas (opcional)
                 </label>
                 <textarea
@@ -169,7 +227,11 @@ export function ConfirmPaymentButton({
               <button
                 onClick={handleConfirm}
                 disabled={
-                  isConfirming || !verifiedInAccount || transactionReference.trim().length < 3
+                  isConfirming ||
+                  !verifiedInAccount ||
+                  transactionReference.trim().length < 3 ||
+                  !hasReceived ||
+                  (needsReason && amountDiscrepancyReason.trim().length < 5)
                 }
                 className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-dm-sans font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >

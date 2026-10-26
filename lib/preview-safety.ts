@@ -65,6 +65,22 @@ export function isolatedMailchimpListId() {
   return id && id !== process.env.MAILCHIMP_LIST_ID ? id : undefined;
 }
 
+/**
+ * The Bre-B QR is a static account QR, so Preview must never serve the real one.
+ * An isolated QR is required, and it must differ from every Production value.
+ */
+export function isolatedBrebQrUrl() {
+  const url = (process.env.PREVIEW_BREB_QR_URL || "").trim();
+  if (!url) {
+    return null;
+  }
+  const production = [
+    (process.env.GLOBAL66_BREB_QR_URL || "").trim(),
+    (process.env.GLOBAL66_BREB_QR_DATA_URL || "").trim(),
+  ];
+  return production.includes(url) ? null : url;
+}
+
 export function assertIsolatedSanityWrites() {
   if (isProductionEnvironment()) {
     return;
