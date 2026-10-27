@@ -14,6 +14,16 @@ function load(relative, dependencies = {}) {
     if (name in dependencies) {
       return dependencies[name];
     }
+    if (name === "@/lib/events/capacity") {
+      return load("lib/events/capacity.ts");
+    }
+    if (name === "@/lib/sanity/queries/events") {
+      return {
+        getEventById() {
+          throw new Error("Unexpected CMS lookup");
+        },
+      };
+    }
     if (name === "next/server") {
       return { NextResponse: { json: Response.json }, NextRequest: Request };
     }

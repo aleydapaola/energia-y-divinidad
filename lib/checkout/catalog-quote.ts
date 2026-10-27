@@ -76,6 +76,7 @@ export async function quoteCatalogItem(input: {
   }
   return {
     amount,
+    capacity: doc.capacity,
     productId: doc._id,
     productName: productType === "pack" ? "Pack de 8 Sesiones" : doc.title,
     orderType: (productType === "pack" || productType === "session"

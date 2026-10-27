@@ -2223,7 +2223,7 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
     case "EVENT":
       productTypeText = "Evento";
       ctaText = "Ver mis reservas";
-      ctaLink = productLink || `${APP_URL}/dashboard/eventos`;
+      ctaLink = productLink || `${APP_URL}/mi-cuenta/eventos`;
       if (eventDate) {
         additionalInfo = `
           <tr>

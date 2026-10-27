@@ -1,45 +1,48 @@
-import { PortableText } from '@portabletext/react'
-import { Calendar, MapPin, Users, Video, ArrowLeft, Clock, CheckCircle } from 'lucide-react'
-import { Metadata } from 'next'
-import Image from 'next/image'
-import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { PortableText } from "@portabletext/react";
+import { Calendar, MapPin, Users, Video, ArrowLeft, Clock, CheckCircle } from "lucide-react";
+import { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
-import { EventPerksSection } from '@/components/eventos/EventPerksSection'
-import WaitlistButton from '@/components/eventos/WaitlistButton'
-import { features } from '@/lib/config/features'
-import { getEventBySlug ,
+import { EventPerksSection } from "@/components/eventos/EventPerksSection";
+import WaitlistButton from "@/components/eventos/WaitlistButton";
+import { features } from "@/lib/config/features";
+import { withEventAvailability } from "@/lib/events/capacity";
+import { prisma } from "@/lib/prisma";
+import {
+  getEventBySlug,
   formatEventDate,
   getEventTypeLabel,
-  getLocationTypeLabel,
   hasAvailableSpots,
   isEarlyBirdActive,
-  getCurrentPrice,
   formatPrice,
   canBookEvent,
   getTimeUntilEvent,
-} from '@/lib/sanity/queries/events'
+} from "@/lib/sanity/queries/events";
 
-import type { EventPerk } from '@/types/events'
+import type { EventPerk } from "@/types/events";
 
 interface EventPageProps {
-  params: Promise<{ slug: string }>
+  params: Promise<{ slug: string }>;
 }
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({ params }: EventPageProps): Promise<Metadata> {
-  const { slug } = await params
-  const event = await getEventBySlug(slug)
+  const { slug } = await params;
+  const event = await getEventBySlug(slug);
 
   if (!event) {
     return {
-      title: 'Evento no encontrado | Energía y Divinidad',
-    }
+      title: "Evento no encontrado | Energía y Divinidad",
+    };
   }
 
-  const metaTitle = event.seo?.metaTitle || `${event.title} | Energía y Divinidad`
+  const metaTitle = event.seo?.metaTitle || `${event.title} | Energía y Divinidad`;
   const metaDescription =
     event.seo?.metaDescription ||
-    `${getEventTypeLabel(event.eventType)} - ${formatEventDate(event.eventDate)}`
+    `${getEventTypeLabel(event.eventType)} - ${formatEventDate(event.eventDate)}`;
 
   return {
     title: metaTitle,
@@ -47,7 +50,7 @@ export async function generateMetadata({ params }: EventPageProps): Promise<Meta
     openGraph: {
       title: metaTitle,
       description: metaDescription,
-      type: 'website',
+      type: "website",
       ...(event.mainImage?.asset?.url && {
         images: [
           {
@@ -57,30 +60,31 @@ export async function generateMetadata({ params }: EventPageProps): Promise<Meta
         ],
       }),
     },
-  }
+  };
 }
 
 export default async function EventDetailPage({ params }: EventPageProps) {
-  const { slug } = await params
+  const { slug } = await params;
 
   // Check feature flag
   if (!features.events) {
-    notFound()
+    notFound();
   }
 
-  const event = await getEventBySlug(slug)
+  const catalogEvent = await getEventBySlug(slug);
 
-  if (!event) {
-    notFound()
+  if (!catalogEvent) {
+    notFound();
   }
 
-  const available = hasAvailableSpots(event)
-  const isSoldOut = event.status === 'sold_out' || !available
-  const isPast = event.status === 'completed'
-  const isCancelled = event.status === 'cancelled'
-  const canBook = canBookEvent(event)
-  const earlyBird = isEarlyBirdActive(event)
-  const timeUntil = getTimeUntilEvent(event)
+  const [event] = await withEventAvailability(prisma, [catalogEvent]);
+  const available = hasAvailableSpots(event);
+  const isSoldOut = event.status === "sold_out" || !available;
+  const isPast = event.status === "completed";
+  const isCancelled = event.status === "cancelled";
+  const canBook = canBookEvent(event);
+  const earlyBird = isEarlyBirdActive(event);
+  const timeUntil = getTimeUntilEvent(event);
 
   return (
     <div className="min-h-screen bg-background">
@@ -143,7 +147,7 @@ export default async function EventDetailPage({ params }: EventPageProps) {
               {/* Event Type Badge */}
               <div className="flex flex-wrap gap-2 mb-4">
                 <span className="inline-flex items-center gap-2 px-4 py-2 bg-[#8A4BAF]/10 text-[#8A4BAF] text-sm font-medium rounded-full">
-                  {event.locationType === 'online' ? (
+                  {event.locationType === "online" ? (
                     <Video className="w-4 h-4" />
                   ) : (
                     <MapPin className="w-4 h-4" />
@@ -180,7 +184,7 @@ export default async function EventDetailPage({ params }: EventPageProps) {
 
                 {/* Location */}
                 <div className="flex items-start gap-3">
-                  {event.locationType === 'online' ? (
+                  {event.locationType === "online" ? (
                     <>
                       <Video className="w-5 h-5 text-[#8A4BAF] flex-shrink-0 mt-1" />
                       <div>
@@ -195,7 +199,7 @@ export default async function EventDetailPage({ params }: EventPageProps) {
                       <MapPin className="w-5 h-5 text-[#8A4BAF] flex-shrink-0 mt-1" />
                       <div>
                         <p className="text-gray-800 font-medium">
-                          {event.venue?.name || event.venue?.city || 'Evento Presencial'}
+                          {event.venue?.name || event.venue?.city || "Evento Presencial"}
                         </p>
                         {event.venue?.address && (
                           <p className="text-gray-500 text-sm">{event.venue.address}</p>
@@ -216,14 +220,12 @@ export default async function EventDetailPage({ params }: EventPageProps) {
                     <Users className="w-5 h-5 text-[#8A4BAF] flex-shrink-0 mt-1" />
                     <div>
                       <p className="text-gray-800 font-medium">
-                        {typeof event.availableSpots === 'number' && event.availableSpots >= 0
+                        {typeof event.availableSpots === "number" && event.availableSpots >= 0
                           ? `${event.availableSpots} cupos disponibles`
                           : `${event.capacity} cupos disponibles`}
                       </p>
-                      {typeof event.availableSpots === 'number' && event.availableSpots >= 0 && (
-                        <p className="text-gray-500 text-sm">
-                          de {event.capacity} cupos totales
-                        </p>
+                      {typeof event.availableSpots === "number" && event.availableSpots >= 0 && (
+                        <p className="text-gray-500 text-sm">de {event.capacity} cupos totales</p>
                       )}
                     </div>
                   </div>
@@ -242,7 +244,7 @@ export default async function EventDetailPage({ params }: EventPageProps) {
                     </p>
                     {event.price && (
                       <p className="text-gray-500 text-sm mt-2">
-                        Precio sin membresía: {formatPrice(event.price, 'COP')}
+                        Precio sin membresía: {formatPrice(event.price, "COP")}
                       </p>
                     )}
                   </div>
@@ -251,23 +253,24 @@ export default async function EventDetailPage({ params }: EventPageProps) {
                     {earlyBird && event.earlyBirdPrice ? (
                       <>
                         <p className="text-3xl font-bold text-[#8A4BAF] mb-1">
-                          {formatPrice(event.earlyBirdPrice, 'COP')}
+                          {formatPrice(event.earlyBirdPrice, "COP")}
                         </p>
                         <p className="text-gray-500 text-sm line-through">
-                          Precio regular: {formatPrice(event.price, 'COP')}
+                          Precio regular: {formatPrice(event.price, "COP")}
                         </p>
                         <p className="text-green-600 text-sm mt-1">
-                          Early Bird hasta {new Date(event.earlyBirdDeadline!).toLocaleDateString('es-CO')}
+                          Early Bird hasta{" "}
+                          {new Date(event.earlyBirdDeadline!).toLocaleDateString("es-CO")}
                         </p>
                       </>
                     ) : (
                       <p className="text-3xl font-bold text-[#8A4BAF] mb-2">
-                        {formatPrice(event.price, 'COP')}
+                        {formatPrice(event.price, "COP")}
                       </p>
                     )}
                     {event.priceUSD && (
                       <p className="text-gray-500 text-sm">
-                        {formatPrice(event.priceUSD, 'USD')} (pagos internacionales)
+                        {formatPrice(event.priceUSD, "USD")} (pagos internacionales)
                       </p>
                     )}
                     {event.memberDiscount && (
@@ -331,9 +334,7 @@ export default async function EventDetailPage({ params }: EventPageProps) {
       <section className="py-12 border-t border-gray-100">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
-            <h2 className="font-gazeta text-3xl text-[#8A4BAF] mb-6">
-              Sobre este evento
-            </h2>
+            <h2 className="font-gazeta text-3xl text-[#8A4BAF] mb-6">Sobre este evento</h2>
             <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
               <PortableText value={event.description} />
             </div>
@@ -353,9 +354,7 @@ export default async function EventDetailPage({ params }: EventPageProps) {
             <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
               {(event.includes?.length ?? 0) > 0 && (
                 <div>
-                  <h3 className="font-gazeta text-xl text-[#8A4BAF] mb-4">
-                    ¿Qué incluye?
-                  </h3>
+                  <h3 className="font-gazeta text-xl text-[#8A4BAF] mb-4">¿Qué incluye?</h3>
                   <ul className="space-y-2">
                     {event.includes!.map((item, i) => (
                       <li key={i} className="flex items-start gap-2">
@@ -369,9 +368,7 @@ export default async function EventDetailPage({ params }: EventPageProps) {
 
               {(event.whatToBring?.length ?? 0) > 0 && (
                 <div>
-                  <h3 className="font-gazeta text-xl text-[#8A4BAF] mb-4">
-                    ¿Qué traer?
-                  </h3>
+                  <h3 className="font-gazeta text-xl text-[#8A4BAF] mb-4">¿Qué traer?</h3>
                   <ul className="space-y-2">
                     {event.whatToBring!.map((item, i) => (
                       <li key={i} className="flex items-start gap-2">
@@ -393,9 +390,7 @@ export default async function EventDetailPage({ params }: EventPageProps) {
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto">
               <div className="bg-amber-50 border-l-4 border-amber-400 rounded-lg p-6">
-                <h3 className="font-gazeta text-xl text-amber-800 mb-3">
-                  Requisitos Previos
-                </h3>
+                <h3 className="font-gazeta text-xl text-amber-800 mb-3">Requisitos Previos</h3>
                 <p className="text-amber-700">{event.requirements}</p>
               </div>
             </div>
@@ -414,7 +409,8 @@ export default async function EventDetailPage({ params }: EventPageProps) {
                 </h3>
                 <p className="text-gray-600 leading-relaxed mb-4">
                   Este evento está disponible únicamente para miembros activos de nuestra comunidad.
-                  Si aún no eres miembro, puedes unirte para acceder a este y otros eventos exclusivos.
+                  Si aún no eres miembro, puedes unirte para acceder a este y otros eventos
+                  exclusivos.
                 </p>
                 <Link
                   href="/membresia"
@@ -447,5 +443,5 @@ export default async function EventDetailPage({ params }: EventPageProps) {
         </section>
       )}
     </div>
-  )
+  );
 }

@@ -22,8 +22,10 @@ import { createCourseEntitlement } from "@/lib/course-access";
 import { grantMonthlyCredits } from "@/lib/credits";
 import { recordDiscountUsage } from "@/lib/discount-codes";
 import { sendPaymentConfirmationEmail, sendAdminNotificationEmail } from "@/lib/email";
+import { assertEventCapacity, lockEventCapacity } from "@/lib/events/capacity";
 import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
 import { prisma } from "@/lib/prisma";
+import { getEventById } from "@/lib/sanity/queries/events";
 import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
 import { resolveSessionDuration } from "@/lib/session-duration";
 import {
@@ -489,36 +491,53 @@ async function createEventBookingFromOrder(
   const scheduledAt = metadata.scheduledAt ? new Date(metadata.scheduledAt) : null;
   const seats = metadata.seats || 1;
 
-  const booking = await prisma.booking.create({
-    data: {
-      userId,
-      bookingType: "EVENT",
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      status: "CONFIRMED",
-      paymentStatus: "COMPLETED",
-      paymentMethod: (order.paymentMethod as PaymentMethod) || undefined,
-      amount: order.amount,
-      currency: order.currency,
-      scheduledAt,
-      metadata: {
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-        seats,
-      },
-    },
-  });
+  const event = await getEventById(order.itemId);
+  if (!event || event.status === "cancelled") {
+    throw new Error(
+      "El evento no está disponible. Entrega pendiente de revisión; no repitas el pago."
+    );
+  }
+  const booking = await prisma.$transaction(
+    async (tx) => {
+      await lockEventCapacity(tx, order.itemId);
+      await assertEventCapacity(tx, event, seats);
+      const created = await tx.booking.create({
+        data: {
+          userId,
+          bookingType: "EVENT",
+          resourceId: order.itemId,
+          resourceName: order.itemName,
+          status: "CONFIRMED",
+          paymentStatus: "COMPLETED",
+          paymentMethod: (order.paymentMethod as PaymentMethod) || undefined,
+          amount: order.amount,
+          currency: order.currency,
+          scheduledAt,
+          metadata: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            seats,
+          },
+        },
+      });
 
-  // Crear Entitlement para acceso al evento
-  await prisma.entitlement.create({
-    data: {
-      userId,
-      type: "EVENT",
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      orderId: order.id,
+      await tx.seatAllocation.create({
+        data: { eventId: order.itemId, bookingId: created.id, userId, seats, status: "ACTIVE" },
+      });
+      // Crear Entitlement para acceso al evento
+      await tx.entitlement.create({
+        data: {
+          userId,
+          type: "EVENT",
+          resourceId: order.itemId,
+          resourceName: order.itemName,
+          orderId: order.id,
+        },
+      });
+      return created;
     },
-  });
+    { maxWait: 10000, timeout: 15000 }
+  );
 
   // Allocate perks for the confirmed event booking
   try {
@@ -630,6 +649,10 @@ async function sendConfirmationEmail(
       transactionId,
       setPasswordToken,
       sessionDate,
+      eventDate:
+        order.orderType === "EVENT" && metadata.scheduledAt
+          ? new Date(metadata.scheduledAt as string)
+          : undefined,
       meetingLink,
     });
     console.log(`[PAYMENT-PROCESSOR] Email de confirmación enviado a ${customerEmail}`);

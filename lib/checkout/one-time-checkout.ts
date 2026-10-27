@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { getBrebConfiguration } from "@/lib/breb";
 import { quoteCatalogItem } from "@/lib/checkout/catalog-quote";
 import { applyCheckoutDiscount } from "@/lib/checkout/discounts";
+import { assertEventCapacity } from "@/lib/events/capacity";
 import { allowOrderInBrowser } from "@/lib/order-access";
 import { processApprovedPayment } from "@/lib/payment-processor";
 import { createPayPalOrder, isPayPalConfigured } from "@/lib/paypal";
@@ -55,6 +56,13 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
     }
     const currency = method === "breb" ? "COP" : "USD";
     const quote = await quoteCatalogItem({ ...body, currency });
+    if (body.productType === "event") {
+      await assertEventCapacity(
+        prisma,
+        { _id: quote.productId, capacity: quote.capacity },
+        quote.metadata.seats
+      );
+    }
     // A preflight avoids starting payment for an unavailable slot. Fulfillment
     // checks again under the calendar lock; this check is not a payment hold.
     if (body.productType === "session" && body.scheduledAt) {

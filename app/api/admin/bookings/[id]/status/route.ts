@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
+import {
+  assertEventCapacity,
+  bookingSeatCount,
+  EventCapacityError,
+  lockEventCapacity,
+} from "@/lib/events/capacity";
 import { prisma } from "@/lib/prisma";
+import { getEventById } from "@/lib/sanity/queries/events";
 import {
   assertSessionTimeAvailable,
   schedulingConfig,
@@ -76,10 +83,23 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       SESSION_BLOCKING_STATUSES.includes(status)
         ? await schedulingConfig()
         : null;
+    const event =
+      booking.bookingType === "EVENT" && status !== "CANCELLED"
+        ? await getEventById(booking.resourceId)
+        : null;
     const updatedBooking = await withSessionCalendar(async (tx) => {
+      if (booking.bookingType === "EVENT") {
+        await lockEventCapacity(tx, booking.resourceId);
+      }
       const current = await tx.booking.findUnique({ where: { id } });
       if (!current) {
         throw new SessionSchedulingError("Reserva no encontrada", 404);
+      }
+      if (current.bookingType === "EVENT" && status !== "CANCELLED" && current.status !== status) {
+        if (!event) {
+          throw new SessionSchedulingError("Evento no disponible", 409);
+        }
+        await assertEventCapacity(tx, event, bookingSeatCount(current.metadata), current.id);
       }
       if (config && current.scheduledAt && current.status !== status) {
         await assertSessionTimeAvailable(tx, config, current.scheduledAt, {
@@ -114,7 +134,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       message: `Estado actualizado a ${status}`,
     });
   } catch (error) {
-    if (error instanceof SessionSchedulingError) {
+    if (error instanceof SessionSchedulingError || error instanceof EventCapacityError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     console.error("Error cambiando estado de booking:", error);

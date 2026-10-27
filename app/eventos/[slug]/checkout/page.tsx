@@ -20,6 +20,7 @@ import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 
 import { CheckoutHeader } from "@/components/checkout/CheckoutHeader";
+import { formatEventDate } from "@/lib/event-time";
 import { purchaseMethods } from "@/lib/purchase-methods";
 
 import type { PaymentMethodType } from "@/lib/membership-access";
@@ -130,17 +131,6 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
     return `$${amount.toLocaleString("es-CO")} COP`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("es-CO", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!event || !acceptTerms) {
@@ -204,7 +194,9 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
       }
 
       // Redirect según respuesta
-      if (data.checkoutUrl) {
+      if (data.approvalUrl) {
+        window.location.href = data.approvalUrl;
+      } else if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else if (data.redirectUrl) {
         router.push(data.redirectUrl);
@@ -335,7 +327,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center gap-3">
                     <Calendar className="w-5 h-5 text-[#8A4BAF]" />
-                    <span>{formatDate(event.eventDate)}</span>
+                    <span>{formatEventDate(event.eventDate)}</span>
                   </div>
 
                   <div className="flex items-center gap-3">

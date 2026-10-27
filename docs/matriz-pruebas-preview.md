@@ -51,3 +51,9 @@ Pendents: consulta del calendari extern per contrastar inici/final i absència d
 ### PayPal producte completat — 37c7a828
 
 Compra nova des del navegador, amb el pagador sandbox dedicat, retorn satisfactori a Preview i 20 USD ficticis. Una entrega PRODUCT, captura COMPLETED i webhook PAYMENT.CAPTURE.COMPLETED processat sense error (retryCount zero). Els tres tipus restants encara pendents; les comandes preparades des de CLI no es consideren captures. Accés positiu a fitxers i lliçons pendent de la sessió web CLIENT. Preview Ready verificada a dpl_929SuMgCMjdNH11yXBxXQVSvLC6H; Production preservada a 7b9a7ac3.
+
+### Reanudación 27/10: corrección necesaria antes del taller
+
+Sobre 0d3f09a7 se comprueba la hora correcta de la ficha; checkout aún sin huso y sin redirección approvalUrl. Preparados ambos ajustes y cupos actuales de Prisma, incluyendo la reserva Bre-B sin asignación histórica. El nuevo procesador entrega reserva, asignación y entitlement atómicamente y valida capacidad bajo bloqueo por evento. 123 pruebas correctas, tipos y lint sin errores; prueba real de última plaza y rollback correcta en Neon Preview, sin servicios externos ni cambios históricos. Nueva compra del taller y de la sesión pendientes de despliegue y sesión sandbox.
+
+Curso PayPal: recibo recibido y referencia exacta comprobada en Proton. Calendar externo: cita Bre-B del 2/11 única, 10:00–11:30, etiquetada PRUEBA — NO REAL. Estas evidencias del navegador completan esas partes del recorrido anterior, sin acreditar todavía todas las compras de la versión nueva.

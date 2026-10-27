@@ -18,6 +18,16 @@ function load(file, deps = {}) {
     if (Object.hasOwn(deps, name)) {
       return deps[name];
     }
+    if (name === "@/lib/events/capacity") {
+      return load("lib/events/capacity.ts");
+    }
+    if (name === "@/lib/sanity/queries/events") {
+      return {
+        getEventById() {
+          throw new Error("Unexpected CMS lookup");
+        },
+      };
+    }
     if (name.startsWith("@/")) {
       throw new Error("Unexpected dependency: " + name);
     }
