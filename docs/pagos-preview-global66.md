@@ -1,12 +1,13 @@
 # Compras PayPal y Bre-B en Preview
 
-Estado revisado el 25 de octubre de 2026. Alcance: cursos, talleres y eventos, productos digitales y sesiones de canalización. Cancelaciones y reembolsos quedan fuera de este cambio.
+Estado revisado el 27 de octubre de 2026. Alcance: cursos, talleres y eventos, productos digitales y sesiones de canalización. Cancelaciones y reembolsos quedan fuera de este cambio.
 
 ## Global66 y Bre-B
 
-- [Global66 explica que sus cuentas personales admiten llaves Bre-B y QR de un solo uso, con un importe específico o sin importe](https://www.global66.com/co/educacion-financiera/).
-- **Decisión de la titular (26/10/2026): el QR de Bre-B que se usa es estático y no lleva importe.** Sustituye la regla anterior, que prohibía reutilizar un QR entre pedidos. El motivo es que el QR emitido por Global66 para la cuenta es equivalente a publicar la llave: identifica al receptor, no una cantidad. El cliente teclea el importe exacto en su aplicación bancaria. Un QR con importe fijo, si algún día se usara, sí sería de un solo uso y caducaría.
+- [Información comercial de Global66 sobre Bre-B](https://www.global66.com/co/educacion-financiera/).
+- **Criterio confirmado por Xavier el 27/10/2026, ratificando el del 26/10: el QR facilitado es estático, sin importe y sin caducidad por pedido.** Se reutiliza el mismo QR entre pedidos. El cliente introduce el importe exacto en COP que muestra la web. La llave facilitada se prepara como tipo alias, conservando la @ inicial; el valor y la imagen reales se guardan fuera del repositorio. No se genera un QR distinto por compra ni se le asigna una fecha de expiración.
 - La llave y el QR se verificaron el 26/10/2026 descodificando el propio QR: el payload EMV indica punto de inicio `11` (estático), moneda `COP`, la misma llave que se configura en `GLOBAL66_BREB_KEY`, ausencia del campo de importe y el titular del estándar truncado a 25 caracteres (`Aleyda Paola Vargas Galvi`). Ese truncamiento es una limitación del formato, no un dato erróneo; el nombre completo configurado es `Aleyda Paola Vargas Galvis`.
+- Cotejo local repetido el 27/10 sobre el QR preparado: descodificación completa, indicador estático, moneda COP, sin campo de importe y coincidencia con la llave que Xavier acaba de ratificar. Imagen y datos preparados en el almacenamiento privado ignorado por Git. No se han modificado variables ni despliegues de Production en esta confirmación.
 - Como el QR y la llave no llevan importe, **el control compensatorio es la verificación del ingreso**: la confirmación ADMIN exige declarar el importe realmente recibido en COP y rechaza la confirmación (409) si no coincide con el del pedido, salvo que se registre un motivo en la auditoría. El aviso o comprobante del cliente nunca activa el pedido.
 - [Los webhooks `MONEY_RECEIVED` y la API transaccional se documentan para integraciones B2B](https://documents-b2b.global66.com/). La cuenta confirmada de Aleyda es personal, así que no hay generación dinámica de QR ni notificación automática de ingresos.
 - Preview sirve un QR distinto y visiblemente falso (`PREVIEW_BREB_QR_URL`); si coincide con el valor de Production se ignora. En Production, Bre-B solo se habilita con la llave y el destinatario confirmados por Aleyda y `GLOBAL66_BREB_VERIFIED=true`. No se reutilizan los datos antiguos de Bancolombia.

@@ -1,40 +1,42 @@
-"use client"
+"use client";
 
-import { Loader2, CheckCircle } from "lucide-react"
-import { useState, useEffect } from "react"
+import { Loader2, CheckCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface NewsletterFormProps {
-  variant?: "footer" | "inline" | "card"
-  className?: string
+  variant?: "footer" | "inline" | "card";
+  className?: string;
 }
 
 export function NewsletterForm({ variant = "footer", className = "" }: NewsletterFormProps) {
-  const [email, setEmail] = useState("")
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
-  const [message, setMessage] = useState("")
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
+  const [signupUrl, setSignupUrl] = useState<string | null>(null);
 
   // Auto-hide success message after 5 seconds
   useEffect(() => {
     if (status === "success") {
       const timer = setTimeout(() => {
-        setStatus("idle")
-        setMessage("")
-      }, 5000)
-      return () => clearTimeout(timer)
+        setStatus("idle");
+        setMessage("");
+      }, 5000);
+      return () => clearTimeout(timer);
     }
-  }, [status])
+  }, [status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!email || !email.includes("@")) {
-      setStatus("error")
-      setMessage("Por favor, introduce un email válido")
-      return
+      setStatus("error");
+      setMessage("Por favor, introduce un email válido");
+      return;
     }
 
-    setStatus("loading")
-    setMessage("")
+    setStatus("loading");
+    setMessage("");
+    setSignupUrl(null);
 
     try {
       const response = await fetch("/api/newsletter", {
@@ -43,28 +45,29 @@ export function NewsletterForm({ variant = "footer", className = "" }: Newslette
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (response.ok) {
-        setStatus("success")
-        setMessage(data.message)
-        setEmail("")
+        setStatus("success");
+        setMessage(data.message);
+        setEmail("");
       } else {
-        setStatus("error")
-        setMessage(data.error || "Error al suscribirse")
+        setStatus("error");
+        setMessage(data.error || "Error al suscribirse");
+        setSignupUrl(data.signupUrl || null);
       }
     } catch {
-      setStatus("error")
-      setMessage("Error de conexión. Por favor, intenta de nuevo.")
+      setStatus("error");
+      setMessage("Error de conexión. Por favor, intenta de nuevo.");
     }
-  }
+  };
 
   const dismissSuccess = () => {
-    setStatus("idle")
-    setMessage("")
-  }
+    setStatus("idle");
+    setMessage("");
+  };
 
   if (status === "success") {
     return (
@@ -75,11 +78,26 @@ export function NewsletterForm({ variant = "footer", className = "" }: Newslette
         <CheckCircle className="w-6 h-6 text-[#4944a4] flex-shrink-0" />
         <div>
           <p className="text-[#2D4CC7] font-medium text-sm">{message}</p>
-          <p className="text-[#4944a4]/70 text-xs mt-0.5">Confirma tu suscripción en el email que te hemos enviado</p>
         </div>
       </div>
-    )
+    );
   }
+
+  const errorMessage = status === "error" && (
+    <div className="text-red-500 text-xs mt-2" role="alert">
+      <p>{message}</p>
+      {signupUrl && (
+        <a
+          href={signupUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline inline-block mt-2"
+        >
+          Volver a suscribirme
+        </a>
+      )}
+    </div>
+  );
 
   if (variant === "footer") {
     return (
@@ -110,11 +128,9 @@ export function NewsletterForm({ variant = "footer", className = "" }: Newslette
             )}
           </button>
         </div>
-        {status === "error" && (
-          <p className="text-red-500 text-xs mt-2">{message}</p>
-        )}
+        {errorMessage}
       </form>
-    )
+    );
   }
 
   if (variant === "inline") {
@@ -146,16 +162,16 @@ export function NewsletterForm({ variant = "footer", className = "" }: Newslette
             )}
           </button>
         </div>
-        {status === "error" && (
-          <p className="text-red-500 text-xs mt-2">{message}</p>
-        )}
+        {errorMessage}
       </form>
-    )
+    );
   }
 
   // variant === "card"
   return (
-    <div className={`bg-gradient-to-br from-[#f8f0f5] to-[#eef1fa] rounded-2xl p-6 sm:p-8 ${className}`}>
+    <div
+      className={`bg-gradient-to-br from-[#f8f0f5] to-[#eef1fa] rounded-2xl p-6 sm:p-8 ${className}`}
+    >
       <h3 className="font-gazeta text-xl sm:text-2xl text-[#8A4BAF] mb-2">
         Únete a nuestra comunidad
       </h3>
@@ -189,10 +205,8 @@ export function NewsletterForm({ variant = "footer", className = "" }: Newslette
             )}
           </button>
         </div>
-        {status === "error" && (
-          <p className="text-red-500 text-xs mt-2">{message}</p>
-        )}
+        {errorMessage}
       </form>
     </div>
-  )
+  );
 }
