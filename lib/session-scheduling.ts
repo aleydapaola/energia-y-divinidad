@@ -1,3 +1,4 @@
+import { activeCheckoutHoldWhere } from "@/lib/checkout/hold-store";
 import { prisma } from "@/lib/prisma";
 import { getSessionConfig } from "@/lib/sanity/queries/sessionConfig";
 
@@ -46,12 +47,13 @@ export async function withSessionCalendar<T>(
 }
 
 export async function occupiedSessionIntervals(
-  reader: Pick<Prisma.TransactionClient, "booking">,
+  reader: Pick<Prisma.TransactionClient, "booking" | "checkoutHold">,
   through: Date,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  excludeHoldOrderId?: string
 ) {
   // No lower date bound: a long/legacy appointment can overlap the next Colombia day.
-  return reader.booking.findMany({
+  const bookings = await reader.booking.findMany({
     where: {
       bookingType: "SESSION_1_ON_1",
       status: { in: [...SESSION_BLOCKING_STATUSES] },
@@ -60,12 +62,21 @@ export async function occupiedSessionIntervals(
     },
     select: { scheduledAt: true, duration: true },
   });
+  const holds = await reader.checkoutHold.findMany({
+    where: {
+      ...activeCheckoutHoldWhere(excludeHoldOrderId),
+      orderType: "SESSION",
+      scheduledAt: { not: null, lt: through },
+    },
+    select: { scheduledAt: true, duration: true },
+  });
+  return [...bookings, ...holds];
 }
 
 export async function sessionAvailability(
   date: string,
   options: {
-    reader?: Pick<Prisma.TransactionClient, "booking">;
+    reader?: Pick<Prisma.TransactionClient, "booking" | "checkoutHold">;
     config?: SessionSchedule;
     excludeBookingId?: string;
     duration?: number;
@@ -94,10 +105,15 @@ export async function sessionAvailability(
 }
 
 export async function assertSessionTimeAvailable(
-  tx: Pick<Prisma.TransactionClient, "booking">,
+  tx: Pick<Prisma.TransactionClient, "booking" | "checkoutHold">,
   config: SessionSchedule,
   start: Date,
-  options: { duration?: number | null; excludeBookingId?: string; enforceSchedule?: boolean } = {}
+  options: {
+    duration?: number | null;
+    excludeBookingId?: string;
+    excludeHoldOrderId?: string;
+    enforceSchedule?: boolean;
+  } = {}
 ) {
   if (
     !Number.isFinite(start.getTime()) ||
@@ -109,7 +125,12 @@ export async function assertSessionTimeAvailable(
   }
   const duration = sessionDuration(options.duration, config);
   const end = new Date(start.getTime() + (duration + sessionBuffer(config)) * 60000);
-  const occupied = await occupiedSessionIntervals(tx, end, options.excludeBookingId);
+  const occupied = await occupiedSessionIntervals(
+    tx,
+    end,
+    options.excludeBookingId,
+    options.excludeHoldOrderId
+  );
   if (options.enforceSchedule !== false) {
     const slots = buildSessionSlots(colombiaDateKey(start), config, [], { duration });
     const time = new Intl.DateTimeFormat("en-GB", {

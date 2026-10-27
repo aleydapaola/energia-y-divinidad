@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRequire, Module } from "node:module";
 import { test } from "node:test";
 
+import * as holdStore from "../lib/checkout/hold-store.ts";
 import * as safety from "../lib/preview-safety.ts";
 
 const require = createRequire(import.meta.url);
@@ -15,6 +16,9 @@ function transpile(relative, dependencies = {}) {
   const filename = new URL("../" + relative, import.meta.url).pathname;
   const mod = new Module(filename);
   mod.require = (name) => {
+    if (name === "@/lib/checkout/hold-store") {
+      return holdStore;
+    }
     if (name in dependencies) {
       return dependencies[name];
     }
@@ -213,7 +217,7 @@ test("the QR route serves the image, redirects external URLs and hides unknown o
   const inline = await loadQrRoute({ order, qrSource: PNG });
   assert.equal(inline.status, 200);
   assert.equal(inline.headers["Content-Type"], "image/png");
-  assert.equal(inline.headers["Cache-Control"], "private, max-age=3600");
+  assert.equal(inline.headers["Cache-Control"], "private, no-store");
   assert.ok(inline.body instanceof Uint8Array);
   assert.ok(inline.body.length > 0);
 
@@ -250,6 +254,9 @@ function renderInstructions(values, props) {
   let index = 0;
   const mod = new Module(filename);
   mod.require = (name) => {
+    if (name === "@/lib/checkout/hold-store") {
+      return holdStore;
+    }
     if (name === "react") {
       return { useState: () => [values[index++], () => {}] };
     }

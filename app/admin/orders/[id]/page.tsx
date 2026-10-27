@@ -16,6 +16,7 @@ import { BOOKING_TIME_ZONE } from "@/lib/booking-time";
 import { prisma } from "@/lib/prisma";
 
 import { ConfirmPaymentButton } from "./ConfirmPaymentButton";
+import { ReleaseReservationButton } from "./ReleaseReservationButton";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -28,6 +29,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
     where: { id },
     include: {
       manualPayment: true,
+      checkoutHold: true,
       user: {
         select: {
           id: true,
@@ -193,7 +195,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         <div className="lg:col-span-2 space-y-6">
           {/* Status Card */}
           <div className={`${statusConfig.bg} rounded-xl p-6`}>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap gap-4 items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={statusConfig.color}>{statusConfig.icon}</div>
                 <div>
@@ -225,6 +227,24 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                 currency={order.currency}
               />
             </div>
+            {order.checkoutHold &&
+              order.paymentStatus === "PENDING" &&
+              order.paymentMethod === "BREB_MANUAL" && (
+                <div className="mt-4">
+                  <p className="text-sm">
+                    Reserva de hora o plaza:{" "}
+                    {order.checkoutHold.state === "REPORTED"
+                      ? "retenida hasta revisar el ingreso"
+                      : order.checkoutHold.expiresAt.getTime() <= Date.now()
+                        ? "plazo vencido"
+                        : `retenida hasta ${formatDate(order.checkoutHold.expiresAt)}`}
+                    .
+                  </p>
+                  {["HELD", "REPORTED"].includes(order.checkoutHold.state) && (
+                    <ReleaseReservationButton orderId={order.id} />
+                  )}
+                </div>
+              )}
           </div>
 
           {/* Order Details */}

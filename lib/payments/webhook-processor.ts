@@ -264,6 +264,12 @@ export async function processPaymentWebhook(
       verificationResult.status === "ERROR" ||
       verificationResult.status === "VOIDED"
     ) {
+      if (["DECLINED", "VOIDED"].includes(verificationResult.status)) {
+        await prisma.checkoutHold.updateMany({
+          where: { orderId: order.id, state: { in: ["HELD", "CAPTURING"] } },
+          data: { state: "RELEASED" },
+        });
+      }
       console.log(
         `[WEBHOOK/${gatewayName.toUpperCase()}] Payment failed/declined for order ${order.id}: ${verificationResult.status}`
       );

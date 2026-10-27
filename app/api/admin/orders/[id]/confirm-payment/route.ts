@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/lib/auth";
+import { protectCheckoutPayment } from "@/lib/checkout/holds";
 import { processApprovedPayment } from "@/lib/payment-processor";
 import { prisma } from "@/lib/prisma";
 
@@ -63,6 +64,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json(
       { error: "El proveedor debe confirmar este método de pago." },
       { status: 400 }
+    );
+  }
+  try {
+    await protectCheckoutPayment(order.id, "REPORTED", { allowExpired: true });
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "La hora o plaza ya no está disponible. Revisa el ingreso y contacta con el cliente para resolverlo; no vuelvas a cobrar ni confirmes otra reserva.",
+      },
+      { status: 409 }
     );
   }
   // Serialize settlement by transaction reference. A transfer cannot settle two orders.

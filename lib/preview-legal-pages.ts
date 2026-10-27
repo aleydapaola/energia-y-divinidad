@@ -23,7 +23,7 @@ const drafts: Record<ReviewLegalSlug, { title: string; paragraphs: Array<[string
       ["h2", "Newsletter"],
       [
         "normal",
-        "La suscripción se solicita por separado y utiliza confirmación por correo antes de activar el alta en Mailchimp. La cuenta y audiencia separadas de Preview todavía están pendientes de configuración; no se consideran probadas las altas ni las bajas de esta versión.",
+        "La suscripción se solicita por separado y utiliza confirmación por correo antes de activar el alta en Mailchimp. En Preview se utiliza una cuenta y audiencia de pruebas separadas, con el destinatario de pruebas autorizado. Una baja se conserva; para volver a suscribirse se utiliza el formulario de confirmación de Mailchimp.",
       ],
       ["h2", "Consultas y solicitudes sobre los datos"],
       [

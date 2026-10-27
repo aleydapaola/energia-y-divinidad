@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { getBrebConfiguration } from "@/lib/breb";
 import { quoteCatalogItem } from "@/lib/checkout/catalog-quote";
 import { applyCheckoutDiscount } from "@/lib/checkout/discounts";
+import { createHeldCheckoutOrder, releaseUnpaidCheckoutHold } from "@/lib/checkout/holds";
 import { assertEventCapacity } from "@/lib/events/capacity";
 import { allowOrderInBrowser } from "@/lib/order-access";
 import { processApprovedPayment } from "@/lib/payment-processor";
@@ -63,8 +64,7 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
         quote.metadata.seats
       );
     }
-    // A preflight avoids starting payment for an unavailable slot. Fulfillment
-    // checks again under the calendar lock; this check is not a payment hold.
+    // Fast validation; order + actual hold are committed under the shared resource lock below.
     if (body.productType === "session" && body.scheduledAt) {
       await assertSessionTimeAvailable(
         prisma,
@@ -93,8 +93,8 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
     });
     const reference = `${method === "breb" ? "BREB" : "PP"}-${randomUUID()}`;
     await allowOrderInBrowser(reference);
-    const order = await prisma.order.create({
-      data: {
+    const order = await createHeldCheckoutOrder(
+      {
         userId: session?.user?.id || null,
         guestEmail: session?.user?.id ? null : email,
         guestName: session?.user?.id ? null : body.guestName || null,
@@ -121,8 +121,8 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
           brebSimulation: method === "breb" && getBrebConfiguration().simulation,
         },
       },
-      include: { user: true },
-    });
+      quote.capacity ?? null
+    );
     if (discount.finalAmount === 0) {
       const result = await processApprovedPayment(order);
       if (!result.success) {
@@ -156,6 +156,7 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
     });
     if (!result.success || !result.orderId || !result.approvalUrl) {
       await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: "FAILED" } });
+      await releaseUnpaidCheckoutHold(order.id);
       return NextResponse.json(
         { error: "No se pudo iniciar PayPal. Inténtalo de nuevo." },
         { status: 502 }

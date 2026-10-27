@@ -651,6 +651,10 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                 )}
 
                 {/* Submit button */}
+                <p className="text-sm text-[#654177]">
+                  Al continuar, guardamos tus plazas durante 20 minutos para completar el pago. Si
+                  pagas por Bre-B, comunica la transferencia dentro de ese plazo.
+                </p>
                 <button
                   type="submit"
                   disabled={submitting || !acceptTerms}

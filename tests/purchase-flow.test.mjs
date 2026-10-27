@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRequire, Module } from "node:module";
 import { test } from "node:test";
 
+import * as holdStore from "../lib/checkout/hold-store.ts";
 import * as safety from "../lib/preview-safety.ts";
 
 const require = createRequire(import.meta.url);
@@ -11,6 +12,18 @@ function load(relative, dependencies = {}) {
   const filename = new URL("../" + relative, import.meta.url).pathname;
   const mod = new Module(filename);
   mod.require = (name) => {
+    if (name === "@/lib/checkout/hold-store") {
+      return holdStore;
+    }
+    if (name === "@/lib/checkout/holds") {
+      return {
+        createHeldCheckoutOrder: async (data) =>
+          dependencies["@/lib/prisma"].prisma.order.create({ data, include: { user: true } }),
+        releaseUnpaidCheckoutHold: async () => {},
+        protectCheckoutPayment: async () => {},
+        CheckoutHoldError: class extends Error {},
+      };
+    }
     if (name in dependencies) {
       return dependencies[name];
     }
@@ -494,6 +507,7 @@ test("PayPal capture binds the provider order and checks completed state, amount
       metadata: { paypalOrderId: "provider-order" },
     };
     const { POST } = load("app/api/checkout/paypal/capture/route.ts", {
+      "@/lib/order-access": { canAccessOrder: async () => true },
       "@/lib/paypal": { isPayPalConfigured: () => true, capturePayPalOrder: async () => capture },
       "@/lib/payment-processor": {
         processApprovedPayment: async () => {

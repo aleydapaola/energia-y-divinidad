@@ -18,6 +18,7 @@ import { randomBytes } from "crypto";
 
 import { PaymentMethod, Prisma } from "@prisma/client";
 
+import { consumeCheckoutHold } from "@/lib/checkout/hold-store";
 import { createCourseEntitlement } from "@/lib/course-access";
 import { grantMonthlyCredits } from "@/lib/credits";
 import { recordDiscountUsage } from "@/lib/discount-codes";
@@ -423,7 +424,9 @@ async function createSessionBookingFromOrder(
     throw new Error("Las sesiones individuales requieren fecha programada (scheduledAt)");
   }
 
-  const duration = await resolveSessionDuration();
+  const held = await prisma.checkoutHold.findUnique({ where: { orderId: order.id } });
+  const protectedHold = held && ["CAPTURING", "REPORTED"].includes(held.state);
+  const duration = held?.duration ?? (await resolveSessionDuration());
   const data: Prisma.BookingUncheckedCreateInput = {
     userId,
     bookingType: "SESSION_1_ON_1",
@@ -444,8 +447,14 @@ async function createSessionBookingFromOrder(
   const booking =
     scheduledAt && config
       ? await withSessionCalendar(async (tx) => {
-          await assertSessionTimeAvailable(tx, config, scheduledAt, { duration });
-          return tx.booking.create({ data });
+          await assertSessionTimeAvailable(tx, config, scheduledAt, {
+            duration,
+            excludeHoldOrderId: order.id,
+            enforceSchedule: !protectedHold,
+          });
+          const created = await tx.booking.create({ data });
+          await consumeCheckoutHold(tx, order.id);
+          return created;
         })
       : await prisma.booking.create({
           data,
@@ -500,7 +509,7 @@ async function createEventBookingFromOrder(
   const booking = await prisma.$transaction(
     async (tx) => {
       await lockEventCapacity(tx, order.itemId);
-      await assertEventCapacity(tx, event, seats);
+      await assertEventCapacity(tx, event, seats, undefined, order.id);
       const created = await tx.booking.create({
         data: {
           userId,
@@ -534,6 +543,7 @@ async function createEventBookingFromOrder(
           orderId: order.id,
         },
       });
+      await consumeCheckoutHold(tx, order.id);
       return created;
     },
     { maxWait: 10000, timeout: 15000 }

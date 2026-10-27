@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   Client,
   Environment,
@@ -260,6 +262,10 @@ export async function capturePayPalOrder(orderId: string): Promise<PayPalCapture
 
     const response = await ordersController.captureOrder({
       id: orderId,
+      paypalRequestId: createHash("sha256")
+        .update(`eyd:capture:${orderId}`)
+        .digest("hex")
+        .slice(0, 38),
       prefer: "return=representation",
     });
 

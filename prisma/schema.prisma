@@ -191,12 +191,41 @@ model Order {
   manualPayment ManualPayment?
   stripePayment StripePayment?
   entitlements  Entitlement[]
+  checkoutHold  CheckoutHold?
 
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("orders")
+}
+
+// Inventory only: this is never evidence that money was received.
+enum CheckoutHoldState {
+  HELD
+  CAPTURING
+  REPORTED
+  CONSUMED
+  RELEASED
+}
+
+model CheckoutHold {
+  id          String            @id @default(cuid())
+  orderId     String            @unique
+  orderType   OrderType
+  resourceId  String
+  scheduledAt DateTime?
+  duration    Int?
+  seats       Int               @default(1)
+  state       CheckoutHoldState @default(HELD)
+  expiresAt   DateTime
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  order       Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderType, resourceId, state, expiresAt])
+  @@index([scheduledAt, state])
+  @@map("checkout_holds")
 }
 
 // Pagos manuales (Nequi, Daviplata, Bancolombia)

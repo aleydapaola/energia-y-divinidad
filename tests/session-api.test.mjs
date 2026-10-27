@@ -4,6 +4,7 @@ import { createRequire, Module } from "node:module";
 import { test } from "node:test";
 
 import { loadScheduling, config, singleBookingDb } from "./helpers/session-scheduling.mjs";
+import * as holdStore from "../lib/checkout/hold-store.ts";
 import * as slots from "../lib/session-slots.ts";
 
 const require = createRequire(import.meta.url);
@@ -12,6 +13,9 @@ function load(file, deps = {}) {
   const path = new URL("../" + file, import.meta.url).pathname;
   const mod = new Module(path);
   mod.require = (name) => {
+    if (name === "@/lib/checkout/hold-store") {
+      return holdStore;
+    }
     if (name === "next/server") {
       return { NextResponse: { json: Response.json } };
     }

@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { BrebPaymentInstructions } from "@/components/pago/BrebPaymentInstructions";
+import { CancelUnpaidReservation } from "@/components/pago/CancelUnpaidReservation";
 
 type Order = {
   orderNumber: string;
@@ -15,6 +16,7 @@ type Order = {
   reported: boolean;
   reportedReference?: string;
   qrAvailable?: boolean;
+  reservation?: { state: string; expiresAt: string; expired: boolean; canPay: boolean } | null;
   breb: {
     enabled: boolean;
     simulation: boolean;
@@ -31,6 +33,11 @@ function Content() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [transferReference, setTransferReference] = useState("");
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   async function refresh() {
     try {
       const response = await fetch(`/api/orders/${encodeURIComponent(reference)}/status`, {
@@ -78,7 +85,9 @@ function Content() {
         throw new Error(data.error);
       }
       setMessage(
-        "Aviso registrado. Tu compra sigue pendiente de verificar el ingreso. No vuelvas a pagar."
+        data.inventoryReview
+          ? "Aviso registrado. La reserva temporal venció y Aleyda debe revisar la disponibilidad junto con el ingreso. No vuelvas a pagar."
+          : "Aviso registrado. Tu compra sigue pendiente de verificar el ingreso. No vuelvas a pagar."
       );
       await refresh();
     } catch (error) {
@@ -88,6 +97,12 @@ function Content() {
     }
   }
   const button = "rounded-xl bg-[#4944a4] text-white py-3 px-5 disabled:opacity-50 w-full";
+  const holdExpired =
+    !!order?.reservation &&
+    (order.reservation.expired ||
+      (order.reservation.state === "HELD" && Date.parse(order.reservation.expiresAt) <= now));
+  const showPayment =
+    !order?.reported && (!order?.reservation || (order.reservation.canPay && !holdExpired));
   if (loading) {
     return <p className="p-8 text-center">Consultando pedido…</p>;
   }
@@ -133,7 +148,37 @@ function Content() {
           </section>
         ) : (
           <>
-            <BrebPaymentInstructions {...order} configuration={order.breb} />
+            {showPayment ? (
+              <>
+                {order.reservation && (
+                  <p role="status" className="rounded-xl bg-white p-4">
+                    Tu hora o plaza está reservada durante{" "}
+                    {Math.max(
+                      0,
+                      Math.ceil((Date.parse(order.reservation.expiresAt) - now) / 60000)
+                    )}{" "}
+                    minutos más. Completa la transferencia y comunícala antes de que termine este
+                    plazo.
+                  </p>
+                )}
+                <BrebPaymentInstructions {...order} configuration={order.breb} />
+              </>
+            ) : !order.reported ? (
+              <section className="rounded-2xl bg-white p-5 space-y-3">
+                <h1 className="text-xl font-semibold">La reserva temporal ha caducado</h1>
+                <p>
+                  No realices una transferencia para este pedido. Vuelve a elegir una hora o plaza
+                  disponible. Si ya transferiste, comunica la referencia más abajo para que Aleyda
+                  revise el caso; no vuelvas a pagar.
+                </p>
+                <Link
+                  className="underline"
+                  href={order.orderType === "SESSION" ? "/sesiones" : "/eventos"}
+                >
+                  Consultar disponibilidad
+                </Link>
+              </section>
+            ) : null}
             <section className="bg-white rounded-2xl p-5 space-y-4">
               {order.reported ? (
                 <div>
@@ -169,12 +214,15 @@ function Content() {
                   <p className="text-sm">
                     Sirve para localizar el ingreso. No activa la compra por sí sola.
                   </p>
-                  <button className={button} disabled={busy || !order.breb.enabled}>
+                  <button className={button} disabled={busy}>
                     {busy ? "Registrando…" : "Comunicar transferencia"}
                   </button>
                 </form>
               )}
             </section>
+            {!order.reported && order.reservation?.state === "HELD" && (
+              <CancelUnpaidReservation reference={reference} onCancelled={() => void refresh()} />
+            )}
           </>
         )}
         <p role="status" className="text-sm">

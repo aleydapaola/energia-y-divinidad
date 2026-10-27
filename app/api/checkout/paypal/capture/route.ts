@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { protectCheckoutPayment, CheckoutHoldError } from "@/lib/checkout/holds";
+import { canAccessOrder } from "@/lib/order-access";
 import { processApprovedPayment } from "@/lib/payment-processor";
 import { capturePayPalOrder, isPayPalConfigured } from "@/lib/paypal";
 import { prisma } from "@/lib/prisma";
@@ -42,6 +44,9 @@ export async function POST(request: NextRequest) {
       console.error("[PAYPAL/CAPTURE] Order not found for:", { paypalOrderId, reference });
       return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
     }
+    if (!(await canAccessOrder(order))) {
+      return NextResponse.json({ error: "Pedido no disponible en esta sesión." }, { status: 404 });
+    }
 
     // Si ya está completada, retornar éxito
     if (order.paymentStatus === "COMPLETED") {
@@ -61,7 +66,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Capturar el pago en PayPal
+    if (!["PENDING", "PROCESSING"].includes(order.paymentStatus)) {
+      return NextResponse.json({ error: "Este pedido no admite cobros." }, { status: 409 });
+    }
+    // Inventory becomes non-expiring before the external call. Keep it on an
+    // uncertain response; a provider retry always uses the same idempotency key.
+    await protectCheckoutPayment(order.id, "CAPTURING");
     const captureResult = await capturePayPalOrder(paypalOrderId);
 
     if (!captureResult.success) {
@@ -138,6 +148,10 @@ export async function POST(request: NextRequest) {
           },
         },
       });
+      return NextResponse.json(
+        { error: "Pago recibido; entrega pendiente. No repitas el pago." },
+        { status: 503 }
+      );
     }
 
     return NextResponse.json({
@@ -147,6 +161,9 @@ export async function POST(request: NextRequest) {
       captureId: captureResult.captureId,
     });
   } catch (error) {
+    if (error instanceof CheckoutHoldError || (error instanceof Error && "status" in error)) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     console.error("[PAYPAL/CAPTURE] Error:", error);
     return NextResponse.json({ error: "Error al procesar la captura" }, { status: 500 });
   }

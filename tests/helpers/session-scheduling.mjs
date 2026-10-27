@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire, Module } from "node:module";
 
+import * as holdStore from "../../lib/checkout/hold-store.ts";
 import * as slots from "../../lib/session-slots.ts";
 
 const require = createRequire(import.meta.url);
@@ -21,9 +22,17 @@ export const config = {
   ),
 };
 export function loadScheduling(db, schedule = config) {
+  db.checkoutHold ??= {
+    findMany: async () => [],
+    findUnique: async () => null,
+    updateMany: async () => ({ count: 0 }),
+  };
   const filename = new URL("../../lib/session-scheduling.ts", import.meta.url).pathname;
   const mod = new Module(filename);
   mod.require = (name) => {
+    if (name === "@/lib/checkout/hold-store") {
+      return holdStore;
+    }
     if (name === "@/lib/prisma") {
       return { prisma: db };
     }

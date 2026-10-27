@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getBrebConfiguration } from "@/lib/breb";
+import { checkoutHoldStatus, requiresCheckoutHold } from "@/lib/checkout/hold-store";
 import { canAccessOrder } from "@/lib/order-access";
 import { prisma } from "@/lib/prisma";
 
@@ -29,6 +30,7 @@ export async function GET(
         id: true,
         userId: true,
         manualPayment: { select: { referenceNumber: true, approved: true } },
+        checkoutHold: { select: { state: true, expiresAt: true } },
         orderNumber: true,
         orderType: true,
         itemId: true,
@@ -53,7 +55,21 @@ export async function GET(
     const paymentStatus = order.paymentStatus;
     const metadata = order.metadata as Record<string, any> | null;
     // Resolved once: the QR flag and the key come from the same configuration.
-    const breb = order.paymentMethod === "BREB_MANUAL" ? getBrebConfiguration() : null;
+    const reservation =
+      checkoutHoldStatus(order.checkoutHold) ??
+      (requiresCheckoutHold(order)
+        ? {
+            state: "UNRESERVED",
+            expiresAt: order.createdAt.toISOString(),
+            expired: true,
+            canPay: false,
+          }
+        : null);
+    const configuration = order.paymentMethod === "BREB_MANUAL" ? getBrebConfiguration() : null;
+    const breb =
+      configuration && reservation && !reservation.canPay
+        ? { ...configuration, enabled: false, key: "", recipient: "", qrConfigured: false }
+        : configuration;
 
     return NextResponse.json({
       id: order.id,
@@ -77,6 +93,7 @@ export async function GET(
           }
         : {}),
       paymentStatus,
+      reservation,
       amount: Number(order.amount),
     });
   } catch (error) {

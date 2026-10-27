@@ -1,6 +1,8 @@
+import { activeCheckoutHoldWhere } from "@/lib/checkout/hold-store";
+
 import type { Prisma } from "@prisma/client";
 
-type SeatStore = Pick<Prisma.TransactionClient, "booking" | "seatAllocation">;
+type SeatStore = Pick<Prisma.TransactionClient, "booking" | "seatAllocation" | "checkoutHold">;
 type EventCapacity = { _id: string; capacity?: number | null };
 
 export class EventCapacityError extends Error {
@@ -14,7 +16,12 @@ export function bookingSeatCount(metadata: unknown): number {
 }
 
 /** Count legacy bookings too, without rewriting them or double-counting allocations. */
-export async function eventSeatUsage(db: SeatStore, eventIds: string[], excludeBookingId?: string) {
+export async function eventSeatUsage(
+  db: SeatStore,
+  eventIds: string[],
+  excludeBookingId?: string,
+  excludeHoldOrderId?: string
+) {
   const used = new Map(eventIds.map((id) => [id, 0]));
   if (!eventIds.length) {
     return used;
@@ -47,6 +54,17 @@ export async function eventSeatUsage(db: SeatStore, eventIds: string[], excludeB
       (used.get(booking.resourceId) || 0) + bookingSeatCount(booking.metadata)
     );
   }
+  const holds = await db.checkoutHold.findMany({
+    where: {
+      ...activeCheckoutHoldWhere(excludeHoldOrderId),
+      orderType: "EVENT",
+      resourceId: { in: eventIds },
+    },
+    select: { resourceId: true, seats: true },
+  });
+  for (const hold of holds) {
+    used.set(hold.resourceId, (used.get(hold.resourceId) || 0) + hold.seats);
+  }
   return used;
 }
 
@@ -72,7 +90,8 @@ export async function assertEventCapacity(
   db: SeatStore,
   event: EventCapacity,
   seats: number,
-  excludeBookingId?: string
+  excludeBookingId?: string,
+  excludeHoldOrderId?: string
 ) {
   if (!Number.isSafeInteger(seats) || seats < 1) {
     throw new EventCapacityError("Número de plazas inválido.");
@@ -80,7 +99,7 @@ export async function assertEventCapacity(
   if (!event.capacity) {
     return;
   }
-  const usage = await eventSeatUsage(db, [event._id], excludeBookingId);
+  const usage = await eventSeatUsage(db, [event._id], excludeBookingId, excludeHoldOrderId);
   if ((usage.get(event._id) || 0) + seats > event.capacity) {
     throw new EventCapacityError(
       "No quedan suficientes plazas para este evento. No repitas el pago."

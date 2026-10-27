@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRequire, Module } from "node:module";
 import { test } from "node:test";
 
+import * as holdStore from "../lib/checkout/hold-store.ts";
 import * as eventTime from "../lib/event-time.ts";
 
 const require = createRequire(import.meta.url);
@@ -11,6 +12,18 @@ function load(path, deps = {}) {
   const filename = new URL("../" + path, import.meta.url).pathname;
   const mod = new Module(filename);
   mod.require = (name) => {
+    if (name === "@/lib/checkout/hold-store") {
+      return holdStore;
+    }
+    if (name === "@/lib/checkout/holds") {
+      return {
+        createHeldCheckoutOrder: async (data) =>
+          deps["@/lib/prisma"].prisma.order.create({ data, include: { user: true } }),
+        releaseUnpaidCheckoutHold: async () => {},
+        protectCheckoutPayment: async () => {},
+        CheckoutHoldError: class extends Error {},
+      };
+    }
     if (name in deps) {
       return deps[name];
     }
@@ -49,6 +62,7 @@ function nodes(node) {
 const capacity = load("lib/events/capacity.ts");
 test("event capacity counts legacy bookings, allocations and multi-seat purchases once, and releases cancelled seats", async () => {
   const db = {
+    checkoutHold: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
     booking: {
       findMany: async () => [
         { id: "legacy", resourceId: "event", status: "CONFIRMED", metadata: { seats: 2 } },
@@ -192,6 +206,7 @@ test("sold-out event is rejected before an order or provider payment is created"
     "@/lib/paypal": { isPayPalConfigured: () => true, createPayPalOrder: fail },
     "@/lib/prisma": {
       prisma: {
+        checkoutHold: { findMany: async () => [] },
         booking: {
           findMany: async () => [
             { id: "legacy", resourceId: "event", status: "CONFIRMED", metadata: {} },
@@ -222,6 +237,7 @@ test("paid event delivery creates booking, allocation and entitlement once and r
   let emails = 0,
     locks = 0;
   const db = {
+    checkoutHold: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
     $executeRaw: async () => {
       locks++;
     },

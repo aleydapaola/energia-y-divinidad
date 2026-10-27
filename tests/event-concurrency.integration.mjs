@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import nextEnv from "@next/env";
 import { PrismaClient } from "@prisma/client";
 
-import { assertEventCapacity, eventSeatUsage, lockEventCapacity } from "../lib/events/capacity.ts";
+import { loadInventory } from "./helpers/checkout-inventory.mjs";
 import { assertLocalDatabaseSafety } from "../scripts/local-database-safety.mjs";
 import { assertLocalServiceSafety } from "../scripts/local-service-safety.mjs";
 
@@ -18,6 +18,10 @@ nextEnv.loadEnvConfig(process.cwd(), true, {
 assertLocalDatabaseSafety(process.env);
 assertLocalServiceSafety(process.env);
 const db = new PrismaClient({ log: [] });
+const { assertEventCapacity, eventSeatUsage, lockEventCapacity } = loadInventory(
+  "lib/events/capacity.ts",
+  db
+);
 const resourceId = "eyd-qa-capacity-" + randomUUID();
 const ids = ["qa-event-" + randomUUID(), "qa-event-" + randomUUID(), "qa-event-" + randomUUID()];
 try {

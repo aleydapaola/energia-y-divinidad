@@ -606,6 +606,12 @@ function SessionCheckoutContent() {
                 )}
 
                 {/* Submit Button */}
+                {type === "single" && selectedDate && (
+                  <p className="mb-4 text-sm text-[#654177]">
+                    Al continuar, guardamos esta hora durante 20 minutos para completar el pago. Si
+                    pagas por Bre-B, comunica la transferencia dentro de ese plazo.
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={handleSubmit}

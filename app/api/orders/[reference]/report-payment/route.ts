@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
+import { protectCheckoutPayment } from "@/lib/checkout/holds";
 import { notifyBrebReport } from "@/lib/checkout/pending-email";
 import { canAccessOrder } from "@/lib/order-access";
 import { prisma } from "@/lib/prisma";
@@ -42,6 +43,15 @@ export async function POST(
   if (existing) {
     return NextResponse.json({ success: true, pendingVerification: true, alreadyReported: true });
   }
+  // Preserve a reported transfer's inventory until the operator reviews it.
+  // A late report is still recorded even if someone else already owns the slot:
+  // receiving a report is not evidence of payment or permission to overbook.
+  let inventoryReview = false;
+  try {
+    await protectCheckoutPayment(order.id, "REPORTED", { allowExpired: true });
+  } catch {
+    inventoryReview = true;
+  }
   try {
     await prisma.manualPayment.create({
       data: {
@@ -63,5 +73,5 @@ export async function POST(
   } catch {
     notified = false;
   }
-  return NextResponse.json({ success: true, pendingVerification: true, notified });
+  return NextResponse.json({ success: true, pendingVerification: true, notified, inventoryReview });
 }
