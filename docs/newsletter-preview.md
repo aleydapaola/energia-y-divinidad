@@ -2,13 +2,21 @@
 
 Conectar únicamente la cuenta separada de Mailchimp destinada a Preview. La audiencia de producción no se utiliza para pruebas. Único destinatario autorizado: aleydapaola@proton.me.
 
-## Alta pendiente del usuario
+## Cuenta verificada y conexión — 27/10/2026
 
-El 27/10/2026 Xavier facilita la sesión de alta de Mailchimp en us2. El formulario ha avanzado al paso de dirección postal. El usuario completa directamente la dirección que Aleyda autorice para el pie de los correos, cualquier aceptación de condiciones y el plan Free. No copiar la dirección a estos documentos, inventarla ni obtenerla de otro proyecto. No se han creado claves ni conectado la cuenta todavía.
+Xavier ha completado el alta, la dirección postal y el plan Free. Cuenta verificada en el panel: `preview-newsletter@energiaydivinidad.com`, usuario `previewnewsletter`, web de Preview. No copiar la dirección postal a estos documentos ni reutilizarla en las políticas sin confirmación.
+
+Audiencia `2263470886` (us2), distinta de la real `d1b9e1cbf7`, renombrada y verificada como **PRUEBAS — NO REAL — Energía y Divinidad**. Double opt-in activado y guardado. El indicador de plan mostraba un contacto antes de las pruebas, pero la pantalla inicial de contactos no permitía identificarlo: no considerar la audiencia vacía ni enviar una campaña al conjunto. Sin webhooks ni sitios conectados.
+
+Xavier autoriza generar la clave **EYD Preview - Newsletter - PRUEBAS**, aceptar la política API y almacenarla solo en Preview. La revisión automática rechaza el clic del agente en Generate Key; Xavier lo realiza personalmente y confirma su creación. Clave con vencimiento indicado por Mailchimp el 27/10/2027, copiada mediante el botón del proveedor y pegada directamente en Vercel; su valor no se registra en el chat, repositorio, informes ni archivos locales. Pantalla de clave cerrada y portapapeles sustituido por una URL no secreta.
+
+Metadatos Vercel verificados: clave nueva de tipo Secret/sensitive, target `preview`, excepción de rama `preview`; clave original conservada en Production/Development. `PREVIEW_MAILCHIMP_LIST_ID=2263470886` y `MAILCHIMP_SERVER_PREFIX=us2` exclusivos de esa rama, sin sustituir los valores originales. Redespliegue de `a7afb01e` Ready en `dpl_CyT2PgQqjBFvRKQ9Gkzh6dJx9qEG`, alias personalizado y técnico asignados. Proyecto, repositorio y rama contrastados por API. Production conserva `7b9a7ac3` en su despliegue anterior.
+
+Prueba real desde el formulario de portada de Preview con aleydapaola@proton.me: solicitud creada y correo **PRUEBAS — NO REAL — Energía y Divinidad: Please Confirm Subscription** recibido en Proton, remitente preview-newsletter@energiaydivinidad.com y destinatario autorizado comprobados. Repetir la solicitud devuelve 200 y «Tu suscripción sigue pendiente», sin afirmar que está activa ni enviar una confirmación nueva. Se abre el enlace del mensaje; Mailchimp exige Confirm Humanity (reCAPTCHA). Solicitado a Xavier que complete personalmente la comprobación y Subscribe. Confirmación final, estado subscribed y baja pendientes de esa intervención; no resolver ni eludir el CAPTCHA.
 
 ## Configuración preparada
 
-1. Verificar en el panel el correo de cuenta, nombre de pruebas, plan Free y audiencia vacía. Contrastar que la audiencia pertenece a esta cuenta y es distinta de la real. La región us2 por sí sola no acredita la identidad de la cuenta.
+1. Verificar en el panel el correo de cuenta, nombre de pruebas, plan Free y contactos existentes. Contrastar que la audiencia pertenece a esta cuenta y es distinta de la real. La región us2 por sí sola no acredita la identidad de la cuenta.
 2. Preparar una clave identificada como EYD Preview, con creación y almacenamiento exclusivo en Preview autorizados expresamente en ese paso. No copiar su valor al chat, repositorio o informes.
 3. Conservar MAILCHIMP_API_KEY original en Production/Development y MAILCHIMP_LIST_ID original. Añadir la clave nueva solo a Preview, PREVIEW_MAILCHIMP_LIST_ID con la audiencia propia y la excepción de MAILCHIMP_SERVER_PREFIX para la rama preview si es necesaria. No activar envíos hasta verificar el aislamiento.
 4. Desplegar Preview y probar desde el formulario: una solicitud pending al único destinatario autorizado, confirmación desde su correo, miembro subscribed y baja. Verificar recepción real, no solo respuesta del handler. No enviar campañas a contactos reales.
