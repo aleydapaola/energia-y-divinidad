@@ -11,7 +11,15 @@ export function CancelUnpaidReservation({
 }) {
   const [checked, setChecked] = useState(false),
     [busy, setBusy] = useState(false),
-    [message, setMessage] = useState("");
+    [message, setMessage] = useState(""),
+    [done, setDone] = useState(false);
+  if (done) {
+    return (
+      <p role="status" className="rounded-xl bg-white p-4">
+        {message}
+      </p>
+    );
+  }
   return (
     <form
       className="rounded-xl border bg-white p-4 space-y-3"
@@ -33,6 +41,7 @@ export function CancelUnpaidReservation({
             throw new Error(data.error);
           }
           setMessage("Pedido sin pagar cancelado. La hora o plaza queda disponible de nuevo.");
+          setDone(true);
           onCancelled?.();
         } catch (error) {
           setMessage(error instanceof Error ? error.message : "No se pudo liberar la reserva.");

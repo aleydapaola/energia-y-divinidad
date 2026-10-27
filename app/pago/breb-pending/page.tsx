@@ -139,12 +139,13 @@ function Content() {
         ) : order.paymentStatus !== "PENDING" ? (
           <section className="bg-white p-6 rounded-2xl">
             <h1>
-              Estado del pedido:{" "}
-              {order.paymentStatus === "PROCESSING"
-                ? "Verificando y preparando tu compra"
-                : "Pedido no disponible para pagar"}
+              {order.paymentStatus === "CANCELLED"
+                ? "Pedido cancelado"
+                : order.paymentStatus === "PROCESSING"
+                  ? "Verificando y preparando tu compra"
+                  : "Pedido no disponible para pagar"}
             </h1>
-            <p>No realices otra transferencia.</p>
+            <p>No realices transferencias para este pedido.</p>
           </section>
         ) : (
           <>

@@ -159,7 +159,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         reason:
           body.data.amountDiscrepancyReason ||
           body.data.notes ||
-          "Ingreso comprobado en la cuenta receptora",
+          (process.env.VERCEL_ENV !== "production" &&
+          (order.metadata as { brebSimulation?: boolean } | null)?.brebSimulation
+            ? "Simulación de Preview comprobada; no se ha recibido dinero real"
+            : "Ingreso comprobado en la cuenta receptora"),
         metadata: {
           transactionReference: body.data.transactionReference,
           expectedAmount,

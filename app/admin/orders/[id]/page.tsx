@@ -208,7 +208,13 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
               {/* Botón de confirmar pago para pagos manuales pendientes */}
               {order.manualPayment && (
                 <div className="p-4 bg-amber-50 rounded-lg mb-4 break-words">
-                  <strong>Aviso del cliente — pendiente de verificar</strong>
+                  <strong>
+                    {order.manualPayment.approved
+                      ? simulation
+                        ? "Simulación verificada"
+                        : "Transferencia verificada"
+                      : "Aviso del cliente — pendiente de verificar"}
+                  </strong>
                   <p>Referencia comunicada: {order.manualPayment.referenceNumber}</p>
                   <p>
                     {simulation

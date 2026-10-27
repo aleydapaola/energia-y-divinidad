@@ -116,7 +116,8 @@ export function Header({ session }: HeaderProps) {
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="text-[#6B4C9A]"
-                aria-label="Toggle menu"
+                aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+                aria-expanded={mobileMenuOpen}
               >
                 {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
               </button>

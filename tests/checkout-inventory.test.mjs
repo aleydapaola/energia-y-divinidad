@@ -396,3 +396,31 @@ test("Bre-B expiry removes payment instructions but keeps the late transfer repo
     assert.doesNotMatch(html, /<button[^>]*\sdisabled(?:=|[ >])[^>]*>Comunicar transferencia/);
   }
 });
+
+test("event checkout has one header and no floating public footer over payment controls; public events keep navigation", () => {
+  const require = createRequire(import.meta.url),
+    React = require("react"),
+    { renderToStaticMarkup } = require("react-dom/server");
+  for (const path of [
+    "/eventos",
+    "/eventos/taller",
+    "/eventos/taller/checkout",
+    "/eventos/taller/checkout/",
+  ]) {
+    const { EventosShell } = loadInventory(
+      "app/eventos/EventosShell.tsx",
+      {},
+      { dependencies: { "next/navigation": { usePathname: () => path } } }
+    );
+    const html = renderToStaticMarkup(
+      EventosShell({
+        header: React.createElement("header", null, "PUBLIC-HEADER"),
+        footer: React.createElement("footer", null, "FLOATING-WHATSAPP"),
+        children: React.createElement("section", null, "CHECKOUT-OR-EVENT-CONTENT"),
+      })
+    );
+    assert.match(html, /CHECKOUT-OR-EVENT-CONTENT/);
+    assert.equal(html.includes("PUBLIC-HEADER"), !path.includes("/checkout"));
+    assert.equal(html.includes("FLOATING-WHATSAPP"), !path.includes("/checkout"));
+  }
+});

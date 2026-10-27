@@ -2,15 +2,17 @@
 
 Seguimiento del plan de cierre del 25/10/2026. Las pruebas locales con dependencias simuladas no sustituyen estas comprobaciones remotas. Usar solo datos ficticios, PayPal sandbox, Bre-B simulado y el destinatario autorizado de Preview.
 
+Estado actualizado 27/10: siete de ocho compras ficticias completadas. Preview 00642dfe Ready; retención de inventario implementada y comprobada. Newsletter de pruebas cerrada. Falta taller PayPal, terminar comprobaciones externas de la nueva sesión y revisar los ajustes móviles preparados; seguimiento de cierre en [cierre-preview-2026-10-27.md](cierre-preview-2026-10-27.md).
+
 | Compra | Inicio y estado pendiente | Confirmación | Entrega única y acceso | Correo y calendario |
 | --- | --- | --- | --- | --- |
 | Producto digital · Bre-B | Nueva orden sintética, referencia exacta en registro privado | Completada desde ADMIN con referencia ficticia y declaración de simulación | Un entitlement PRODUCT; archivo TXT abierto desde CLIENT | Confirmación y aviso recibidos en Proton; no aplica calendario |
-| Producto digital · PayPal | Flujo completo del navegador, 20 USD ficticios, comprador dedicado EYD | Captura COMPLETED; webhook procesado, sin error ni reintentos | Un entitlement; archivo TXT abierto desde CLIENT | Recepción de este correo pendiente; no aplica calendario |
-| Sesión individual · Bre-B | Nueva orden sintética para 2/11/2026 a las 10:00 Colombia | Completada desde ADMIN, simulada | Una reserva CONFIRMED, duración 90 min y contador cero; vista CLIENT correcta con conversión Madrid y política | Correo recibido y política comprobada; Google sincronizado sin error, vista externa pendiente |
-| Sesión individual · PayPal | Pendiente en el flujo actual; las compras históricas no validan esta versión | Captura y webhook sandbox | Una reserva, sin duplicado por callback/webhook/reintento | Correo y un evento de 90 min con etiqueta de pruebas |
+| Producto digital · PayPal | Flujo completo del navegador, 20 USD ficticios, comprador dedicado EYD | Captura COMPLETED; webhook procesado, sin error ni reintentos | Un entitlement; archivo TXT abierto desde CLIENT | Recibo recibido en Proton, referencia exacta y enlace de Preview comprobados; no aplica calendario |
+| Sesión individual · Bre-B | Nueva orden sintética para 2/11/2026 a las 10:00 Colombia | Completada desde ADMIN, simulada | Una reserva CONFIRMED, duración 90 min y contador cero; vista CLIENT correcta con conversión Madrid y política | Correo recibido y política comprobada; Google externo verificado, una cita 10:00–11:30 |
+| Sesión individual · PayPal | Navegador y comprador sandbox dedicado; clic final personal de Xavier, 100 USD ficticios | Captura COMPLETED; webhook procesado sin error ni reintentos | Una reserva CONFIRMED para 2/11 14:00 Colombia, 90 min, contador cero; CheckoutHold CONSUMED; recarga mantiene éxito | Google sincronizado sin error; correo y vista externa nueva en comprobación |
 | Curso · Bre-B | Nueva orden de curso sintético | Completada desde ADMIN, simulada | Un entitlement COURSE; lección protegida leída con CLIENT | Confirmación y aviso recibidos en Proton; no aplica calendario de sesiones |
-| Curso · PayPal | Flujo completo desde carrito autenticado, 20 USD ficticios | Captura COMPLETED y webhook procesado sin error ni reintentos | Un entitlement COURSE; lección protegida leída con CLIENT | Recepción de este correo pendiente; no aplica calendario de sesiones |
-| Evento/taller · Bre-B | Nueva orden de taller sintético futuro | Completada desde ADMIN, simulada | Una reserva CONFIRMED y un entitlement EVENT; vista CLIENT verificada, corrección horaria en preparación | Confirmación y aviso recibidos en Proton; no tratarlo como sesión individual |
+| Curso · PayPal | Flujo completo desde carrito autenticado, 20 USD ficticios | Captura COMPLETED y webhook procesado sin error ni reintentos | Un entitlement COURSE; lección protegida leída con CLIENT | Recibo recibido en Proton con referencia exacta y enlace a Mis Cursos; no aplica calendario de sesiones |
+| Evento/taller · Bre-B | Nueva orden de taller sintético futuro | Completada desde ADMIN, simulada | Una reserva CONFIRMED y un entitlement EVENT; vista CLIENT verificada y hora Colombia corregida | Confirmación y aviso recibidos en Proton; no tratarlo como sesión individual |
 | Evento/taller · PayPal | Pendiente | Captura y webhook sandbox | Inscripción y plazas correctas, sin duplicado | Correo; no tratarlo como sesión individual |
 
 ## Comprobaciones transversales
@@ -24,9 +26,7 @@ Seguimiento del plan de cierre del 25/10/2026. Las pruebas locales con dependenc
 
 ## Accesos: estado actual
 
-ADMIN dedicado verificado y panel probado. Comprador PayPal Personal sandbox exclusivo de EYD creado con autorización e inicio de sesión completado por Xavier; primera compra de producto completada. Falta entrar a la cuenta web CLIENT aleydapaola@proton.me, sin +preview-admin: el ADMIN no valida los permisos de comprador. Se ha solicitado el enlace de recuperación desde Preview; el usuario debe definir y enviar personalmente la contraseña. Mailchimp separado sigue pendiente. Los párrafos siguientes conservan el diagnóstico anterior, ya superado en ADMIN y contenidos.
-
-Actualización: Xavier ha iniciado sesión CLIENT. Verificados archivo TXT, lección Bre-B, reserva de taller y sesión con política y hora Colombia/Madrid. Segunda compra PayPal (curso) completada, con entrega única y lección disponible. Los párrafos históricos de accesos no representan bloqueos actuales. Mailchimp continúa pendiente.
+ADMIN dedicado verificado, panel probado y nueva confirmación de importe de Bre-B completada. CLIENT aleydapaola@proton.me verificado con archivos y lecciones accesibles. Comprador sandbox exclusivo de EYD guardado por Xavier y utilizado en producto, curso y sesión; no usar el de ASA. Newsletter conectada al Mailchimp separado y alta/baja probadas. Los párrafos históricos siguientes conservan el diagnóstico anterior y no representan bloqueos actuales.
 
 ### Diagnóstico inicial conservado
 
