@@ -14,6 +14,10 @@ Metadatos Vercel verificados: clave nueva de tipo Secret/sensitive, target `prev
 
 Prueba real desde el formulario de portada de Preview con aleydapaola@proton.me: solicitud creada y correo **PRUEBAS — NO REAL — Energía y Divinidad: Please Confirm Subscription** recibido en Proton, remitente preview-newsletter@energiaydivinidad.com y destinatario autorizado comprobados. Repetir la solicitud devuelve 200 y «Tu suscripción sigue pendiente», sin afirmar que está activa ni enviar una confirmación nueva. Se abre el enlace del mensaje; Mailchimp exige Confirm Humanity (reCAPTCHA). Solicitado a Xavier que complete personalmente la comprobación y Subscribe. Confirmación final, estado subscribed y baja pendientes de esa intervención; no resolver ni eludir el CAPTCHA.
 
+Xavier confirma que ha pulsado Subscribe tras la comprobación humana. Página alojada «Your subscription to our list has been confirmed» verificada. Repetir la solicitud de Preview devuelve 200 y «Ya estás en nuestra lista», confirmando subscribed sin duplicar el contacto ni reenviar la confirmación. Desde Manage subscription preferences se solicita y recibe en Proton el correo Update Profile, y se abre su enlace para probar la baja como suscriptor.
+
+Baja completada desde ese formulario, con el correo autorizado: Mailchimp muestra **Unsubscribe Successful**. Nueva solicitud por API devuelve **409** con el formulario oficial de reinscripción, sin reactivar la dirección. Repetida desde la portada real: mensaje de confirmación y enlace **Volver a suscribirme** visibles. Se deja el contacto de QA de baja. No se han enviado campañas ni modificado contactos de la audiencia real.
+
 ## Configuración preparada
 
 1. Verificar en el panel el correo de cuenta, nombre de pruebas, plan Free y contactos existentes. Contrastar que la audiencia pertenece a esta cuenta y es distinta de la real. La región us2 por sí sola no acredita la identidad de la cuenta.
