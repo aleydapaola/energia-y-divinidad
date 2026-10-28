@@ -31,30 +31,35 @@ Orden de QR BREB-48a2aa96-88d8-4ec1-a723-2c58bb8151d1: discrepancia bloqueada en
 
 También abierto el recibo PayPal anterior del producto: referencia PP-d8e8cb1a-a049-4833-a4de-71f35c0f8666, 20 USD y enlace a Mis Compras de Preview. Queda cerrada esa evidencia de email, además del curso comprobado anteriormente.
 
-## Revisión móvil en curso
+## Cierre verificado — 28/10/2026
 
-Vista de Brave DevTools con preset iPhone SE 375×667. Portada, menú desplegable, membresía y estado de pedido cancelado legibles, sin desbordamiento horizontal visible. El checkout del taller muestra resumen, fecha Colombia y 19 cupos, pero duplica la cabecera y el WhatsApp flotante tapa contenido. Corrección local EventosShell: el checkout mantiene su propia cabecera y no incorpora cabecera/pie públicos; las demás páginas de eventos conservan navegación/pie. Ajustes locales de etiquetas: menú accesible en español, pago cancelado claro, simulación ya verificada y motivo de auditoría ficticio. Estos ajustes todavía no están desplegados ni revisados remotamente.
+Preview ea9a0a80c630173342b44d7512ab9212a1e27889 Ready en dpl_GjaRRtK3Svq6TKR3fTWzQsRQZrYV. Proyecto/equipo/repositorio/ref/ambos alias verificados. Checkout móvil en iPhone SE 375×667 revisado en URL nueva: una cabecera, sin pie público ni WhatsApp superpuesto, resumen y formulario accesibles. Las primeras capturas del navegador conservaban la página anterior; la navegación nueva y HTML servido confirman la corrección. Cuenta móvil mejorada localmente con selector compacto; escritorio conserva sus enlaces.
 
-140 pruebas automáticas y tipos correctos con estos ajustes locales, incluida comprobación del checkout sin cabecera/pie públicos y conservación de la navegación del resto de eventos. La pantalla de regreso de PayPal solo ofrece liberar si hay una retención HELD sin pago ni aviso; no muestra ese control durante captura/revisión. Pendiente commit/despliegue de esta revisión.
+**Ocho compras completadas.** Producto, curso, sesión y taller, por Bre-B simulado y PayPal sandbox. Relectura final de Neon confirma cuenta CLIENT correcta, entrega única por pedido y ausencia de errores en las cuatro capturas/webhooks PayPal. No hay nuevas transferencias, cobros reales ni devoluciones. Se conservan los históricos.
 
-## Sesión PayPal completada por Xavier
+Sesión PayPal PP-aece0b11-cfd7-42cd-9a39-a5fec6dc2a60: una cita el 2/11 a las 14:00 Colombia, 90 minutos, contador cero y retención consumida. CLIENT, recibo con política y Google externo verificados: un evento de pruebas 14:00–15:30. La cita Bre-B del mismo día permanece 10:00–11:30. No repetir el pago.
 
-Xavier introduce personalmente la contraseña sandbox cuando PayPal la vuelve a solicitar y confirma la compra. Navegador muestra Pago Exitoso con referencia PP-aece0b11-cfd7-42cd-9a39-a5fec6dc2a60. Neon Preview: COMPLETED, comprador dedicado correcto, captura COMPLETED; un booking CONFIRMED de 90 min el 2/11/2026 a las 14:00 Colombia (19:00Z), contador cero, CheckoutHold CONSUMED. Evento Google 8rqki1lg2pnv6u0f6m1o7qeonk sincronizado sin error. Webhook PAYMENT.CAPTURE.COMPLETED procesado, failed=false, retryCount=0. Recarga de confirmación mantiene éxito; no repetir el pago. Correo, vista CLIENT y vista externa Google se están verificando. Resta taller PayPal.
+Taller PayPal PP-892a06dc-67c5-4640-999f-9b0755b54512: Xavier completa personalmente el pago de 20 USD ficticios. Una reserva CONFIRMED el 15/12 a las 10:00 Colombia, una asignación, un entitlement y retención consumida. Disponibilidad 19→18 durante el pago y 18 al finalizar; no se descuenta dos veces. Confirmación recargada, CLIENT muestra las dos inscripciones previstas (Bre-B y PayPal), recibo con referencia exacta/hora/importe/enlace de Preview recibido en Proton.
 
-## Datos legales: respuesta del usuario
+**143 pruebas automáticas**, tipos y lint de cambios correctos. Preparada retirada con 410 de las dos entradas antiguas de membresía que aceptaban precios del navegador; la interfaz actual usa la ruta de suscripción separada. No se han activado ni probado nuevas suscripciones recurrentes. Eliminado log de datos de usuario de Mi Cuenta. Estos últimos cambios requieren commit/despliegue y comprobación remota.
 
-Xavier aporta dos variantes posibles del NIT y explica que Aleyda no recuerda el dígito. No se selecciona ni publica ninguna: sigue pendiente cotejar con el RUT. La cédula conserva su etiqueta de cédula. Dirección pública autorizada y condiciones particulares siguen pendientes. No reutilizar automáticamente la dirección introducida en Mailchimp ni datos de otro proyecto.
+## Newsletter y regalo
 
-## Ya cerrado
+Newsletter separada comprobada: pending, confirmación personal de Xavier, subscribed, baja desde preferencias y 409/formulario oficial al pedir alta otra vez. QA dejado de baja y sin campañas. Ver docs/newsletter-preview.md.
 
-Newsletter de pruebas conectada y comprobada contra Mailchimp separado: pending, doble confirmación personal de Xavier, subscribed, baja desde preferencias del suscriptor y 409/formulario oficial al solicitar alta de nuevo. Contacto de QA dejado de baja, sin campañas. Ver docs/newsletter-preview.md.
+Xavier mantiene la promesa de meditación e indica usar `#` provisionalmente. Borrador guardado también en Final welcome email de Mailchimp de pruebas; HTML local en docs/newsletter-bienvenida-preview.html: botón con ese enlace y aviso de Preview. Falta enlace real y prueba de entrega de ese regalo antes de Production; no confundir alta/baja técnica con entrega de contenido. Correo final de bienvenida no se activa con una descarga inexistente.
+
+## Datos legales y publicación
+
+Correo público autorizado: contacto@energiaydivinidad.com. Sigue pendiente dirección postal de notificación autorizada; no copiar la de Mailchimp. NIT no cotejado con RUT: cálculo local según algoritmo DIAN da candidato DV 3, pero no acredita registro fiscal. Mantener la cédula etiquetada como cédula y no publicar un NIT supuesto. Condiciones de otros productos pendientes de revisión, sin extender automáticamente las de sesiones.
+
+Preparación concreta de publicación y límites: docs/preparacion-publicacion-2026-10-28.md. Production sigue sin autorización de publicación y conserva 7b9a7ac3/dpl_4Kwyq1ERrbCFxuhYxpJBTxC7rDbc. No integrar main ni copiar el dataset de pruebas.
 
 ## Puntos para retomar
 
-- Revisar git status y este documento antes de editar. Rama preview; los dos commits previos de documentación de Mailchimp están conservados.
-- Aplicación actualmente servida: 00642dfe/dpl_HP94YK2u1UESjTzLwdkdtMC2H9Sg en https://preview.energiaydivinidad.com. Configuración Mailchimp y retenciones activas. Ajustes móviles/de etiquetas locales pendientes de commit/despliegue.
-- Referencias exactas de QA en .local-private/preview-qa-2026-10-27 y scripts de lectura en /private/tmp. No copiar secretos a este documento ni al chat.
-- Bre-B QR/importe completado: BREB-48a2aa96-88d8-4ec1-a723-2c58bb8151d1, importe ficticio 80.000 COP, una entrega.
-- PayPal sesión completada: PP-aece0b11-cfd7-42cd-9a39-a5fec6dc2a60, 100 USD ficticios, 2/11/2026 14:00 Colombia, 90 minutos. No crear ni cobrar otra para repetir esta evidencia. Taller PayPal aún sin completar.
-- Sesión web CLIENT en recuperación mediante la credencial existente guardada en Brave, sin leer/cambiar contraseña, para revisar Mis Sesiones y comprar el taller. Xavier ya ha terminado su intervención en PayPal.
-- Antes de commit, incluir explícitamente la nueva migración: prisma/migrations está ignorado históricamente; no añadir las demás migraciones locales ignoradas.
+- Revisar rama/status y este documento. Trabajo solo preview, URL https://preview.energiaydivinidad.com protegida y noindex.
+- Últimas pruebas locales 143 correctas; fuente desplegada ea9a0a80. Actualizar esta referencia tras desplegar los ajustes finales.
+- QA privado ignorado: .local-private/preview-qa-2026-10-27, prueba final de ocho órdenes final-order-proofs.jsonl. No copiar secretos al informe.
+- Las ocho compras, Bre-B QR/importe y calendario ya están cerrados. No solicitar nuevos pagos ficticios para repetirlos.
+- Retenciones ya desplegadas y migración incluida en Git: no volver a crearla ni añadir otras migraciones ignoradas.
+- Restan datos legales y enlace real de meditación, completar textos finales, aprobación de versión concreta y configuración/publicación de Production posterior. No activar servicios reales por este plan.

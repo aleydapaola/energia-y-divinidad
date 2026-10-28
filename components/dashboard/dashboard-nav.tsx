@@ -1,8 +1,16 @@
-"use client"
+"use client";
 
-import { User, Calendar, ShoppingBag, Settings, Crown, GraduationCap, CalendarCheck } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import {
+  User,
+  Calendar,
+  ShoppingBag,
+  Settings,
+  Crown,
+  GraduationCap,
+  CalendarCheck,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 
 const navItems = [
   {
@@ -36,28 +44,50 @@ const navItems = [
     label: "Configuración",
     icon: Settings,
   },
-]
+];
 
 interface DashboardNavProps {
-  hasMembership?: boolean
+  hasMembership?: boolean;
 }
 
 export function DashboardNav({ hasMembership }: DashboardNavProps) {
-  const pathname = usePathname()
+  const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (href: string, exact?: boolean) => {
     if (exact) {
-      return pathname === href
+      return pathname === href;
     }
-    return pathname.startsWith(href)
-  }
+    return pathname.startsWith(href);
+  };
 
   return (
-    <nav className="bg-white rounded-xl border border-gray-200 p-4 sticky top-24">
-      <ul className="space-y-2">
+    <nav
+      aria-label="Navegación de Mi Cuenta"
+      className="bg-white rounded-xl border border-gray-200 p-3 lg:p-4 lg:sticky lg:top-24"
+    >
+      <label className="block lg:hidden text-sm text-[#654177]">
+        Mi Cuenta
+        <select
+          aria-label="Ir a una sección de Mi Cuenta"
+          className="mt-1 block w-full rounded-lg border border-gray-200 bg-white p-3 text-base"
+          value={navItems.find((item) => isActive(item.href, item.exact))?.href ?? "/mi-cuenta"}
+          onChange={(event) => router.push(event.target.value)}
+        >
+          {navItems.map((item) => (
+            <option key={item.href} value={item.href}>
+              {item.label}
+            </option>
+          ))}
+          <option value={hasMembership ? "/dashboard/membresia/publicaciones" : "/membresia"}>
+            {hasMembership ? "Ir a Membresía" : "Obtener Membresía"}
+          </option>
+        </select>
+      </label>
+      <ul className="hidden lg:block space-y-2">
         {navItems.map((item) => {
-          const Icon = item.icon
-          const active = isActive(item.href, item.exact)
+          const Icon = item.icon;
+          const active = isActive(item.href, item.exact);
 
           return (
             <li key={item.href}>
@@ -73,7 +103,7 @@ export function DashboardNav({ hasMembership }: DashboardNavProps) {
                 <span>{item.label}</span>
               </Link>
             </li>
-          )
+          );
         })}
 
         {/* Membresía - destacado */}
@@ -92,5 +122,5 @@ export function DashboardNav({ hasMembership }: DashboardNavProps) {
         </li>
       </ul>
     </nav>
-  )
+  );
 }

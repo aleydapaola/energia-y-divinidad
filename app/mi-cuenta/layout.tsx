@@ -14,11 +14,6 @@ interface MiCuentaLayoutProps {
 export default async function MiCuentaLayout({ children }: MiCuentaLayoutProps) {
   const session = await auth();
 
-  // Log para diagnosticar problemas de sesión en producción
-  console.warn(
-    `[MI-CUENTA LAYOUT] session=${session ? `ok (id=${session.user?.id}, email=${session.user?.email})` : "null — redirigiendo a signin"}`
-  );
-
   if (!session?.user?.id) {
     redirect("/auth/signin?callbackUrl=/mi-cuenta");
   }

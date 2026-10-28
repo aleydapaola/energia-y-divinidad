@@ -1,6 +1,6 @@
 # Pla de feina pendent de Preview
 
-Plan inicial del 25/10/2026, con historial conservado debajo. **Estado actual y prioridades del 27/10:** [cierre-preview-2026-10-27.md](cierre-preview-2026-10-27.md). Newsletter, retenciones y Bre-B/importe ya comprobados; sesión PayPal completada, taller pendiente. URL: https://preview.energiaydivinidad.com. Trabajo solo en `preview`; producción requiere aprobar una versión concreta. El acceso de Vercel se mantiene.
+Plan inicial del 25/10/2026, con historial conservado debajo. **Estado actual y prioridades del 28/10:** [cierre-preview-2026-10-27.md](cierre-preview-2026-10-27.md). Newsletter, retenciones y Bre-B/importe comprobados; las ocho compras completas, correos y calendario externo de sesiones verificados. Pendientes finales: datos legales, condiciones de otros productos y enlace real del regalo; últimas mejoras de cuenta móvil y cierre de rutas antiguas preparadas. URL: https://preview.energiaydivinidad.com. Trabajo solo en `preview`; producción requiere aprobar una versión concreta. El acceso de Vercel se mantiene.
 
 | Ordre | Tasca | Execució i criteri de tancament | Dependència |
 | --- | --- | --- | --- |
