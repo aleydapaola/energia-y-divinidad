@@ -59,3 +59,10 @@ Fuentes técnicas: [Subscriptions API](https://developer.paypal.com/api/subscrip
 - **176 pruebas** y tipos/lint sin errores para esta continuación. La activación de eventos, el nuevo despliegue con variables y el recorrido personal de aprobación sandbox aún requieren comprobarse remotamente. No se han enviado correos de membresía ni autorizado cargos recurrentes.
 
 La revisión automática rechazó Copy password; no copiar, extraer ni leer contraseñas. El autocompletado nativo está permitido y se utilizó para ADMIN. Developer quedó disponible y se verificó Aleyda Vargas Galvis / Energia y Divinidad Sandbox. No usar el comprador sandbox para iniciar sesión en paypal.com; se utiliza únicamente en www.sandbox.paypal.com. La aprobación final de acuerdos/cobros sandbox sigue a cargo de Xavier.
+
+
+## Última comprobación de biblioteca
+
+La página real de biblioteca consulta ahora el beneficio del plan antes de leer o renderizar los archivos premium; no basta con una membresía de cualquier nivel. Prueba de servidor sobre esa página: plan sin beneficio, cero lecturas de assets; plan con beneficio, consulta limitada a sus referencias de tier. **177 pruebas**, tipos y lint sin errores.
+
+6f747d4e Ready en dpl_BE6LiiUPv8NuhvufVTg825hmaSQK, fuente/proyecto/repo/ref verificados y variables de planes incluidas. La aprobación personal y los avisos nuevos siguen pendientes de ejecución, no de creación de planes. No publicar Production por este resultado.

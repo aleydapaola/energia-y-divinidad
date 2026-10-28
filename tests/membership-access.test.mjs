@@ -120,3 +120,30 @@ test("feed and detail routes exclude higher-tier posts before returning content 
   assert.equal((await detail.GET({}, { params: Promise.resolve({ slug: "higher" }) })).status, 403);
   assert.equal(engagement, 1);
 });
+
+test("the actual library page checks the plan benefit before reading or rendering premium assets", async () => {
+  for (const allowed of [false, true]) {
+    let reads = 0;
+    const { default: BibliotecaPage } = loadMembership(
+      "app/dashboard/membresia/biblioteca/page.tsx",
+      {
+        "@/components/membership/premium-library": { PremiumLibrary: () => null },
+        "@/lib/auth": { auth: async () => ({ user: { id: "owner" } }) },
+        "@/lib/membership-access": {
+          getMembershipStatus: async () => ({
+            subscription: { membershipTierId: "tier-1", membershipTierName: "Esencia" },
+            canAccessPremiumContent: allowed,
+          }),
+        },
+        "@/lib/sanity/queries/membership": {
+          getPremiumContentForTier: async () => {
+            reads++;
+            return [];
+          },
+        },
+      }
+    );
+    await BibliotecaPage();
+    assert.equal(reads, allowed ? 1 : 0);
+  }
+});
