@@ -1,9 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-
-import { usesEuro } from "@/lib/euro-countries";
+import { useState } from "react";
 
 import { PricingCard } from "./pricing-card";
 
@@ -17,35 +15,11 @@ interface PricingSectionProps {
 
 export function PricingSection({ tiers, isAuthenticated, currentTierId }: PricingSectionProps) {
   const router = useRouter();
-  const [currency, setCurrency] = useState<"COP" | "USD" | "EUR">("USD");
+  const [currency, setCurrency] = useState<"USD" | "EUR">("USD");
   const [billingInterval, setBillingInterval] = useState<"monthly" | "yearly">("monthly");
   const hasEURPricing = tiers.some(
     (tier) => tier.pricing.monthlyPriceEUR || tier.pricing.yearlyPriceEUR
   );
-
-  // Detectar país del usuario para establecer moneda por defecto
-  useEffect(() => {
-    async function detectCountry() {
-      try {
-        // Intentar detectar país usando API de geolocalización
-        // Para Colombia → COP, eurozona → EUR si está configurado, resto del mundo → USD
-        const response = await fetch("https://ipapi.co/json/");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.country_code === "CO") {
-            setCurrency("COP");
-          } else if (hasEURPricing && usesEuro(data.country_code)) {
-            setCurrency("EUR");
-          }
-        }
-      } catch (error) {
-        console.error("Error detecting country:", error);
-        // Por defecto dejar USD
-      }
-    }
-
-    detectCountry();
-  }, [hasEURPricing]);
 
   const handleSelectTier = (tierId: string) => {
     const checkoutUrl = `/membresia/checkout?tier=${tierId}&interval=${billingInterval}&currency=${currency}`;
@@ -67,18 +41,12 @@ export function PricingSection({ tiers, isAuthenticated, currentTierId }: Pricin
   const sortedTiers = [...tiers].sort((a, b) => {
     const getPrice = (tier: MembershipTier) => {
       if (billingInterval === "monthly") {
-        if (currency === "COP") {
-          return tier.pricing.monthlyPrice || 0;
-        }
         if (currency === "EUR") {
           return tier.pricing.monthlyPriceEUR || 0;
         }
         return tier.pricing.monthlyPriceUSD || 0;
       }
 
-      if (currency === "COP") {
-        return tier.pricing.yearlyPrice || 0;
-      }
       if (currency === "EUR") {
         return tier.pricing.yearlyPriceEUR || 0;
       }
@@ -124,16 +92,6 @@ export function PricingSection({ tiers, isAuthenticated, currentTierId }: Pricin
 
         {/* Toggle de moneda */}
         <div className="inline-flex items-center bg-white rounded-lg p-1 sm:p-1.5 border border-gray-200">
-          <button
-            onClick={() => setCurrency("COP")}
-            className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-dm-sans font-medium text-xs sm:text-sm transition-all ${
-              currency === "COP"
-                ? "bg-[#4944a4] text-white shadow-sm"
-                : "text-[#654177] hover:text-[#8A4BAF]"
-            }`}
-          >
-            🇨🇴 COP
-          </button>
           <button
             onClick={() => setCurrency("USD")}
             className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-md font-dm-sans font-medium text-xs sm:text-sm transition-all ${
@@ -192,9 +150,8 @@ export function PricingSection({ tiers, isAuthenticated, currentTierId }: Pricin
           tu panel de control.
         </p>
         <p className="mt-2">
-          {currency === "COP"
-            ? "Pagos en Colombia: Nequi, tarjeta de crédito o débito"
-            : "Pagos internacionales: Tarjeta de crédito/débito o PayPal"}
+          Renovación mediante PayPal en la moneda indicada, también desde Colombia. Tu banco o
+          PayPal puede aplicar su propia conversión si utiliza otra moneda.
         </p>
       </div>
     </div>

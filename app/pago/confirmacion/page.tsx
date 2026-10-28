@@ -43,12 +43,6 @@ function ConfirmacionContent() {
   useEffect(() => {
     async function checkPaymentStatus() {
       console.log("[CONFIRMACION] Checking payment status...");
-      console.log("[CONFIRMACION] reference:", reference);
-      console.log("[CONFIRMACION] wompiTransactionId:", wompiTransactionId);
-      console.log("[CONFIRMACION] refPayco:", refPayco);
-      console.log("[CONFIRMACION] paypalToken:", paypalToken);
-      console.log("[CONFIRMACION] paypalPayerId:", paypalPayerId);
-      console.log("[CONFIRMACION] Full URL params:", window.location.search);
 
       if (!reference) {
         setStatus("failed");
@@ -59,8 +53,6 @@ function ConfirmacionContent() {
       // Si viene de PayPal, capturar el pago automáticamente
       if (paypalToken) {
         console.log("[CONFIRMACION] PayPal return detected, capturing payment...");
-        console.log("[CONFIRMACION] PayPal token:", paypalToken);
-        console.log("[CONFIRMACION] PayPal PayerID:", paypalPayerId);
 
         try {
           const captureResponse = await fetch("/api/checkout/paypal/capture", {
@@ -282,10 +274,15 @@ function ConfirmacionContent() {
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle className="w-12 h-12 text-green-600" />
               </div>
-              <h1 className="font-gazeta text-3xl text-[#654177] mb-4">¡Pago Exitoso!</h1>
+              <h1 className="font-gazeta text-3xl text-[#654177] mb-4">
+                {orderData?.membership?.isTrialActivation
+                  ? "Prueba de membresía activada"
+                  : "¡Pago Exitoso!"}
+              </h1>
               <p className="font-dm-sans text-gray-600 mb-6">
-                Tu pago ha sido procesado correctamente. Recibirás un correo de confirmación con los
-                detalles de tu compra.
+                {orderData?.membership?.isTrialActivation
+                  ? "No se ha realizado un cobro hoy. Tu autorización de renovación ha sido verificada. Recibirás el resumen de la prueba y del primer cobro por correo."
+                  : "Tu pago ha sido procesado correctamente. Recibirás un correo de confirmación con los detalles de tu compra."}
               </p>
               {orderData && (
                 <div className="bg-[#eef1fa] rounded-lg p-4 mb-6 text-left">
@@ -379,7 +376,7 @@ function ConfirmacionContent() {
           <div className="space-y-3">
             {status === "success" && orderData?.orderType === "MEMBERSHIP" && !isGuestCheckout && (
               <Link
-                href="/mi-cuenta"
+                href="/dashboard/membresia/configuracion"
                 className="w-full bg-[#4944a4] hover:bg-[#3d3a8a] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 Ir a mi cuenta

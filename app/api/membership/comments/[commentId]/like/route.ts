@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from '@/lib/auth'
-import { hasActiveMembership } from '@/lib/membership-access'
-import { toggleCommentLike } from '@/lib/membership-posts'
+import { auth } from "@/lib/auth";
+import { hasActiveMembership, canAccessMembershipComment } from "@/lib/membership-access";
+import { toggleCommentLike } from "@/lib/membership-posts";
 
 /**
  * POST /api/membership/comments/[commentId]/like
@@ -13,28 +13,31 @@ export async function POST(
   { params }: { params: Promise<{ commentId: string }> }
 ) {
   try {
-    const { commentId } = await params
-    const session = await auth()
+    const { commentId } = await params;
+    const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
     // Verificar membresía activa
-    const hasMembership = await hasActiveMembership(session.user.id)
+    const hasMembership = await hasActiveMembership(session.user.id);
 
     if (!hasMembership) {
       return NextResponse.json(
-        { error: 'Requiere membresía activa para interactuar' },
+        { error: "Requiere membresía activa para interactuar" },
         { status: 403 }
-      )
+      );
     }
 
-    const result = await toggleCommentLike(commentId, session.user.id)
+    if (!(await canAccessMembershipComment(session.user.id, commentId))) {
+      return NextResponse.json({ error: "Comentario no disponible para tu plan" }, { status: 403 });
+    }
+    const result = await toggleCommentLike(commentId, session.user.id);
 
-    return NextResponse.json(result)
+    return NextResponse.json(result);
   } catch (error) {
-    console.error('Error toggling comment like:', error)
-    return NextResponse.json({ error: 'Error al dar like' }, { status: 500 })
+    console.error("Error toggling comment like:", error);
+    return NextResponse.json({ error: "Error al dar like" }, { status: 500 });
   }
 }

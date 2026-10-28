@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 
+import { PurchasePolicy } from "@/components/checkout/PurchasePolicy";
 import { purchaseMethods } from "@/lib/purchase-methods";
 export function DigitalProductCheckout({
   product,
@@ -108,6 +109,7 @@ export function DigitalProductCheckout({
         Después de verificar el pago encontrarás los archivos y las instrucciones en Mis compras.
         Recibirás un correo con el acceso a tu cuenta.
       </p>
+      <PurchasePolicy kind="product" />
       {error && (
         <p role="alert" className="text-red-700">
           {error}

@@ -63,6 +63,7 @@ export function SubscriptionManager({ subscription }: SubscriptionManagerProps) 
       day: "numeric",
       month: "long",
       year: "numeric",
+      timeZone: "America/Bogota",
     });
   };
 
@@ -177,7 +178,7 @@ export function SubscriptionManager({ subscription }: SubscriptionManagerProps) 
   const handleCancelSubscription = async () => {
     if (
       !confirm(
-        `¿Estás seguro de que quieres cancelar definitivamente tu membresía? Mantendrás acceso hasta el ${formatDate(subscription.currentPeriodEnd)} y no se harán más cobros.`
+        `¿Estás seguro de que quieres desactivar la renovación de tu membresía? Mantendrás acceso hasta el ${formatDate(subscription.currentPeriodEnd)} y no se harán más cobros.`
       )
     ) {
       return;
@@ -321,81 +322,94 @@ export function SubscriptionManager({ subscription }: SubscriptionManagerProps) 
 
         <div className="space-y-4">
           {/* Cambiar plan */}
-          <div className="rounded-xl border border-[#e8d5e0] bg-[#f8f0f5] p-4">
-            <div className="flex items-start gap-3 mb-4">
-              <DollarSign className="w-5 h-5 text-[#8A4BAF] mt-0.5" />
-              <div>
-                <h3 className="font-dm-sans font-semibold text-[#4b316c]">Cambiar nivel</h3>
-                <p className="font-dm-sans text-sm text-[#654177]/70">
-                  Puedes subir o bajar de nivel. El cambio se aplicará al terminar el período en
-                  vigencia.
-                </p>
+          {subscription.paypalSubscriptionId ? (
+            <p className="rounded-xl border border-[#e8d5e0] bg-[#f8f0f5] p-4 text-sm">
+              Para cambiar de nivel, contacta con{" "}
+              <a href="mailto:contacto@energiaydivinidad.com" className="underline">
+                Aleyda
+              </a>
+              . No contrates otro plan mientras el actual siga vigente. La configuración del medio
+              de pago se gestiona en PayPal.
+            </p>
+          ) : (
+            <div className="rounded-xl border border-[#e8d5e0] bg-[#f8f0f5] p-4">
+              <div className="flex items-start gap-3 mb-4">
+                <DollarSign className="w-5 h-5 text-[#8A4BAF] mt-0.5" />
+                <div>
+                  <h3 className="font-dm-sans font-semibold text-[#4b316c]">Cambiar nivel</h3>
+                  <p className="font-dm-sans text-sm text-[#654177]/70">
+                    Puedes subir o bajar de nivel. El cambio se aplicará al terminar el período en
+                    vigencia.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {tiersLoading ? (
-              <div className="flex items-center gap-2 text-sm text-[#654177] font-dm-sans">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Cargando planes...
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {tiers.map((tier) => {
-                  const isCurrentTier = tier._id === subscription.membershipTierId;
-                  const tierOrder = getTierOrder(tier);
-                  const isUpgrade = tierOrder > currentTierOrder;
-                  const price =
-                    subscription.currency === "USD"
-                      ? subscription.billingInterval === "YEARLY"
-                        ? tier.pricing.yearlyPriceUSD
-                        : tier.pricing.monthlyPriceUSD
-                      : subscription.billingInterval === "YEARLY"
-                        ? tier.pricing.yearlyPrice
-                        : tier.pricing.monthlyPrice;
+              {tiersLoading ? (
+                <div className="flex items-center gap-2 text-sm text-[#654177] font-dm-sans">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Cargando planes...
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {tiers.map((tier) => {
+                    const isCurrentTier = tier._id === subscription.membershipTierId;
+                    const tierOrder = getTierOrder(tier);
+                    const isUpgrade = tierOrder > currentTierOrder;
+                    const price =
+                      subscription.currency === "USD"
+                        ? subscription.billingInterval === "YEARLY"
+                          ? tier.pricing.yearlyPriceUSD
+                          : tier.pricing.monthlyPriceUSD
+                        : subscription.billingInterval === "YEARLY"
+                          ? tier.pricing.yearlyPrice
+                          : tier.pricing.monthlyPrice;
 
-                  return (
-                    <button
-                      key={tier._id}
-                      type="button"
-                      onClick={() => handleChangePlan(tier)}
-                      disabled={isCurrentTier || loading || isCancelled}
-                      className={`w-full rounded-xl border px-4 py-3 transition-colors flex items-center gap-3 text-left ${
-                        isCurrentTier
-                          ? "bg-white border-[#8A4BAF]/30 text-[#654177] cursor-default"
-                          : "bg-white border-[#e8d5e0] hover:border-[#8A4BAF] hover:bg-white text-[#4b316c]"
-                      }`}
-                    >
-                      {isCurrentTier ? (
-                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                      ) : isUpgrade ? (
-                        <ArrowUpCircle className="w-5 h-5 text-[#8A4BAF] flex-shrink-0" />
-                      ) : (
-                        <ArrowDownCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                      )}
+                    return (
+                      <button
+                        key={tier._id}
+                        type="button"
+                        onClick={() => handleChangePlan(tier)}
+                        disabled={isCurrentTier || loading || isCancelled}
+                        className={`w-full rounded-xl border px-4 py-3 transition-colors flex items-center gap-3 text-left ${
+                          isCurrentTier
+                            ? "bg-white border-[#8A4BAF]/30 text-[#654177] cursor-default"
+                            : "bg-white border-[#e8d5e0] hover:border-[#8A4BAF] hover:bg-white text-[#4b316c]"
+                        }`}
+                      >
+                        {isCurrentTier ? (
+                          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                        ) : isUpgrade ? (
+                          <ArrowUpCircle className="w-5 h-5 text-[#8A4BAF] flex-shrink-0" />
+                        ) : (
+                          <ArrowDownCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                        )}
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-dm-sans font-semibold">{tier.name}</span>
-                          <span className="font-dm-sans text-xs text-[#654177]/70">
-                            {price ? formatPrice(price, subscription.currency) : "Precio pendiente"}
-                          </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-dm-sans font-semibold">{tier.name}</span>
+                            <span className="font-dm-sans text-xs text-[#654177]/70">
+                              {price
+                                ? formatPrice(price, subscription.currency)
+                                : "Precio pendiente"}
+                            </span>
+                          </div>
+                          <p className="font-dm-sans text-xs text-[#654177]/70">
+                            {isCurrentTier
+                              ? "Plan actual"
+                              : isUpgrade
+                                ? "Subir al próximo período"
+                                : "Bajar al próximo período"}
+                          </p>
                         </div>
-                        <p className="font-dm-sans text-xs text-[#654177]/70">
-                          {isCurrentTier
-                            ? "Plan actual"
-                            : isUpgrade
-                              ? "Subir al próximo período"
-                              : "Bajar al próximo período"}
-                        </p>
-                      </div>
 
-                      {!isCurrentTier && <ArrowRight className="w-4 h-4 text-[#8A4BAF]" />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                        {!isCurrentTier && <ArrowRight className="w-4 h-4 text-[#8A4BAF]" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Cancelar suscripción (si está activa) */}
           {!isCancelled && (
@@ -412,7 +426,7 @@ export function SubscriptionManager({ subscription }: SubscriptionManagerProps) 
               ) : (
                 <>
                   <XCircle className="w-5 h-5" />
-                  <span>Cancelar definitivamente</span>
+                  <span>Desactivar renovación</span>
                 </>
               )}
             </button>
@@ -433,11 +447,17 @@ export function SubscriptionManager({ subscription }: SubscriptionManagerProps) 
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[#8A4BAF] mt-1">•</span>
-            <span>Si cancelas, mantendrás acceso hasta el final del período ya pagado</span>
+            <span>
+              Si cancelas, mantendrás acceso hasta el final del período pagado o de prueba
+            </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[#8A4BAF] mt-1">•</span>
-            <span>Puedes cambiar de plan en cualquier momento desde esta página</span>
+            <span>
+              {subscription.paypalSubscriptionId
+                ? "Consulta con Aleyda para cambiar de plan sin duplicar autorizaciones."
+                : "Puedes solicitar un cambio de plan desde esta página."}
+            </span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[#8A4BAF] mt-1">•</span>

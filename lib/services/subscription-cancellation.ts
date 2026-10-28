@@ -8,6 +8,7 @@
 import { SubscriptionStatus } from "@prisma/client";
 
 import { createAuditLog } from "@/lib/audit";
+import { queueMembershipNotice, deliverMembershipNotices } from "@/lib/membership-notifications";
 import { cancelNequiSubscription, getNequiMode } from "@/lib/nequi";
 import { cancelPayPalSubscription } from "@/lib/paypal";
 import { prisma } from "@/lib/prisma";
@@ -128,8 +129,8 @@ export async function cancelSubscription(
     }
 
     // 5. Validar permisos si es cancelación de usuario
-    if (cancelledBy === "user" && requestingUserId) {
-      if (subscription.userId !== requestingUserId) {
+    if (cancelledBy === "user") {
+      if (!requestingUserId || subscription.userId !== requestingUserId) {
         return {
           success: false,
           error: "No tienes permiso para cancelar esta suscripción",
@@ -141,54 +142,65 @@ export async function cancelSubscription(
     const now = new Date();
     const previousStatus = subscription.status;
 
-    // 6. Cancelar en el proveedor de pago
-    const providerResult = await cancelInPaymentProvider(subscription, immediate);
-    if (!providerResult.success) {
-      console.error(`[SUB-CANCEL] Error cancelando en proveedor:`, providerResult.error);
-      // Solo fallar si es crítico
-      if (cancelledBy !== "admin") {
-        // Para usuarios, intentamos continuar aunque falle el proveedor
-        // El webhook se encargará de sincronizar después
-      }
-    }
-
-    // 7. Determinar nueva fecha de período según tipo de cancelación
-    const newPeriodEnd = immediate ? now : subscription.currentPeriodEnd;
-    const shouldRevokeNow = immediate || revokeEntitlementsNow;
-
-    // 8. Actualizar suscripción
-    // Para cancelación de usuario: mantener status ACTIVE pero marcar cancelledAt
-    // Para cancelación inmediata/admin: cambiar status a CANCELLED
+    let providerResult: { success: boolean; error?: string } = { success: false };
     const newStatus = immediate ? "CANCELLED" : subscription.status;
-
-    const updatedSubscription = await prisma.subscription.update({
-      where: { id: subscriptionId },
-      data: {
-        status: newStatus,
-        cancelledAt: now,
-        currentPeriodEnd: newPeriodEnd,
-        nextChargeDate: null,
+    const updatedSubscription = await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`membership-user:${subscription.userId}`}))`;
+        const current = await tx.subscription.findUniqueOrThrow({ where: { id: subscriptionId } });
+        providerResult = await cancelInPaymentProvider(current, immediate);
+        if (!providerResult.success) {
+          throw new Error("PROVIDER_ERROR");
+        }
+        // A renewal may have completed while the request was being prepared.
+        const updated = await tx.subscription.update({
+          where: { id: subscriptionId },
+          data: {
+            status: immediate ? "CANCELLED" : current.status,
+            cancelledAt: current.cancelledAt || now,
+            currentPeriodEnd: immediate ? now : current.currentPeriodEnd,
+            nextChargeDate: null,
+          },
+        });
+        if (immediate || revokeEntitlementsNow) {
+          await tx.entitlement.updateMany({
+            where: { subscriptionId, revoked: false },
+            data: {
+              revoked: true,
+              revokedAt: now,
+              revokedReason: reason || "Cancelación inmediata de suscripción",
+            },
+          });
+        }
+        if (current.paypalSubscriptionId && !immediate) {
+          const order = await tx.order.findFirst({
+            where: {
+              userId: current.userId,
+              orderType: "MEMBERSHIP",
+              metadata: { path: ["paypalSubscriptionId"], equals: current.paypalSubscriptionId },
+            },
+          });
+          if (order) {
+            await queueMembershipNotice(tx, {
+              key: `cancelled:${subscriptionId}`,
+              kind: "cancelled",
+              to: subscription.user.email!,
+              orderNumber: order.orderNumber,
+              subscriptionId,
+              plan: current.membershipTierName,
+              amount: Number(current.amount),
+              currency: current.currency,
+              interval: current.billingInterval === "YEARLY" ? "yearly" : "monthly",
+              periodEnd: current.currentPeriodEnd,
+            });
+          }
+        }
+        return updated;
       },
-    });
-
-    // 9. Revocar entitlements si es inmediato
-    if (shouldRevokeNow && subscription.entitlements.length > 0) {
-      await prisma.entitlement.updateMany({
-        where: {
-          subscriptionId,
-          revoked: false,
-        },
-        data: {
-          revoked: true,
-          revokedAt: now,
-          revokedReason:
-            reason ||
-            (cancelledBy === "admin"
-              ? "Cancelación administrativa de suscripción"
-              : "Cancelación de suscripción"),
-        },
-      });
-      console.log(`[SUB-CANCEL] Entitlements revocados para suscripción ${subscriptionId}`);
+      { maxWait: 10000, timeout: 120000 }
+    );
+    if (subscription.paypalSubscriptionId) {
+      await deliverMembershipNotices(subscriptionId).catch(() => undefined);
     }
 
     // 10. Crear audit log si es cancelación de admin
@@ -231,7 +243,7 @@ export async function cancelSubscription(
     if (immediate) {
       message = "Suscripción cancelada inmediatamente";
     } else {
-      message = `Tu suscripción ha sido cancelada. Mantendrás acceso hasta ${subscription.currentPeriodEnd.toLocaleDateString("es-ES")}`;
+      message = `Tu suscripción ha sido cancelada. Mantendrás acceso hasta ${updatedSubscription.currentPeriodEnd.toLocaleDateString("es-CO", { timeZone: "America/Bogota" })}`;
     }
 
     return {
@@ -250,8 +262,11 @@ export async function cancelSubscription(
     console.error(`[SUB-CANCEL] Error cancelando suscripción ${subscriptionId}:`, error);
     return {
       success: false,
-      error: errorMessage || "Error interno al cancelar la suscripción",
-      errorCode: "INTERNAL_ERROR",
+      error:
+        errorMessage === "PROVIDER_ERROR"
+          ? "No se pudo confirmar la cancelación en PayPal. La renovación no figura desactivada; vuelve a intentarlo o contacta con Aleyda."
+          : "Error interno al cancelar la suscripción",
+      errorCode: errorMessage === "PROVIDER_ERROR" ? "PROVIDER_ERROR" : "INTERNAL_ERROR",
     };
   }
 }
@@ -320,10 +335,10 @@ export async function findActiveSubscription(userId: string) {
   return prisma.subscription.findFirst({
     where: {
       userId,
-      status: {
-        in: CANCELLABLE_STATUSES,
-      },
+      status: { in: CANCELLABLE_STATUSES },
+      OR: [{ currentPeriodEnd: { gt: new Date() } }, { cancelledAt: null }],
     },
+    orderBy: { createdAt: "desc" },
   });
 }
 

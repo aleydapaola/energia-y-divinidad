@@ -20,6 +20,7 @@ import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 
 import { CheckoutHeader } from "@/components/checkout/CheckoutHeader";
+import { PurchasePolicy } from "@/components/checkout/PurchasePolicy";
 import { formatEventDate } from "@/lib/event-time";
 import { purchaseMethods } from "@/lib/purchase-methods";
 
@@ -622,6 +623,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                   />
                 </div>
 
+                <PurchasePolicy kind="event" />
                 {/* Terms */}
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input

@@ -22,7 +22,11 @@ function load(relative, dependencies = {}) {
   return mod.exports;
 }
 const policy = load("lib/session-policy.ts");
-const draft = load("lib/preview-terms.ts", { "./session-policy": policy });
+const commercial = load("lib/commercial-policy.ts");
+const draft = load("lib/preview-terms.ts", {
+  "./session-policy": policy,
+  "./commercial-policy": commercial,
+});
 const previewEnv = {
   VERCEL_ENV: "preview",
   NEXT_PUBLIC_SANITY_DATASET: "preview",
@@ -82,6 +86,16 @@ test("terms draft is available only for isolated Preview/local contents and neve
   assert.ok(text.includes("Cédula de ciudadanía: 53.102.423."));
   assert.match(text, /NIT: pendiente de confirmación/);
   assert.match(text, /exclusivamente a las sesiones individuales/);
+  for (const key of [
+    "COURSE_REFUND_POLICY",
+    "DIGITAL_REFUND_POLICY",
+    "EVENT_REFUND_POLICY",
+    "MEMBERSHIP_CANCELLATION_POLICY",
+    "REFUND_REQUEST_POLICY",
+    "CONSUMER_RIGHTS_POLICY",
+  ]) {
+    assert.ok(text.includes(commercial[key]), key);
+  }
   for (const { label, text: statement } of policy.INDIVIDUAL_SESSION_POLICY) {
     assert.ok(text.includes(`${label}: ${statement}`));
   }

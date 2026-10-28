@@ -77,7 +77,7 @@ const drafts: Record<ReviewLegalSlug, { title: string; paragraphs: Array<[string
       ["h2", "Compras, cambios y cancelaciones"],
       [
         "normal",
-        "Las condiciones de cada compra deben consultarse en la ficha, el resumen del pedido y la página /terminos. El borrador de términos contiene la política aprobada de cambios, cancelaciones y reembolsos de sesiones individuales. Las condiciones particulares de los demás productos siguen pendientes de revisión.",
+        "Las condiciones de cada compra deben consultarse en la ficha, el resumen del pedido y la página /terminos. El borrador de términos distingue sesiones individuales, cursos grabados, productos digitales, talleres y membresías recurrentes, con sus respectivos plazos y derechos legales aplicables.",
       ],
       ["h2", "Contenidos y enlaces"],
       [

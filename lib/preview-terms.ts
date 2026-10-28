@@ -1,6 +1,15 @@
+import {
+  COMMERCIAL_POLICY_VERSION,
+  COURSE_REFUND_POLICY,
+  DIGITAL_REFUND_POLICY,
+  EVENT_REFUND_POLICY,
+  MEMBERSHIP_CANCELLATION_POLICY,
+  REFUND_REQUEST_POLICY,
+  CONSUMER_RIGHTS_POLICY,
+} from "./commercial-policy";
 import { INDIVIDUAL_SESSION_POLICY, SESSION_RESCHEDULE_POLICY } from "./session-policy";
 
-export const PREVIEW_TERMS_VERSION = "preview-2026-10-28";
+export const PREVIEW_TERMS_VERSION = COMMERCIAL_POLICY_VERSION;
 export const PREVIEW_HOLDER_IDENTIFICATION =
   "Proyecto: Energía y Divinidad, energiaydivinidad.com. Titular: Aleyda Paola Vargas Galvis. Cédula de ciudadanía: 53.102.423. Contacto: contacto@energiaydivinidad.com y +57 315 116 5921. Dirección de notificación: Cra 72a # 10 a 22, Bogotá, Colombia. NIT: pendiente de confirmación.";
 
@@ -18,7 +27,7 @@ export function getPreviewTermsPage(env: Record<string, string | undefined> = pr
     ["h2", "Documento de revisión para pruebas"],
     [
       "normal",
-      "Este borrador se utiliza exclusivamente para las compras ficticias de este entorno. Está pendiente completar la identificación fiscal y la revisión de las condiciones de los demás productos antes de publicarlo como condiciones de contratación reales.",
+      "Este borrador se utiliza exclusivamente para las compras ficticias de este entorno. Antes de utilizarlo en compras reales, falta confirmar la identificación fiscal y aprobar la versión definitiva para publicación.",
     ],
     ["h2", "1. Titular y contacto"],
     ["normal", PREVIEW_HOLDER_IDENTIFICATION],
@@ -45,13 +54,20 @@ export function getPreviewTermsPage(env: Record<string, string | undefined> = pr
     ["h2", "5. Cursos, eventos y productos digitales"],
     [
       "normal",
-      "La política de cancelación anterior se refiere exclusivamente a las sesiones individuales. Las condiciones particulares de cursos, eventos, talleres, productos digitales y membresías requieren su propia revisión; no se les aplica automáticamente el límite de 24 horas ni se establece aquí una exclusión general de devoluciones.",
+      "La política de 24 horas anterior se refiere exclusivamente a las sesiones individuales. Para las demás compras se aplican las condiciones siguientes.",
     ],
-    ["h2", "6. Derechos del consumidor y consultas"],
+    ["normal", COURSE_REFUND_POLICY],
+    ["normal", DIGITAL_REFUND_POLICY],
+    ["normal", EVENT_REFUND_POLICY],
+    ["h2", "6. Membresías y renovaciones"],
     [
       "normal",
-      "La política comercial de sesiones no limita los derechos obligatorios que correspondan al consumidor, incluido el retracto o la reversión del pago cuando resulten aplicables. Las consultas sobre una compra, entrega, cambio o devolución se atienden mediante los datos de contacto anteriores.",
+      "La contratación indica el importe, la moneda y la periodicidad mensual o anual, la duración de la prueba si corresponde y el primer cobro previsto. Requiere autorizar expresamente la renovación recurrente en PayPal. La prueba gratuita solo se ofrece una vez por persona; un nuevo alta después de haberla utilizado comienza con el precio indicado, sin una segunda prueba gratuita.",
     ],
+    ["normal", MEMBERSHIP_CANCELLATION_POLICY],
+    ["h2", "7. Solicitudes y derechos del consumidor"],
+    ["normal", REFUND_REQUEST_POLICY],
+    ["normal", CONSUMER_RIGHTS_POLICY],
   ];
 
   return {

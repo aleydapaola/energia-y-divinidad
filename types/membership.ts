@@ -123,8 +123,9 @@ export interface MembershipPostSanity {
   }>;
   pollEndsAt?: string;
   requiredTier: {
-    _ref: string;
-    _type: "reference";
+    _id: string;
+    name: string;
+    tierLevel: number;
   };
   publishedAt: string;
   expirationDate?: string;

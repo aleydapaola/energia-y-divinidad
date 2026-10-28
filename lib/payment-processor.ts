@@ -25,6 +25,8 @@ import { recordDiscountUsage } from "@/lib/discount-codes";
 import { sendPaymentConfirmationEmail, sendAdminNotificationEmail } from "@/lib/email";
 import { assertEventCapacity, lockEventCapacity } from "@/lib/events/capacity";
 import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
+import { membershipPeriodEnd } from "@/lib/membership-billing";
+import { createMembershipEntitlement } from "@/lib/membership-fulfillment";
 import { prisma } from "@/lib/prisma";
 import { getEventById } from "@/lib/sanity/queries/events";
 import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
@@ -241,14 +243,9 @@ async function checkForDuplicateProcessing(order: OrderWithUser, userId: string)
   // Verificar según tipo de producto
   switch (order.orderType) {
     case "MEMBERSHIP": {
-      const existingSub = await prisma.subscription.findFirst({
-        where: {
-          userId,
-          membershipTierId: order.itemId,
-          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-        },
-      });
-      return !!existingSub;
+      return !!(await prisma.entitlement.findFirst({
+        where: { userId, orderId: order.id, type: "MEMBERSHIP" },
+      }));
     }
 
     case "SESSION":
@@ -312,80 +309,44 @@ async function createMembershipFromOrder(
   metadata: any,
   userId: string
 ): Promise<{ id: string }> {
-  const billingInterval = metadata.billingInterval || "monthly";
+  const billingInterval = metadata.billingInterval === "yearly" ? "yearly" : "monthly";
   const hasFreeTrial = metadata.freeTrial === true;
   const periodStart = new Date();
-
-  // Calcular fecha de fin del período. En prueba gratis siempre damos 1 mes;
-  // después del primer cobro, las renovaciones usan el intervalo real.
-  let periodEnd = metadata.trialEndsAt ? new Date(metadata.trialEndsAt) : new Date(periodStart);
-  if (!hasFreeTrial || Number.isNaN(periodEnd.getTime())) {
-    periodEnd = new Date(periodStart);
-    if (billingInterval === "yearly") {
-      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-    } else {
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
-    }
+  const periodEnd = hasFreeTrial
+    ? new Date(metadata.trialEndsAt)
+    : membershipPeriodEnd(periodStart, billingInterval);
+  // PayPal recurring is delivered only by its verified agreement/sale reconciler.
+  if (order.paymentMethod?.includes("PAYPAL")) {
+    throw new Error("La membresía PayPal debe verificarse mediante su autorización recurrente");
   }
-
-  // Determinar provider según método de pago
-  let provider = "unknown";
-  if (order.paymentMethod?.includes("WOMPI")) {
-    provider = order.paymentMethod.includes("NEQUI") ? "wompi_nequi" : "wompi_card";
-  } else if (order.paymentMethod?.includes("PAYPAL")) {
-    provider = order.paymentMethod.includes("CARD") ? "paypal_card" : "paypal_direct";
-  }
-
-  // Calcular próxima fecha de cobro. En prueba gratis el primer cargo va al final exacto
-  // del mes gratuito; las renovaciones normales conservan el margen de 1 día.
+  const provider = order.paymentMethod?.includes("WOMPI")
+    ? order.paymentMethod.includes("NEQUI")
+      ? "wompi_nequi"
+      : "wompi_card"
+    : "unknown";
   const nextChargeDate = new Date(periodEnd);
   if (!hasFreeTrial) {
     nextChargeDate.setDate(nextChargeDate.getDate() - 1);
   }
-
-  const recurringAmount = metadata.recurringAmount ?? order.amount;
-
-  // Crear suscripción
-  const subscription = await prisma.subscription.create({
-    data: {
+  const subscription = await prisma.$transaction((tx) =>
+    createMembershipEntitlement(tx, {
+      order,
       userId,
-      membershipTierId: order.itemId,
-      membershipTierName: order.itemName,
-      status: hasFreeTrial ? "TRIAL" : "ACTIVE",
-      paymentProvider: provider,
-      billingInterval: billingInterval === "yearly" ? "YEARLY" : "MONTHLY",
-      amount: recurringAmount,
-      currency: order.currency,
-      startDate: periodStart,
-      currentPeriodStart: periodStart,
-      currentPeriodEnd: periodEnd,
+      amount: Number(metadata.recurringAmount ?? order.amount),
+      interval: billingInterval,
+      provider,
+      periodStart,
+      periodEnd,
       trialEnd: hasFreeTrial ? periodEnd : null,
-      // Datos para cobros recurrentes Wompi
+      lastChargeDate: hasFreeTrial ? null : new Date(),
+      nextChargeDate: metadata.wompiPaymentSourceId ? nextChargeDate : null,
       wompiPaymentSourceId: metadata.wompiPaymentSourceId
         ? String(metadata.wompiPaymentSourceId)
         : null,
       wompiCardLastFour: metadata.wompiCardLastFour || null,
       wompiCardBrand: metadata.wompiCardBrand || null,
-      // Datos para suscripciones PayPal
-      paypalSubscriptionId: metadata.paypalSubscriptionId || null,
-      // Próxima fecha de cobro (solo para Wompi — PayPal cobra automáticamente)
-      nextChargeDate: metadata.wompiPaymentSourceId ? nextChargeDate : null,
-      lastChargeDate: hasFreeTrial ? null : new Date(),
-    },
-  });
-
-  // Crear Entitlement
-  await prisma.entitlement.create({
-    data: {
-      userId,
-      type: "MEMBERSHIP",
-      resourceId: order.itemId,
-      resourceName: order.itemName,
-      expiresAt: periodEnd,
-      subscriptionId: subscription.id,
-      orderId: order.id,
-    },
-  });
+    })
+  );
 
   // Grant initial monthly credits
   try {

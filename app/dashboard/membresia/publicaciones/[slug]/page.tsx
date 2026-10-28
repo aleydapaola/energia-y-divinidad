@@ -1,50 +1,50 @@
-import { Loader2 } from 'lucide-react'
-import { notFound } from 'next/navigation'
-import { Suspense } from 'react'
+import { Loader2 } from "lucide-react";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
-import { PostDetailView } from '@/components/membership/post-detail-view'
-import { auth } from '@/lib/auth'
-import { getPostEngagement } from '@/lib/membership-posts'
-import { getMembershipPostBySlug } from '@/lib/sanity/queries/membership'
-
+import { PostDetailView } from "@/components/membership/post-detail-view";
+import { auth } from "@/lib/auth";
+import { canReadMembershipPost } from "@/lib/membership-access";
+import { getPostEngagement } from "@/lib/membership-posts";
+import { getMembershipPostBySlug } from "@/lib/sanity/queries/membership";
 
 interface PageProps {
-  params: Promise<{ slug: string }>
+  params: Promise<{ slug: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const { slug } = await params
-  const post = await getMembershipPostBySlug(slug)
+  const { slug } = await params;
+  const post = await getMembershipPostBySlug(slug);
 
   if (!post) {
     return {
-      title: 'Publicación no encontrada',
-    }
+      title: "Publicación no encontrada",
+    };
   }
 
   return {
     title: `${post.title} | Membresía`,
-    description: post.excerpt || 'Contenido exclusivo para miembros',
-  }
+    description: post.excerpt || "Contenido exclusivo para miembros",
+  };
 }
 
 export default async function PostDetailPage({ params }: PageProps) {
-  const { slug } = await params
-  const session = await auth()
+  const { slug } = await params;
+  const session = await auth();
 
   if (!session?.user?.id) {
-    return null
+    return null;
   }
 
   // Obtener post desde Sanity
-  const post = await getMembershipPostBySlug(slug)
+  const post = await getMembershipPostBySlug(slug);
 
-  if (!post) {
-    notFound()
+  if (!post || !(await canReadMembershipPost(session.user.id, post))) {
+    notFound();
   }
 
   // Obtener engagement desde Prisma
-  const engagement = await getPostEngagement(post._id, session.user.id)
+  const engagement = await getPostEngagement(post._id, session.user.id);
 
   return (
     <Suspense
@@ -54,11 +54,7 @@ export default async function PostDetailPage({ params }: PageProps) {
         </div>
       }
     >
-      <PostDetailView
-        post={post}
-        engagement={engagement}
-        userId={session.user.id}
-      />
+      <PostDetailView post={post} engagement={engagement} userId={session.user.id} />
     </Suspense>
-  )
+  );
 }

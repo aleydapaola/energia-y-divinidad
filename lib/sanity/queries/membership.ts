@@ -173,25 +173,13 @@ export async function getAllMembershipPosts(options?: {
 }): Promise<MembershipPostSanity[]> {
   const { postType, requiredTierId, limit = 50 } = options || {}
 
-  let filters = '_type == "membershipPost" && published == true'
-
-  if (postType) {
-    filters += ` && postType == "${postType}"`
-  }
-
-  if (requiredTierId) {
-    filters += ` && requiredTier._ref == "${requiredTierId}"`
-  }
-
-  // Filtrar posts no expirados
-  const now = new Date().toISOString()
-  filters += ` && (expirationDate == null || expirationDate > "${now}")`
-
-  const query = `*[${filters}] | order(pinned desc, publishedAt desc) [0...${limit}] {
-    ${membershipPostProjection}
-  }`
-
-  return sanityFetch({ query, tags: ['membership-post'] })
+  const safeLimit = Number.isInteger(limit) ? Math.max(1, Math.min(limit, 50)) : 20
+  const query = `*[_type == "membershipPost" && published == true &&
+    (!defined($postType) || postType == $postType) &&
+    (!defined($requiredTierId) || requiredTier._ref == $requiredTierId) &&
+    publishedAt <= $now && (expirationDate == null || expirationDate > $now)]
+    | order(pinned desc, publishedAt desc) [0...${safeLimit}] { ${membershipPostProjection} }`
+  return sanityFetch({ query, params: { postType: postType || null, requiredTierId: requiredTierId || null, now: new Date().toISOString() }, tags: ['membership-post'] })
 }
 
 /**

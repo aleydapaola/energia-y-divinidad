@@ -12,6 +12,19 @@ function load(relative, dependencies = {}) {
   const filename = new URL("../" + relative, import.meta.url).pathname;
   const mod = new Module(filename);
   mod.require = (name) => {
+    if (name === "@/lib/membership-fulfillment") {
+      return load("lib/membership-fulfillment.ts");
+    }
+    if (name === "@/lib/membership-billing") {
+      return load("lib/membership-billing.ts");
+    }
+    if (name === "@/components/checkout/PurchasePolicy") {
+      return load("components/checkout/PurchasePolicy.tsx");
+    }
+    if (name === "@/lib/commercial-policy") {
+      return load("lib/commercial-policy.ts");
+    }
+
     if (name === "@/lib/checkout/hold-store") {
       return holdStore;
     }

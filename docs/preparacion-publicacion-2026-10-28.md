@@ -2,7 +2,11 @@
 
 No se ha publicado Production. Esta preparación no autoriza cambiar servicios reales, migrar su base o integrar main.
 
-## Versión revisable
+## Estado actualizado: nuevo alcance de membresías
+
+La versión 015e41f8 de dependencias está Ready en Preview y su CLIENT/Studio han sido comprobados en Brave. Las ocho compras anteriores siguen verificadas. Xavier incluye ahora membresías recurrentes y delega las condiciones de otros productos. El nuevo candidato local supera 171 pruebas, tipos/lint y build de 137 páginas; su despliegue, planes sandbox y autorizaciones personales se siguen en [plan-membresias-politicas-2026-10-28.md](plan-membresias-politicas-2026-10-28.md). No está aprobado para Production y las versiones que siguen son antecedentes.
+
+## Antecedente de versión revisable
 
 - Aplicación: 497916f9b9e012ebab6c94747a92ab6ebae4bf35, rama preview, repositorio aleydapaola/energia-y-divinidad.
 - Vercel EYD: proyecto prj_unjgBqGNUdLMP4TtRdvBMqKgxmcV, equipo team_1whYgceEyjMN8Ni9tLEOWbNx / aleyda-paola-vargas-projects.

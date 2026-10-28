@@ -12,7 +12,7 @@ export function previewEmailRecipient() {
 }
 
 /** All outgoing emails share the same recipient boundary in Preview and local work. */
-export async function deliverEmail(payload: EmailPayload) {
+export async function deliverEmail(payload: EmailPayload, options?: { idempotencyKey?: string }) {
   let message = payload;
   if (process.env.VERCEL_ENV !== "production" || process.env.EMAIL_DELIVERY_MODE === "preview") {
     const recipient = previewEmailRecipient();
@@ -32,5 +32,5 @@ export async function deliverEmail(payload: EmailPayload) {
   if (!process.env.RESEND_API_KEY) {
     throw new Error("Email provider is not configured");
   }
-  return new Resend(process.env.RESEND_API_KEY).emails.send(message);
+  return new Resend(process.env.RESEND_API_KEY).emails.send(message, options);
 }

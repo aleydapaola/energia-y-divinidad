@@ -1,4 +1,6 @@
 import { prisma } from "./prisma";
+import { client } from "./sanity/client";
+import { getMembershipTierById, getMembershipPostById } from "./sanity/queries/membership";
 
 import type {
   MembershipStatus,
@@ -129,12 +131,11 @@ export async function getUserMembershipTier(
     return null;
   }
 
-  // Aquí necesitarás hacer un fetch a Sanity para obtener el tierLevel
-  // Por ahora retornamos solo el ID
-  return {
-    tierId: subscription.membershipTierId,
-    tierLevel: 0, // Esto debe venir de Sanity
-  };
+  const tier = await getMembershipTierById(subscription.membershipTierId);
+  if (!tier?.active || !Number.isFinite(tier.tierLevel)) {
+    return null;
+  }
+  return { tierId: tier._id, tierLevel: tier.tierLevel };
 }
 
 /**
@@ -174,15 +175,19 @@ export async function canAccessPremiumContent(
     };
   }
 
-  // Aquí necesitarás verificar contra Sanity si el tier del usuario
-  // está en la lista de tiers permitidos para este contenido
-  // Por ahora asumimos que sí tiene acceso si tiene membresía activa
-
+  const tier = await getMembershipTierById(subscription.membershipTierId);
+  const allowed =
+    tier?.active &&
+    tier.benefits?.premiumContent &&
+    (await client.fetch<boolean>(
+      'count(*[_type == "premiumContent" && _id == $contentId && published == true && $tierId in accessLevel.membershipTiers[]._ref]) > 0',
+      { contentId, tierId: subscription.membershipTierId }
+    ));
   return {
     contentId,
-    hasAccess: true,
-    reason: "membership",
-    subscription,
+    hasAccess: !!allowed,
+    reason: allowed ? "membership" : "no_access",
+    ...(allowed ? { subscription } : {}),
   };
 }
 
@@ -191,16 +196,58 @@ export async function canAccessPremiumContent(
  */
 export async function canAccessMembershipPost(
   userId: string,
-  _requiredTierId: string
+  requiredTierId: string
 ): Promise<boolean> {
-  const subscription = await getActiveSubscription(userId);
-  if (!subscription) {
+  const [tier, required] = await Promise.all([
+    getUserMembershipTier(userId),
+    getMembershipTierById(requiredTierId),
+  ]);
+  return (
+    !!tier &&
+    !!required &&
+    Number.isFinite(required.tierLevel) &&
+    tier.tierLevel >= required.tierLevel
+  );
+}
+
+export function membershipPostAllowed(
+  tier: { tierLevel: number } | null,
+  post: {
+    requiredTier?: { tierLevel?: number } | null;
+    publishedAt?: string;
+    expirationDate?: string;
+  },
+  now = new Date()
+) {
+  const level = post.requiredTier?.tierLevel;
+  return (
+    !!tier &&
+    typeof level === "number" &&
+    Number.isFinite(level) &&
+    tier.tierLevel >= level &&
+    !!post.publishedAt &&
+    Date.parse(post.publishedAt) <= now.getTime() &&
+    (!post.expirationDate || Date.parse(post.expirationDate) > now.getTime())
+  );
+}
+
+export async function canReadMembershipPost(
+  userId: string,
+  post: Parameters<typeof membershipPostAllowed>[1]
+) {
+  return membershipPostAllowed(await getUserMembershipTier(userId), post);
+}
+
+export async function canAccessMembershipComment(userId: string, commentId: string) {
+  const comment = await prisma.membershipPostComment.findUnique({
+    where: { id: commentId },
+    include: { post: true },
+  });
+  if (!comment) {
     return false;
   }
-
-  // Aquí necesitarás comparar tierLevel del usuario vs tierLevel requerido
-  // desde Sanity. Por ahora verificamos solo que tenga membresía activa
-  return true;
+  const post = await getMembershipPostById(comment.post.sanityId);
+  return post ? canReadMembershipPost(userId, post) : false;
 }
 
 /**
@@ -227,14 +274,15 @@ export async function getMembershipStatus(userId: string): Promise<MembershipSta
     (subscription.currentPeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
   );
 
+  const tier = await getMembershipTierById(subscription.membershipTierId);
   return {
     hasActiveMembership: true,
     subscription,
-    tier: null, // Esto debe obtenerse desde Sanity
-    canAccessPremiumContent: true,
+    tier,
+    canAccessPremiumContent: !!tier?.benefits?.premiumContent,
     canAccessMembershipPosts: true,
     daysUntilRenewal,
-    isCancelled: subscription.status === "CANCELLED",
+    isCancelled: !!subscription.cancelledAt,
     isInTrial: subscription.status === "TRIAL",
   };
 }

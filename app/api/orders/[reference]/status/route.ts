@@ -29,6 +29,23 @@ export async function GET(
       select: {
         id: true,
         userId: true,
+        entitlements: {
+          where: { type: "MEMBERSHIP" },
+          take: 1,
+          select: {
+            subscription: {
+              select: {
+                status: true,
+                trialEnd: true,
+                currentPeriodEnd: true,
+                nextChargeDate: true,
+                cancelledAt: true,
+                amount: true,
+                billingInterval: true,
+              },
+            },
+          },
+        },
         manualPayment: { select: { referenceNumber: true, approved: true } },
         checkoutHold: { select: { state: true, expiresAt: true } },
         orderNumber: true,
@@ -93,6 +110,18 @@ export async function GET(
           }
         : {}),
       paymentStatus,
+      ...(order.orderType === "MEMBERSHIP" && metadata?.membershipFlowVersion === 2
+        ? {
+            membership: {
+              isTrialActivation: metadata?.membershipActivation === "trial",
+              trialEndsAt: metadata?.trialEndsAt || null,
+              recurringAmount: Number(metadata?.recurringAmount),
+              billingInterval: metadata?.billingInterval,
+              currentPeriodEnd: order.entitlements?.[0]?.subscription?.currentPeriodEnd || null,
+              renewalStopped: !!order.entitlements?.[0]?.subscription?.cancelledAt,
+            },
+          }
+        : {}),
       reservation,
       amount: Number(order.amount),
     });

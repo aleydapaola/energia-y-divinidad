@@ -18,7 +18,7 @@ import {
 } from "@paypal/paypal-server-sdk";
 
 import { payPalVerificationBody } from "./paypal-webhook";
-import { assertPayPalTestEnvironment } from "./preview-safety";
+import { assertPayPalTestEnvironment, isProductionEnvironment } from "./preview-safety";
 
 /**
  * PayPal Integration
@@ -493,6 +493,7 @@ export interface PayPalSubscriptionParams {
   returnUrl: string;
   cancelUrl: string;
   customId?: string;
+  requestId?: string;
 }
 
 export interface PayPalSubscriptionResult {
@@ -511,6 +512,56 @@ export interface PayPalSubscriptionDetails {
   nextBillingTime?: string;
   lastPaymentAmount?: string;
   lastPaymentTime?: string;
+  lastPaymentCurrency?: string;
+  customId?: string;
+  statusUpdatedAt?: string;
+  quantity?: string;
+  planOverridden?: boolean;
+  failedPaymentsCount?: number;
+  lastFailedPaymentTime?: string;
+}
+
+export interface PayPalBillingPlan {
+  id: string;
+  status: string;
+  product_id?: string;
+  billing_cycles?: Array<{
+    tenure_type?: string;
+    total_cycles?: number;
+    frequency?: { interval_unit?: string; interval_count?: number };
+    pricing_scheme?: { fixed_price?: { value?: string; currency_code?: string } };
+  }>;
+  payment_preferences?: { setup_fee?: { value?: string; currency_code?: string } };
+  taxes?: { percentage?: string };
+  quantity_supported?: boolean;
+}
+
+export interface PayPalSaleDetails {
+  id: string;
+  state: string;
+  billing_agreement_id?: string;
+  create_time?: string;
+  amount?: { total?: string; currency?: string };
+}
+
+async function getPayPalResource<T>(path: string): Promise<T | null> {
+  const token = await getPayPalAccessToken();
+  const response = await fetch(`${getPayPalApiBaseUrl()}${path}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    return null;
+  }
+  return response.json() as Promise<T>;
+}
+
+export function getPayPalBillingPlan(id: string) {
+  return getPayPalResource<PayPalBillingPlan>(`/v1/billing/plans/${encodeURIComponent(id)}`);
+}
+
+export function getPayPalSaleDetails(id: string) {
+  return getPayPalResource<PayPalSaleDetails>(`/v1/payments/sale/${encodeURIComponent(id)}`);
 }
 
 /**
@@ -528,7 +579,12 @@ export function getPayPalPlanId(
   const currencyKey = `PAYPAL_PLAN_ID_${normalizedSlug}_${currency}_${intervalKey}`;
   const legacyKey = `PAYPAL_PLAN_ID_${normalizedSlug}_${intervalKey}`;
 
-  return process.env[currencyKey] || (currency === "USD" ? process.env[legacyKey] : null) || null;
+  const prefix = isProductionEnvironment() ? "" : "PREVIEW_";
+  return (
+    process.env[prefix + currencyKey] ||
+    (currency === "USD" ? process.env[prefix + legacyKey] : null) ||
+    null
+  );
 }
 
 /**
@@ -567,6 +623,11 @@ export async function createPayPalSubscription(
 
     const response = await subscriptionsController.createSubscription({
       prefer: "return=representation",
+      paypalRequestId:
+        params.requestId ||
+        (params.customId
+          ? createHash("sha256").update(`membership:${params.customId}`).digest("hex").slice(0, 38)
+          : undefined),
       body: requestBody,
     });
 
@@ -601,9 +662,10 @@ export async function getPayPalSubscriptionDetails(
   try {
     const accessToken = await getPayPalAccessToken();
     const response = await fetch(
-      `${getPayPalApiBaseUrl()}/v1/billing/subscriptions/${subscriptionId}`,
+      `${getPayPalApiBaseUrl()}/v1/billing/subscriptions/${encodeURIComponent(subscriptionId)}?fields=last_failed_payment`,
       {
         method: "GET",
+        cache: "no-store",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
@@ -620,13 +682,19 @@ export async function getPayPalSubscriptionDetails(
       id?: string;
       status?: string;
       plan_id?: string;
+      custom_id?: string;
+      status_update_time?: string;
+      quantity?: string;
+      plan_overridden?: boolean;
       start_time?: string;
       subscriber?: {
         email_address?: string;
       };
       billing_info?: {
         next_billing_time?: string;
-        last_payment?: { amount?: { value?: string }; time?: string };
+        last_payment?: { amount?: { value?: string; currency_code?: string }; time?: string };
+        failed_payments_count?: number;
+        last_failed_payment?: { time?: string };
       };
     };
 
@@ -634,11 +702,18 @@ export async function getPayPalSubscriptionDetails(
       id: sub.id || subscriptionId,
       status: sub.status || "UNKNOWN",
       planId: sub.plan_id,
+      customId: sub.custom_id,
+      statusUpdatedAt: sub.status_update_time,
+      quantity: sub.quantity,
+      planOverridden: sub.plan_overridden,
       startTime: sub.start_time,
       subscriberEmail: sub.subscriber?.email_address,
       nextBillingTime: sub.billing_info?.next_billing_time,
       lastPaymentAmount: sub.billing_info?.last_payment?.amount?.value,
       lastPaymentTime: sub.billing_info?.last_payment?.time,
+      lastPaymentCurrency: sub.billing_info?.last_payment?.amount?.currency_code,
+      failedPaymentsCount: sub.billing_info?.failed_payments_count,
+      lastFailedPaymentTime: sub.billing_info?.last_failed_payment?.time,
     };
   } catch (error) {
     console.error("[PAYPAL] Error getting subscription:", error);
@@ -654,6 +729,13 @@ export async function cancelPayPalSubscription(
   reason: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const current = await getPayPalSubscriptionDetails(subscriptionId);
+    if (!current) {
+      return { success: false, error: "No se pudo comprobar el estado de la renovación" };
+    }
+    if (["CANCELLED", "EXPIRED"].includes(current.status)) {
+      return { success: true };
+    }
     const client = getPayPalClient();
     const subscriptionsController = new SubscriptionsController(client);
 
@@ -711,4 +793,125 @@ export async function activatePayPalSubscription(
     console.error("[PAYPAL] Error activating subscription:", error);
     return { success: false, error: error instanceof Error ? error.message : "Error desconocido" };
   }
+}
+
+/** Test-only catalogue preparation. It never creates an agreement or charges a buyer. */
+export async function ensurePayPalSandboxMembershipPlan(input: {
+  key: string;
+  tierName: string;
+  amount: number;
+  currency: "USD" | "EUR";
+  interval: "monthly" | "yearly";
+}): Promise<PayPalBillingPlan> {
+  if (
+    process.env.VERCEL_ENV !== "preview" ||
+    PAYPAL_CONFIG.environment !== "sandbox" ||
+    process.env.NEXT_PUBLIC_SANITY_PROJECT_ID !== "81jpalr2" ||
+    process.env.NEXT_PUBLIC_SANITY_DATASET !== "preview"
+  ) {
+    throw new Error("La preparación de planes solo está disponible en EYD Preview sandbox");
+  }
+  const productId = "EYD-PREVIEW-MEMBERSHIPS-20261028";
+  const productName = "PRUEBAS - NO REAL - EYD Membresias 2026-10-28";
+  async function request<T>(path: string, body: object, key: string): Promise<T> {
+    const token = await getPayPalAccessToken();
+    const response = await fetch(`${getPayPalApiBaseUrl()}${path}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+        "PayPal-Request-Id": createHash("sha256").update(key).digest("hex").slice(0, 38),
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!response.ok) {
+      throw new Error(`PayPal sandbox no confirmó la preparación (${response.status})`);
+    }
+    return response.json() as Promise<T>;
+  }
+  const existingProduct = await getPayPalResource<{ id: string; name: string; type: string }>(
+    `/v1/catalogs/products/${productId}`
+  );
+  if (
+    existingProduct &&
+    (existingProduct.name !== productName || existingProduct.type !== "SERVICE")
+  ) {
+    throw new Error("Producto de pruebas no reconocido");
+  }
+  if (!existingProduct) {
+    await request(
+      "/v1/catalogs/products",
+      {
+        id: productId,
+        name: productName,
+        type: "SERVICE",
+        category: "DIGITAL_MEDIA_BOOKS_MOVIES_MUSIC",
+        description:
+          "Catalogo exclusivo para pruebas ficticias de Energia y Divinidad. Sin cobros reales.",
+      },
+      productId
+    );
+  }
+  const name = `PRUEBA EYD 20261028 ${input.key} ${input.amount.toFixed(2)} ${input.currency}`;
+  let found: { id: string; name: string } | undefined;
+  for (let page = 1; page <= 20; page++) {
+    const list = await getPayPalResource<{ plans: Array<{ id: string; name: string }> }>(
+      `/v1/billing/plans?product_id=${productId}&page_size=20&page=${page}`
+    );
+    if (!list) {
+      throw new Error("No se pudo revisar el catálogo de planes sandbox");
+    }
+    const matches = (list.plans || []).filter((plan) => plan.name === name);
+    if (matches.length > 1 || (found && matches.length)) {
+      throw new Error("Existen planes de prueba ambiguos; requieren revisión");
+    }
+    if (matches[0]) {
+      found = matches[0];
+    }
+    if ((list.plans || []).length < 20) {
+      break;
+    }
+    if (page === 20) {
+      throw new Error("El catálogo sandbox requiere revisión manual");
+    }
+  }
+  if (found) {
+    const details = await getPayPalBillingPlan(found.id);
+    if (!details) {
+      throw new Error("No se pudo verificar el plan sandbox existente");
+    }
+    return details;
+  }
+  const created = await request<PayPalBillingPlan>(
+    "/v1/billing/plans",
+    {
+      product_id: productId,
+      name,
+      status: "ACTIVE",
+      description: `PRUEBA NO REAL - ${input.tierName}`,
+      billing_cycles: [
+        {
+          frequency: {
+            interval_unit: input.interval === "yearly" ? "YEAR" : "MONTH",
+            interval_count: 1,
+          },
+          tenure_type: "REGULAR",
+          sequence: 1,
+          total_cycles: 0,
+          pricing_scheme: {
+            fixed_price: { value: input.amount.toFixed(2), currency_code: input.currency },
+          },
+        },
+      ],
+      payment_preferences: { auto_bill_outstanding: false, payment_failure_threshold: 3 },
+    },
+    name
+  );
+  const verified = created.id ? await getPayPalBillingPlan(created.id) : null;
+  if (!verified) {
+    throw new Error("El plan se preparó pero falta verificar sus condiciones");
+  }
+  return verified;
 }

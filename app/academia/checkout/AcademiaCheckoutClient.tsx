@@ -19,6 +19,7 @@ import { useState, useEffect } from "react";
 
 import { DiscountCodeInput } from "@/components/cart";
 import { CheckoutHeader } from "@/components/checkout/CheckoutHeader";
+import { PurchasePolicy } from "@/components/checkout/PurchasePolicy";
 import { purchaseMethods } from "@/lib/purchase-methods";
 import { useCartStore, useCartSummary, formatPrice } from "@/lib/stores/cart-store";
 import { urlFor } from "@/sanity/lib/image";
@@ -500,6 +501,9 @@ export function AcademiaCheckoutClient() {
                   </div>
                 )}
 
+                <div className="mb-6">
+                  <PurchasePolicy kind="course" />
+                </div>
                 {/* Submit Button */}
                 <button
                   type="button"

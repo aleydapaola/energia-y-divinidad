@@ -1,11 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
-import { auth } from '@/lib/auth'
-import { hasActiveMembership } from '@/lib/membership-access'
-import { getPostEngagement } from '@/lib/membership-posts'
-import { getRecentMembershipPosts, getAllMembershipPosts } from '@/lib/sanity/queries/membership'
+import { auth } from "@/lib/auth";
+import {
+  hasActiveMembership,
+  getUserMembershipTier,
+  membershipPostAllowed,
+} from "@/lib/membership-access";
+import { getPostEngagement } from "@/lib/membership-posts";
+import { getAllMembershipPosts } from "@/lib/sanity/queries/membership";
 
-import type { MembershipPostWithEngagement } from '@/types/membership'
+import type { MembershipPostWithEngagement } from "@/types/membership";
 
 /**
  * GET /api/membership/posts
@@ -16,50 +20,53 @@ import type { MembershipPostWithEngagement } from '@/types/membership'
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
+    const session = await auth();
 
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
     // Verificar que el usuario tenga membresía activa
-    const hasMembership = await hasActiveMembership(session.user.id)
+    const hasMembership = await hasActiveMembership(session.user.id);
 
     if (!hasMembership) {
       return NextResponse.json(
-        { error: 'Requiere membresía activa para acceder al contenido' },
+        { error: "Requiere membresía activa para acceder al contenido" },
         { status: 403 }
-      )
+      );
     }
 
-    const searchParams = request.nextUrl.searchParams
-    const postType = searchParams.get('type') || undefined
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const searchParams = request.nextUrl.searchParams;
+    const postType = searchParams.get("type") || undefined;
+    const limit = parseInt(searchParams.get("limit") || "20");
 
     // Obtener posts desde Sanity
     const posts = await getAllMembershipPosts({
       postType,
       limit,
-    })
+    });
 
     // Enriquecer con datos de engagement desde Prisma
+    const tier = await getUserMembershipTier(session.user.id);
     const postsWithEngagement: MembershipPostWithEngagement[] = await Promise.all(
-      posts.map(async (post) => {
-        const engagement = await getPostEngagement(post._id, session.user.id)
+      posts
+        .filter((post) => membershipPostAllowed(tier, post))
+        .map(async (post) => {
+          const engagement = await getPostEngagement(post._id, session.user.id);
 
-        return {
-          ...post,
-          ...engagement,
-        }
-      })
-    )
+          return {
+            ...post,
+            ...engagement,
+          };
+        })
+    );
 
     return NextResponse.json({
       posts: postsWithEngagement,
       total: postsWithEngagement.length,
-    })
+    });
   } catch (error) {
-    console.error('Error getting membership posts:', error)
-    return NextResponse.json({ error: 'Error al obtener publicaciones' }, { status: 500 })
+    console.error("Error getting membership posts:", error);
+    return NextResponse.json({ error: "Error al obtener publicaciones" }, { status: 500 });
   }
 }
