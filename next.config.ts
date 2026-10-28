@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import path from "path";
 
 import type { NextConfig } from "next";
@@ -22,11 +23,12 @@ const nextConfig: NextConfig = {
   },
   webpack: (config) => {
     const rootNodeModules = path.resolve(process.cwd(), "node_modules");
+    const rootRequire = createRequire(path.resolve(process.cwd(), "package.json"));
 
     config.resolve.alias = {
       ...config.resolve.alias,
       sanity$: path.join(rootNodeModules, "sanity"),
-      "sanity/structure$": path.join(rootNodeModules, "sanity/lib/structure.mjs"),
+      "sanity/structure$": rootRequire.resolve("sanity/structure"),
       "@sanity/vision$": path.join(rootNodeModules, "@sanity/vision"),
       "@sanity/ui$": path.join(rootNodeModules, "@sanity/ui"),
       "@sanity/icons$": path.join(rootNodeModules, "@sanity/icons"),

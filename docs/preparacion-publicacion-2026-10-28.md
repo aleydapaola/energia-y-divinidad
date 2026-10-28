@@ -20,7 +20,7 @@ Nuevo taller PayPal: 19 plazas libres antes, 18 durante retención y 18 después
 
 ## Dependencias: revisión nueva antes de Production
 
-Actualización preparada y comprobada localmente: [seguridad-preview-2026-10-28.md](seguridad-preview-2026-10-28.md). Auditoría principal de producción: de 66 entradas (6 critical) a 11 (0 critical, 7 high, 4 moderate). Avisos residuales en herramientas de Prisma/CMS documentados, sin forzar migraciones mayores. 147 pruebas y tipos correctos, esquema del Studio validado y prueba real de inventario en Neon Preview correcta. No equivale a repetir las capturas PayPal anteriores ni a una auditoría de seguridad completa. Verificación remota del nuevo candidato pendiente en este registro; Production sigue sin autorización.
+Actualización preparada y comprobada localmente: [seguridad-preview-2026-10-28.md](seguridad-preview-2026-10-28.md). Auditoría principal de producción: de 66 entradas (6 critical) a 9 (0 critical, 9 high, 0 moderate). Avisos residuales en herramientas de Prisma/CMS documentados, sin forzar migraciones mayores. Compilación local completa, 147 pruebas y tipos correctos, esquema del Studio validado y prueba real de inventario en Neon Preview correcta. No equivale a repetir las capturas PayPal anteriores ni a una auditoría de seguridad completa. Verificación remota del nuevo candidato pendiente en este registro; Production sigue sin autorización.
 
 ## Contenidos y legal que faltan
 
