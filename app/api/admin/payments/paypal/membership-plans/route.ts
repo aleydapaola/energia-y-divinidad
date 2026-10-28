@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { assertMembershipPlan, moneyMinor } from "@/lib/membership-billing";
-import { ensurePayPalSandboxMembershipPlan } from "@/lib/paypal";
+import {
+  ensurePayPalSandboxMembershipPlan,
+  ensurePayPalSandboxMembershipEvents,
+} from "@/lib/paypal";
 import { prisma } from "@/lib/prisma";
 import { client } from "@/lib/sanity/client";
 
@@ -80,6 +83,7 @@ export async function POST(request: NextRequest) {
         });
       }
     }
+    const webhook = await ensurePayPalSandboxMembershipEvents();
     await prisma.auditLog.create({
       data: {
         actorId: session.user.id,
@@ -88,11 +92,11 @@ export async function POST(request: NextRequest) {
         entityId: "eyd-preview-paypal-plans",
         action: "create",
         reason: "Preparación autorizada de catálogo PayPal sandbox; sin compradores ni cargos",
-        metadata: { prepared },
+        metadata: { prepared, webhook },
       },
     });
     return NextResponse.json(
-      { environment: "EYD Preview sandbox", prepared },
+      { environment: "EYD Preview sandbox", prepared, webhook },
       { headers: { "Cache-Control": "private, no-store" } }
     );
   } catch (error) {

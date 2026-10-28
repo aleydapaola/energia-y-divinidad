@@ -12,6 +12,17 @@ import { createPayPalSubscription, getPayPalBillingPlan } from "@/lib/paypal";
 import { prisma } from "@/lib/prisma";
 import { getAppUrl } from "@/lib/utils";
 
+function assertApprovalUrl(value: string) {
+  const approval = new URL(value);
+  const expectedPayPalOrigin =
+    process.env.VERCEL_ENV === "production"
+      ? "https://www.paypal.com"
+      : "https://www.sandbox.paypal.com";
+  if (approval.origin !== expectedPayPalOrigin || approval.username || approval.password) {
+    throw new Error("URL de autorización no válida");
+  }
+}
+
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -174,6 +185,7 @@ export async function POST(request: NextRequest) {
     });
     const intent = membershipIntent(order.metadata);
     if (intent.approvalUrl && intent.paypalSubscriptionId) {
+      assertApprovalUrl(intent.approvalUrl);
       return NextResponse.json({
         success: true,
         orderId: order.id,
@@ -200,13 +212,7 @@ export async function POST(request: NextRequest) {
         { status: 502 }
       );
     }
-    const approval = new URL(result.approvalUrl);
-    if (
-      approval.protocol !== "https:" ||
-      !["www.paypal.com", "www.sandbox.paypal.com"].includes(approval.hostname)
-    ) {
-      throw new Error("URL de autorización no válida");
-    }
+    assertApprovalUrl(result.approvalUrl);
     await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`membership-user:${userId}`}))`;
       const fresh = await tx.order.findUniqueOrThrow({ where: { id: order.id } });

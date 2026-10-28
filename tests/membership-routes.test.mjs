@@ -41,7 +41,12 @@ const body = {
   termsVersion: policy.COMMERCIAL_POLICY_VERSION,
 };
 const request = (data) => ({ json: async () => data });
-function setup({ authenticated = true, active = false, failOnce = false } = {}) {
+function setup({
+  authenticated = true,
+  active = false,
+  failOnce = false,
+  approvalUrl = "https://www.sandbox.paypal.com/approve-test",
+} = {}) {
   const state = { orders: [], providerCalls: [], quoteCalls: [], reads: 0 };
   const db = {
     subscription: {
@@ -93,7 +98,7 @@ function setup({ authenticated = true, active = false, failOnce = false } = {}) 
         return {
           success: true,
           subscriptionId: "I-SERVER",
-          approvalUrl: "https://www.sandbox.paypal.com/approve-test",
+          approvalUrl,
         };
       },
     },
@@ -302,4 +307,20 @@ test("cancellation cannot report success or alter access when PayPal fails; succ
       assert.equal(result.errorCode, "PROVIDER_ERROR");
     }
   }
+});
+
+test("Preview recurring checkout refuses a live approval URL even when the provider adapter returns it", async () => {
+  const { state, route } = setup({ approvalUrl: "https://www.paypal.com/approve-test" });
+  const response = await route.POST(request(body));
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).approvalUrl, undefined);
+  assert.equal(state.orders[0].paymentStatus, "PENDING");
+});
+
+test("reusing a pending Preview intent also rejects a live authorization destination", async () => {
+  const { state, route } = setup();
+  assert.equal((await route.POST(request(body))).status, 200);
+  state.orders[0].metadata.approvalUrl = "https://www.paypal.com/approve-test";
+  assert.equal((await route.POST(request(body))).status, 400);
+  assert.equal(state.providerCalls.length, 1);
 });

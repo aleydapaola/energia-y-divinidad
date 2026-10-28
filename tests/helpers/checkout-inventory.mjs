@@ -10,6 +10,9 @@ export function loadInventory(relative, db, options = {}) {
   const path = new URL("../../" + relative, import.meta.url).pathname;
   const mod = new Module(path);
   mod.require = (name) => {
+    if (name === "./membership-webhook-events") {
+      return loadInventory("lib/membership-webhook-events.ts", db, options);
+    }
     if (options.dependencies?.[name]) {
       return options.dependencies[name];
     }

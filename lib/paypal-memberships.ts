@@ -9,19 +9,11 @@ import {
 import { createMembershipEntitlement } from "./membership-fulfillment";
 import { membershipIntent } from "./membership-intent";
 import { deliverMembershipNotices, queueMembershipNotice } from "./membership-notifications";
+import { MEMBERSHIP_WEBHOOK_EVENTS } from "./membership-webhook-events";
 import { getPayPalBillingPlan, getPayPalSaleDetails, getPayPalSubscriptionDetails } from "./paypal";
 import { prisma } from "./prisma";
 
-export const MEMBERSHIP_WEBHOOK_EVENTS = new Set([
-  "BILLING.SUBSCRIPTION.ACTIVATED",
-  "BILLING.SUBSCRIPTION.UPDATED",
-  "BILLING.SUBSCRIPTION.CANCELLED",
-  "BILLING.SUBSCRIPTION.EXPIRED",
-  "BILLING.SUBSCRIPTION.SUSPENDED",
-  "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
-  "PAYMENT.SALE.COMPLETED",
-  "PAYMENT.SALE.DENIED",
-]);
+export { MEMBERSHIP_WEBHOOK_EVENTS } from "./membership-webhook-events";
 export type MembershipEvent = { id: string; event_type: string; resource: Record<string, unknown> };
 
 /** Both the return route and signed webhooks use provider-verified facts and the same atomic delivery. */

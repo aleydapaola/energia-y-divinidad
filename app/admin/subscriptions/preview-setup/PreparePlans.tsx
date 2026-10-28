@@ -24,15 +24,17 @@ export function PreparePlans() {
     <div className="space-y-4">
       <p>
         Prepara únicamente los cuatro planes PayPal sandbox del catálogo Esencia/Divinidad en USD.
-        Comprueba y reutiliza los existentes. No autoriza suscripciones ni cobra a compradores. Los
-        IDs devueltos deben configurarse solo en Vercel Preview.
+        Comprueba y reutiliza los existentes. Añade al receptor sandbox ya configurado los avisos de
+        membresía probados, conservando su URL privada y los avisos de captura puntual. No autoriza
+        suscripciones ni cobra a compradores. Los IDs devueltos deben configurarse solo en Vercel
+        Preview.
       </p>
       <button
         disabled={busy}
         onClick={prepare}
         className="rounded-lg bg-[#4944a4] p-3 text-white disabled:opacity-50"
       >
-        {busy ? "Preparando planes de pruebas…" : "Preparar planes EYD sandbox"}
+        {busy ? "Preparando planes de pruebas…" : "Preparar planes y avisos EYD sandbox"}
       </button>
       {result && (
         <pre

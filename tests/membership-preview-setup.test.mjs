@@ -145,3 +145,126 @@ test("provider preparation fails before OAuth in live mode and creates only a re
     globalThis.fetch = originalFetch;
   }
 });
+
+test("sandbox webhook setup preserves the exact private destination and capture events, adding only implemented membership notices", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    await env({ ...preview, PAYPAL_WEBHOOK_ID: "HOOK-TEST" }, async () => {
+      let names = ["PAYMENT.CAPTURE.COMPLETED", "PAYMENT.CAPTURE.DENIED"];
+      let patches = 0;
+      // Synthetic fixture only, not a real protection token.
+      const url = "https://preview.energiaydivinidad.com/api/webhooks/paypal?test-only=fake";
+      globalThis.fetch = async (address, options = {}) => {
+        assert.ok(address.startsWith("https://api-m.sandbox.paypal.com/"));
+        if (address.endsWith("/v1/oauth2/token")) {
+          return Response.json({ access_token: "fixture-token" });
+        }
+        assert.ok(address.endsWith("/v1/notifications/webhooks/HOOK-TEST"));
+        if (options.method === "PATCH") {
+          patches++;
+          const patch = JSON.parse(options.body);
+          assert.equal(patch.length, 1);
+          assert.equal(patch[0].path, "/event_types");
+          assert.equal(patch[0].op, "replace");
+          names = patch[0].value.map((e) => e.name);
+          assert.ok(names.includes("PAYMENT.CAPTURE.COMPLETED"));
+          assert.ok(names.includes("PAYMENT.CAPTURE.DENIED"));
+          assert.ok(names.includes("BILLING.SUBSCRIPTION.PAYMENT.FAILED"));
+          assert.ok(names.includes("PAYMENT.SALE.COMPLETED"));
+          assert.ok(!names.includes("*") && !names.includes("PAYMENT.SALE.REFUNDED"));
+          return new Response(null, { status: 204 });
+        }
+        return Response.json({
+          id: "HOOK-TEST",
+          url,
+          event_types: names.map((name) => ({ name })),
+        });
+      };
+      const provider = loadMembership("lib/paypal.ts");
+      const result = await provider.ensurePayPalSandboxMembershipEvents();
+      await provider.ensurePayPalSandboxMembershipEvents();
+      assert.equal(patches, 1);
+      assert.equal(result.eventTypes.length, 10);
+      assert.equal(result.url, undefined);
+      assert.equal(JSON.stringify(result).includes("test-only"), false);
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("sandbox webhook setup refuses other destinations and wildcard subscriptions before any mutation", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    await env({ ...preview, PAYPAL_WEBHOOK_ID: "HOOK-TEST" }, async () => {
+      const provider = loadMembership("lib/paypal.ts");
+      for (const hook of [
+        {
+          url: "https://www.energiaydivinidad.com/api/webhooks/paypal",
+          event_types: [{ name: "PAYMENT.CAPTURE.COMPLETED" }],
+        },
+        { url: "https://preview.energiaydivinidad.com/api/other", event_types: [] },
+        {
+          url: "https://preview.energiaydivinidad.com/api/webhooks/paypal",
+          event_types: [{ name: "*" }],
+        },
+      ]) {
+        globalThis.fetch = async (address, options = {}) => {
+          if (address.endsWith("/v1/oauth2/token")) {
+            return Response.json({ access_token: "fixture-token" });
+          }
+          assert.notEqual(options.method, "PATCH");
+          return Response.json({ id: "HOOK-TEST", ...hook });
+        };
+        await assert.rejects(provider.ensurePayPalSandboxMembershipEvents());
+      }
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("subscription creation omits an empty surname and keeps the same provider request ID for an uncertain retry", async () => {
+  await env(preview, async () => {
+    const calls = [];
+    const sdk = {
+      Client: class {},
+      Environment: { Production: "live", Sandbox: "sandbox" },
+      LogLevel: { Info: "info" },
+      ApplicationContextUserAction: { SubscribeNow: "SUBSCRIBE_NOW" },
+      SubscriptionsController: class {
+        async createSubscription(input) {
+          calls.push(input);
+          return {
+            result: {
+              id: "I-FIXTURE",
+              links: [{ rel: "approve", href: "https://www.sandbox.paypal.com/approve" }],
+            },
+          };
+        }
+      },
+    };
+    const provider = loadMembership("lib/paypal.ts", { "@paypal/paypal-server-sdk": sdk });
+    const params = {
+      planId: "P-TEST",
+      subscriberEmail: "test@example.com",
+      subscriberName: "Prova",
+      customId: "order-1",
+      startTime: new Date(Date.now() + 30 * 86400000).toISOString(),
+      returnUrl: "https://preview.test/return",
+      cancelUrl: "https://preview.test/cancel",
+    };
+    assert.equal((await provider.createPayPalSubscription(params)).success, true);
+    await provider.createPayPalSubscription(params);
+    await provider.createPayPalSubscription({
+      ...params,
+      subscriberName: " Aleyda  Paola ",
+      customId: "order-2",
+    });
+    assert.deepEqual(calls[0].body.subscriber.name, { givenName: "Prova" });
+    assert.deepEqual(calls[2].body.subscriber.name, { givenName: "Aleyda", surname: "Paola" });
+    assert.equal(calls[0].paypalRequestId, calls[1].paypalRequestId);
+    assert.notEqual(calls[0].paypalRequestId, calls[2].paypalRequestId);
+    assert.equal(calls[0].body.startTime, params.startTime);
+  });
+});

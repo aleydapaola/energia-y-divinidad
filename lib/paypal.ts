@@ -17,6 +17,7 @@ import {
   type CreateSubscriptionRequest,
 } from "@paypal/paypal-server-sdk";
 
+import { MEMBERSHIP_WEBHOOK_EVENTS } from "./membership-webhook-events";
 import { payPalVerificationBody } from "./paypal-webhook";
 import { assertPayPalTestEnvironment, isProductionEnvironment } from "./preview-safety";
 
@@ -598,16 +599,19 @@ export async function createPayPalSubscription(
     const client = getPayPalClient();
     const subscriptionsController = new SubscriptionsController(client);
 
+    const subscriberNames = params.subscriberName?.trim().split(/\s+/).filter(Boolean) || [];
     const requestBody: CreateSubscriptionRequest = {
       planId: params.planId,
       ...(params.startTime ? { startTime: params.startTime } : {}),
       subscriber: {
         emailAddress: params.subscriberEmail,
-        ...(params.subscriberName
+        ...(subscriberNames.length
           ? {
               name: {
-                givenName: params.subscriberName.split(" ")[0],
-                surname: params.subscriberName.split(" ").slice(1).join(" ") || "",
+                givenName: subscriberNames[0],
+                ...(subscriberNames.length > 1
+                  ? { surname: subscriberNames.slice(1).join(" ") }
+                  : {}),
               },
             }
           : {}),
@@ -914,4 +918,70 @@ export async function ensurePayPalSandboxMembershipPlan(input: {
     throw new Error("El plan se preparó pero falta verificar sus condiciones");
   }
   return verified;
+}
+
+/** Add only the tested sandbox events to the existing listener; keep its private URL untouched. */
+export async function ensurePayPalSandboxMembershipEvents() {
+  if (
+    process.env.VERCEL_ENV !== "preview" ||
+    PAYPAL_CONFIG.environment !== "sandbox" ||
+    process.env.NEXT_PUBLIC_SANITY_PROJECT_ID !== "81jpalr2" ||
+    process.env.NEXT_PUBLIC_SANITY_DATASET !== "preview" ||
+    !PAYPAL_CONFIG.webhookId
+  ) {
+    throw new Error("La configuración de avisos solo está disponible en EYD Preview sandbox");
+  }
+  const path = `/v1/notifications/webhooks/${encodeURIComponent(PAYPAL_CONFIG.webhookId)}`;
+  type Hook = { id: string; url: string; event_types: Array<{ name: string }> };
+  const original = await getPayPalResource<Hook>(path);
+  if (!original || original.id !== PAYPAL_CONFIG.webhookId) {
+    throw new Error("No se encontró el webhook sandbox esperado");
+  }
+  const destination = new URL(original.url);
+  if (
+    destination.protocol !== "https:" ||
+    destination.username ||
+    destination.password ||
+    ![
+      "preview.energiaydivinidad.com",
+      "energia-y-divinidad-git-preview-aleyda-paola-vargas-projects.vercel.app",
+    ].includes(destination.hostname) ||
+    destination.pathname !== "/api/webhooks/paypal"
+  ) {
+    throw new Error("El webhook no apunta al receptor aislado de EYD Preview");
+  }
+  const expected = new Set([
+    "PAYMENT.CAPTURE.COMPLETED",
+    "PAYMENT.CAPTURE.DENIED",
+    ...MEMBERSHIP_WEBHOOK_EVENTS,
+  ]);
+  const current = original.event_types.map((event) => event.name);
+  if (current.some((name) => !expected.has(name))) {
+    throw new Error("El webhook contiene eventos adicionales que requieren revisión");
+  }
+  if ([...expected].some((name) => !current.includes(name))) {
+    const token = await getPayPalAccessToken();
+    const response = await fetch(`${getPayPalApiBaseUrl()}${path}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify([
+        { op: "replace", path: "/event_types", value: [...expected].map((name) => ({ name })) },
+      ]),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!response.ok) {
+      throw new Error(`PayPal sandbox no confirmó los eventos (${response.status})`);
+    }
+  }
+  const verified = await getPayPalResource<Hook>(path);
+  if (
+    !verified ||
+    verified.id !== original.id ||
+    verified.url !== original.url ||
+    verified.event_types.length !== expected.size ||
+    verified.event_types.some((event) => !expected.has(event.name))
+  ) {
+    throw new Error("Falta verificar la configuración de avisos sandbox");
+  }
+  return { webhookId: verified.id, eventTypes: verified.event_types.map((event) => event.name) };
 }

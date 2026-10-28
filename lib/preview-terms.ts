@@ -62,7 +62,7 @@ export function getPreviewTermsPage(env: Record<string, string | undefined> = pr
     ["h2", "6. Membresías y renovaciones"],
     [
       "normal",
-      "La contratación indica el importe, la moneda y la periodicidad mensual o anual, la duración de la prueba si corresponde y el primer cobro previsto. Requiere autorizar expresamente la renovación recurrente en PayPal. La prueba gratuita solo se ofrece una vez por persona; un nuevo alta después de haberla utilizado comienza con el precio indicado, sin una segunda prueba gratuita.",
+      "La contratación indica el importe, la moneda y la periodicidad mensual o anual, la duración de la prueba si corresponde y el primer cobro previsto. Requiere autorizar expresamente la renovación recurrente en PayPal. La prueba gratuita solo se ofrece una vez por cuenta de cliente; un nuevo alta después de haberla utilizado comienza con el precio indicado, sin una segunda prueba gratuita.",
     ],
     ["normal", MEMBERSHIP_CANCELLATION_POLICY],
     ["h2", "7. Solicitudes y derechos del consumidor"],
