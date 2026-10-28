@@ -2,7 +2,7 @@
 
 Seguimiento del plan de cierre del 25/10/2026. Las pruebas locales con dependencias simuladas no sustituyen estas comprobaciones remotas. Usar solo datos ficticios, PayPal sandbox, Bre-B simulado y el destinatario autorizado de Preview.
 
-Estado actualizado 28/10: ocho de ocho compras ficticias completadas. Preview ea9a0a80 Ready; retención de inventario implementada y comprobada. Newsletter de pruebas cerrada. Correos de las ocho compras y Google externo de las dos sesiones comprobados; checkout móvil revisado sin doble cabecera ni botón superpuesto. Últimos ajustes de navegación de cuenta y retirada de entradas antiguas de membresía preparados; seguimiento de cierre en [cierre-preview-2026-10-27.md](cierre-preview-2026-10-27.md).
+Estado actualizado 28/10: ocho de ocho compras ficticias completadas. Preview 497916f9 Ready; retención de inventario implementada y comprobada. Newsletter de pruebas cerrada. Correos de las ocho compras y Google externo de las dos sesiones comprobados; checkout móvil revisado sin doble cabecera ni botón superpuesto. Navegación de cuenta móvil comprobada y dos entradas antiguas de membresía retiradas con 410; seguimiento de cierre en [cierre-preview-2026-10-27.md](cierre-preview-2026-10-27.md).
 
 | Compra | Inicio y estado pendiente | Confirmación | Entrega única y acceso | Correo y calendario |
 | --- | --- | --- | --- | --- |

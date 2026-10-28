@@ -41,13 +41,13 @@ Sesión PayPal PP-aece0b11-cfd7-42cd-9a39-a5fec6dc2a60: una cita el 2/11 a las 1
 
 Taller PayPal PP-892a06dc-67c5-4640-999f-9b0755b54512: Xavier completa personalmente el pago de 20 USD ficticios. Una reserva CONFIRMED el 15/12 a las 10:00 Colombia, una asignación, un entitlement y retención consumida. Disponibilidad 19→18 durante el pago y 18 al finalizar; no se descuenta dos veces. Confirmación recargada, CLIENT muestra las dos inscripciones previstas (Bre-B y PayPal), recibo con referencia exacta/hora/importe/enlace de Preview recibido en Proton.
 
-**143 pruebas automáticas**, tipos y lint de cambios correctos. Preparada retirada con 410 de las dos entradas antiguas de membresía que aceptaban precios del navegador; la interfaz actual usa la ruta de suscripción separada. No se han activado ni probado nuevas suscripciones recurrentes. Eliminado log de datos de usuario de Mi Cuenta. Estos últimos cambios requieren commit/despliegue y comprobación remota.
+**143 pruebas automáticas**, tipos y lint de cambios correctos. Preparada retirada con 410 de las dos entradas antiguas de membresía que aceptaban precios del navegador; la interfaz actual usa la ruta de suscripción separada. No se han activado ni probado nuevas suscripciones recurrentes. Eliminado log de datos de usuario de Mi Cuenta. Últimos cambios desplegados: 497916f9b9e012ebab6c94747a92ab6ebae4bf35, Ready en dpl_9EPEDsR8SjBH1EHYMoeKdZVG7zDj. Ambos alias y fuente verificados. Las dos rutas antiguas devuelven 410 remotamente. Selector móvil comprobado en iPhone SE: Mis Eventos muestra las dos inscripciones y seleccionar Mis Sesiones navega correctamente, con las citas de 90 minutos.
 
 ## Newsletter y regalo
 
 Newsletter separada comprobada: pending, confirmación personal de Xavier, subscribed, baja desde preferencias y 409/formulario oficial al pedir alta otra vez. QA dejado de baja y sin campañas. Ver docs/newsletter-preview.md.
 
-Xavier mantiene la promesa de meditación e indica usar `#` provisionalmente. Borrador guardado también en Final welcome email de Mailchimp de pruebas; HTML local en docs/newsletter-bienvenida-preview.html: botón con ese enlace y aviso de Preview. Falta enlace real y prueba de entrega de ese regalo antes de Production; no confundir alta/baja técnica con entrega de contenido. Correo final de bienvenida no se activa con una descarga inexistente.
+Xavier mantiene la promesa de meditación e indica usar `#` provisionalmente. Borrador guardado también en Final welcome email de Mailchimp de pruebas; HTML local en docs/newsletter-bienvenida-preview.html: botón con ese enlace y aviso de Preview. Falta enlace real y prueba de entrega de ese regalo antes de Production; no confundir alta/baja técnica con entrega de contenido. No se ha activado ningún envío ni probado una descarga real. Verificar también la opción de envío final antes de usar el regalo: el editor no mostraba ese control en la interfaz consultada.
 
 ## Datos legales y publicación
 
@@ -58,8 +58,9 @@ Preparación concreta de publicación y límites: docs/preparacion-publicacion-2
 ## Puntos para retomar
 
 - Revisar rama/status y este documento. Trabajo solo preview, URL https://preview.energiaydivinidad.com protegida y noindex.
-- Últimas pruebas locales 143 correctas; fuente desplegada ea9a0a80. Actualizar esta referencia tras desplegar los ajustes finales.
+- Últimas pruebas locales 143 correctas; aplicación desplegada 497916f9, Ready en dpl_9EPEDsR8SjBH1EHYMoeKdZVG7zDj.
 - QA privado ignorado: .local-private/preview-qa-2026-10-27, prueba final de ocho órdenes final-order-proofs.jsonl. No copiar secretos al informe.
 - Las ocho compras, Bre-B QR/importe y calendario ya están cerrados. No solicitar nuevos pagos ficticios para repetirlos.
 - Retenciones ya desplegadas y migración incluida en Git: no volver a crearla ni añadir otras migraciones ignoradas.
+- Prioridad técnica nueva: clasificar y corregir dependencias antes de proponer Production. npm audit --omit=dev informa 66 entradas (6 critical, 35 high, 24 moderate, 1 low); no prueba explotabilidad de todas en este despliegue. Informe privado dependency-audit-production.json. No se aplicó audit fix ni se alteró el lockfile.
 - Restan datos legales y enlace real de meditación, completar textos finales, aprobación de versión concreta y configuración/publicación de Production posterior. No activar servicios reales por este plan.

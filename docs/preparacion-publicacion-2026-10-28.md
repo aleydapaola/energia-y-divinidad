@@ -4,9 +4,9 @@ No se ha publicado Production. Esta preparación no autoriza cambiar servicios r
 
 ## Versión revisable
 
-- Aplicación: ea9a0a80c630173342b44d7512ab9212a1e27889, rama preview, repositorio aleydapaola/energia-y-divinidad.
+- Aplicación: 497916f9b9e012ebab6c94747a92ab6ebae4bf35, rama preview, repositorio aleydapaola/energia-y-divinidad.
 - Vercel EYD: proyecto prj_unjgBqGNUdLMP4TtRdvBMqKgxmcV, equipo team_1whYgceEyjMN8Ni9tLEOWbNx / aleyda-paola-vargas-projects.
-- Ready: dpl_GjaRRtK3Svq6TKR3fTWzQsRQZrYV. Enlace https://preview.energiaydivinidad.com y alias técnico asignados.
+- Ready: dpl_9EPEDsR8SjBH1EHYMoeKdZVG7zDj. Enlace https://preview.energiaydivinidad.com y alias técnico asignados.
 - Production conservada: 7b9a7ac3f8ee65ea6f7e80a9cc7460a62c0c17cd, dpl_4Kwyq1ERrbCFxuhYxpJBTxC7rDbc. Revalidar antes de cualquier publicación y guardar referencia recuperable de esa versión.
 - 143 pruebas automáticas, tipos y lint de cambios correctos. Migración nueva de retenciones aplicada solo a Neon Preview y guardada en Git; sin backfill de reservas históricas.
 
@@ -17,6 +17,10 @@ Las ocho compras ficticias de la matriz han alcanzado entrega: producto, curso, 
 La disponibilidad incluye retenciones de 20 minutos y se vuelve a comprobar antes de capturar. CAPTURING/REPORTED no se liberan por un simple timeout. La entrega reemplaza la retención bajo el bloqueo de inventario. Pruebas reales de concurrencia/rollback contra Neon Preview, además del recorrido web libre→retenido→libre al cancelar sin pagar. No se han cobrado ni devuelto fondos reales.
 
 Nuevo taller PayPal: 19 plazas libres antes, 18 durante retención y 18 después de confirmar, una reserva, una asignación y un entitlement. Correo recibido en Proton con referencia, importe y hora de Colombia; inscripción visible con el CLIENT. Recarga sin duplicado. Una retención no equivale a confirmar el ingreso.
+
+## Dependencias: revisión nueva antes de Production
+
+El aviso de la compilación se ha clasificado con npm audit --omit=dev: 66 entradas, de las que 6 están etiquetadas critical y 35 high. Incluye dependencias directas y transitivas; no equivale a demostrar que todas las condiciones sean explotables en Vercel. Prioridad siguiente: verificar advisories, aplicar correcciones compatibles en Preview y repetir pruebas de autenticación/compra, sin ejecutar audit fix --force. Informe privado ignorado por Git; package.json y lockfile intactos en este cierre. Esta versión no se presenta como lista para Production.
 
 ## Contenidos y legal que faltan
 
