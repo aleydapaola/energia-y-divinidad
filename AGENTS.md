@@ -307,3 +307,8 @@
 - Resultado final: 497916f9b9e012ebab6c94747a92ab6ebae4bf35 Ready en dpl_9EPEDsR8SjBH1EHYMoeKdZVG7zDj, ambos alias y proyecto/repo/ref/SHA verificados. Las dos entradas antiguas devuelven 410; iPhone SE muestra selector compacto y navegar de Mis Eventos a Mis Sesiones funciona. Production revalidada sin cambios. Git limpio después del commit de aplicación.
 - Aviso nuevo de dependencias clasificado mediante npm audit --omit=dev: 66 entradas (6 critical, 35 high, 24 moderate, 1 low), incluidas directas y transitivas; no afirmar explotabilidad concreta solo por el conteo. Informe privado dependency-audit-production.json. Corrección compatible en Preview y regresión de auth/checkout pasa a ser prioridad antes de proponer Production; no se ha ejecutado audit fix, modificado lockfile ni actualizado paquetes. No presentar el proyecto como listo para publicar.
 - Mailchimp: contenido de bienvenida con # guardado y visible; no se activó ningún envío. La pantalla actual no mostraba la opción Send final welcome email, por lo que no afirmar que su estado OFF haya quedado verificado. Mantener baja del contacto QA; verificar esa opción y entrega real cuando haya enlace definitivo.
+
+
+## Dirección pública confirmada — 28/10/2026
+
+- Xavier aporta como respuesta al dato pendiente: Cra 72a # 10 a 22, Bogotá. Se incorpora como dirección pública de notificación, Colombia, a la identificación compartida de los cuatro borradores legales de Preview. Correo autorizado conservado. Se retiran los avisos de dirección pendiente; el NIT sigue sin confirmar contra RUT. Versión de borradores preview-2026-10-28. Ningún cambio de política comercial ni de Production.

@@ -1,8 +1,8 @@
 import { INDIVIDUAL_SESSION_POLICY, SESSION_RESCHEDULE_POLICY } from "./session-policy";
 
-export const PREVIEW_TERMS_VERSION = "preview-2026-10-25";
+export const PREVIEW_TERMS_VERSION = "preview-2026-10-28";
 export const PREVIEW_HOLDER_IDENTIFICATION =
-  "Proyecto: Energía y Divinidad, energiaydivinidad.com. Titular: Aleyda Paola Vargas Galvis. Cédula de ciudadanía: 53.102.423. Contacto: contacto@energiaydivinidad.com y +57 315 116 5921. NIT y dirección de notificación judicial: pendientes de confirmación.";
+  "Proyecto: Energía y Divinidad, energiaydivinidad.com. Titular: Aleyda Paola Vargas Galvis. Cédula de ciudadanía: 53.102.423. Contacto: contacto@energiaydivinidad.com y +57 315 116 5921. Dirección de notificación: Cra 72a # 10 a 22, Bogotá, Colombia. NIT: pendiente de confirmación.";
 
 /** A review draft for the isolated test environment; never a Production fallback. */
 export function getPreviewTermsPage(env: Record<string, string | undefined> = process.env) {
@@ -18,7 +18,7 @@ export function getPreviewTermsPage(env: Record<string, string | undefined> = pr
     ["h2", "Documento de revisión para pruebas"],
     [
       "normal",
-      "Este borrador se utiliza exclusivamente para las compras ficticias de este entorno. Está pendiente completar la identificación fiscal, la dirección de notificación judicial y la revisión de las condiciones de los demás productos antes de publicarlo como condiciones de contratación reales.",
+      "Este borrador se utiliza exclusivamente para las compras ficticias de este entorno. Está pendiente completar la identificación fiscal y la revisión de las condiciones de los demás productos antes de publicarlo como condiciones de contratación reales.",
     ],
     ["h2", "1. Titular y contacto"],
     ["normal", PREVIEW_HOLDER_IDENTIFICATION],
@@ -60,7 +60,7 @@ export function getPreviewTermsPage(env: Record<string, string | undefined> = pr
     slug: { current: "terminos" },
     pageType: "terms",
     version: PREVIEW_TERMS_VERSION,
-    lastUpdated: "2026-10-25T12:00:00Z",
+    lastUpdated: "2026-10-28T00:00:00Z",
     seo: {
       metaTitle: "Términos de pruebas — Energía y Divinidad",
       metaDescription:

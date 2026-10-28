@@ -80,7 +80,7 @@ test("terms draft is available only for isolated Preview/local contents and neve
   const text = page.content.flatMap((block) => block.children.map((span) => span.text)).join("\n");
   assert.match(text, /Aleyda Paola Vargas Galvis/);
   assert.ok(text.includes("Cédula de ciudadanía: 53.102.423."));
-  assert.match(text, /NIT y dirección de notificación judicial: pendientes/);
+  assert.match(text, /NIT: pendiente de confirmación/);
   assert.match(text, /exclusivamente a las sesiones individuales/);
   for (const { label, text: statement } of policy.INDIVIDUAL_SESSION_POLICY) {
     assert.ok(text.includes(`${label}: ${statement}`));

@@ -33,7 +33,7 @@ const drafts: Record<ReviewLegalSlug, { title: string; paragraphs: Array<[string
       ["h2", "Pendiente antes de publicar la política definitiva"],
       [
         "normal",
-        "Completar la identificación fiscal y dirección de la responsable; revisar las autorizaciones y avisos de cada formulario, los plazos de conservación y atención de solicitudes, los contratos con proveedores y las transmisiones internacionales aplicables. Este borrador no acredita que esa revisión esté completada.",
+        "Completar la identificación fiscal de la responsable; revisar las autorizaciones y avisos de cada formulario, los plazos de conservación y atención de solicitudes, los contratos con proveedores y las transmisiones internacionales aplicables. Este borrador no acredita que esa revisión esté completada.",
       ],
     ],
   },
@@ -87,7 +87,7 @@ const drafts: Record<ReviewLegalSlug, { title: string; paragraphs: Array<[string
       ["h2", "Datos todavía pendientes"],
       [
         "normal",
-        "La cédula aportada identifica a la titular, pero el NIT y la dirección de notificación judicial siguen pendientes de confirmación. Este aviso es un borrador de revisión y no sustituye esos datos ni la revisión final de las condiciones del sitio.",
+        "La cédula aportada identifica a la titular, pero el NIT sigue pendiente de confirmación. Este aviso es un borrador de revisión y no sustituye esos datos ni la revisión final de las condiciones del sitio.",
       ],
     ],
   },
@@ -113,8 +113,8 @@ export function getPreviewLegalPage(slug: ReviewLegalSlug, env = process.env) {
     title: `${draft.title} — borrador de pruebas`,
     slug: { current: slug },
     pageType: slug,
-    version: "preview-2026-10-25",
-    lastUpdated: "2026-10-25T12:00:00Z",
+    version: "preview-2026-10-28",
+    lastUpdated: "2026-10-28T00:00:00Z",
     seo: {
       metaTitle: `${draft.title} de pruebas — Energía y Divinidad`,
       metaDescription: "Borrador de revisión del entorno de pruebas de Energía y Divinidad.",

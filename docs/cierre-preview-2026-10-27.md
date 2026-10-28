@@ -9,7 +9,7 @@ Instrucción de Xavier: establecer prioridades, ejecutar el plan restante y deja
 3. **Bre-B ADMIN.** Verificar importe incorrecto rechazado y confirmación ficticia correcta con 80.000 COP en la orden de QR pendiente. Comprobar entrega única y auditoría.
 4. **PayPal sesión y taller.** Completar desde navegador, comprobar captura/webhook, entrega única, correos y cita de 90 minutos. El clic final corresponde a Xavier: la revisión automática rechazó que lo ejecute el agente, incluso en sandbox. No capturar esas órdenes por API como alternativa al clic.
 5. **Revisión móvil y recorrido completo.** Pago/retención/caducidad, cuenta, navegación y textos de pruebas. No confundir pruebas automáticas con revisión visual.
-6. **Legal y propuesta de publicación.** Revisar borradores y condiciones particulares; datos fiscales/dirección pendientes. Preparar propuesta concreta con riesgos y pruebas, manteniendo Production sin cambios.
+6. **Legal y propuesta de publicación.** Revisar borradores y condiciones particulares; identificación fiscal pendiente; dirección confirmada el 28/10. Preparar propuesta concreta con riesgos y pruebas, manteniendo Production sin cambios.
 
 ## Estado de la retención
 
@@ -51,7 +51,7 @@ Xavier mantiene la promesa de meditación e indica usar `#` provisionalmente. Bo
 
 ## Datos legales y publicación
 
-Correo público autorizado: contacto@energiaydivinidad.com. Sigue pendiente dirección postal de notificación autorizada; no copiar la de Mailchimp. NIT no cotejado con RUT: cálculo local según algoritmo DIAN da candidato DV 3, pero no acredita registro fiscal. Mantener la cédula etiquetada como cédula y no publicar un NIT supuesto. Condiciones de otros productos pendientes de revisión, sin extender automáticamente las de sesiones.
+Correo público autorizado: contacto@energiaydivinidad.com. Dirección de notificación aportada y autorizada por Xavier: Cra 72a # 10 a 22, Bogotá, Colombia. Se incorpora a los cuatro borradores de Preview, sin reutilizar la dirección de Mailchimp. NIT no cotejado con RUT: cálculo local según algoritmo DIAN da candidato DV 3, pero no acredita registro fiscal. Mantener la cédula etiquetada como cédula y no publicar un NIT supuesto. Condiciones de otros productos pendientes de revisión, sin extender automáticamente las de sesiones.
 
 Preparación concreta de publicación y límites: docs/preparacion-publicacion-2026-10-28.md. Production sigue sin autorización de publicación y conserva 7b9a7ac3/dpl_4Kwyq1ERrbCFxuhYxpJBTxC7rDbc. No integrar main ni copiar el dataset de pruebas.
 
