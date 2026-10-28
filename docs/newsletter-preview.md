@@ -31,3 +31,8 @@ Baja completada desde ese formulario, con el correo autorizado: Mailchimp muestr
 La API existente usaba una cabecera de autenticación no documentada y respondía «Ya estás en nuestra lista» ante cualquier Member Exists, incluso una baja o una solicitud pendiente. Se prepara autenticación Basic, validación de email y distinción del estado actual. Para contactos de baja se ofrece el formulario alojado de confirmación, sin reactivarlos. El componente deja de prometer un nuevo correo a personas ya suscritas.
 
 Referencias oficiales: [autenticación](https://mailchimp.com/developer/marketing/api-concepts/authentication), [consulta de miembro](https://mailchimp.com/developer/marketing/api/lists/members/get-member), [nueva inscripción tras una baja](https://mailchimp.com/help/resubscribe-a-contact/).
+
+
+## Bienvenida con meditación — revisión del 28/10
+
+El contenido Final welcome email conserva el enlace provisional # solicitado por Xavier. La intención confirmada es entregarlo por email después de confirmar la suscripción, no considerar la confirmación técnica como entrega del regalo. Revisión actual de la cuenta de pruebas: el constructor permite editar el contenido, pero no muestra Send a final welcome email en el selector, parte superior ni pie. Tampoco se encontró en los ajustes modernos de audiencia/formularios. No se ha activado automatización, enviado un test/campaña ni cambiado la baja del contacto QA. La entrega automática sigue sin validar; no afirmar que el mensaje se envía por existir el borrador. No activar planes de pago ni añadir otro proveedor sin preparar y revisar el circuito.

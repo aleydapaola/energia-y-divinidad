@@ -20,7 +20,7 @@ Nuevo taller PayPal: 19 plazas libres antes, 18 durante retención y 18 después
 
 ## Dependencias: revisión nueva antes de Production
 
-El aviso de la compilación se ha clasificado con npm audit --omit=dev: 66 entradas, de las que 6 están etiquetadas critical y 35 high. Incluye dependencias directas y transitivas; no equivale a demostrar que todas las condiciones sean explotables en Vercel. Prioridad siguiente: verificar advisories, aplicar correcciones compatibles en Preview y repetir pruebas de autenticación/compra, sin ejecutar audit fix --force. Informe privado ignorado por Git; package.json y lockfile intactos en este cierre. Esta versión no se presenta como lista para Production.
+Actualización preparada y comprobada localmente: [seguridad-preview-2026-10-28.md](seguridad-preview-2026-10-28.md). Auditoría principal de producción: de 66 entradas (6 critical) a 11 (0 critical, 7 high, 4 moderate). Avisos residuales en herramientas de Prisma/CMS documentados, sin forzar migraciones mayores. 147 pruebas y tipos correctos, esquema del Studio validado y prueba real de inventario en Neon Preview correcta. No equivale a repetir las capturas PayPal anteriores ni a una auditoría de seguridad completa. Verificación remota del nuevo candidato pendiente en este registro; Production sigue sin autorización.
 
 ## Contenidos y legal que faltan
 
