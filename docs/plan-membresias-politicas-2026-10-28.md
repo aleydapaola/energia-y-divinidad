@@ -66,3 +66,19 @@ La revisión automática rechazó Copy password; no copiar, extraer ni leer cont
 La página real de biblioteca consulta ahora el beneficio del plan antes de leer o renderizar los archivos premium; no basta con una membresía de cualquier nivel. Prueba de servidor sobre esa página: plan sin beneficio, cero lecturas de assets; plan con beneficio, consulta limitada a sus referencias de tier. **177 pruebas**, tipos y lint sin errores.
 
 6f747d4e Ready en dpl_BE6LiiUPv8NuhvufVTg825hmaSQK, fuente/proyecto/repo/ref verificados y variables de planes incluidas. La aprobación personal y los avisos nuevos siguen pendientes de ejecución, no de creación de planes. No publicar Production por este resultado.
+
+
+## Activación sandbox completada personalmente — 1 de noviembre
+
+Versión b9087ef1 Ready en ambos alias de Preview; 179 pruebas y build correctos. La autorización antigua recibió RESOURCE_NOT_FOUND: el pedido ficticio se conserva como FAILED con snapshot/auditoría, sin membresía/accesos/cobros y sin cambios en el historial de pruebas.
+
+Xavier completa PPLS-21b0ffb1-457a-4c54-934e-44c2308935ce desde navegador: una membresía Esencia TRIAL y un acceso, 0 USD hoy y renovación de 22 USD/mes a partir del 1/12/2026 a las 15:51 Colombia. Webhook ACTIVATED sin errores ni reintentos. Avisos cliente/administración aceptados por Resend; correo de cliente recibido en Proton con referencia y condiciones correctas, confirmado por Xavier. Recarga y configuración web verificadas; no hay cargo real.
+
+Siguiente comprobación: Xavier desactiva personalmente la renovación sandbox en Configuración; verificar proveedor, webhook, conservación del acceso hasta fin de prueba y recepción del aviso. No reiniciar el período ni usar una cancelación como reembolso. Anual/sin segunda prueba y preparación live continúan pendientes.
+
+
+## Cancelación mensual verificada y prueba anual preparada
+
+Xavier desactiva la renovación personalmente. PayPal CANCELLED y webhook de cancelación sin fallos ni reintentos. La misma membresía/acceso conserva fin de prueba 1/12/2026 15:51 Colombia y no hay próxima fecha de cargo. Configuración y correo recibido en Proton coinciden, sin devolución monetaria. Queda cerrada esta fase mensual.
+
+Para probar el cobro anual inmediato sin modificar Esencia/Divinidad ni historiales: documento sintético eyd-preview-membership-annual-paid-test-20261101 en Sanity preview, slug prueba-anual, 239 USD/año, sin prueba gratuita. Usa la cuenta ADMIN QA ya existente (sin membresía) y el plan sandbox Esencia anual existente; se añade solo el alias de variable PREVIEW_PAYPAL_PLAN_ID_PRUEBA_ANUAL_USD_YEARLY a Preview. No hay otro plan ni acuerdo creado por esta preparación. Falta desplegar la configuración y que Xavier apruebe personalmente los 239 USD ficticios. Comprobar cobro real del sandbox, venta/webhook, entrega única, recibo y cancelación conservando el período anual. No trasladar el documento ficticio a Production ni anunciar probadas futuras renovaciones automáticas.
