@@ -1,6 +1,7 @@
 import { sanityFetch } from "@/sanity/lib/fetch";
 import { LEGAL_PAGE_BY_SLUG_QUERY } from "@/sanity/lib/queries";
 
+import { resolveLegalHolder } from "./legal-holder";
 import { getPreviewTermsPage } from "./preview-terms";
 
 export async function getTermsPage() {
@@ -9,5 +10,5 @@ export async function getTermsPage() {
     params: { slug: "terminos" },
     tags: ["page", "legal"],
   });
-  return cmsPage || getPreviewTermsPage();
+  return resolveLegalHolder(cmsPage || getPreviewTermsPage());
 }

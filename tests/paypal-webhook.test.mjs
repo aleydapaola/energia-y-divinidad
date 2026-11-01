@@ -43,6 +43,20 @@ test("keeps order approvals pending and uses their reference without another API
   assert.equal(result.status, "PENDING");
   assert.equal(result.reference, "EYD-TEST");
 });
+for (const eventType of ["PAYMENT.CAPTURE.DECLINED", "PAYMENT.CAPTURE.DENIED"]) {
+  test(`maps ${eventType} to a declined payment with its original order reference`, async () => {
+    const result = await mapPayPalPaymentEvent(
+      { ...capture, event_type: eventType, resource: { ...capture.resource, status: "DECLINED" } },
+      async (id) => {
+        assert.equal(id, "ORDER-TEST");
+        return "EYD-TEST";
+      }
+    );
+    assert.equal(result.status, "DECLINED");
+    assert.equal(result.reference, "EYD-TEST");
+    assert.equal(result.transactionId, "CAPTURE-TEST");
+  });
+}
 test("fails for an unresolved captured order instead of silently acknowledging it", async () => {
   await assert.rejects(
     mapPayPalPaymentEvent(capture, async () => undefined),

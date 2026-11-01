@@ -169,6 +169,7 @@ test("sandbox webhook setup preserves the exact private destination and capture 
           names = patch[0].value.map((e) => e.name);
           assert.ok(names.includes("PAYMENT.CAPTURE.COMPLETED"));
           assert.ok(names.includes("PAYMENT.CAPTURE.DENIED"));
+          assert.ok(names.includes("PAYMENT.CAPTURE.DECLINED"));
           assert.ok(names.includes("BILLING.SUBSCRIPTION.PAYMENT.FAILED"));
           assert.ok(names.includes("PAYMENT.SALE.COMPLETED"));
           assert.ok(!names.includes("*") && !names.includes("PAYMENT.SALE.REFUNDED"));
@@ -184,7 +185,7 @@ test("sandbox webhook setup preserves the exact private destination and capture 
       const result = await provider.ensurePayPalSandboxMembershipEvents();
       await provider.ensurePayPalSandboxMembershipEvents();
       assert.equal(patches, 1);
-      assert.equal(result.eventTypes.length, 10);
+      assert.equal(result.eventTypes.length, 11);
       assert.equal(result.url, undefined);
       assert.equal(JSON.stringify(result).includes("test-only"), false);
     });

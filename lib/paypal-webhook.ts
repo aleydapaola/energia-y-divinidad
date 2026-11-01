@@ -9,6 +9,7 @@ export async function mapPayPalPaymentEvent(
   const statuses: Record<string, TransactionStatus> = {
     "CHECKOUT.ORDER.APPROVED": "PENDING",
     "PAYMENT.CAPTURE.COMPLETED": "APPROVED",
+    "PAYMENT.CAPTURE.DECLINED": "DECLINED",
     "PAYMENT.CAPTURE.DENIED": "DECLINED",
     "PAYMENT.CAPTURE.REFUNDED": "VOIDED",
   };

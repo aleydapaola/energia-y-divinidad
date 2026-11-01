@@ -955,6 +955,7 @@ export async function ensurePayPalSandboxMembershipEvents() {
   }
   const expected = new Set([
     "PAYMENT.CAPTURE.COMPLETED",
+    "PAYMENT.CAPTURE.DECLINED",
     "PAYMENT.CAPTURE.DENIED",
     ...MEMBERSHIP_WEBHOOK_EVENTS,
   ]);

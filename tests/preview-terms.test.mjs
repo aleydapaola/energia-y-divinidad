@@ -23,9 +23,11 @@ function load(relative, dependencies = {}) {
 }
 const policy = load("lib/session-policy.ts");
 const commercial = load("lib/commercial-policy.ts");
+const holder = load("lib/legal-holder.ts");
 const draft = load("lib/preview-terms.ts", {
   "./session-policy": policy,
   "./commercial-policy": commercial,
+  "./legal-holder": holder,
 });
 const previewEnv = {
   VERCEL_ENV: "preview",
@@ -70,6 +72,7 @@ test("legal resolver preserves published CMS policies and propagates network fai
       },
       "@/sanity/lib/queries": { LEGAL_PAGE_BY_SLUG_QUERY: "test-query" },
       "./preview-legal-pages": { getPreviewLegalPage: () => ({ _id: "review-draft" }) },
+      "./legal-holder": holder,
     });
     assert.equal(await getLegalPage(slug), cms);
     result = null;
@@ -120,6 +123,7 @@ test("terms resolver preserves a CMS page and uses the review draft only when co
       },
       "@/sanity/lib/queries": { LEGAL_PAGE_BY_SLUG_QUERY: "test-query" },
       "./preview-terms": { getPreviewTermsPage: () => draft.getPreviewTermsPage(previewEnv) },
+      "./legal-holder": holder,
     });
     assert.equal((await getTermsPage()).version, cmsPage?.version || draft.PREVIEW_TERMS_VERSION);
   }

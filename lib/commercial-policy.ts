@@ -1,4 +1,4 @@
-export const COMMERCIAL_POLICY_VERSION = "preview-2026-10-28-commercial-1";
+export const COMMERCIAL_POLICY_VERSION = "2026-11-01-commercial-1";
 
 export const COURSE_REFUND_POLICY =
   "Cursos grabados: puedes solicitar el reembolso íntegro durante los 14 días naturales siguientes a la compra. Al devolver el importe, se cancela el acceso al curso.";

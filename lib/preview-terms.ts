@@ -7,17 +7,16 @@ import {
   REFUND_REQUEST_POLICY,
   CONSUMER_RIGHTS_POLICY,
 } from "./commercial-policy";
+import { HOLDER_IDENTIFICATION, getHolderIdentification } from "./legal-holder";
 import { INDIVIDUAL_SESSION_POLICY, SESSION_RESCHEDULE_POLICY } from "./session-policy";
 
 export const PREVIEW_TERMS_VERSION = `${COMMERCIAL_POLICY_VERSION}-identity-2026-11-01`;
-export const PREVIEW_HOLDER_IDENTIFICATION =
-  "Proyecto: Energía y Divinidad, energiaydivinidad.com. Titular: Aleyda Paola Vargas Galvis. Cédula de ciudadanía: 53.102.423. Contacto: contacto@energiaydivinidad.com y +57 315 116 5921. Dirección de notificación: Cra 72a # 10 a 22, Bogotá, Colombia.";
+export const PREVIEW_HOLDER_IDENTIFICATION = HOLDER_IDENTIFICATION;
 
 export function getPreviewHolderIdentification(
   env: Record<string, string | undefined> = process.env
 ) {
-  const nit = env.PREVIEW_LEGAL_HOLDER_NIT?.trim() || "";
-  return `${PREVIEW_HOLDER_IDENTIFICATION} NIT: ${/^\d+-\d$/.test(nit) ? nit : "pendiente de publicación"}.`;
+  return getHolderIdentification(env);
 }
 
 /** A review draft for the isolated test environment; never a Production fallback. */
