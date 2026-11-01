@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, Suspense, useRef } from "react";
 
+import { pollPaymentStatus } from "@/lib/payment-status-poll";
 import { useCartStore } from "@/lib/stores/cart-store";
 
 type PaymentStatus = "success" | "pending" | "failed" | "loading";
@@ -26,6 +27,8 @@ function ConfirmacionContent() {
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [isGuestCheckout, setIsGuestCheckout] = useState<boolean>(false);
   const [userWasCreated, setUserWasCreated] = useState<boolean>(false);
+  const [statusChecks, setStatusChecks] = useState(0);
+  const [checkingStatus, setCheckingStatus] = useState(false);
 
   // Limpiar carrito cuando el pago es exitoso (solo para cursos)
   useEffect(() => {
@@ -124,6 +127,31 @@ function ConfirmacionContent() {
 
     checkPaymentStatus();
   }, [reference, paypalToken]);
+
+  useEffect(() => {
+    if (status !== "pending" || !reference) {
+      return;
+    }
+    if (paymentMethod === "BREB_MANUAL" && statusChecks === 0) {
+      return;
+    }
+    const controller = new AbortController();
+    setCheckingStatus(true);
+    pollPaymentStatus(reference, controller.signal, paymentMethod === "BREB_MANUAL" ? 1 : 12)
+      .then((data) => {
+        if (!data || controller.signal.aborted) {
+          return;
+        }
+        setOrderData(data);
+        setStatus(data.paymentStatus === "COMPLETED" ? "success" : "failed");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setCheckingStatus(false);
+        }
+      });
+    return () => controller.abort();
+  }, [status, reference, paymentMethod, statusChecks]);
 
   const pendingMessage = () => {
     if (paymentMethod === "BREB_MANUAL") {
@@ -241,6 +269,16 @@ function ConfirmacionContent() {
 
           {/* Acciones */}
           <div className="space-y-3">
+            {status === "pending" && (
+              <button
+                type="button"
+                disabled={checkingStatus}
+                onClick={() => setStatusChecks((count) => count + 1)}
+                className="w-full bg-[#4944a4] text-white font-dm-sans font-semibold py-3 px-6 rounded-lg disabled:opacity-60"
+              >
+                {checkingStatus ? "Consultando el estado…" : "Consultar estado del pago"}
+              </button>
+            )}
             {status === "success" && orderData?.orderType === "MEMBERSHIP" && !isGuestCheckout && (
               <Link
                 href="/dashboard/membresia/configuracion"
