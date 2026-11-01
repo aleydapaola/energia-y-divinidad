@@ -1,19 +1,25 @@
-import { Calendar, ShoppingBag, Crown, ArrowRight, GraduationCap, CalendarCheck } from "lucide-react"
-import Link from "next/link"
-import { redirect } from "next/navigation"
+import {
+  Calendar,
+  ShoppingBag,
+  Crown,
+  ArrowRight,
+  GraduationCap,
+  CalendarCheck,
+} from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { CreditsCard } from "@/components/cuenta/CreditsCard"
-import { auth } from "@/lib/auth"
-import { getUserCourses } from "@/lib/course-access"
-import { hasActiveMembership } from "@/lib/membership-access"
-import { prisma } from "@/lib/prisma"
-
+import { CreditsCard } from "@/components/cuenta/CreditsCard";
+import { auth } from "@/lib/auth";
+import { getUserCourses } from "@/lib/course-access";
+import { hasActiveMembership } from "@/lib/membership-access";
+import { prisma } from "@/lib/prisma";
 
 export default async function MiCuentaPage() {
-  const session = await auth()
+  const session = await auth();
 
   if (!session?.user?.id) {
-    redirect("/auth/signin?callbackUrl=/mi-cuenta")
+    redirect("/auth/signin?callbackUrl=/mi-cuenta");
   }
 
   // Obtener datos del usuario
@@ -32,14 +38,14 @@ export default async function MiCuentaPage() {
         },
       },
     },
-  })
+  });
 
   if (!user) {
-    redirect("/auth/signin")
+    redirect("/auth/signin");
   }
 
   // Verificar membresía
-  const hasMembership = await hasActiveMembership(session.user.id)
+  const hasMembership = await hasActiveMembership(session.user.id);
 
   // Obtener próximas sesiones (solo de canalización, no eventos)
   const upcomingBookings = await prisma.booking.findMany({
@@ -51,7 +57,7 @@ export default async function MiCuentaPage() {
     },
     orderBy: { scheduledAt: "asc" },
     take: 3,
-  })
+  });
 
   // Obtener próximos eventos
   const upcomingEvents = await prisma.booking.findMany({
@@ -63,36 +69,38 @@ export default async function MiCuentaPage() {
     },
     orderBy: { scheduledAt: "asc" },
     take: 3,
-  })
+  });
 
   // Obtener cursos del usuario
-  const userCourses = await getUserCourses(session.user.id)
+  const userCourses = await getUserCourses(session.user.id);
   const coursesInProgress = userCourses.filter(
     (c) => Number(c.completionPercentage) > 0 && Number(c.completionPercentage) < 100
-  )
+  );
 
   // Obtener últimas compras
   const recentOrders = await prisma.order.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
     take: 3,
-  })
+  });
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("es-CO", {
+      timeZone: "America/Bogota",
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
-    })
-  }
+    });
+  };
 
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString("es-CO", {
+      timeZone: "America/Bogota",
       hour: "2-digit",
       minute: "2-digit",
-    })
-  }
+    });
+  };
 
   return (
     <div className="space-y-8">
@@ -196,11 +204,10 @@ export default async function MiCuentaPage() {
                 className="flex items-center justify-between p-4 bg-[#f8f0f5] rounded-lg"
               >
                 <div>
-                  <p className="font-medium text-[#654177] font-dm-sans">
-                    {booking.resourceName}
-                  </p>
+                  <p className="font-medium text-[#654177] font-dm-sans">{booking.resourceName}</p>
                   <p className="text-sm text-gray-500 font-dm-sans">
-                    {formatDate(booking.scheduledAt!)} - {formatTime(booking.scheduledAt!)}
+                    {formatDate(booking.scheduledAt!)} - {formatTime(booking.scheduledAt!)} (hora de
+                    Colombia, UTC−5)
                   </p>
                 </div>
                 <span
@@ -244,35 +251,37 @@ export default async function MiCuentaPage() {
         {userCourses.length > 0 ? (
           <div className="space-y-3">
             {/* Show courses in progress first, then others */}
-            {[...coursesInProgress, ...userCourses.filter(c => !coursesInProgress.includes(c))].slice(0, 3).map((course) => (
-              <div
-                key={course.courseId}
-                className="flex items-center justify-between p-4 bg-[#eef1fa] rounded-lg"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-[#654177] font-dm-sans truncate">
-                    {course.courseTitle}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex-1 max-w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#4944a4] rounded-full transition-all"
-                        style={{ width: `${Number(course.completionPercentage)}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-500 font-dm-sans">
-                      {Number(course.completionPercentage).toFixed(0)}%
-                    </span>
-                  </div>
-                </div>
-                <Link
-                  href={`/academia/${course.courseSlug}/reproducir`}
-                  className="ml-4 px-3 py-1.5 bg-[#4944a4] text-white text-sm rounded-lg hover:bg-[#3d3a8a] transition-colors font-dm-sans"
+            {[...coursesInProgress, ...userCourses.filter((c) => !coursesInProgress.includes(c))]
+              .slice(0, 3)
+              .map((course) => (
+                <div
+                  key={course.courseId}
+                  className="flex items-center justify-between p-4 bg-[#eef1fa] rounded-lg"
                 >
-                  Continuar
-                </Link>
-              </div>
-            ))}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-[#654177] font-dm-sans truncate">
+                      {course.courseTitle}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 max-w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#4944a4] rounded-full transition-all"
+                          style={{ width: `${Number(course.completionPercentage)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500 font-dm-sans">
+                        {Number(course.completionPercentage).toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
+                  <Link
+                    href={`/academia/${course.courseSlug}/reproducir`}
+                    className="ml-4 px-3 py-1.5 bg-[#4944a4] text-white text-sm rounded-lg hover:bg-[#3d3a8a] transition-colors font-dm-sans"
+                  >
+                    Continuar
+                  </Link>
+                </div>
+              ))}
           </div>
         ) : (
           <div className="text-center py-8">
@@ -308,12 +317,11 @@ export default async function MiCuentaPage() {
                 className="flex items-center justify-between p-4 bg-[#f8f0f5] rounded-lg"
               >
                 <div>
-                  <p className="font-medium text-[#654177] font-dm-sans">
-                    {booking.resourceName}
-                  </p>
+                  <p className="font-medium text-[#654177] font-dm-sans">{booking.resourceName}</p>
                   {booking.scheduledAt && (
                     <p className="text-sm text-gray-500 font-dm-sans">
-                      {formatDate(booking.scheduledAt)} - {formatTime(booking.scheduledAt)}
+                      {formatDate(booking.scheduledAt)} - {formatTime(booking.scheduledAt)} (hora de
+                      Colombia, UTC−5)
                     </p>
                   )}
                 </div>
@@ -374,9 +382,7 @@ export default async function MiCuentaPage() {
                   </p>
                   <span
                     className={`text-xs font-dm-sans ${
-                      order.paymentStatus === "COMPLETED"
-                        ? "text-green-600"
-                        : "text-yellow-600"
+                      order.paymentStatus === "COMPLETED" ? "text-green-600" : "text-yellow-600"
                     }`}
                   >
                     {order.paymentStatus === "COMPLETED" ? "Pagado" : "Pendiente"}
@@ -420,5 +426,5 @@ export default async function MiCuentaPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

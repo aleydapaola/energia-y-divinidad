@@ -467,3 +467,48 @@ test("reschedule email uses Colombia time even when the server runs in UTC", asy
     }
   }
 });
+
+test("the account overview shows purchased appointments and workshops in Colombia even across UTC dates", async () => {
+  const oldTZ = process.env.TZ;
+  try {
+    for (const timezone of ["UTC", "Europe/Madrid", "Asia/Tokyo"]) {
+      process.env.TZ = timezone;
+      const { default: Page } = load("app/mi-cuenta/page.tsx", {
+        "@/components/cuenta/CreditsCard": { CreditsCard: () => null },
+        "@/lib/auth": { auth: async () => ({ user: { id: "owner" } }) },
+        "@/lib/course-access": { getUserCourses: async () => [] },
+        "@/lib/membership-access": { hasActiveMembership: async () => false },
+        "@/lib/prisma": {
+          prisma: {
+            user: { findUnique: async () => ({ id: "owner", name: "Prueba" }) },
+            order: { findMany: async () => [] },
+            booking: {
+              findMany: async ({ where }) => [
+                {
+                  id: where.bookingType,
+                  resourceName: where.bookingType,
+                  status: "CONFIRMED",
+                  scheduledAt: new Date("2026-12-16T02:00:00Z"),
+                },
+              ],
+            },
+          },
+        },
+        "next/link": {
+          default: ({ children, ...props }) => React.createElement("a", props, children),
+        },
+      });
+      const html = renderToStaticMarkup(await Page());
+      assert.equal((html.match(/hora de Colombia, UTC−5/g) || []).length, 2);
+      assert.equal((html.match(/martes, 15 de diciembre de 2026/g) || []).length, 2);
+      assert.equal((html.match(/09:00/g) || []).length, 2);
+      assert.doesNotMatch(html, /miércoles, 16 de diciembre/);
+    }
+  } finally {
+    if (oldTZ === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = oldTZ;
+    }
+  }
+});

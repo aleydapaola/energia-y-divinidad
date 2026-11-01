@@ -10,12 +10,13 @@ Base verificada: preview 4da7083959fca3c86dbea2ad40796dbb06e76b0d, sin cambios p
 - Dieciséis entradas antiguas responden 410 sin cargar proveedores, autenticación, datos o correo. Las siete páginas antiguas remiten a un aviso con acceso a compras y contacto, sin nuevas instrucciones bancarias.
 - El carret del curso y los selectores solo admiten PayPal/Bre-B (FREE conserva cursos gratuitos, no es otro proveedor). El procesador compartido rechaza métodos retirados, aunque el pedido histórico conste completado.
 - Confirmación ADMIN limitada a Bre-B. Se mantiene comprobación de importe, referencia bancaria única y entrega existente. PayPal mantiene captura/firma/importe/moneda, protección de acceso e idempotencia.
+- Revisión CLIENT detecta que el resumen de Mi Cuenta usaba la zona del servidor: corregido a America/Bogota y etiqueta explícita, sin modificar instantes ni reservas. Prueba de renderizado de la página real en UTC/Madrid/Tokio y cambio de día correcta.
 - Las membresías nuevas se conceden solo por el conciliador recurrente PayPal. La consulta de estado es de lectura, sin consultar Nequi ni conceder acceso. Cambio de nivel y reactivación antiguos quedan retirados; el cliente tiene el contacto de Aleyda.
 - Datos, enums y campos antiguos de Prisma se conservan para historial y auditoría; no constituyen métodos activos. Un acuerdo antiguo sin vínculo PayPal no se anuncia como cancelado en el proveedor. Necesita conciliación personal antes de Production.
 
 ## Comprobaciones
 
-- 172 pruebas automáticas correctas, incluyendo rechazo sin efectos de las 16 entradas en Production/Preview/desarrollo, carret con métodos manipulados, registro de proveedores y bloqueo de entrega con métodos retirados.
+- 173 pruebas automáticas correctas, incluyendo rechazo sin efectos de las 16 entradas en Production/Preview/desarrollo, carret con métodos manipulados, registro de proveedores y bloqueo de entrega con métodos retirados.
 - Tipos correctos y lint sin errores (avisos previos conservados).
 - Controles locales de Neon/servicios correctos. SELECT 1 correcto en endpoint pooled y directo de Neon Preview.
 - QA real de inventario: concurrencia de última plaza/hora, expiración solo sin pago, retención ante captura incierta, entrega y rollback. Fixtures efímeras retiradas, históricos preservados, sin APIs de pagos/correo/Calendar.
@@ -28,6 +29,10 @@ Base verificada: preview 4da7083959fca3c86dbea2ad40796dbb06e76b0d, sin cambios p
 1. Build completo, commit en origin/preview y despliegue Ready. Cotejar proyecto/equipo/repo/ref/SHA y actualizar ambos alias al mismo despliegue.
 2. Verificar remotamente retiradas 410, páginas antiguas sin instrucciones, acceso anónimo rechazado, formularios PayPal/Bre-B y controles de importes; revisar Mis Compras/Sesiones/Cursos/Eventos sin alterar históricos.
 3. Membresía mensual con prueba: Xavier acepta personalmente los consentimientos y la autorización sandbox. Comprobar retorno, un Subscription/Entitlement, fecha del primer cobro y correo recibido. Cancelación sandbox de la renovación, conservación del acceso y aviso. Comprobar alta sin repetir prueba y facturación anual según el plan existente. No falsear historial ni simular un webhook como prueba de un cobro del proveedor.
+
+## Configuración real revisada por metadatos
+
+La lista Production de Vercel no incluye PAYPAL_WEBHOOK_ID ni GLOBAL66_BREB_*. Los cuatro IDs de planes PayPal USD sí existen, pero su presencia no verifica que sean live ni que sus precios sean correctos. No se han leído claves ni cambiado variables. Configurar y verificar estos elementos forma parte del paso aprobado a Production; publicar Git sin ello dejaría el circuito incompleto.
 
 ## Paso a Production, solo tras aprobar versión concreta
 
