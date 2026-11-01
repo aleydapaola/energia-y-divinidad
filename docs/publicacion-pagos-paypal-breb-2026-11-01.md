@@ -16,7 +16,7 @@ Base verificada: preview 4da7083959fca3c86dbea2ad40796dbb06e76b0d, sin cambios p
 
 ## Comprobaciones
 
-- 173 pruebas automáticas correctas, incluyendo rechazo sin efectos de las 16 entradas en Production/Preview/desarrollo, carret con métodos manipulados, registro de proveedores y bloqueo de entrega con métodos retirados.
+- 179 pruebas automáticas correctas, incluyendo rechazo sin efectos de las 16 entradas en Production/Preview/desarrollo, carret con métodos manipulados, registro de proveedores y bloqueo de entrega con métodos retirados.
 - Tipos correctos y lint sin errores (avisos previos conservados).
 - Controles locales de Neon/servicios correctos. SELECT 1 correcto en endpoint pooled y directo de Neon Preview.
 - QA real de inventario: concurrencia de última plaza/hora, expiración solo sin pago, retención ante captura incierta, entrega y rollback. Fixtures efímeras retiradas, históricos preservados, sin APIs de pagos/correo/Calendar.
@@ -45,4 +45,6 @@ La lista Production de Vercel no incluye PAYPAL_WEBHOOK_ID ni GLOBAL66_BREB_*. L
 
 ## Resultado remoto del candidato
 
-Build local completo correcto (138 páginas) con configuración aislada de Preview. Despliegue y comprobaciones remotas de esta ejecución pendientes. No interpretar el código local ni este plan como publicación.
+2be894e0 Ready en dpl_LTDbiUR52T1BWJi5QqA7V2ZGZ26H, fuente/equipo/proyecto correctos. 34 comprobaciones remotas correctas: 410 de entradas retiradas, redirecciones, páginas, rechazo de acceso anónimo e importe manipulado. Sin pagos/pedidos/correos. Production sigue en su despliegue anterior.
+
+La prueba personal detectó una autorización Esencia pendiente del 28/10 bloqueada por el límite de 60 horas. Se añade /membresia/pendiente y enlaces desde checkout/Mis Compras. Recuperación solo de lectura, verificada contra PayPal, sin nuevo acuerdo ni reinicio de prueba; primer cobro original explícito. 179 pruebas y tipos correctos. Build y despliegue de esta corrección, lectura real del estado en PayPal y autorización personal aún pendientes.

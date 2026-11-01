@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
       code === "ACTIVE_MEMBERSHIP"
         ? "Ya tienes una membresía vigente o una renovación pendiente. Gestiona la actual antes de contratar otra."
         : code === "PENDING_MEMBERSHIP"
-          ? "Existe otra autorización de membresía pendiente. Contacta con Aleyda antes de iniciar un segundo plan."
+          ? "Existe una autorización de membresía pendiente. Retómala desde Mis Compras antes de iniciar otro plan."
           : "No se pudo verificar el plan recurrente. Revisa el resumen o contacta con Aleyda.";
     return NextResponse.json(
       { error: message },

@@ -505,6 +505,7 @@ export interface PayPalSubscriptionResult {
 }
 
 export interface PayPalSubscriptionDetails {
+  approvalUrl?: string;
   id: string;
   status: string;
   planId?: string;
@@ -683,6 +684,7 @@ export async function getPayPalSubscriptionDetails(
     }
 
     const sub = (await response.json()) as {
+      links?: Array<{ rel: string; href: string }>;
       id?: string;
       status?: string;
       plan_id?: string;
@@ -704,6 +706,7 @@ export async function getPayPalSubscriptionDetails(
 
     return {
       id: sub.id || subscriptionId,
+      approvalUrl: sub.links?.find((link) => link.rel === "approve")?.href,
       status: sub.status || "UNKNOWN",
       planId: sub.plan_id,
       customId: sub.custom_id,

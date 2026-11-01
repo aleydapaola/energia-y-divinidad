@@ -125,6 +125,9 @@ function CheckoutContent() {
             Volver a los planes
           </Link>
           <h1 className="font-gazeta text-3xl">Tu membresía</h1>
+          <Link href="/membresia/pendiente" className="block rounded-xl bg-[#eef1fa] p-4 underline">
+            ¿Ya has iniciado una autorización? Retoma la pendiente sin abrir otro plan.
+          </Link>
           {loading || status === "loading" ? (
             <p role="status" className="flex items-center gap-2">
               <Loader2 className="h-5 w-5 animate-spin" />

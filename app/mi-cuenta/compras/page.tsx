@@ -234,9 +234,13 @@ export default async function MisComprasPage() {
                       order.paymentMethod.startsWith("PAYPAL") && (
                         <Link
                           className="underline"
-                          href={`/pago/confirmacion?ref=${encodeURIComponent(order.orderNumber)}`}
+                          href={
+                            order.orderType === "MEMBERSHIP"
+                              ? "/membresia/pendiente"
+                              : `/pago/confirmacion?ref=${encodeURIComponent(order.orderNumber)}`
+                          }
                         >
-                          Ver estado
+                          {order.orderType === "MEMBERSHIP" ? "Retomar autorización" : "Ver estado"}
                         </Link>
                       )}
                     {order.paymentStatus === "COMPLETED" && (
