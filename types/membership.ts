@@ -200,14 +200,6 @@ export interface UserSubscription {
   amount: number;
   currency: string;
   paymentProvider: string;
-  stripeSubscriptionId: string | null;
-  stripeCustomerId: string | null;
-  nequiSubscriptionId: string | null;
-  nequiPhoneNumber: string | null;
-  nequiApprovedAt: Date | null;
-  wompiPaymentSourceId?: string | null;
-  wompiCardLastFour?: string | null;
-  wompiCardBrand?: string | null;
   paypalSubscriptionId?: string | null;
   nextChargeDate?: Date | null;
   lastChargeDate?: Date | null;

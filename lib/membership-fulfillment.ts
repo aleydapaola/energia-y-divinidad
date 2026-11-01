@@ -15,9 +15,6 @@ export async function createMembershipEntitlement(
     trialEnd?: Date | null;
     lastChargeDate?: Date | null;
     nextChargeDate?: Date | null;
-    wompiPaymentSourceId?: string | null;
-    wompiCardLastFour?: string | null;
-    wompiCardBrand?: string | null;
   }
 ) {
   const { order, userId } = input;
@@ -59,9 +56,6 @@ export async function createMembershipEntitlement(
       trialEnd: input.trialEnd,
       lastChargeDate: input.lastChargeDate,
       nextChargeDate: input.nextChargeDate,
-      wompiPaymentSourceId: input.wompiPaymentSourceId,
-      wompiCardLastFour: input.wompiCardLastFour,
-      wompiCardBrand: input.wompiCardBrand,
     },
   });
   await tx.entitlement.create({

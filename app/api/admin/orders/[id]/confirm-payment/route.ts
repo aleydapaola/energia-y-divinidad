@@ -52,17 +52,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       { status: 409 }
     );
   }
-  if (
-    ![
-      "BREB_MANUAL",
-      "MANUAL_NEQUI",
-      "MANUAL_TRANSFER",
-      "MANUAL_BANCOLOMBIA",
-      "MANUAL_DAVIPLATA",
-    ].includes(order.paymentMethod)
-  ) {
+  if (order.paymentMethod !== "BREB_MANUAL") {
     return NextResponse.json(
-      { error: "El proveedor debe confirmar este método de pago." },
+      {
+        error:
+          "Solo se confirman manualmente pedidos Bre-B. Los pedidos históricos requieren revisión.",
+      },
       { status: 400 }
     );
   }

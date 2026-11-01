@@ -9,7 +9,6 @@
  * - Enviar emails de confirmación
  *
  * Es llamado desde:
- * - Webhooks de Wompi
  * - Webhooks de PayPal
  * - Endpoints de verificación manual
  */
@@ -20,13 +19,10 @@ import { PaymentMethod, Prisma } from "@prisma/client";
 
 import { consumeCheckoutHold } from "@/lib/checkout/hold-store";
 import { createCourseEntitlement } from "@/lib/course-access";
-import { grantMonthlyCredits } from "@/lib/credits";
 import { recordDiscountUsage } from "@/lib/discount-codes";
 import { sendPaymentConfirmationEmail, sendAdminNotificationEmail } from "@/lib/email";
 import { assertEventCapacity, lockEventCapacity } from "@/lib/events/capacity";
 import { syncBookingToGoogleCalendar } from "@/lib/google-calendar";
-import { membershipPeriodEnd } from "@/lib/membership-billing";
-import { createMembershipEntitlement } from "@/lib/membership-fulfillment";
 import { prisma } from "@/lib/prisma";
 import { getEventById } from "@/lib/sanity/queries/events";
 import { getSessionMeetingLink } from "@/lib/sanity/queries/sessionConfig";
@@ -81,6 +77,14 @@ export async function processApprovedPayment(
   order: OrderWithUser,
   options?: { skipEmail?: boolean; transactionId?: string }
 ): Promise<ProcessPaymentResult> {
+  if (
+    !["PAYPAL_DIRECT", "PAYPAL_CARD", "BREB_MANUAL", "FREE"].includes(order.paymentMethod || "")
+  ) {
+    return {
+      success: false,
+      error: "Método de pago retirado; el pedido histórico requiere revisión.",
+    };
+  }
   if (order.paymentStatus !== "COMPLETED") {
     return { success: false, error: "El pago no está verificado" };
   }
@@ -92,7 +96,11 @@ export async function processApprovedPayment(
           where: { id: order.id },
           include: { user: true },
         });
-        if (!fresh || !["COMPLETED", "PROCESSING"].includes(fresh.paymentStatus)) {
+        if (
+          !fresh ||
+          !["PAYPAL_DIRECT", "PAYPAL_CARD", "BREB_MANUAL", "FREE"].includes(fresh.paymentMethod) ||
+          !["COMPLETED", "PROCESSING"].includes(fresh.paymentStatus)
+        ) {
           return { success: false, error: "El pago no está verificado" };
         }
         return processApprovedPaymentUnlocked({ ...fresh, paymentStatus: "COMPLETED" }, options);
@@ -162,9 +170,9 @@ async function processApprovedPaymentUnlocked(
     // 3. Crear recursos según tipo de producto
     switch (order.orderType) {
       case "MEMBERSHIP": {
-        const subscription = await createMembershipFromOrder(order, metadata, userId);
-        createdResources.push({ type: "subscription", id: subscription.id });
-        break;
+        throw new Error(
+          "La membresía debe verificarse mediante la autorización recurrente de PayPal"
+        );
       }
 
       case "SESSION": {
@@ -299,69 +307,6 @@ async function checkForDuplicateProcessing(order: OrderWithUser, userId: string)
     default:
       return false;
   }
-}
-
-/**
- * Crear membresía desde orden aprobada
- */
-async function createMembershipFromOrder(
-  order: OrderWithUser,
-  metadata: any,
-  userId: string
-): Promise<{ id: string }> {
-  const billingInterval = metadata.billingInterval === "yearly" ? "yearly" : "monthly";
-  const hasFreeTrial = metadata.freeTrial === true;
-  const periodStart = new Date();
-  const periodEnd = hasFreeTrial
-    ? new Date(metadata.trialEndsAt)
-    : membershipPeriodEnd(periodStart, billingInterval);
-  // PayPal recurring is delivered only by its verified agreement/sale reconciler.
-  if (order.paymentMethod?.includes("PAYPAL")) {
-    throw new Error("La membresía PayPal debe verificarse mediante su autorización recurrente");
-  }
-  const provider = order.paymentMethod?.includes("WOMPI")
-    ? order.paymentMethod.includes("NEQUI")
-      ? "wompi_nequi"
-      : "wompi_card"
-    : "unknown";
-  const nextChargeDate = new Date(periodEnd);
-  if (!hasFreeTrial) {
-    nextChargeDate.setDate(nextChargeDate.getDate() - 1);
-  }
-  const subscription = await prisma.$transaction((tx) =>
-    createMembershipEntitlement(tx, {
-      order,
-      userId,
-      amount: Number(metadata.recurringAmount ?? order.amount),
-      interval: billingInterval,
-      provider,
-      periodStart,
-      periodEnd,
-      trialEnd: hasFreeTrial ? periodEnd : null,
-      lastChargeDate: hasFreeTrial ? null : new Date(),
-      nextChargeDate: metadata.wompiPaymentSourceId ? nextChargeDate : null,
-      wompiPaymentSourceId: metadata.wompiPaymentSourceId
-        ? String(metadata.wompiPaymentSourceId)
-        : null,
-      wompiCardLastFour: metadata.wompiCardLastFour || null,
-      wompiCardBrand: metadata.wompiCardBrand || null,
-    })
-  );
-
-  // Grant initial monthly credits
-  try {
-    const creditsResult = await grantMonthlyCredits(userId, subscription.id);
-    if (creditsResult.granted > 0) {
-      console.log(`[PAYMENT-PROCESSOR] Granted ${creditsResult.granted} initial credits`);
-    }
-  } catch (error) {
-    // Don't fail subscription creation if credits fail
-    console.error("[PAYMENT-PROCESSOR] Error granting initial credits:", error);
-  }
-
-  console.log(`[PAYMENT-PROCESSOR] Membresía creada: ${subscription.id} para usuario ${userId}`);
-
-  return subscription;
 }
 
 /**

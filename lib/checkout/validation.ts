@@ -16,7 +16,7 @@ export const checkoutSchema = z.object({
   currency: z.enum(["COP", "USD"]),
 
   // Método de pago
-  paymentMethod: z.enum(["CARD", "NEQUI", "PSE", "PAYPAL", "BANK_TRANSFER", "CASH"]),
+  paymentMethod: z.enum(["PAYPAL", "BANK_TRANSFER"]),
 
   // Cliente (requerido para guest checkout)
   customerEmail: z.string().email().optional(),

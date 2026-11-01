@@ -8,9 +8,6 @@ import { prisma } from "@/lib/prisma";
 /**
  * GET /api/orders/[reference]/status
  * Consultar estado de una orden por su referencia (orderNumber)
- *
- * Query params:
- * - verify=true: Verificar con Wompi si el pago está pendiente
  */
 export async function GET(
   request: NextRequest,

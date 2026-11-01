@@ -17,12 +17,8 @@ function ConfirmacionContent() {
 
   // Parámetros de la URL
   const reference = searchParams?.get("ref") || "";
-  const refPayco = searchParams?.get("ref_payco") || "";
-  // Wompi redirige con el ID de la transacción
-  const wompiTransactionId = searchParams?.get("id") || "";
   // PayPal redirige con token (PayPal order ID) y PayerID
   const paypalToken = searchParams?.get("token") || "";
-  const paypalPayerId = searchParams?.get("PayerID") || "";
 
   const [status, setStatus] = useState<PaymentStatus>("loading");
   const [orderData, setOrderData] = useState<any>(null);
@@ -93,80 +89,7 @@ function ConfirmacionContent() {
         return;
       }
 
-      // Si viene de Wompi con ID de transacción, verificar estado real con la API
-      if (wompiTransactionId) {
-        console.log("[CONFIRMACION] Verifying with Wompi transactionId...");
-        try {
-          // Verificar transacción directamente con Wompi (como Stripe)
-          const verifyResponse = await fetch(
-            `/api/payments/wompi/verify?transactionId=${wompiTransactionId}&ref=${reference}`
-          );
-
-          if (!verifyResponse.ok) {
-            throw new Error("Error verificando transacción");
-          }
-
-          const verifyData = await verifyResponse.json();
-
-          // Cargar datos de la orden para mostrar en UI
-          if (verifyData.order) {
-            setOrderData(verifyData.order);
-            setPaymentMethod(verifyData.order.paymentMethod || null);
-            // Detectar si fue guest checkout y si se creó un usuario nuevo
-            const metadata = verifyData.order.metadata || {};
-            setIsGuestCheckout(metadata.isGuestCheckout || metadata.convertedFromGuest || false);
-            setUserWasCreated(metadata.userWasCreated || false);
-          }
-
-          // Mostrar resultado real de la transacción
-          switch (verifyData.transactionStatus) {
-            case "APPROVED":
-              setStatus("success");
-              break;
-            case "DECLINED":
-            case "ERROR":
-              setStatus("failed");
-              setError(
-                "El pago fue rechazado. Por favor verifica los datos de tu tarjeta e intenta nuevamente."
-              );
-              break;
-            case "VOIDED":
-              setStatus("failed");
-              setError("El pago fue cancelado.");
-              break;
-            case "PENDING":
-              setStatus("pending");
-              break;
-            default:
-              setStatus("failed");
-              setError("Estado de pago desconocido.");
-          }
-        } catch (err: any) {
-          console.error("Error verifying Wompi transaction:", err);
-          setStatus("failed");
-          setError("Error verificando el pago. Por favor contacta soporte.");
-        }
-        return;
-      }
-
-      // Si viene de ePayco
-      if (refPayco) {
-        try {
-          const response = await fetch(`/api/orders/${reference}/status`);
-          if (response.ok) {
-            const data = await response.json();
-            setOrderData(data);
-            setPaymentMethod(data.paymentMethod || null);
-          }
-        } catch {
-          // Ignorar
-        }
-        setStatus("pending");
-        return;
-      }
-
-      // Sin ID de transacción externa, verificar estado en BD
-      // PERO si la orden es de Wompi y está PENDING, intentar verificar por referencia
+      // Read verified order state; old return parameters never settle a payment.
       try {
         const response = await fetch(`/api/orders/${reference}/status`);
         if (!response.ok) {
@@ -180,48 +103,6 @@ function ConfirmacionContent() {
         const metadata = data.metadata || {};
         setIsGuestCheckout(metadata.isGuestCheckout || metadata.convertedFromGuest || false);
         setUserWasCreated(metadata.userWasCreated || false);
-
-        // Si la orden está PENDING y es de Wompi, intentar verificar con la API de Wompi
-        // usando el endpoint de búsqueda por referencia
-        if (data.paymentStatus === "PENDING" && data.paymentMethod?.startsWith("WOMPI")) {
-          console.log(
-            "[CONFIRMACION] Order is PENDING and from Wompi, trying to verify by reference..."
-          );
-          try {
-            const verifyByRefResponse = await fetch(
-              `/api/payments/wompi/verify-by-reference?ref=${reference}`
-            );
-            if (verifyByRefResponse.ok) {
-              const verifyData = await verifyByRefResponse.json();
-              console.log("[CONFIRMACION] Verify by reference result:", verifyData);
-              if (verifyData.order) {
-                setOrderData(verifyData.order);
-                // Actualizar metadata si está disponible
-                const verifyMetadata = verifyData.order.metadata || {};
-                setIsGuestCheckout(
-                  verifyMetadata.isGuestCheckout || verifyMetadata.convertedFromGuest || false
-                );
-                setUserWasCreated(verifyMetadata.userWasCreated || false);
-              }
-              switch (verifyData.transactionStatus) {
-                case "APPROVED":
-                  setStatus("success");
-                  return;
-                case "DECLINED":
-                case "ERROR":
-                  setStatus("failed");
-                  setError("El pago fue rechazado.");
-                  return;
-                case "PENDING":
-                  setStatus("pending");
-                  return;
-              }
-            }
-          } catch (verifyErr) {
-            console.error("Error verifying by reference:", verifyErr);
-            // Continuar con el flujo normal
-          }
-        }
 
         switch (data.paymentStatus) {
           case "COMPLETED":
@@ -242,14 +123,11 @@ function ConfirmacionContent() {
     }
 
     checkPaymentStatus();
-  }, [reference, refPayco, wompiTransactionId, paypalToken, paypalPayerId]);
+  }, [reference, paypalToken]);
 
   const pendingMessage = () => {
     if (paymentMethod === "BREB_MANUAL") {
       return "Aleyda comprobará el ingreso en Global66 antes de activar la compra. Puedes consultar el pedido y comunicar la referencia aquí mismo.";
-    }
-    if (paymentMethod === "WOMPI_NEQUI") {
-      return "Se envió una solicitud de pago a tu app Nequi. Por favor apruébala para completar la compra.";
     }
     return "El pago aún no está confirmado. Consulta el estado antes de volver a intentarlo.";
   };
@@ -344,17 +222,6 @@ function ConfirmacionContent() {
                       <span className="font-semibold">Producto:</span> {orderData.itemName}
                     </p>
                   )}
-                </div>
-              )}
-              {paymentMethod === "WOMPI_NEQUI" && (
-                <p className="font-dm-sans text-sm text-gray-500 mb-6">
-                  Abre tu app de Nequi y aprueba el pago pendiente.
-                </p>
-              )}
-              {paymentMethod === "WOMPI_CARD" && (
-                <div className="flex items-center justify-center gap-2 text-gray-500 mb-6">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="font-dm-sans text-sm">Verificando con el banco...</span>
                 </div>
               )}
             </>

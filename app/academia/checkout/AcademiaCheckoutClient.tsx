@@ -190,15 +190,13 @@ export function AcademiaCheckoutClient() {
         clearCart();
         router.push(data.redirectUrl || "/academia/mis-cursos");
       } else if (data.redirectUrl) {
-        // Wompi manual or other redirect
+        // Bre-B pending order
         router.push(data.redirectUrl);
       } else if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else if (data.approvalUrl) {
         // PayPal redirect
         window.location.href = data.approvalUrl;
-      } else if (data.nequiPending) {
-        router.push(`/pago/nequi-pending?ref=${data.orderNumber}`);
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Error al procesar el pago";

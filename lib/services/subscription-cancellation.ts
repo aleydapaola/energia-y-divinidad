@@ -9,7 +9,6 @@ import { SubscriptionStatus } from "@prisma/client";
 
 import { createAuditLog } from "@/lib/audit";
 import { queueMembershipNotice, deliverMembershipNotices } from "@/lib/membership-notifications";
-import { cancelNequiSubscription, getNequiMode } from "@/lib/nequi";
 import { cancelPayPalSubscription } from "@/lib/paypal";
 import { prisma } from "@/lib/prisma";
 
@@ -264,7 +263,7 @@ export async function cancelSubscription(
       success: false,
       error:
         errorMessage === "PROVIDER_ERROR"
-          ? "No se pudo confirmar la cancelación en PayPal. La renovación no figura desactivada; vuelve a intentarlo o contacta con Aleyda."
+          ? "No se pudo confirmar la cancelación en el proveedor. La renovación no figura desactivada; vuelve a intentarlo o contacta con Aleyda."
           : "Error interno al cancelar la suscripción",
       errorCode: errorMessage === "PROVIDER_ERROR" ? "PROVIDER_ERROR" : "INTERNAL_ERROR",
     };
@@ -281,33 +280,11 @@ export async function cancelSubscription(
 async function cancelInPaymentProvider(
   subscription: {
     paymentProvider: string;
-    stripeSubscriptionId: string | null;
-    nequiSubscriptionId: string | null;
     paypalSubscriptionId?: string | null;
   },
   _immediate: boolean
 ): Promise<{ success: boolean; error?: string }> {
-  const provider = subscription.paymentProvider;
-
   try {
-    if (provider === "stripe" && subscription.stripeSubscriptionId) {
-      // LEGACY: Stripe ya no está soportado para nuevas suscripciones
-      console.warn(
-        `LEGACY: Attempting to cancel Stripe subscription ${subscription.stripeSubscriptionId}. Manual cancellation may be required.`
-      );
-      return {
-        success: true,
-        error: "Suscripción Stripe marcada como cancelada. Si el cobro continúa, contacta soporte.",
-      };
-    }
-
-    if (provider === "nequi" && subscription.nequiSubscriptionId) {
-      if (getNequiMode() === "push") {
-        await cancelNequiSubscription(subscription.nequiSubscriptionId);
-      }
-      return { success: true };
-    }
-
     if (subscription.paypalSubscriptionId) {
       const result = await cancelPayPalSubscription(
         subscription.paypalSubscriptionId,
@@ -316,8 +293,12 @@ async function cancelInPaymentProvider(
       return result;
     }
 
-    // Wompi y métodos manuales: cancelación solo local (no hay suscripción en proveedor)
-    return { success: true };
+    // Historical agreements need manual reconciliation; never claim an external cancellation.
+    return {
+      success: false,
+      error:
+        "Acuerdo histórico: contacta con Aleyda para confirmar la cancelación en el proveedor original.",
+    };
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Error desconocido";
     return { success: false, error: errorMessage };

@@ -4,8 +4,6 @@ import { test, beforeEach, afterEach } from "node:test";
 import { deliverEmail } from "../lib/email-delivery.ts";
 import {
   assertPayPalTestEnvironment,
-  assertWompiTestEnvironment,
-  assertNequiTestEnvironment,
   isolatedCalendarId,
   isolatedMailchimpListId,
   assertIsolatedSanityWrites,
@@ -88,36 +86,6 @@ test("blocks live PayPal in Preview and local work", () => {
   assert.throws(() => assertPayPalTestEnvironment("live"));
   assert.doesNotThrow(() => assertPayPalTestEnvironment("sandbox"));
 });
-const wompi = {
-  environment: "sandbox",
-  publicKey: "pub_test_fake",
-  privateKey: "prv_test_fake",
-  eventsSecret: "test_events_fake",
-  integritySecret: "test_integrity_fake",
-};
-for (const [field, value] of [
-  ["environment", "production"],
-  ["publicKey", "pub_prod_fake"],
-  ["privateKey", "prv_prod_fake"],
-  ["eventsSecret", "prod_events_fake"],
-  ["integritySecret", "prod_integrity_fake"],
-]) {
-  test(`rejects a production Wompi ${field}`, () =>
-    assert.throws(() => assertWompiTestEnvironment({ ...wompi, [field]: value })));
-}
-test("allows a complete sandbox Wompi configuration", () =>
-  assert.doesNotThrow(() => assertWompiTestEnvironment(wompi)));
-test("blocks real Nequi endpoints", () => {
-  assert.throws(() =>
-    assertNequiTestEnvironment("https://oauth.nequi.com/oauth2/token", "https://api.nequi.com")
-  );
-  assert.doesNotThrow(() =>
-    assertNequiTestEnvironment(
-      "https://oauth.sandbox.nequi.com/oauth2/token",
-      "https://api.sandbox.nequi.com"
-    )
-  );
-});
 test("requires a separate Preview calendar", () => {
   process.env.GOOGLE_CALENDAR_ID = "real";
   delete process.env.PREVIEW_GOOGLE_CALENDAR_ID;
@@ -150,7 +118,6 @@ test("preserves configured production services", () => {
   process.env.GOOGLE_CALENDAR_ID = "real";
   process.env.MAILCHIMP_LIST_ID = "real";
   assert.doesNotThrow(() => assertPayPalTestEnvironment("live"));
-  assert.doesNotThrow(() => assertWompiTestEnvironment({ ...wompi, environment: "production" }));
   assert.doesNotThrow(assertIsolatedSanityWrites);
   assert.equal(isolatedCalendarId(), "real");
   assert.equal(isolatedMailchimpListId(), "real");

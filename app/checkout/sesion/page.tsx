@@ -135,7 +135,7 @@ function SessionCheckoutContent() {
 
   const handleRegionSelect = (region: PaymentRegion) => {
     setSelectedRegion(region);
-    // Wompi manual como método por defecto para ambas regiones
+    // PayPal es el método inicial para ambas regiones
     setSelectedMethod("paypal_direct");
     setAppliedDiscount(null);
     setDiscountInput("");
@@ -226,7 +226,7 @@ function SessionCheckoutContent() {
         // PayPal approval URL
         window.location.href = data.approvalUrl;
       } else if (data.checkoutUrl) {
-        // Wompi checkout URL
+        // Provider checkout URL
         window.location.href = data.checkoutUrl;
       } else if (data.redirectUrl) {
         // Internal redirect (e.g., Bre-B pending page)

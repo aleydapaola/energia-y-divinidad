@@ -1,6 +1,5 @@
-import { ManualPaymentPreviewNotice } from "@/components/pago/ManualPaymentPreviewNotice";
-import { isProductionEnvironment } from "@/lib/preview-safety";
+import type { ReactNode } from "react";
 
-export default function WompiPendingLayout({ children }: { children: React.ReactNode }) {
-  return isProductionEnvironment() ? children : <ManualPaymentPreviewNotice />;
+export default function RetiredPaymentLayout({ children }: { children: ReactNode }) {
+  return children;
 }

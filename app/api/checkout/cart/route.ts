@@ -8,21 +8,12 @@ import { createCourseEntitlement } from "@/lib/course-access";
 import { validateDiscountCode, recordDiscountUsage } from "@/lib/discount-codes";
 import { allowOrderInBrowser } from "@/lib/order-access";
 import { createPayPalOrder } from "@/lib/paypal";
-import { isProductionEnvironment, MANUAL_PAYMENT_PREVIEW_MESSAGE } from "@/lib/preview-safety";
 import { prisma } from "@/lib/prisma";
 import { getAppUrl } from "@/lib/utils";
-import { createWompiPaymentLink } from "@/lib/wompi";
 import { client } from "@/sanity/lib/client";
 import { COURSES_BY_IDS_QUERY } from "@/sanity/lib/queries";
 
-type PaymentMethod =
-  | "breb_manual"
-  | "FREE"
-  | "wompi_nequi"
-  | "wompi_card"
-  | "wompi_manual"
-  | "paypal_direct"
-  | "paypal_card";
+type PaymentMethod = "breb_manual" | "FREE" | "paypal_direct" | "paypal_card";
 
 interface CartItem {
   courseId: string;
@@ -64,10 +55,6 @@ export async function POST(request: NextRequest) {
 
     const body: CheckoutBody = await request.json();
     const { items, currency, paymentMethod, discountCode } = body;
-
-    if (paymentMethod === "wompi_manual" && !isProductionEnvironment()) {
-      return NextResponse.json({ error: MANUAL_PAYMENT_PREVIEW_MESSAGE }, { status: 403 });
-    }
 
     if (!["breb_manual", "paypal_direct", "paypal_card", "FREE"].includes(paymentMethod)) {
       return NextResponse.json({ error: "Selecciona PayPal o Bre-B." }, { status: 400 });
@@ -190,7 +177,6 @@ export async function POST(request: NextRequest) {
     const finalAmount = Math.max(0, subtotal - discountAmount);
 
     // Generar referencia
-    const isWompi = paymentMethod.startsWith("wompi");
     const reference = `${paymentMethod === "breb_manual" ? "BREB" : "PP"}-${randomUUID()}`;
     if (paymentMethod === "breb_manual") {
       await allowOrderInBrowser(reference);
@@ -302,62 +288,7 @@ export async function POST(request: NextRequest) {
         redirectUrl: `/pago/breb-pending?ref=${reference}`,
       });
     }
-    if (paymentMethod === "wompi_manual") {
-      // Wompi Manual - Usar link de pago genérico desde dashboard de Wompi
-      // Buscar link por monto específico o usar default
-      const paymentLinkUrl =
-        process.env[`WOMPI_PAYMENT_LINK_${finalAmount}`] ||
-        process.env[`WOMPI_PAYMENT_LINK_COURSE`] ||
-        process.env.WOMPI_PAYMENT_LINK_DEFAULT;
-
-      await prisma.order.update({
-        where: { id: order.id },
-        data: {
-          paymentMethod: "WOMPI_MANUAL",
-          metadata: {
-            ...(order.metadata as object),
-            wompiPaymentLinkUrl: paymentLinkUrl || "",
-          },
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        reference,
-        redirectUrl: `/pago/wompi-pending?ref=${reference}`,
-      });
-    } else if (isWompi) {
-      // Wompi automático (legacy - deshabilitado temporalmente)
-      if (currency !== "COP") {
-        return NextResponse.json({ error: "Wompi solo soporta pagos en COP" }, { status: 400 });
-      }
-
-      const amountInCents = Math.round(finalAmount * 100);
-
-      const { paymentLink, checkoutUrl } = await createWompiPaymentLink({
-        name: orderName,
-        description: `${orderName} - Academia Energía y Divinidad`,
-        amountInCents,
-        singleUse: true,
-        redirectUrl: `${appUrl}/pago/confirmacion?ref=${reference}`,
-      });
-
-      await prisma.order.update({
-        where: { id: order.id },
-        data: {
-          metadata: {
-            ...(order.metadata as object),
-            wompiPaymentLinkId: paymentLink.id,
-          },
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        reference,
-        checkoutUrl,
-      });
-    } else {
+    {
       // PayPal (Internacional - COP/USD)
       const paypalResult = await createPayPalOrder({
         amount: finalAmount,
@@ -410,12 +341,6 @@ function getPaymentMethodEnum(method: PaymentMethod) {
       return "BREB_MANUAL";
     case "FREE":
       return "FREE";
-    case "wompi_nequi":
-      return "WOMPI_NEQUI";
-    case "wompi_card":
-      return "WOMPI_CARD";
-    case "wompi_manual":
-      return "WOMPI_MANUAL";
     case "paypal_direct":
       return "PAYPAL_DIRECT";
     case "paypal_card":

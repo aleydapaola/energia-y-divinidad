@@ -43,12 +43,7 @@ export function ConfirmPaymentButton({
   const needsReason = hasReceived && !amountMatches;
 
   // Solo mostrar para pagos manuales pendientes
-  const isManualPayment =
-    paymentMethod === "BREB_MANUAL" ||
-    paymentMethod === "MANUAL_NEQUI" ||
-    paymentMethod === "MANUAL_TRANSFER" ||
-    paymentMethod === "MANUAL_BANCOLOMBIA" ||
-    paymentMethod === "MANUAL_DAVIPLATA";
+  const isManualPayment = paymentMethod === "BREB_MANUAL";
 
   const isPending = paymentStatus === "PENDING";
 

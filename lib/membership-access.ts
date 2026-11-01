@@ -98,14 +98,6 @@ export async function getActiveSubscription(userId: string): Promise<UserSubscri
     amount: subscription.amount.toNumber(),
     currency: subscription.currency,
     paymentProvider: subscription.paymentProvider,
-    stripeSubscriptionId: subscription.stripeSubscriptionId,
-    stripeCustomerId: subscription.stripeCustomerId,
-    nequiSubscriptionId: subscription.nequiSubscriptionId,
-    nequiPhoneNumber: subscription.nequiPhoneNumber,
-    nequiApprovedAt: subscription.nequiApprovedAt,
-    wompiPaymentSourceId: subscription.wompiPaymentSourceId,
-    wompiCardLastFour: subscription.wompiCardLastFour,
-    wompiCardBrand: subscription.wompiCardBrand,
     paypalSubscriptionId: subscription.paypalSubscriptionId,
     nextChargeDate: subscription.nextChargeDate,
     lastChargeDate: subscription.lastChargeDate,
@@ -297,13 +289,7 @@ export function getPaymentRegion(countryCode?: string): "colombia" | "internatio
 /**
  * Tipos de métodos de pago disponibles
  */
-export type PaymentMethodType =
-  | "wompi_nequi" // Nequi via Wompi (Colombia)
-  | "wompi_card" // Tarjeta via Wompi automático (deshabilitado temporalmente)
-  | "wompi_manual" // Wompi con link de pago genérico (Colombia + Internacional)
-  | "breb_manual" // Bre-B transferencia manual con llave (Colombia)
-  | "paypal_direct" // PayPal directo (Colombia + Internacional)
-  | "paypal_card"; // Tarjeta via PayPal (Internacional)
+export type PaymentMethodType = "breb_manual" | "paypal_direct" | "paypal_card";
 
 export interface PaymentMethod {
   type: PaymentMethodType;
@@ -311,102 +297,51 @@ export interface PaymentMethod {
   description: string;
   available: boolean;
   icon: string;
-  gateway: "wompi" | "paypal" | "breb";
-  currency: "COP" | "USD" | "EUR";
+  gateway: "paypal" | "breb";
+  currency: "COP" | "USD";
   isRecurring: boolean;
   recommended: boolean;
 }
 
-/**
- * Obtiene los métodos de pago disponibles para un usuario según su región
- *
- * ESTRATEGIA DE PAGOS:
- * - Colombia: Tarjeta (Wompi), Bre-B (manual)
- * - Internacional: Tarjeta Wompi (equivalente COP) o PayPal (directo en USD/EUR)
- *
- * Wompi procesa en COP - tarjetas internacionales son aceptadas, el banco del cliente hace la conversión
- * PayPal procesa en USD/EUR según la moneda internacional seleccionada
- * Bre-B es pago manual con llave Bancolombia (sin comisiones, solo Colombia)
- */
 export function getAvailablePaymentMethods(region: "colombia" | "international"): PaymentMethod[] {
-  if (region === "colombia") {
-    return [
-      {
-        type: "wompi_nequi",
-        label: "Nequi",
-        description: "Paga directamente desde tu cuenta Nequi. Apruébalo en tu app.",
-        available: true,
-        icon: "💜",
-        gateway: "wompi",
-        currency: "COP",
-        isRecurring: true,
-        recommended: true,
-      },
-      {
-        type: "wompi_card",
-        label: "Tarjeta de crédito/débito",
-        description: "Paga con tu tarjeta Visa, Mastercard o American Express.",
-        available: true,
-        icon: "💳",
-        gateway: "wompi",
-        currency: "COP",
-        isRecurring: true,
-        recommended: false,
-      },
-      {
-        type: "breb_manual",
-        label: "Bre-B (Llave Bancolombia)",
-        description: "Transferencia instantánea sin comisión desde tu app bancaria.",
-        available: true,
-        icon: "🔑",
-        gateway: "breb",
-        currency: "COP",
-        isRecurring: false, // Bre-B manual no soporta recurrencia
-        recommended: false,
-      },
-    ];
-  }
-
-  // Internacional
   return [
-    {
-      type: "wompi_card",
-      label: "Tarjeta de crédito/débito",
-      description:
-        "Pay with your international card. Wompi charges the equivalent amount in COP automatically each billing period.",
-      available: true,
-      icon: "💳",
-      gateway: "wompi",
-      currency: "COP",
-      isRecurring: true,
-      recommended: true,
-    },
     {
       type: "paypal_direct",
       label: "PayPal",
-      description:
-        "Pay securely with your PayPal account. Charged automatically each billing period.",
+      description: "Pago en USD",
       available: true,
       icon: "🅿️",
       gateway: "paypal",
       currency: "USD",
       isRecurring: true,
-      recommended: false,
+      recommended: true,
     },
+    ...(region === "colombia"
+      ? [
+          {
+            type: "breb_manual" as const,
+            label: "Bre-B · Global66",
+            description: "Pago en COP con verificación del ingreso",
+            available: true,
+            icon: "🔑",
+            gateway: "breb" as const,
+            currency: "COP" as const,
+            isRecurring: false,
+            recommended: false,
+          },
+        ]
+      : []),
   ];
 }
 
-/**
- * Obtiene la pasarela de pago según el método seleccionado
- */
-export function getPaymentGateway(methodType: PaymentMethodType): "wompi" | "paypal" | "breb" {
-  if (methodType.startsWith("wompi_")) {
-    return "wompi";
-  }
-  if (methodType === "breb_manual") {
+export function getPaymentGateway(method: PaymentMethodType): "paypal" | "breb" {
+  if (method === "breb_manual") {
     return "breb";
   }
-  return "paypal";
+  if (method === "paypal_direct" || method === "paypal_card") {
+    return "paypal";
+  }
+  throw new Error("Método de pago retirado");
 }
 
 /**

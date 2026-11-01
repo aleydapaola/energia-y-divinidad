@@ -700,3 +700,44 @@ test("digital product pages display the same nested or legacy CMS price that che
     assert.match(html, nested ? /30.*USD/ : /20.*USD/);
   }
 });
+
+// The retired provider must not be able to use shared fulfillment as a back door.
+test("retired methods cannot deliver a previously completed order or touch the database", async () => {
+  const { processApprovedPayment } = load("lib/payment-processor.ts", {
+    "@/lib/prisma": {
+      prisma: new Proxy(
+        {},
+        {
+          get() {
+            throw Error("No database access expected");
+          },
+        }
+      ),
+    },
+    "@/lib/credits": {},
+    "@/lib/course-access": {},
+    "@/lib/discount-codes": {},
+    "@/lib/email": {},
+    "@/lib/google-calendar": {},
+    "@/lib/sanity/queries/sessionConfig": {},
+    "@/lib/session-duration": {},
+    "@/lib/session-scheduling": {},
+  });
+  for (const paymentMethod of [
+    "WOMPI_CARD",
+    "WOMPI_MANUAL",
+    "NEQUI",
+    "STRIPE",
+    "EPAYCO_PAYPAL",
+    "MANUAL_TRANSFER",
+    null,
+  ]) {
+    const result = await processApprovedPayment({
+      id: "historical",
+      paymentStatus: "COMPLETED",
+      paymentMethod,
+    });
+    assert.equal(result.success, false);
+    assert.match(result.error, /retirado/);
+  }
+});

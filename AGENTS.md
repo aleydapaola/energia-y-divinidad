@@ -343,3 +343,13 @@
 - Copy password fue rechazado por revisión automática: no extraer/copiar contraseñas ni reintentar por otra vía. Autocompletado nativo permitido; ADMIN Preview se recuperó así. Sesión Developer disponible y verificada en Aleyda Vargas Galvis/Energia y Divinidad Sandbox. El clic final de autorización/cobro sandbox debe hacerlo Xavier; no capturar ni aprobar por API para evitar esa intervención.
 
 - Última corrección de acceso: la página /dashboard/membresia/biblioteca comprueba el beneficio premium antes de leer los assets, además de las referencias de tier. Prueba sobre la página real y las anteriores: 177 correctas, tipos/lint sin errores. 6f747d4e de avisos/planes ya Ready en dpl_BE6LiiUPv8NuhvufVTg825hmaSQK; probar esa configuración sin crear otros planes. Aún falta aprobación personal sandbox de membresía. Production no autorizada.
+
+
+## Únicamente PayPal y Bre-B — 01/11/2026
+
+- Xavier ordena eliminar el resto de sistemas de pago y preparar la publicación cuanto antes, con funcionamiento demostrado en Preview. No autoriza todavía Production de una versión concreta. Plan y puerta de publicación en docs/publicacion-pagos-paypal-breb-2026-11-01.md.
+- Candidato sobre preview 4da70839: clientes/adaptadores Wompi/Nequi, formularios y cron de cobros eliminados; 16 entradas antiguas devuelven 410 sin efectos, 7 páginas muestran aviso sin instrucciones. Confirmación ADMIN solo Bre-B; métodos retirados rechazados en carret y entrega compartida. Datos/enums históricos conservados, sin migración nueva ni cambio de política.
+- No declarar cancelado en el proveedor un acuerdo histórico sin vínculo PayPal. Antes de Production inventariar pedidos/acuerdos antiguos y conciliar personalmente. Eliminar código no cancela acuerdos financieros externos.
+- 172 pruebas correctas, tipos y lint sin errores; build completo 138 páginas correcto. SELECT 1 pooled/directo correcto y pruebas reales Neon Preview de inventario/membresías con fixtures efímeras correctas, sin proveedores ni correos. El primer build sin red falló al consultar Neon; la repetición con acceso a Preview terminó correctamente.
+- Producción revalidada por API de proyecto Vercel: equipo/proyecto/repo correctos, main y despliegue activo 7b9a7ac3/dpl_4Kwyq1ERrbCFxuhYxpJBTxC7rDbc. Preview previo 4da70839/dpl_8ZkMNx8xCqpaETfkj56tp8izVguG Ready. Verificar el nuevo despliegue antes de considerarlo servido.
+- Membresía mensual/anual y cancelación requieren aún recorrido sandbox completo, con consentimientos/autorización personal de Xavier. No sustituir esa intervención mediante API ni darla por realizada por las pruebas automatizadas.

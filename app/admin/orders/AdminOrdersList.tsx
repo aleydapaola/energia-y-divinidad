@@ -201,12 +201,7 @@ export function AdminOrdersList({ initialOrders }: AdminOrdersListProps) {
 
   // Check if order can be manually confirmed
   const canConfirmManually = (order: OrderData) => {
-    return (
-      order.paymentStatus === "PENDING" &&
-      (order.paymentMethod === "BREB_MANUAL" ||
-        order.paymentMethod === "MANUAL_NEQUI" ||
-        order.paymentMethod === "MANUAL_TRANSFER")
-    );
+    return order.paymentStatus === "PENDING" && order.paymentMethod === "BREB_MANUAL";
   };
 
   return (

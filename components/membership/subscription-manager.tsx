@@ -1,21 +1,10 @@
 "use client";
 
-import {
-  CreditCard,
-  Calendar,
-  DollarSign,
-  AlertCircle,
-  CheckCircle,
-  Loader2,
-  XCircle,
-  ArrowRight,
-  ArrowUpCircle,
-  ArrowDownCircle,
-} from "lucide-react";
+import { CreditCard, Calendar, AlertCircle, CheckCircle, Loader2, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import type { MembershipTier, UserSubscription } from "@/types/membership";
+import type { UserSubscription } from "@/types/membership";
 
 interface SubscriptionManagerProps {
   subscription: UserSubscription;
@@ -26,38 +15,6 @@ export function SubscriptionManager({ subscription }: SubscriptionManagerProps) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [tiers, setTiers] = useState<MembershipTier[]>([]);
-  const [tiersLoading, setTiersLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadTiers() {
-      try {
-        const response = await fetch("/api/sanity/membership-tiers");
-        if (!response.ok) {
-          throw new Error("No se pudieron cargar los planes disponibles");
-        }
-        const data = await response.json();
-        if (mounted) {
-          setTiers(data);
-        }
-      } catch (err) {
-        console.error("Error loading membership tiers:", err);
-      } finally {
-        if (mounted) {
-          setTiersLoading(false);
-        }
-      }
-    }
-
-    loadTiers();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString("es-ES", {
       day: "numeric",
@@ -118,62 +75,8 @@ export function SubscriptionManager({ subscription }: SubscriptionManagerProps) 
     }
   };
 
-  const getPaymentMethodLabel = () => {
-    if (subscription.paymentProvider === "stripe") {
-      return `Tarjeta ···${subscription.stripeCustomerId?.slice(-4) || ""}`;
-    } else if (subscription.paymentProvider === "nequi") {
-      return `Nequi ···${subscription.nequiPhoneNumber?.slice(-4) || ""}`;
-    } else if (subscription.paymentProvider === "wompi_card") {
-      return `${subscription.wompiCardBrand || "Tarjeta"} ···${subscription.wompiCardLastFour || ""}`;
-    } else if (subscription.paymentProvider === "paypal_direct") {
-      return "PayPal";
-    }
-    return subscription.paymentProvider;
-  };
-
-  const getTierOrder = (tier: MembershipTier) => tier.tierLevel || tier.displayOrder || 0;
-
-  const currentTier = tiers.find((tier) => tier._id === subscription.membershipTierId);
-  const currentTierOrder = currentTier ? getTierOrder(currentTier) : 0;
-
-  const handleChangePlan = async (tier: MembershipTier) => {
-    if (
-      !confirm(
-        `El cambio a ${tier.name} quedará programado para el ${formatDate(subscription.currentPeriodEnd)}. Hasta entonces seguirás con ${subscription.membershipTierName}. ¿Deseas continuar?`
-      )
-    ) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const response = await fetch("/api/subscriptions/change-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tierId: tier._id }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Error al programar el cambio de plan");
-      }
-
-      setSuccess(
-        `Tu cambio a ${tier.name} quedó programado. Seguirás con ${subscription.membershipTierName} hasta el ${formatDate(subscription.currentPeriodEnd)}.`
-      );
-
-      setTimeout(() => {
-        router.refresh();
-      }, 1500);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al programar el cambio de plan");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const getPaymentMethodLabel = () =>
+    subscription.paypalSubscriptionId ? "PayPal" : "Método histórico · consultar con Aleyda";
 
   const handleCancelSubscription = async () => {
     if (
@@ -321,95 +224,16 @@ export function SubscriptionManager({ subscription }: SubscriptionManagerProps) 
         <h2 className="font-gazeta text-xl text-[#4b316c] mb-6">Gestionar Suscripción</h2>
 
         <div className="space-y-4">
-          {/* Cambiar plan */}
-          {subscription.paypalSubscriptionId ? (
-            <p className="rounded-xl border border-[#e8d5e0] bg-[#f8f0f5] p-4 text-sm">
-              Para cambiar de nivel, contacta con{" "}
-              <a href="mailto:contacto@energiaydivinidad.com" className="underline">
-                Aleyda
-              </a>
-              . No contrates otro plan mientras el actual siga vigente. La configuración del medio
-              de pago se gestiona en PayPal.
-            </p>
-          ) : (
-            <div className="rounded-xl border border-[#e8d5e0] bg-[#f8f0f5] p-4">
-              <div className="flex items-start gap-3 mb-4">
-                <DollarSign className="w-5 h-5 text-[#8A4BAF] mt-0.5" />
-                <div>
-                  <h3 className="font-dm-sans font-semibold text-[#4b316c]">Cambiar nivel</h3>
-                  <p className="font-dm-sans text-sm text-[#654177]/70">
-                    Puedes subir o bajar de nivel. El cambio se aplicará al terminar el período en
-                    vigencia.
-                  </p>
-                </div>
-              </div>
-
-              {tiersLoading ? (
-                <div className="flex items-center gap-2 text-sm text-[#654177] font-dm-sans">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Cargando planes...
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {tiers.map((tier) => {
-                    const isCurrentTier = tier._id === subscription.membershipTierId;
-                    const tierOrder = getTierOrder(tier);
-                    const isUpgrade = tierOrder > currentTierOrder;
-                    const price =
-                      subscription.currency === "USD"
-                        ? subscription.billingInterval === "YEARLY"
-                          ? tier.pricing.yearlyPriceUSD
-                          : tier.pricing.monthlyPriceUSD
-                        : subscription.billingInterval === "YEARLY"
-                          ? tier.pricing.yearlyPrice
-                          : tier.pricing.monthlyPrice;
-
-                    return (
-                      <button
-                        key={tier._id}
-                        type="button"
-                        onClick={() => handleChangePlan(tier)}
-                        disabled={isCurrentTier || loading || isCancelled}
-                        className={`w-full rounded-xl border px-4 py-3 transition-colors flex items-center gap-3 text-left ${
-                          isCurrentTier
-                            ? "bg-white border-[#8A4BAF]/30 text-[#654177] cursor-default"
-                            : "bg-white border-[#e8d5e0] hover:border-[#8A4BAF] hover:bg-white text-[#4b316c]"
-                        }`}
-                      >
-                        {isCurrentTier ? (
-                          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                        ) : isUpgrade ? (
-                          <ArrowUpCircle className="w-5 h-5 text-[#8A4BAF] flex-shrink-0" />
-                        ) : (
-                          <ArrowDownCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                        )}
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-dm-sans font-semibold">{tier.name}</span>
-                            <span className="font-dm-sans text-xs text-[#654177]/70">
-                              {price
-                                ? formatPrice(price, subscription.currency)
-                                : "Precio pendiente"}
-                            </span>
-                          </div>
-                          <p className="font-dm-sans text-xs text-[#654177]/70">
-                            {isCurrentTier
-                              ? "Plan actual"
-                              : isUpgrade
-                                ? "Subir al próximo período"
-                                : "Bajar al próximo período"}
-                          </p>
-                        </div>
-
-                        {!isCurrentTier && <ArrowRight className="w-4 h-4 text-[#8A4BAF]" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          <p className="rounded-xl border border-[#e8d5e0] bg-[#f8f0f5] p-4 text-sm">
+            Para cambiar de nivel, contacta con{" "}
+            <a href="mailto:contacto@energiaydivinidad.com" className="underline">
+              Aleyda
+            </a>
+            . No contrates otro plan mientras el actual siga vigente.
+            {subscription.paypalSubscriptionId
+              ? " La configuración del medio de pago se gestiona en PayPal."
+              : " Tu acuerdo histórico requiere revisión personal."}
+          </p>
 
           {/* Cancelar suscripción (si está activa) */}
           {!isCancelled && (
