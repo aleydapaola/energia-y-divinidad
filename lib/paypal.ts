@@ -562,6 +562,12 @@ export function getPayPalBillingPlan(id: string) {
   return getPayPalResource<PayPalBillingPlan>(`/v1/billing/plans/${encodeURIComponent(id)}`);
 }
 
+export function getPayPalWebhookDetails() {
+  return getPayPalResource<{ id: string; url: string; event_types: Array<{ name: string }> }>(
+    `/v1/notifications/webhooks/${encodeURIComponent(PAYPAL_CONFIG.webhookId)}`
+  );
+}
+
 export function getPayPalSaleDetails(id: string) {
   return getPayPalResource<PayPalSaleDetails>(`/v1/payments/sale/${encodeURIComponent(id)}`);
 }
