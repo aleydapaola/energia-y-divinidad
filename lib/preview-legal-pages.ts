@@ -1,4 +1,4 @@
-import { getPreviewTermsPage, PREVIEW_HOLDER_IDENTIFICATION } from "./preview-terms";
+import { getPreviewTermsPage, getPreviewHolderIdentification } from "./preview-terms";
 
 export type ReviewLegalSlug = "privacidad" | "cookies" | "aviso-legal";
 
@@ -33,7 +33,7 @@ const drafts: Record<ReviewLegalSlug, { title: string; paragraphs: Array<[string
       ["h2", "Pendiente antes de publicar la política definitiva"],
       [
         "normal",
-        "Completar la identificación fiscal de la responsable; revisar las autorizaciones y avisos de cada formulario, los plazos de conservación y atención de solicitudes, los contratos con proveedores y las transmisiones internacionales aplicables. Este borrador no acredita que esa revisión esté completada.",
+        "Revisar las autorizaciones y avisos de cada formulario, los plazos de conservación y atención de solicitudes, los contratos con proveedores y las transmisiones internacionales aplicables. Este borrador no acredita que esa revisión esté completada.",
       ],
     ],
   },
@@ -84,10 +84,10 @@ const drafts: Record<ReviewLegalSlug, { title: string; paragraphs: Array<[string
         "normal",
         "Los enlaces a servicios externos llevan a páginas gestionadas por sus respectivos proveedores. Antes de publicar este aviso se deben revisar las autorizaciones de uso de los materiales del sitio y las condiciones concretas de acceso y utilización que correspondan.",
       ],
-      ["h2", "Datos todavía pendientes"],
+      ["h2", "Revisión antes de publicar"],
       [
         "normal",
-        "La cédula aportada identifica a la titular, pero el NIT sigue pendiente de confirmación. Este aviso es un borrador de revisión y no sustituye esos datos ni la revisión final de las condiciones del sitio.",
+        "La identificación de la titular figura en el apartado de contacto. Este aviso sigue siendo un borrador de revisión; falta revisar y aprobar las condiciones definitivas del sitio antes de publicarlo.",
       ],
     ],
   },
@@ -105,7 +105,7 @@ export function getPreviewLegalPage(slug: ReviewLegalSlug, env = process.env) {
       "Este documento se prepara para revisar la web de pruebas. No está aprobado para Production. Los apartados pendientes deben completarse antes de utilizarlo como política definitiva.",
     ],
     ["h2", "Titular y contacto"],
-    ["normal", PREVIEW_HOLDER_IDENTIFICATION],
+    ["normal", getPreviewHolderIdentification(env)],
     ...draft.paragraphs,
   ];
   return {
@@ -113,8 +113,8 @@ export function getPreviewLegalPage(slug: ReviewLegalSlug, env = process.env) {
     title: `${draft.title} — borrador de pruebas`,
     slug: { current: slug },
     pageType: slug,
-    version: "preview-2026-10-28",
-    lastUpdated: "2026-10-28T00:00:00Z",
+    version: "preview-2026-11-01-identity",
+    lastUpdated: "2026-11-01T12:00:00Z",
     seo: {
       metaTitle: `${draft.title} de pruebas — Energía y Divinidad`,
       metaDescription: "Borrador de revisión del entorno de pruebas de Energía y Divinidad.",

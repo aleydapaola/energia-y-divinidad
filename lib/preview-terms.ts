@@ -9,9 +9,16 @@ import {
 } from "./commercial-policy";
 import { INDIVIDUAL_SESSION_POLICY, SESSION_RESCHEDULE_POLICY } from "./session-policy";
 
-export const PREVIEW_TERMS_VERSION = COMMERCIAL_POLICY_VERSION;
+export const PREVIEW_TERMS_VERSION = `${COMMERCIAL_POLICY_VERSION}-identity-2026-11-01`;
 export const PREVIEW_HOLDER_IDENTIFICATION =
-  "Proyecto: Energía y Divinidad, energiaydivinidad.com. Titular: Aleyda Paola Vargas Galvis. Cédula de ciudadanía: 53.102.423. Contacto: contacto@energiaydivinidad.com y +57 315 116 5921. Dirección de notificación: Cra 72a # 10 a 22, Bogotá, Colombia. NIT: pendiente de confirmación.";
+  "Proyecto: Energía y Divinidad, energiaydivinidad.com. Titular: Aleyda Paola Vargas Galvis. Cédula de ciudadanía: 53.102.423. Contacto: contacto@energiaydivinidad.com y +57 315 116 5921. Dirección de notificación: Cra 72a # 10 a 22, Bogotá, Colombia.";
+
+export function getPreviewHolderIdentification(
+  env: Record<string, string | undefined> = process.env
+) {
+  const nit = env.PREVIEW_LEGAL_HOLDER_NIT?.trim() || "";
+  return `${PREVIEW_HOLDER_IDENTIFICATION} NIT: ${/^\d+-\d$/.test(nit) ? nit : "pendiente de publicación"}.`;
+}
 
 /** A review draft for the isolated test environment; never a Production fallback. */
 export function getPreviewTermsPage(env: Record<string, string | undefined> = process.env) {
@@ -27,10 +34,10 @@ export function getPreviewTermsPage(env: Record<string, string | undefined> = pr
     ["h2", "Documento de revisión para pruebas"],
     [
       "normal",
-      "Este borrador se utiliza exclusivamente para las compras ficticias de este entorno. Antes de utilizarlo en compras reales, falta confirmar la identificación fiscal y aprobar la versión definitiva para publicación.",
+      "Este borrador se utiliza exclusivamente para las compras ficticias de este entorno. Antes de utilizarlo en compras reales, falta revisar y aprobar la versión definitiva para publicación.",
     ],
     ["h2", "1. Titular y contacto"],
-    ["normal", PREVIEW_HOLDER_IDENTIFICATION],
+    ["normal", getPreviewHolderIdentification(env)],
     ["h2", "2. Información de la compra y confirmación"],
     [
       "normal",
@@ -76,7 +83,7 @@ export function getPreviewTermsPage(env: Record<string, string | undefined> = pr
     slug: { current: "terminos" },
     pageType: "terms",
     version: PREVIEW_TERMS_VERSION,
-    lastUpdated: "2026-10-28T00:00:00Z",
+    lastUpdated: "2026-11-01T12:00:00Z",
     seo: {
       metaTitle: "Términos de pruebas — Energía y Divinidad",
       metaDescription:

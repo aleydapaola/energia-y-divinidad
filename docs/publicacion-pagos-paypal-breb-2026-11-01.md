@@ -57,3 +57,7 @@ La prueba personal detectó una autorización Esencia pendiente del 28/10 bloque
 - La captura del usuario detecta retorno anterior al webhook. Corrección preparada: la confirmación consulta automáticamente el estado del pedido durante un intervalo acotado y permite consultar de nuevo. Solo GET de estado, sin repetir captura ni compra. 183 pruebas, tipos y lint sin errores; compilación local completa correcta (138 páginas). Despliegue de esta última corrección pendiente de verificar.
 
 Production permanece en 7b9a7ac3/dpl_4Kwyq1ERrbCFxuhYxpJBTxC7rDbc. Siguen vigentes los requisitos de aprobación concreta, inventario histórico y configuración live anteriores.
+
+## Identificación fiscal confirmada
+
+Xavier confirma el NIT el 1/11/2026 y autoriza mostrarlo en la web, manteniéndolo fuera del repositorio público. Se configura mediante PREVIEW_LEGAL_HOLDER_NIT solo para Preview. Incorporado a los cuatro documentos legales compartidos de Preview, con fecha y versión documental actualizadas y sin cambiar las condiciones comerciales. Ya no es un dato pendiente. Los textos definitivos y su traslado selectivo al CMS Production siguen sujetos a revisión y aprobación de publicación; no se ha modificado Production.

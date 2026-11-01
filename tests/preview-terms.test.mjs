@@ -31,6 +31,7 @@ const previewEnv = {
   VERCEL_ENV: "preview",
   NEXT_PUBLIC_SANITY_DATASET: "preview",
   PREVIEW_SANITY_DATASET: "preview",
+  PREVIEW_LEGAL_HOLDER_NIT: "123456789-0", // Synthetic fixture, never a holder's real identifier.
 };
 
 test("other legal drafts remain isolated and share the confirmed holder identification", () => {
@@ -42,7 +43,7 @@ test("other legal drafts remain isolated and share the confirmed holder identifi
     const text = page.content
       .flatMap((block) => block.children.map((span) => span.text))
       .join("\n");
-    assert.ok(text.includes(draft.PREVIEW_HOLDER_IDENTIFICATION));
+    assert.ok(text.includes(draft.getPreviewHolderIdentification(previewEnv)));
     for (const env of [
       { ...previewEnv, VERCEL_ENV: "production" },
       { ...previewEnv, NEXT_PUBLIC_SANITY_DATASET: "production" },
@@ -84,7 +85,7 @@ test("terms draft is available only for isolated Preview/local contents and neve
   const text = page.content.flatMap((block) => block.children.map((span) => span.text)).join("\n");
   assert.match(text, /Aleyda Paola Vargas Galvis/);
   assert.ok(text.includes("Cédula de ciudadanía: 53.102.423."));
-  assert.match(text, /NIT: pendiente de confirmación/);
+  assert.ok(text.includes(`NIT: ${previewEnv.PREVIEW_LEGAL_HOLDER_NIT}.`));
   assert.match(text, /exclusivamente a las sesiones individuales/);
   for (const key of [
     "COURSE_REFUND_POLICY",
