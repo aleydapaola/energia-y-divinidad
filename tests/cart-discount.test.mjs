@@ -182,3 +182,59 @@ test("cart displays validation failures without applying an invalid discount", a
     globalThis.fetch = savedFetch;
   }
 });
+
+test("checkout uses the validated cart currency for item price, discount, total and payment button", () => {
+  const { renderToStaticMarkup } = require("react-dom/server");
+  const { formatPrice } = load("lib/stores/cart-store.ts", {});
+  for (const [currency, method, discountAmount, total] of [
+    ["COP", null, 13000, 117000],
+    ["USD", null, 4, 36],
+    ["COP", "breb_manual", 13000, 117000],
+    ["USD", "paypal_direct", 4, 36],
+    ["COP", null, 130000, 0],
+    ["USD", null, 40, 0],
+  ]) {
+    const states = [null, method, false, null, true];
+    let index = 0;
+    const subtotal = currency === "COP" ? 130000 : 40;
+    const store = { items: [{ id: "qa-course", title: "QA course", price: 130000, priceUSD: 40 }] };
+    const { AcademiaCheckoutClient } = load("app/academia/checkout/AcademiaCheckoutClient.tsx", {
+      react: { useState: () => [states[index++], () => {}], useEffect: () => {} },
+      "next/navigation": { useRouter: () => ({ push: () => {} }) },
+      "next-auth/react": { useSession: () => ({ data: null, status: "unauthenticated" }) },
+      "next/image": { default: () => null },
+      "next/link": { default: () => null },
+      "@/components/cart": { DiscountCodeInput: () => null },
+      "@/components/checkout/CheckoutHeader": { CheckoutHeader: () => null },
+      "@/components/checkout/PurchasePolicy": { PurchasePolicy: () => null },
+      "@/lib/purchase-methods": { purchaseMethods: () => [] },
+      "@/sanity/lib/image": {},
+      "@/lib/stores/cart-store": {
+        useCartStore: (selector) => selector(store),
+        useCartSummary: () => ({
+          discountAmount,
+          currency,
+          isEmpty: false,
+          isFree: total === 0,
+          discount: { code: "QA-DISCOUNT" },
+        }),
+        formatPrice,
+      },
+    });
+    const tree = AcademiaCheckoutClient();
+    const itemPrice = nodes(tree).find(
+      (n) => n.type === "p" && n.props.className?.includes("mt-1")
+    );
+    assert.equal(itemPrice.props.children, formatPrice(subtotal, currency));
+    const html = renderToStaticMarkup(tree);
+    assert.ok(html.includes("-" + formatPrice(discountAmount, currency)));
+    const button = nodes(tree).find(
+      (n) => n.type === "button" && n.props.onClick?.name === "handleCheckout"
+    );
+    assert.equal(
+      button.props.children,
+      total === 0 ? "Obtener Gratis" : "Pagar " + formatPrice(total, currency)
+    );
+    assert.equal(button.props.disabled, total !== 0 && method === null);
+  }
+});

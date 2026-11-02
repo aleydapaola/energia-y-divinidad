@@ -210,8 +210,8 @@ export function AcademiaCheckoutClient() {
   const pricesCOP = items.reduce((sum, item) => sum + item.price, 0);
   const pricesUSD = items.reduce((sum, item) => sum + (item.priceUSD || 0), 0);
 
-  const displayPrice = selectedMethod !== "breb_manual" ? pricesUSD : pricesCOP;
-  const displayCurrency = selectedMethod !== "breb_manual" ? "USD" : "COP";
+  const displayPrice = currency === "COP" ? pricesCOP : pricesUSD;
+  const displayCurrency = currency;
 
   // Loading / Hydration
   if (!mounted || status === "loading") {
@@ -289,10 +289,7 @@ export function AcademiaCheckoutClient() {
                           {item.title}
                         </h3>
                         <p className="text-[#4944a4] font-dm-sans font-semibold text-sm mt-1">
-                          {formatPrice(
-                            selectedMethod !== "breb_manual" ? item.priceUSD : item.price,
-                            selectedMethod !== "breb_manual" ? "USD" : "COP"
-                          )}
+                          {formatPrice(currency === "COP" ? item.price : item.priceUSD, currency)}
                         </p>
                       </div>
 
