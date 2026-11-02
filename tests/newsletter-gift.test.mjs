@@ -5,8 +5,6 @@ import { createRequire, Module } from "node:module";
 import path from "node:path";
 import { test } from "node:test";
 
-import { EYD_EMAIL_LOGO, renderNewsletterGiftEmail } from "../lib/newsletter-gift-email.ts";
-
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
 const root = new URL("../", import.meta.url).pathname;
@@ -37,6 +35,7 @@ const {
   validNewsletterGiftUrl,
   verifyNewsletterSignature,
 } = loadPure("lib/newsletter-gift-config.ts");
+const { EYD_EMAIL_LOGO, renderNewsletterGiftEmail } = loadPure("lib/newsletter-gift-email.ts");
 const secret = "synthetic-signing-secret-".padEnd(48, "x");
 const listId = "1234567890";
 const originalListId = "abcdef0123";
@@ -415,8 +414,17 @@ test("concurrent confirmed events produce one durable message, one delivery and 
     assert.match(payload.html, /#f8f0f5/);
     assert.match(payload.html, /#8A4BAF/);
     assert.match(payload.html, /Segoe UI/);
-    assert.ok(payload.html.includes(giftUrl));
-    assert.ok(payload.text.includes(giftUrl));
+    assert.ok(
+      payload.html.includes(
+        "https://preview.energiaydivinidad.com/regalo/meditacion-angel-de-la-guarda"
+      )
+    );
+    assert.ok(
+      payload.text.includes(
+        "https://preview.energiaydivinidad.com/regalo/meditacion-angel-de-la-guarda"
+      )
+    );
+    assert.equal(payload.html.includes(giftUrl), false);
     assert.match(payload.html, /EYD &lt;script&gt;/);
     assert.doesNotMatch(payload.html, /<script>/);
     assert.doesNotMatch(payload.html, /\*\|UNSUB\|\*|\{\{EYD/);
@@ -492,7 +500,6 @@ test("readiness is ADMIN-only and verifies signed subscribe-only hooks without l
 
 test("renderer uses real unsubscribe links, escaped footer content and a plain-text alternative", () => {
   const output = renderNewsletterGiftEmail({
-    giftUrl,
     unsubscribeUrl: "https://eyd.us2.list-manage.com/unsubscribe?u=test&id=test",
     postalAddress: 'Test <address> & "company"',
     appUrl: "https://preview.energiaydivinidad.com",

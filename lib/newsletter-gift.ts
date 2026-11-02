@@ -190,7 +190,6 @@ export async function processNewsletterGift(event: NewsletterSubscribeEvent) {
 
   const id = newsletterGiftLogId(event.listId, event.email);
   const content = renderNewsletterGiftEmail({
-    giftUrl: config.giftUrl,
     unsubscribeUrl: audience.unsubscribeUrl,
     postalAddress: audience.postalAddress,
     appUrl: config.appUrl,

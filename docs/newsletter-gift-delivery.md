@@ -9,6 +9,15 @@ colores morados y firma de Aleyda. Incluye descarga de la meditación, alternati
 de texto, dirección de la audiencia y enlace oficial de baja. El audio se aloja
 fuera de Git y de los despliegues; es accesible para quien tenga el enlace.
 
+El botón abre `/regalo/meditacion-angel-de-la-guarda`, con reproductor nativo y
+descarga separada. `/api/newsletter/meditacion` transmite exclusivamente el audio
+configurado, con MIME de audio, rangos para avanzar/retroceder y disposición
+attachment cuando `download=1`. No admite una URL del usuario ni redirecciones
+del proveedor. La respuesta se transmite sin cargar el audio completo en memoria.
+La página no se incluye en buscadores; el enlace puede compartirse y no es DRM.
+Los mensajes ya enviados conservan su enlace original: no se reescriben registros
+SENT ni se repite automáticamente el regalo para corregirlos.
+
 ## Configuración separada
 
 Production usa `NEWSLETTER_GIFT_ENABLED`, `NEWSLETTER_GIFT_URL` y
@@ -43,9 +52,12 @@ correo simulados. No equivale a una entrega completa del proveedor.
 `/api/admin/newsletter/health` comprueba configuración, audiencia y webhook con
 acceso ADMIN. Devuelve solo estados, sin credenciales, miembros o URLs privadas.
 
-Falta completar la conexión firmada de la audiencia de pruebas, la confirmación
-personal del contacto QA y la recepción real del correo con descarga. Solo tras
-esa comprobación se debe pedir aprobación de la versión concreta para Production.
+La conexión firmada de la audiencia de pruebas y la confirmación personal QA ya
+generaron un solo registro SENT y un mensaje recibido en Proton con logo correcto.
+El enlace directo de Mailchimp abrió una pestaña en blanco en Brave: aunque los
+bytes descargados por HTTP coinciden, eso no valida la descarga desde el correo.
+Falta comprobar en Preview el nuevo reproductor, avance y descarga reales. Solo
+tras esa comprobación se debe pedir aprobación de la versión concreta para Production.
 Las autorizaciones previas de pagos y descuentos no publican esta función.
 
 Referencias: [webhooks de Mailchimp](https://mailchimp.com/developer/marketing/api-concepts/webhooks)
