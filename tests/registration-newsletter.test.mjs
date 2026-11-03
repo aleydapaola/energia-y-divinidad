@@ -356,7 +356,7 @@ function workerHarness({
         if (state.failGift) {
           throw Error("outage");
         }
-        return "sent";
+        return state.giftOutcome || "sent";
       },
     },
   });
@@ -541,4 +541,20 @@ test("newsletter ADMIN diagnostics and processing reject anonymous and non-admin
       assert.equal((await route.GET()).status, session ? 403 : 401);
       assert.equal((await route.POST(request())).status, session ? 403 : 401);
     }
+  }));
+
+test("a temporarily invisible website tag retries delivery instead of inventing a prior unsubscribe", () =>
+  environment(async () => {
+    const { service, state } = workerHarness();
+    state.giftOutcome = "ignored";
+    await service.processRegistrationNewsletter("test-user");
+    assert.equal(state.record.status, "RETRY");
+    assert.equal(state.memberStatus, "subscribed");
+    state.giftOutcome = "sent";
+    await service.processRegistrationNewsletter("test-user");
+    assert.equal(state.record.status, "ACTIVE");
+    assert.equal(
+      state.calls.filter((c) => c.url.endsWith("/members") && c.method === "POST").length,
+      1
+    );
   }));

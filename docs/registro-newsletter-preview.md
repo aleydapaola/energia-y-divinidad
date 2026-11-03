@@ -51,7 +51,7 @@ No migra usuarios anteriores ni cambia permisos de marketing de otros sistemas.
 
 ## Verificaciones y estado
 
-- Suite automática: 232 pruebas, tipos correctos y lint sin errores (avisos
+- Suite automática: 233 pruebas, tipos correctos y lint sin errores (avisos
   documentados en los archivos existentes y expresiones de estados).
 - Prueba real en Neon Preview: 12 peticiones concurrentes, cinco admitidas y siete
   rechazadas; ocho reclamaciones del mismo trabajo, una única concesión. Sin llamadas

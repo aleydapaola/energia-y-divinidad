@@ -162,15 +162,15 @@ export async function processRegistrationNewsletter(userId: string) {
       listId: config.listId,
       memberId: member.unique_email_id,
     });
+    if (delivered === "ignored") {
+      // A just-added tag may not be visible yet. Re-read the member on retry;
+      // a skipped gift alone does not prove an unsubscribe.
+      throw Error("Member refresh required");
+    }
     await prisma.registrationNewsletter.update({
       where: { userId },
       data: {
-        status:
-          delivered === "review-required"
-            ? "REVIEW_REQUIRED"
-            : delivered === "ignored"
-              ? "RESUBSCRIBE_REQUIRED"
-              : "ACTIVE",
+        status: delivered === "review-required" ? "REVIEW_REQUIRED" : "ACTIVE",
         leaseUntil: null,
         lastError: null,
       },
