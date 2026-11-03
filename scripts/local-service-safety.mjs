@@ -21,6 +21,11 @@ const disabledCredentials = [
 ];
 
 export function assertLocalServiceSafety(env) {
+  if (env.TURNSTILE_SECRET_KEY && !/^[123]x0{10,}/.test(env.TURNSTILE_SECRET_KEY)) {
+    throw new Error(
+      "El perfil local solo admite las claves oficiales de prueba de TURNSTILE_SECRET_KEY. Usa Vercel Preview para comprobar el widget real."
+    );
+  }
   if (
     env.NEXT_PUBLIC_SANITY_PROJECT_ID !== "81jpalr2" ||
     env.NEXT_PUBLIC_SANITY_DATASET !== "preview" ||

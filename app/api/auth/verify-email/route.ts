@@ -1,102 +1,78 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-import { sendWelcomeEmail } from '@/lib/email';
-import { prisma } from '@/lib/prisma';
+import { sendWelcomeEmail } from "@/lib/email";
+import { prisma } from "@/lib/prisma";
+import { consumeFormLimit, publicFormIP, publicFormError } from "@/lib/public-form-security";
+import {
+  processRegistrationNewsletter,
+  registrationNewsletterStatus,
+} from "@/lib/registration-newsletter";
+
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const token = searchParams.get('token');
-
-    if (!token) {
+    const token = request.nextUrl.searchParams.get("token");
+    if (!token || !/^[a-f0-9]{64}$/.test(token)) {
+      return NextResponse.json({ error: "Enlace de verificación inválido." }, { status: 400 });
+    }
+    await consumeFormLimit("verify-email", publicFormIP(request), 30, 900_000);
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`verify-email:${token}`}))`;
+      const verification = await tx.verificationToken.findUnique({ where: { token } });
+      if (!verification || verification.expires < new Date()) {
+        return null;
+      }
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`verify-account:${verification.identifier}`}))`;
+      const user = await tx.user.findUnique({ where: { email: verification.identifier } });
+      if (!user) {
+        return null;
+      }
+      const alreadyVerified = !!user.emailVerified;
+      const now = new Date();
+      if (!alreadyVerified) {
+        await tx.user.update({ where: { id: user.id }, data: { emailVerified: now } });
+        await tx.registrationNewsletter.updateMany({
+          where: { userId: user.id, status: "AWAITING_EMAIL" },
+          data: { verifiedAt: now, status: "READY", nextAttemptAt: now },
+        });
+      }
+      await tx.verificationToken.deleteMany({ where: { identifier: user.email } });
+      return { user, alreadyVerified };
+    });
+    if (!result) {
       return NextResponse.json(
-        { error: 'Token de verificación requerido' },
+        {
+          error:
+            "El enlace ha caducado o ya se ha utilizado. Si ya verificaste tu cuenta, puedes iniciar sesión.",
+        },
         { status: 400 }
       );
     }
-
-    // Buscar el token de verificación
-    const verificationToken = await prisma.verificationToken.findUnique({
-      where: { token },
-    });
-
-    if (!verificationToken) {
-      return NextResponse.json(
-        { error: 'Token de verificación inválido o ya utilizado' },
-        { status: 400 }
-      );
+    if (!result.alreadyVerified) {
+      try {
+        await sendWelcomeEmail({ email: result.user.email, name: result.user.name || "Usuario" });
+      } catch {
+        /* Account activation succeeds independently of welcome delivery. */
+      }
     }
-
-    // Verificar si el token ha expirado
-    if (new Date() > verificationToken.expires) {
-      // Eliminar token expirado
-      await prisma.verificationToken.delete({
-        where: { token },
-      });
-
-      return NextResponse.json(
-        { error: 'El enlace de verificación ha expirado. Por favor solicita uno nuevo.' },
-        { status: 400 }
-      );
-    }
-
-    // Buscar el usuario
-    const user = await prisma.user.findUnique({
-      where: { email: verificationToken.identifier },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Usuario no encontrado' },
-        { status: 404 }
-      );
-    }
-
-    // Verificar si ya está verificado
-    if (user.emailVerified) {
-      // Eliminar token usado
-      await prisma.verificationToken.delete({
-        where: { token },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: 'Tu email ya estaba verificado',
-        alreadyVerified: true,
-      });
-    }
-
-    // Actualizar usuario como verificado
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { emailVerified: new Date() },
-    });
-
-    // Eliminar token usado
-    await prisma.verificationToken.delete({
-      where: { token },
-    });
-
-    // Enviar email de bienvenida
     try {
-      await sendWelcomeEmail({
-        email: user.email,
-        name: user.name || 'Usuario',
-      });
-    } catch (emailError) {
-      console.error('Error enviando email de bienvenida:', emailError);
-      // No fallamos si el email de bienvenida no se envía
+      await processRegistrationNewsletter(result.user.id);
+    } catch {
+      /* Durable work can retry. */
     }
-
+    let newsletter;
+    try {
+      newsletter = await registrationNewsletterStatus(result.user.id);
+    } catch {
+      /* Do not fail account verification. */
+    }
     return NextResponse.json({
       success: true,
-      message: '¡Tu email ha sido verificado exitosamente! Ya puedes iniciar sesión.',
+      message: "¡Tu email ha sido verificado! Ya puedes iniciar sesión.",
+      ...(newsletter ? { newsletter } : {}),
     });
   } catch (error) {
-    console.error('Error verificando email:', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    );
+    return publicFormError(error);
   }
 }

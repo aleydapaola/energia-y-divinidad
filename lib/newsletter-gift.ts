@@ -6,6 +6,7 @@ import { deliverEmail, previewEmailRecipient } from "./email-delivery";
 import { newsletterGiftConfiguration, NEWSLETTER_GIFT_VERSION } from "./newsletter-gift-config";
 import { NEWSLETTER_GIFT_SUBJECT, renderNewsletterGiftEmail } from "./newsletter-gift-email";
 import { prisma } from "./prisma";
+import { REGISTRATION_NEWSLETTER_VERSION } from "./registration-newsletter-copy";
 
 const email = z
   .string()
@@ -135,7 +136,37 @@ type Snapshot = {
 };
 
 /** Read confirmation from Mailchimp; this function never changes a contact or an unsubscribe. */
-export async function processNewsletterGift(event: NewsletterSubscribeEvent) {
+export function processNewsletterGift(event: NewsletterSubscribeEvent) {
+  return deliverNewsletterGift(event, false);
+}
+
+/** Internal entry: registration's own verified consent replaces Mailchimp's opt-in timestamp. */
+export async function processRegistrationNewsletterGift(
+  userId: string,
+  event: NewsletterSubscribeEvent
+) {
+  const record = await prisma.registrationNewsletter.findUnique({
+    where: { userId },
+    include: { user: { select: { email: true, emailVerified: true } } },
+  });
+  if (
+    !record?.verifiedAt ||
+    !record.activatedAt ||
+    !record.user.emailVerified ||
+    record.source !== "registration" ||
+    record.consentVersion !== REGISTRATION_NEWSLETTER_VERSION ||
+    record.user.email !== event.email ||
+    record.listId !== event.listId
+  ) {
+    throw Error("Registration newsletter consent unavailable");
+  }
+  return deliverNewsletterGift(event, true);
+}
+
+async function deliverNewsletterGift(
+  event: NewsletterSubscribeEvent,
+  registrationVerified: boolean
+) {
   const config = newsletterGiftConfiguration();
   if (!config.ready || !config.giftUrl) {
     throw Error("Newsletter unavailable");
@@ -182,8 +213,7 @@ export async function processNewsletterGift(event: NewsletterSubscribeEvent) {
   if (
     member.status !== "subscribed" ||
     !member.tags.some((t) => t.name === "website") ||
-    !Number.isFinite(opted) ||
-    opted > Date.now() + 300000
+    (!registrationVerified && (!Number.isFinite(opted) || opted > Date.now() + 300000))
   ) {
     return "ignored";
   }

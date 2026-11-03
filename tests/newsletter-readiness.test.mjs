@@ -12,6 +12,13 @@ function load() {
   const filename = new URL("../app/api/newsletter/route.ts", import.meta.url).pathname;
   const mod = new Module(filename);
   mod.require = (name) => {
+    if (name === "@/lib/public-form-security") {
+      return {
+        consumeFormLimit: async () => {},
+        publicFormIP: () => "local",
+        PublicFormError: class extends Error {},
+      };
+    }
     if (name === "@/lib/email-delivery") {
       return { previewEmailRecipient: () => "allowed@example.com" };
     }

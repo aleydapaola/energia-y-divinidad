@@ -2,6 +2,8 @@
 
 ## Regles permanents per als agents
 
+- Instrucció permanent de Xavier (03/11/2026): cada modificació nova de la web ha de funcionar i verificar-se a Preview abans de publicar-se a Production. Facilitar la versió concreta, l'enllaç i les proves; l'aprovació d'un pla no autoritza publicar a Production.
+
 - Fer els canvis d'aplicació a `preview` o en una branca de treball que parteixi de la base verificada de preview. Abans d'editar, comprovar la branca i els canvis pendents.
 - Reservar `main` per al codi aprovat de producció. Cal l'aprovació explícita de l'usuari sobre la versió concreta abans d'integrar o publicar a producció. Una petició de canvi ordinària autoritza preparar i provar la preview, però no publicar a producció.
 - Facilitar l'enllaç de preview i explicar quines comprovacions s'han fet i quines funcionalitats no s'han pogut provar abans de demanar l'aprovació.

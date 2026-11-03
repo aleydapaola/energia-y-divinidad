@@ -1,82 +1,59 @@
-import { randomBytes } from "crypto";
+import { randomBytes } from "node:crypto";
 
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
 import { sendVerificationEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
+import {
+  limitVerificationEmail,
+  protectPublicForm,
+  publicFormError,
+} from "@/lib/public-form-security";
+
+export const maxDuration = 30;
+const message = "Si la cuenta necesita verificación, recibirás un enlace por correo.";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { email } = body;
-
-    if (!email) {
-      return NextResponse.json({ error: "Email es requerido" }, { status: 400 });
+    const input = await request.json().catch(() => null);
+    const parsed = z.string().trim().email().max(254).safeParse(input?.email);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Email inválido" }, { status: 400 });
     }
-
-    // Buscar el usuario
+    await protectPublicForm(request, input, "resend-verification");
+    const email = parsed.data.toLowerCase();
+    await limitVerificationEmail(email);
     const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email },
+      include: { registrationNewsletter: { select: { consentAt: true } } },
     });
-
-    if (!user) {
-      // Por seguridad, no revelamos si el email existe o no
-      return NextResponse.json({
-        success: true,
-        message: "Si el email existe, se enviará un nuevo enlace de verificación",
-      });
+    if (!user || user.emailVerified) {
+      return NextResponse.json({ success: true, message });
     }
-
-    // Verificar si ya está verificado
-    if (user.emailVerified) {
-      return NextResponse.json({ error: "Este email ya está verificado" }, { status: 400 });
-    }
-
-    // Generar nuevo token de verificación
-    const verificationToken = randomBytes(32).toString("hex");
-    const tokenExpiry = new Date();
-    tokenExpiry.setHours(tokenExpiry.getHours() + 24); // Expira en 24 horas
-
+    const token = randomBytes(32).toString("hex");
+    await prisma.verificationToken.create({
+      data: { identifier: email, token, expires: new Date(Date.now() + 86_400_000) },
+    });
     try {
-      await prisma.verificationToken.create({
-        data: {
-          identifier: user.email,
-          token: verificationToken,
-          expires: tokenExpiry,
-        },
-      });
-
       await sendVerificationEmail({
-        email: user.email,
+        email,
         name: user.name || "Usuario",
-        token: verificationToken,
+        token,
+        newsletterOptIn: !!user.registrationNewsletter,
       });
-
-      await prisma.verificationToken.deleteMany({
-        where: {
-          identifier: user.email,
-          token: { not: verificationToken },
-        },
-      });
-    } catch (emailError) {
-      console.error("Error enviando email de verificación:", emailError);
-
-      await prisma.verificationToken.deleteMany({
-        where: { token: verificationToken },
-      });
-
+    } catch {
+      await prisma.verificationToken.deleteMany({ where: { token } });
       return NextResponse.json(
-        { error: "Error al enviar el email. Por favor intenta de nuevo." },
-        { status: 500 }
+        { error: "No se pudo enviar el enlace. Inténtalo más tarde." },
+        { status: 502 }
       );
     }
-
-    return NextResponse.json({
-      success: true,
-      message: "Se ha enviado un nuevo enlace de verificación a tu email",
+    await prisma.verificationToken.deleteMany({
+      where: { identifier: email, token: { not: token } },
     });
+    return NextResponse.json({ success: true, message });
   } catch (error) {
-    console.error("Error reenviando verificación:", error);
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    return publicFormError(error);
   }
 }

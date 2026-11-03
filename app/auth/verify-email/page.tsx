@@ -1,92 +1,99 @@
-"use client"
+"use client";
 
-import { Loader2, Mail, CheckCircle, XCircle } from "lucide-react"
-import Link from "next/link"
-import { useSearchParams } from "next/navigation"
-import { Suspense, useState, useEffect } from "react"
+import { Loader2, Mail, CheckCircle, XCircle } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState, useEffect, useRef } from "react";
+
+import { TurnstileCheck, WebsiteTrap } from "@/components/auth/TurnstileCheck";
 
 function VerifyEmailContent() {
-  const searchParams = useSearchParams()
-  const email = searchParams.get("email")
-  const token = searchParams.get("token")
-  const shouldResend = searchParams.get("resend") === "true"
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email");
+  const token = searchParams.get("token");
+  const shouldResend = searchParams.get("resend") === "true";
 
-  const [isLoading, setIsLoading] = useState(false)
-  const [isResending, setIsResending] = useState(false)
-  const [verificationStatus, setVerificationStatus] = useState<"pending" | "success" | "error">("pending")
-  const [message, setMessage] = useState("")
-  const [resendCooldown, setResendCooldown] = useState(0)
-  const [hasAutoResent, setHasAutoResent] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<"pending" | "success" | "error">(
+    "pending"
+  );
+  const [message, setMessage] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [securityReset, setSecurityReset] = useState(0);
+  const [website, setWebsite] = useState("");
+  const verifiedToken = useRef<string | null>(null);
+  const [newsletter, setNewsletter] = useState<{ status: string; signupUrl?: string } | null>(null);
 
   const verifyEmail = async (verificationToken: string) => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const response = await fetch(`/api/auth/verify-email?token=${verificationToken}`)
-      const data = await response.json()
+      const response = await fetch(`/api/auth/verify-email?token=${verificationToken}`);
+      const data = await response.json();
 
       if (response.ok) {
-        setVerificationStatus("success")
-        setMessage(data.message || "Tu email ha sido verificado exitosamente")
+        setVerificationStatus("success");
+        setNewsletter(data.newsletter || null);
+        setMessage(data.message || "Tu email ha sido verificado exitosamente");
       } else {
-        setVerificationStatus("error")
-        setMessage(data.error || "Error al verificar el email")
+        setVerificationStatus("error");
+        setMessage(data.error || "Error al verificar el email");
       }
-    } catch (error) {
-      setVerificationStatus("error")
-      setMessage("Error de conexión. Por favor intenta de nuevo.")
+    } catch {
+      setVerificationStatus("error");
+      setMessage("Error de conexión. Por favor intenta de nuevo.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleResendEmail = async () => {
-    if (!email || resendCooldown > 0) {return}
+    if (!email || resendCooldown > 0 || !turnstileToken) {
+      return;
+    }
 
-    setIsResending(true)
+    setIsResending(true);
     try {
       const response = await fetch("/api/auth/resend-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      })
+        body: JSON.stringify({ email, turnstileToken, website }),
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (response.ok) {
-        setMessage("Se ha enviado un nuevo email de verificación")
-        setResendCooldown(60) // 60 segundos de cooldown
+        setMessage("Se ha enviado un nuevo email de verificación");
+        setResendCooldown(60); // 60 segundos de cooldown
       } else {
-        setMessage(data.error || "Error al reenviar el email")
+        setMessage(data.error || "Error al reenviar el email");
       }
-    } catch (error) {
-      setMessage("Error de conexión. Por favor intenta de nuevo.")
+    } catch {
+      setMessage("Error de conexión. Por favor intenta de nuevo.");
     } finally {
-      setIsResending(false)
+      setIsResending(false);
+      setSecurityReset((value) => value + 1);
     }
-  }
+  };
 
   // Si hay token, verificar automáticamente
   useEffect(() => {
-    if (token) {
-      verifyEmail(token)
+    if (token && verifiedToken.current !== token) {
+      verifiedToken.current = token;
+      verifyEmail(token);
     }
-  }, [token])
+  }, [token]);
 
-  // Si viene con resend=true, enviar automáticamente
-  useEffect(() => {
-    if (shouldResend && email && !hasAutoResent && !token) {
-      setHasAutoResent(true)
-      handleResendEmail()
-    }
-  }, [shouldResend, email, hasAutoResent, token])
+  // Resends require a fresh human check; URL parameters never send email automatically.
 
   // Cooldown para reenviar email
   useEffect(() => {
     if (resendCooldown > 0) {
-      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000)
-      return () => clearTimeout(timer)
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
     }
-  }, [resendCooldown])
+  }, [resendCooldown]);
 
   // Si hay token, mostrar estado de verificación
   if (token) {
@@ -95,19 +102,35 @@ function VerifyEmailContent() {
         {isLoading ? (
           <div className="text-center py-8">
             <Loader2 className="w-12 h-12 animate-spin text-[#8A4BAF] mx-auto mb-4" />
-            <p className="text-[#654177] font-dm-sans">
-              Verificando tu email...
-            </p>
+            <p className="text-[#654177] font-dm-sans">Verificando tu email...</p>
           </div>
         ) : verificationStatus === "success" ? (
           <div className="text-center py-8">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="font-gazeta text-2xl text-[#654177] mb-4">
-              ¡Email Verificado!
-            </h2>
-            <p className="text-gray-600 font-dm-sans mb-6">
-              {message}
-            </p>
+            <h2 className="font-gazeta text-2xl text-[#654177] mb-4">¡Email Verificado!</h2>
+            <p className="text-gray-600 font-dm-sans mb-6">{message}</p>
+            {newsletter && (
+              <div
+                className="mb-6 rounded-lg bg-[#f8f0f5] p-4 text-sm text-[#654177]"
+                role="status"
+              >
+                {newsletter.status === "subscribed"
+                  ? "Tu suscripción a la newsletter está activa. El regalo de bienvenida se entrega por correo una sola vez."
+                  : newsletter.status === "resubscribe_required"
+                    ? "Tu cuenta está activa. Para la newsletter, completa tu reinscripción desde el formulario oficial."
+                    : "Tu cuenta está activa. Estamos gestionando tu suscripción y regalo; no necesitas confirmar otro correo."}
+                {newsletter.signupUrl && (
+                  <a
+                    href={newsletter.signupUrl}
+                    className="mt-2 block underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Volver a suscribirme
+                  </a>
+                )}
+              </div>
+            )}
             <Link
               href="/auth/signin"
               className="inline-block bg-[#4944a4] text-white px-8 py-3 rounded-lg font-dm-sans font-semibold hover:bg-[#3d3a8a] transition-colors"
@@ -118,12 +141,8 @@ function VerifyEmailContent() {
         ) : (
           <div className="text-center py-8">
             <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="font-gazeta text-2xl text-[#654177] mb-4">
-              Error de Verificación
-            </h2>
-            <p className="text-gray-600 font-dm-sans mb-6">
-              {message}
-            </p>
+            <h2 className="font-gazeta text-2xl text-[#654177] mb-4">Error de Verificación</h2>
+            <p className="text-gray-600 font-dm-sans mb-6">{message}</p>
             <Link
               href="/auth/signup"
               className="inline-block bg-[#4944a4] text-white px-8 py-3 rounded-lg font-dm-sans font-semibold hover:bg-[#3d3a8a] transition-colors"
@@ -133,7 +152,7 @@ function VerifyEmailContent() {
           </div>
         )}
       </div>
-    )
+    );
   }
 
   // Si no hay token, mostrar página de "revisa tu email"
@@ -144,23 +163,17 @@ function VerifyEmailContent() {
           <Mail className="w-10 h-10 text-[#8A4BAF]" />
         </div>
 
-        <h2 className="font-gazeta text-2xl text-[#654177] mb-4">
-          Verifica tu Email
-        </h2>
+        <h2 className="font-gazeta text-2xl text-[#654177] mb-4">Verifica tu Email</h2>
 
         <p className="text-gray-600 font-dm-sans mb-2">
           Hemos enviado un enlace de verificación a:
         </p>
 
-        {email && (
-          <p className="text-[#8A4BAF] font-semibold font-dm-sans mb-6">
-            {email}
-          </p>
-        )}
+        {email && <p className="text-[#8A4BAF] font-semibold font-dm-sans mb-6">{email}</p>}
 
         <p className="text-sm text-gray-500 font-dm-sans mb-6">
-          Haz clic en el enlace del email para activar tu cuenta.
-          Si no encuentras el email, revisa tu carpeta de spam.
+          Haz clic en el enlace del email para activar tu cuenta. Si no encuentras el email, revisa
+          tu carpeta de spam.
         </p>
 
         {message && (
@@ -170,9 +183,20 @@ function VerifyEmailContent() {
         )}
 
         <div className="space-y-4">
+          {shouldResend && (
+            <p className="text-sm text-gray-600">
+              Completa la comprobación de seguridad para solicitar otro enlace.
+            </p>
+          )}
+          <WebsiteTrap value={website} onChange={setWebsite} />
+          <TurnstileCheck
+            action="resend-verification"
+            onToken={setTurnstileToken}
+            resetKey={securityReset}
+          />
           <button
             onClick={handleResendEmail}
-            disabled={isResending || resendCooldown > 0 || !email}
+            disabled={isResending || resendCooldown > 0 || !email || !turnstileToken}
             className="w-full bg-[#4944a4] text-white py-3 rounded-lg font-dm-sans font-semibold hover:bg-[#3d3a8a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isResending ? (
@@ -196,7 +220,7 @@ function VerifyEmailContent() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function VerifyEmailLoading() {
@@ -204,12 +228,10 @@ function VerifyEmailLoading() {
     <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6 border border-[#8A4BAF]/10">
       <div className="text-center py-8">
         <Loader2 className="w-12 h-12 animate-spin text-[#8A4BAF] mx-auto mb-4" />
-        <p className="text-[#654177] font-dm-sans">
-          Cargando...
-        </p>
+        <p className="text-[#654177] font-dm-sans">Cargando...</p>
       </div>
     </div>
-  )
+  );
 }
 
 export default function VerifyEmailPage() {
@@ -218,9 +240,7 @@ export default function VerifyEmailPage() {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-block">
-            <h1 className="font-rightland text-4xl text-[#8A4BAF] mb-2">
-              Energía y Divinidad
-            </h1>
+            <h1 className="font-rightland text-4xl text-[#8A4BAF] mb-2">Energía y Divinidad</h1>
           </Link>
         </div>
 
@@ -230,14 +250,11 @@ export default function VerifyEmailPage() {
 
         <p className="text-center text-sm text-gray-500 font-dm-sans">
           ¿Problemas? Contáctanos en{" "}
-          <a
-            href="mailto:hola@energiaydivinidad.com"
-            className="text-[#8A4BAF] hover:underline"
-          >
+          <a href="mailto:hola@energiaydivinidad.com" className="text-[#8A4BAF] hover:underline">
             hola@energiaydivinidad.com
           </a>
         </p>
       </div>
     </div>
-  )
+  );
 }

@@ -35,6 +35,49 @@ export default async function PrivacidadPage() {
             lastUpdated={page.lastUpdated}
             version={page.version}
           />
+          <section className="mx-auto mt-8 max-w-4xl space-y-4 rounded-xl bg-white p-6 sm:p-8 text-gray-700">
+            <h2 className="text-xl font-semibold text-[#654177]">
+              Newsletter y protección del registro
+            </h2>
+            <p>
+              Crear una cuenta no obliga a suscribirse a la newsletter. Si marcas voluntariamente la
+              casilla de novedades y regalo, guardamos la fecha, el origen y el texto de tu
+              autorización. La suscripción se activa al verificar el correo de tu cuenta, sin una
+              segunda confirmación de newsletter. El formulario independiente de newsletter mantiene
+              su confirmación por correo.
+            </p>
+            <p>
+              Utilizamos Mailchimp para gestionar las suscripciones y Resend para entregar el regalo
+              de bienvenida. Puedes retirar tu autorización mediante el enlace de baja de los
+              correos sin perder el acceso a tu cuenta ni a tus compras. Las bajas anteriores se
+              conservan y requieren reinscripción voluntaria.
+            </p>
+            <p>
+              Para reducir registros y correos automatizados utilizamos Cloudflare Turnstile y
+              límites de solicitudes. Turnstile comprueba señales técnicas del navegador; el
+              servidor valida su resultado. Los contadores temporales usan identificadores mediante
+              HMAC en lugar de guardar la dirección IP o el correo en claro, y se eliminan al
+              caducar mediante la tarea diaria. Estos controles se aplican también si no solicitas
+              la newsletter.
+            </p>
+            <p>
+              La prueba de autorización queda vinculada a la cuenta para gestionar y acreditar tu
+              solicitud. Un registro de consentimiento anterior no autoriza nuevos envíos después de
+              una baja. Puedes consultar o solicitar la supresión de tus datos mediante
+              contacto@energiaydivinidad.com, sin perjuicio de la conservación que resulte
+              legalmente exigible.
+            </p>
+            <p className="text-sm">
+              <a
+                href="https://www.cloudflare.com/privacypolicy/"
+                className="underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Privacidad de Cloudflare
+              </a>
+            </p>
+          </section>
         </div>
       </main>
       <Footer />

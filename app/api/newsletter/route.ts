@@ -5,6 +5,12 @@ import { z } from "zod";
 
 import { previewEmailRecipient } from "@/lib/email-delivery";
 import { isolatedMailchimpListId } from "@/lib/preview-safety";
+import {
+  consumeFormLimit,
+  publicFormIP,
+  PublicFormError,
+  publicFormError,
+} from "@/lib/public-form-security";
 
 const MAILCHIMP_API_KEY = process.env.MAILCHIMP_API_KEY;
 const MAILCHIMP_LIST_ID = isolatedMailchimpListId();
@@ -40,6 +46,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Error de configuración del servidor" }, { status: 500 });
     }
 
+    await consumeFormLimit("newsletter-form", publicFormIP(request), 5, 900_000);
+    await consumeFormLimit("newsletter-email", parsedEmail.data, 3, 3_600_000);
     const listUrl = `https://${MAILCHIMP_SERVER_PREFIX}.api.mailchimp.com/3.0/lists/${encodeURIComponent(MAILCHIMP_LIST_ID)}`;
     const url = `${listUrl}/members`;
     const email =
@@ -127,6 +135,9 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof PublicFormError) {
+      return publicFormError(error);
+    }
     console.error("Newsletter subscription error:", error);
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }

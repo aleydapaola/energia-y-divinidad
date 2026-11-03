@@ -32,12 +32,22 @@ test("inherited external secrets cannot silently activate services locally", () 
     "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY",
     "PAYPAL_CLIENT_SECRET",
     "WOMPI_PRIVATE_KEY",
+    "TURNSTILE_SECRET_KEY",
   ]) {
     assert.throws(
       () => assertLocalServiceSafety({ ...safe, [key]: "test-secret" }),
       new RegExp(key)
     );
   }
+});
+
+test("official dummy Turnstile keys are permitted locally without inheriting real credentials", () => {
+  assert.doesNotThrow(() =>
+    assertLocalServiceSafety({
+      ...safe,
+      TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+    })
+  );
 });
 test("Studio defaults to a clearly labeled test dataset and blocks a mismatched Preview", () => {
   assert.equal(studioEnvironment({}).dataset, "preview");

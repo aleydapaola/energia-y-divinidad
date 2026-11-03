@@ -167,9 +167,15 @@ interface SendVerificationEmailParams {
   email: string;
   name: string;
   token: string;
+  newsletterOptIn?: boolean;
 }
 
-export async function sendVerificationEmail({ email, name, token }: SendVerificationEmailParams) {
+export async function sendVerificationEmail({
+  email,
+  name,
+  token,
+  newsletterOptIn = false,
+}: SendVerificationEmailParams) {
   const verificationUrl = `${APP_URL}/auth/verify-email?token=${token}`;
 
   // En modo desarrollo con auto-verify, solo mostramos el link en consola
@@ -227,6 +233,7 @@ export async function sendVerificationEmail({ email, name, token }: SendVerifica
                         <p style="margin: 0 0 20px; font-size: 16px; color: #666666; line-height: 1.6;">
                           Gracias por registrarte en Energía y Divinidad. Para completar tu registro y comenzar tu viaje de transformación, por favor verifica tu email haciendo clic en el botón de abajo.
                         </p>
+                        ${newsletterOptIn ? '<p style="margin:0 0 20px;font-size:16px;color:#666666;line-height:1.6">Has elegido suscribirte a nuestra newsletter. Al verificar tu cuenta también activaremos tu suscripción y te enviaremos la meditación del Ángel de la Guarda. No necesitas confirmar otro correo. Puedes darte de baja cuando quieras.</p>' : ""}
 
                         <!-- Button -->
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">

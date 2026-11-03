@@ -1,141 +1,129 @@
-import { randomBytes } from "crypto";
+import { randomBytes } from "node:crypto";
 
 import bcrypt from "bcrypt";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
 import { sendVerificationEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
+import {
+  limitVerificationEmail,
+  protectPublicForm,
+  publicFormError,
+} from "@/lib/public-form-security";
+import { registrationNewsletterEnabled } from "@/lib/registration-newsletter";
+import {
+  REGISTRATION_NEWSLETTER_TEXT,
+  REGISTRATION_NEWSLETTER_VERSION,
+} from "@/lib/registration-newsletter-copy";
 import { getTermsPage } from "@/lib/terms";
+
+export const maxDuration = 30;
+const registrationInput = z.object({
+  name: z.string().trim().min(1).max(150),
+  email: z
+    .string()
+    .trim()
+    .email()
+    .max(254)
+    .transform((s) => s.toLowerCase()),
+  password: z.string().min(8).max(128),
+  acceptedTerms: z.literal(true),
+  newsletterOptIn: z.boolean().optional().default(false),
+  turnstileToken: z.string().max(2048).optional(),
+  website: z.string().max(200).optional(),
+});
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { name, email, password, acceptedTerms } = body;
-
-    // Validación de campos requeridos
-    if (!name || !email || !password) {
+    const parsed = registrationInput.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Nombre, email y contraseña son requeridos" },
+        { error: "Revisa los datos y acepta los Términos y la Política de Privacidad." },
         { status: 400 }
       );
     }
-
-    // Validación de aceptación de términos
-    if (!acceptedTerms) {
-      return NextResponse.json(
-        { error: "Debes aceptar los Términos y Condiciones y la Política de Privacidad" },
-        { status: 400 }
-      );
-    }
-
-    // Validación de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "El email no es válido" }, { status: 400 });
-    }
-
-    // Validación de contraseña
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "La contraseña debe tener al menos 8 caracteres" },
-        { status: 400 }
-      );
-    }
-
-    // Verificar si el email ya existe
-    const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-    });
-
-    if (existingUser) {
-      // Si el usuario existe pero no está verificado, indicarlo para permitir reenvío
-      if (!existingUser.emailVerified) {
-        return NextResponse.json(
-          {
-            error: "Este email ya está registrado pero no verificado",
-            code: "EMAIL_NOT_VERIFIED",
-            email: existingUser.email,
-          },
-          { status: 400 }
-        );
-      }
-      return NextResponse.json({ error: "Este email ya está registrado" }, { status: 400 });
-    }
-
-    // Hash de la contraseña
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Preview consent must refer to its review draft rather than Production terms.
-    const currentTermsVersion =
-      process.env.VERCEL_ENV === "production" ? "1.0" : (await getTermsPage())?.version || "1.0";
-
-    const normalizedEmail = email.toLowerCase();
-    const verificationToken = randomBytes(32).toString("hex");
-    const tokenExpiry = new Date();
-    tokenExpiry.setHours(tokenExpiry.getHours() + 24); // Expira en 24 horas
-
-    const user = await prisma.user.create({
-      data: {
-        name: name.trim(),
-        email: normalizedEmail,
-        password: hashedPassword,
-        emailVerified: null, // No verificado aún
-        acceptedTermsVersion: currentTermsVersion,
-        acceptedTermsAt: new Date(),
-      },
-    });
-
-    try {
-      await prisma.verificationToken.create({
-        data: {
-          identifier: user.email,
-          token: verificationToken,
-          expires: tokenExpiry,
-        },
-      });
-
-      await sendVerificationEmail({
-        email: user.email,
-        name: user.name || "Usuario",
-        token: verificationToken,
-      });
-    } catch (emailError) {
-      console.error("Error enviando email de verificación:", emailError);
-
-      try {
-        await prisma.verificationToken.deleteMany({
-          where: { identifier: user.email },
-        });
-        await prisma.user.delete({
-          where: { id: user.id },
-        });
-      } catch (cleanupError) {
-        console.error("Error limpiando usuario tras fallo de email:", cleanupError);
-      }
-
+    const input = parsed.data;
+    await protectPublicForm(request, input, "register");
+    if (input.newsletterOptIn && !registrationNewsletterEnabled()) {
       return NextResponse.json(
         {
           error:
-            "No hemos podido enviar el email de verificación. Por favor intenta de nuevo en unos minutos.",
+            "La suscripción desde el registro todavía no está disponible. Puedes crear tu cuenta sin suscribirte.",
+        },
+        { status: 503 }
+      );
+    }
+    const existing = await prisma.user.findUnique({ where: { email: input.email } });
+    if (existing) {
+      return NextResponse.json(
+        {
+          error: "Este email ya está registrado",
+          ...(!existing.emailVerified ? { code: "EMAIL_NOT_VERIFIED", email: existing.email } : {}),
+        },
+        { status: 400 }
+      );
+    }
+    await limitVerificationEmail(input.email);
+    const password = await bcrypt.hash(input.password, 12);
+    const termsVersion =
+      process.env.VERCEL_ENV === "production" ? "1.0" : (await getTermsPage())?.version || "1.0";
+    const token = randomBytes(32).toString("hex");
+    const user = await prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          password,
+          emailVerified: null,
+          acceptedTermsVersion: termsVersion,
+          acceptedTermsAt: new Date(),
+          ...(input.newsletterOptIn
+            ? {
+                registrationNewsletter: {
+                  create: {
+                    consentVersion: REGISTRATION_NEWSLETTER_VERSION,
+                    consentText: REGISTRATION_NEWSLETTER_TEXT,
+                  },
+                },
+              }
+            : {}),
+        },
+      });
+      await tx.verificationToken.create({
+        data: { identifier: input.email, token, expires: new Date(Date.now() + 86_400_000) },
+      });
+      return created;
+    });
+    try {
+      await sendVerificationEmail({
+        email: user.email,
+        name: user.name || "Usuario",
+        token,
+        newsletterOptIn: input.newsletterOptIn,
+      });
+    } catch {
+      await prisma.$transaction(async (tx) => {
+        await tx.verificationToken.deleteMany({ where: { identifier: user.email } });
+        await tx.user.delete({ where: { id: user.id } });
+      });
+      return NextResponse.json(
+        {
+          error:
+            "No hemos podido enviar el email de verificación. Inténtalo de nuevo en unos minutos.",
         },
         { status: 502 }
       );
     }
-
     return NextResponse.json(
       {
         success: true,
-        message: "Cuenta creada exitosamente. Por favor verifica tu email.",
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        },
+        message: "Cuenta creada. Revisa tu correo para verificarla.",
+        user: { id: user.id, name: user.name, email: user.email },
       },
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error en registro:", error);
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    return publicFormError(error);
   }
 }

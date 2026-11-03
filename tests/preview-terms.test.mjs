@@ -137,6 +137,13 @@ test("Preview registration records the displayed terms version while Production 
       let created,
         termsReads = 0;
       const { POST } = load("app/api/auth/register/route.ts", {
+        "@/lib/public-form-security": {
+          protectPublicForm: async () => {},
+          limitVerificationEmail: async () => {},
+          publicFormError: () => Response.json({ error: "unexpected" }, { status: 500 }),
+        },
+        "@/lib/registration-newsletter": { registrationNewsletterEnabled: () => false },
+        "@/lib/registration-newsletter-copy": {},
         bcrypt: { default: { hash: async () => "test-only-hash" } },
         "@/lib/terms": {
           getTermsPage: async () => {
@@ -147,6 +154,9 @@ test("Preview registration records the displayed terms version while Production 
         "@/lib/email": { sendVerificationEmail: async () => ({ success: true }) },
         "@/lib/prisma": {
           prisma: {
+            $transaction: async function (callback) {
+              return callback(this);
+            },
             user: {
               findUnique: async () => null,
               create: async ({ data }) => {

@@ -54,12 +54,46 @@ model User {
   perkAllocations  PerkAllocation[]
   emailCampaigns   EmailCampaignRecipient[]
   emailPreferences UserEmailPreferences?
+  registrationNewsletter RegistrationNewsletter?
 
   // Metadata
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+// Evidence and durable work for the optional registration newsletter. Mailchimp
+// remains the authority for current subscription and suppression status.
+model RegistrationNewsletter {
+  userId           String   @id
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consentAt        DateTime @default(now())
+  consentVersion   String
+  consentText      String
+  source           String   @default("registration")
+  verifiedAt       DateTime?
+  listId           String?
+  status           String   @default("AWAITING_EMAIL")
+  attempts         Int      @default(0)
+  nextAttemptAt    DateTime @default(now())
+  leaseUntil       DateTime?
+  activatedAt      DateTime?
+  lastError        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@map("registration_newsletters")
+}
+
+model PublicFormLimit {
+  key       String   @id
+  count     Int
+  resetAt   DateTime
+
+  @@index([resetAt])
+  @@map("public_form_limits")
 }
 
 // NextAuth - Account (para OAuth providers)

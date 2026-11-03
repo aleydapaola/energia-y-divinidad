@@ -65,7 +65,9 @@ const keys = [
 async function isolated(callbackFn) {
   const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
   const savedFetch = globalThis.fetch;
-  for (const key of keys) delete process.env[key];
+  for (const key of keys) {
+    delete process.env[key];
+  }
   Object.assign(process.env, {
     VERCEL_ENV: "preview",
     MAILCHIMP_API_KEY: "synthetic-us2",
@@ -83,8 +85,11 @@ async function isolated(callbackFn) {
   } finally {
     globalThis.fetch = savedFetch;
     for (const [key, value] of Object.entries(saved)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
     }
   }
 }
@@ -133,7 +138,9 @@ function setup() {
   };
   const emailLog = {
     async upsert({ where, create }) {
-      if (!state.logs.has(where.id)) state.logs.set(where.id, { ...create, createdAt: new Date() });
+      if (!state.logs.has(where.id)) {
+        state.logs.set(where.id, { ...create, createdAt: new Date() });
+      }
       return state.logs.get(where.id);
     },
     async findUnique({ where }) {
@@ -146,6 +153,7 @@ function setup() {
   };
   let tail = Promise.resolve();
   const prisma = {
+    registrationNewsletter: { findUnique: async () => state.registration || null },
     emailLog,
     user: {
       async findUnique() {
@@ -164,30 +172,42 @@ function setup() {
   const modules = new Map();
   function load(relative) {
     const filename = path.resolve(root, relative);
-    if (modules.has(filename)) return modules.get(filename).exports;
+    if (modules.has(filename)) {
+      return modules.get(filename).exports;
+    }
     const mod = new Module(filename);
     modules.set(filename, mod);
     mod.require = (name) => {
-      if (name === "./prisma" || name === "@/lib/prisma") return { prisma };
-      if (name === "@/lib/auth") return { auth: async () => state.session };
-      if (name === "./email-delivery")
+      if (name === "./prisma" || name === "@/lib/prisma") {
+        return { prisma };
+      }
+      if (name === "@/lib/auth") {
+        return { auth: async () => state.session };
+      }
+      if (name === "./email-delivery") {
         return {
           previewEmailRecipient: () => recipient,
           deliverEmail: async (payload, options) => {
             state.sent.push({ payload, options });
             await new Promise((resolve) => setTimeout(resolve, 3));
-            if (state.providerFails-- > 0) throw Error("uncertain response");
+            if (state.providerFails-- > 0) {
+              throw Error("uncertain response");
+            }
             return { data: { id: "synthetic-resend-id" }, error: null };
           },
         };
-      if (name.startsWith("@/")) return load(name.slice(2) + ".ts");
-      if (name.startsWith("./") || name.startsWith("../"))
+      }
+      if (name.startsWith("@/")) {
+        return load(name.slice(2) + ".ts");
+      }
+      if (name.startsWith("./") || name.startsWith("../")) {
         return load(
           path.relative(
             root,
             path.resolve(path.dirname(filename), name.endsWith(".ts") ? name : name + ".ts")
           )
         );
+      }
       return require(name);
     };
     mod._compile(
@@ -201,8 +221,10 @@ function setup() {
   globalThis.fetch = async (url, options) => {
     state.lookups.push(String(url));
     assert.equal(options.method || "GET", "GET", "never change a Mailchimp contact");
-    if (state.lookupFails) return { ok: false, status: 503 };
-    if (String(url).endsWith("/webhooks"))
+    if (state.lookupFails) {
+      return { ok: false, status: 503 };
+    }
+    if (String(url).endsWith("/webhooks")) {
       return {
         ok: true,
         json: async () => ({
@@ -218,7 +240,8 @@ function setup() {
           ],
         }),
       };
-    if (String(url).includes("/members/"))
+    }
+    if (String(url).includes("/members/")) {
       return {
         ok: true,
         status: 200,
@@ -232,6 +255,7 @@ function setup() {
           timestamp_opt: state.opt,
         }),
       };
+    }
     return {
       ok: true,
       json: async () => ({
@@ -289,8 +313,9 @@ test("gift and callback URLs reject credentials, foreign hosts, insecure URLs an
     giftUrl.replace("https://", "https://user:pass@"),
     giftUrl + "?token=x",
     "javascript:alert(1)",
-  ])
+  ]) {
     assert.equal(validNewsletterGiftUrl(bad), null);
+  }
   assert.equal(validNewsletterCallback(callback, false), true);
   assert.equal(validNewsletterCallback(callback, true), false);
   assert.equal(
@@ -483,8 +508,9 @@ test("readiness is ADMIN-only and verifies signed subscribe-only hooks without l
     const result = await ready.json();
     assert.equal(result.ready, true);
     const serialized = JSON.stringify(result);
-    for (const value of [secret, callback, giftUrl, "Calle ficticia", "synthetic-us2"])
+    for (const value of [secret, callback, giftUrl, "Calle ficticia", "synthetic-us2"]) {
       assert.equal(serialized.includes(value), false);
+    }
     for (const change of [
       { signing_enabled: false },
       { sources: { user: true, admin: true, api: false } },
@@ -510,3 +536,27 @@ test("renderer uses real unsubscribe links, escaped footer content and a plain-t
   assert.match(output.html, /\[PREVIEW\]/);
   assert.match(output.text, /Darme de baja:/);
 });
+
+test("registration gift requires stored consent and verified ownership without weakening Mailchimp webhook checks", () =>
+  isolated(async () => {
+    const { state, service } = setup();
+    state.opt = null;
+    const event = { email: recipient, listId, memberId: state.memberId };
+    await assert.rejects(service.processRegistrationNewsletterGift("qa", event));
+    assert.equal(state.sent.length, 0);
+    state.registration = {
+      source: "registration",
+      consentVersion: loadPure("lib/registration-newsletter-copy.ts")
+        .REGISTRATION_NEWSLETTER_VERSION,
+      verifiedAt: new Date(),
+      activatedAt: new Date(),
+      listId,
+      user: { email: recipient, emailVerified: new Date() },
+    };
+    assert.equal(await service.processNewsletterGift(event), "ignored");
+    assert.equal(await service.processRegistrationNewsletterGift("qa", event), "sent");
+    assert.equal(state.sent.length, 1);
+    state.registration.user.emailVerified = null;
+    await assert.rejects(service.processRegistrationNewsletterGift("qa", event));
+    assert.equal(state.sent.length, 1);
+  }));
