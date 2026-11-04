@@ -4,7 +4,7 @@ import { previewEmailRecipient } from "./email-delivery";
 import { processRegistrationNewsletterGift, readNewsletterList } from "./newsletter-gift";
 import { newsletterGiftConfiguration } from "./newsletter-gift-config";
 import { prisma } from "./prisma";
-import { REGISTRATION_NEWSLETTER_VERSION } from "./registration-newsletter-copy";
+import { REGISTRATION_NEWSLETTER_VERSIONS } from "./registration-newsletter-copy";
 
 const ACTIVE_WORK = ["READY", "RETRY"];
 
@@ -68,7 +68,7 @@ export async function processRegistrationNewsletter(userId: string) {
       !record?.verifiedAt ||
       !record.user.emailVerified ||
       record.source !== "registration" ||
-      record.consentVersion !== REGISTRATION_NEWSLETTER_VERSION ||
+      !REGISTRATION_NEWSLETTER_VERSIONS.has(record.consentVersion) ||
       (record.listId && record.listId !== config.listId)
     ) {
       throw Error("Consent unavailable");

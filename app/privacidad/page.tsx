@@ -40,11 +40,12 @@ export default async function PrivacidadPage() {
               Newsletter y protección del registro
             </h2>
             <p>
-              Crear una cuenta no obliga a suscribirse a la newsletter. Si marcas voluntariamente la
-              casilla de novedades y regalo, guardamos la fecha, el origen y el texto de tu
-              autorización. La suscripción se activa al verificar el correo de tu cuenta, sin una
-              segunda confirmación de newsletter. El formulario independiente de newsletter mantiene
-              su confirmación por correo.
+              Crear una cuenta no obliga a suscribirse a la newsletter. La opción de novedades y
+              regalo aparece seleccionada y puedes desmarcarla. Si eliges «Crear cuenta y
+              suscribirme», guardamos la fecha, el origen y el texto de tu autorización expresa.
+              También puedes elegir «Crear cuenta sin newsletter». La suscripción se activa al
+              verificar el correo de tu cuenta, sin una segunda confirmación de newsletter. El
+              formulario independiente de newsletter mantiene su confirmación por correo.
             </p>
             <p>
               Utilizamos Mailchimp para gestionar las suscripciones y Resend para entregar el regalo

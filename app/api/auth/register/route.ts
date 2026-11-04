@@ -13,7 +13,7 @@ import {
 } from "@/lib/public-form-security";
 import { registrationNewsletterEnabled } from "@/lib/registration-newsletter";
 import {
-  REGISTRATION_NEWSLETTER_TEXT,
+  REGISTRATION_NEWSLETTER_CONSENT_TEXT,
   REGISTRATION_NEWSLETTER_VERSION,
 } from "@/lib/registration-newsletter-copy";
 import { getTermsPage } from "@/lib/terms";
@@ -30,6 +30,7 @@ const registrationInput = z.object({
   password: z.string().min(8).max(128),
   acceptedTerms: z.literal(true),
   newsletterOptIn: z.boolean().optional().default(false),
+  newsletterConsentAction: z.enum(["subscribe", "decline"]).optional(),
   turnstileToken: z.string().max(2048).optional(),
   website: z.string().max(200).optional(),
 });
@@ -44,6 +45,21 @@ export async function POST(request: NextRequest) {
       );
     }
     const input = parsed.data;
+    if (input.newsletterOptIn && input.newsletterConsentAction !== "subscribe") {
+      return NextResponse.json(
+        {
+          error:
+            "Para suscribirte, elige «Crear cuenta y suscribirme» en el formulario actualizado.",
+        },
+        { status: 400 }
+      );
+    }
+    if (!input.newsletterOptIn && input.newsletterConsentAction === "subscribe") {
+      return NextResponse.json(
+        { error: "Revisa tu elección de newsletter antes de continuar." },
+        { status: 400 }
+      );
+    }
     await protectPublicForm(request, input, "register");
     if (input.newsletterOptIn && !registrationNewsletterEnabled()) {
       return NextResponse.json(
@@ -83,7 +99,7 @@ export async function POST(request: NextRequest) {
                 registrationNewsletter: {
                   create: {
                     consentVersion: REGISTRATION_NEWSLETTER_VERSION,
-                    consentText: REGISTRATION_NEWSLETTER_TEXT,
+                    consentText: REGISTRATION_NEWSLETTER_CONSENT_TEXT,
                   },
                 },
               }

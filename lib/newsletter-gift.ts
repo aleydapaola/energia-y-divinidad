@@ -6,7 +6,7 @@ import { deliverEmail, previewEmailRecipient } from "./email-delivery";
 import { newsletterGiftConfiguration, NEWSLETTER_GIFT_VERSION } from "./newsletter-gift-config";
 import { NEWSLETTER_GIFT_SUBJECT, renderNewsletterGiftEmail } from "./newsletter-gift-email";
 import { prisma } from "./prisma";
-import { REGISTRATION_NEWSLETTER_VERSION } from "./registration-newsletter-copy";
+import { REGISTRATION_NEWSLETTER_VERSIONS } from "./registration-newsletter-copy";
 
 const email = z
   .string()
@@ -154,7 +154,7 @@ export async function processRegistrationNewsletterGift(
     !record.activatedAt ||
     !record.user.emailVerified ||
     record.source !== "registration" ||
-    record.consentVersion !== REGISTRATION_NEWSLETTER_VERSION ||
+    !REGISTRATION_NEWSLETTER_VERSIONS.has(record.consentVersion) ||
     record.user.email !== event.email ||
     record.listId !== event.listId
   ) {

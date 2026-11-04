@@ -225,13 +225,14 @@ test("registration stores versioned consent only on explicit true and never call
         request(undefined, {
           ...validInput,
           ...(newsletterOptIn === undefined ? {} : { newsletterOptIn }),
+          ...(newsletterOptIn === true ? { newsletterConsentAction: "subscribe" } : {}),
         })
       );
       assert.equal(response.status, 201);
       const consent = state.users[0].registrationNewsletter?.create;
       assert.equal(!!consent, newsletterOptIn === true);
       if (consent) {
-        assert.equal(consent.consentText, copy.REGISTRATION_NEWSLETTER_TEXT);
+        assert.equal(consent.consentText, copy.REGISTRATION_NEWSLETTER_CONSENT_TEXT);
         assert.equal(consent.consentVersion, copy.REGISTRATION_NEWSLETTER_VERSION);
       }
       assert.equal(state.users[0].emailVerified, null);
@@ -246,6 +247,9 @@ test("string values cannot consent and required terms remain mandatory", () =>
       { newsletterOptIn: "false" },
       { acceptedTerms: false },
       { acceptedTerms: "true" },
+      { newsletterOptIn: true },
+      { newsletterOptIn: true, newsletterConsentAction: "decline" },
+      { newsletterOptIn: false, newsletterConsentAction: "subscribe" },
     ]) {
       const { route, state } = registrationHarness();
       assert.equal((await route.POST(request(undefined, { ...validInput, ...extra }))).status, 400);
@@ -257,7 +261,15 @@ test("failed verification email removes only the new account and its token", () 
   environment(async () => {
     const { route, state } = registrationHarness({ failMail: true });
     assert.equal(
-      (await route.POST(request(undefined, { ...validInput, newsletterOptIn: true }))).status,
+      (
+        await route.POST(
+          request(undefined, {
+            ...validInput,
+            newsletterOptIn: true,
+            newsletterConsentAction: "subscribe",
+          })
+        )
+      ).status,
       502
     );
     assert.equal(state.users.length, 0);
@@ -451,7 +463,7 @@ test("paused registration integration makes no changes", () =>
     assert.equal(state.record.attempts, 0);
   }));
 
-test("registration checkbox is optional and unchecked in initial server markup", () => {
+test("registration checkbox is preselected, optional and accompanied by explicit subscribe and account-only buttons", () => {
   const React = require("react");
   const { renderToStaticMarkup } = require("react-dom/server");
   const { default: Page } = loadMembership("app/auth/signup/page.tsx", {
@@ -462,7 +474,12 @@ test("registration checkbox is optional and unchecked in initial server markup",
   const html = renderToStaticMarkup(React.createElement(Page));
   const checkbox = html.match(/<input[^>]+id="newsletterOptIn"[^>]*>/)?.[0];
   assert.ok(checkbox);
-  assert.ok(!/\bchecked|\brequired/.test(checkbox));
+  assert.match(checkbox, /\bchecked/);
+  assert.ok(!/\brequired/.test(checkbox));
+  assert.match(html, /Crear cuenta y suscribirme/);
+  assert.match(html, /Crear cuenta sin newsletter/);
+  const terms = html.match(/<input[^>]+id="acceptedTerms"[^>]*>/)?.[0];
+  assert.ok(terms && !/\bchecked/.test(terms));
   assert.match(html, /meditación del Ángel de la Guarda/);
 });
 
@@ -557,4 +574,81 @@ test("a temporarily invisible website tag retries delivery instead of inventing 
       state.calls.filter((c) => c.url.endsWith("/members") && c.method === "POST").length,
       1
     );
+  }));
+
+test("explicit subscribe, account-only button and unchecked checkbox send independent choices", () =>
+  environment(async () => {
+    const React = require("react");
+    function find(node, predicate) {
+      if (!node || typeof node !== "object") {
+        return null;
+      }
+      if (Array.isArray(node)) {
+        for (const child of node) {
+          const found = find(child, predicate);
+          if (found) {
+            return found;
+          }
+        }
+        return null;
+      }
+      if (predicate(node)) {
+        return node;
+      }
+      return find(node.props?.children, predicate);
+    }
+    for (const scenario of ["subscribe", "account-only", "unchecked"]) {
+      let submitted;
+      globalThis.fetch = async (_url, options) => {
+        submitted = JSON.parse(options.body);
+        return Response.json({ success: true }, { status: 201 });
+      };
+      const { default: Page } = loadMembership("app/auth/signup/page.tsx", {
+        react: {
+          ...React,
+          useState(initial) {
+            if (initial && typeof initial === "object" && "acceptedTerms" in initial) {
+              return [
+                {
+                  ...validInput,
+                  confirmPassword: validInput.password,
+                  newsletterOptIn: scenario !== "unchecked",
+                },
+                () => {},
+              ];
+            }
+            return [initial, () => {}];
+          },
+        },
+        "next/navigation": { useRouter: () => ({ push() {} }) },
+        "@/components/auth/TurnstileCheck": { TurnstileCheck: () => null, WebsiteTrap: () => null },
+        "@/lib/registration-newsletter-copy": copy,
+      });
+      const tree = Page();
+      const event = { preventDefault() {} };
+      if (scenario === "account-only") {
+        const button = find(
+          tree,
+          (node) => node.type === "button" && node.props.children === "Crear cuenta sin newsletter"
+        );
+        assert.ok(button);
+        await button.props.onClick(event);
+      } else {
+        await find(tree, (node) => node.type === "form").props.onSubmit(event);
+      }
+      assert.equal(submitted.newsletterOptIn, scenario === "subscribe");
+      assert.equal(
+        submitted.newsletterConsentAction,
+        scenario === "subscribe" ? "subscribe" : "decline"
+      );
+    }
+  }));
+
+test("existing v1 consent remains processable after switching to explicit-submit v2", () =>
+  environment(async () => {
+    const { service, state } = workerHarness();
+    state.record.consentVersion = "registration-newsletter-2026-11-03-v1";
+    await service.processRegistrationNewsletter("test-user");
+    assert.equal(state.record.status, "ACTIVE");
+    assert.equal(state.gifts, 1);
   }));

@@ -29,7 +29,7 @@ export default function SignUpPage() {
     password: "",
     confirmPassword: "",
     acceptedTerms: false,
-    newsletterOptIn: false,
+    newsletterOptIn: true,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,8 +71,12 @@ export default function SignUpPage() {
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, newsletterChoice?: boolean) => {
     e.preventDefault();
+    const newsletterRequested = newsletterChoice ?? formData.newsletterOptIn;
+    if (newsletterChoice === false) {
+      setFormData((prev) => ({ ...prev, newsletterOptIn: false }));
+    }
 
     if (!validateForm()) {
       return;
@@ -90,7 +94,8 @@ export default function SignUpPage() {
           email: formData.email,
           password: formData.password,
           acceptedTerms: formData.acceptedTerms,
-          newsletterOptIn: formData.newsletterOptIn,
+          newsletterOptIn: newsletterRequested,
+          newsletterConsentAction: newsletterRequested ? "subscribe" : "decline",
           turnstileToken,
           website,
         }),
@@ -334,10 +339,22 @@ export default function SignUpPage() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                   Creando cuenta...
                 </>
+              ) : formData.newsletterOptIn ? (
+                "Crear cuenta y suscribirme"
               ) : (
                 "Crear cuenta"
               )}
             </button>
+            {formData.newsletterOptIn && (
+              <button
+                type="button"
+                disabled={isLoading || !turnstileToken}
+                onClick={(event) => handleSubmit(event, false)}
+                className="w-full rounded-lg border border-[#8A4BAF]/25 px-4 py-3 text-sm font-medium text-[#654177] font-dm-sans hover:bg-[#f8f0f5] disabled:opacity-50"
+              >
+                Crear cuenta sin newsletter
+              </button>
+            )}
           </form>
 
           <div className="text-center text-sm font-dm-sans">
