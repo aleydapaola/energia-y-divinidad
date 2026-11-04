@@ -560,3 +560,23 @@ test("registration gift requires stored consent and verified ownership without w
     await assert.rejects(service.processRegistrationNewsletterGift("qa", event));
     assert.equal(state.sent.length, 1);
   }));
+
+test("newsletter gift cannot render without a real Mailchimp unsubscribe link", () => {
+  for (const unsubscribeUrl of [
+    "",
+    "https://example.com/unsubscribe?u=test&id=test",
+    "https://eyd.us2.list-manage.com/subscribe?u=test&id=test",
+    "http://eyd.us2.list-manage.com/unsubscribe?u=test&id=test",
+    "https://eyd.us2.list-manage.com/unsubscribe?u=test",
+  ]) {
+    assert.throws(() =>
+      renderNewsletterGiftEmail({
+        unsubscribeUrl,
+        postalAddress: "Test",
+        appUrl: "https://preview.energiaydivinidad.com",
+        preview: true,
+        year: 2026,
+      })
+    );
+  }
+});

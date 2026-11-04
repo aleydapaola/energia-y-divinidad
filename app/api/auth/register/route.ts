@@ -29,8 +29,8 @@ const registrationInput = z.object({
     .transform((s) => s.toLowerCase()),
   password: z.string().min(8).max(128),
   acceptedTerms: z.literal(true),
-  newsletterOptIn: z.boolean().optional().default(false),
-  newsletterConsentAction: z.enum(["subscribe", "decline"]).optional(),
+  newsletterOptIn: z.literal(true),
+  newsletterConsentAction: z.literal("subscribe"),
   turnstileToken: z.string().max(2048).optional(),
   website: z.string().max(200).optional(),
 });
@@ -40,32 +40,19 @@ export async function POST(request: NextRequest) {
     const parsed = registrationInput.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Revisa los datos y acepta los Términos y la Política de Privacidad." },
-        { status: 400 }
-      );
-    }
-    const input = parsed.data;
-    if (input.newsletterOptIn && input.newsletterConsentAction !== "subscribe") {
-      return NextResponse.json(
         {
           error:
-            "Para suscribirte, elige «Crear cuenta y suscribirme» en el formulario actualizado.",
+            "Revisa los datos y acepta los Términos, la Política de Privacidad y la suscripción a la newsletter.",
         },
         { status: 400 }
       );
     }
-    if (!input.newsletterOptIn && input.newsletterConsentAction === "subscribe") {
-      return NextResponse.json(
-        { error: "Revisa tu elección de newsletter antes de continuar." },
-        { status: 400 }
-      );
-    }
+    const input = parsed.data;
     await protectPublicForm(request, input, "register");
     if (input.newsletterOptIn && !registrationNewsletterEnabled()) {
       return NextResponse.json(
         {
-          error:
-            "La suscripción desde el registro todavía no está disponible. Puedes crear tu cuenta sin suscribirte.",
+          error: "El registro con newsletter todavía no está disponible. Inténtalo más tarde.",
         },
         { status: 503 }
       );

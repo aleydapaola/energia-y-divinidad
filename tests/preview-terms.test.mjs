@@ -142,7 +142,7 @@ test("Preview registration records the displayed terms version while Production 
           limitVerificationEmail: async () => {},
           publicFormError: () => Response.json({ error: "unexpected" }, { status: 500 }),
         },
-        "@/lib/registration-newsletter": { registrationNewsletterEnabled: () => false },
+        "@/lib/registration-newsletter": { registrationNewsletterEnabled: () => true },
         "@/lib/registration-newsletter-copy": {},
         bcrypt: { default: { hash: async () => "test-only-hash" } },
         "@/lib/terms": {
@@ -174,6 +174,8 @@ test("Preview registration records the displayed terms version while Production 
           email: "test@example.com",
           password: "test-only-password",
           acceptedTerms: true,
+          newsletterOptIn: true,
+          newsletterConsentAction: "subscribe",
         }),
       });
       assert.equal(response.status, 201);

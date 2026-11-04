@@ -40,11 +40,10 @@ export default async function PrivacidadPage() {
               Newsletter y protección del registro
             </h2>
             <p>
-              Crear una cuenta no obliga a suscribirse a la newsletter. La opción de novedades y
-              regalo aparece seleccionada y puedes desmarcarla. Si eliges «Crear cuenta y
-              suscribirme», guardamos la fecha, el origen y el texto de tu autorización expresa.
-              También puedes elegir «Crear cuenta sin newsletter». La suscripción se activa al
-              verificar el correo de tu cuenta, sin una segunda confirmación de newsletter. El
+              Este formulario de alta requiere aceptar la suscripción a la newsletter. La opción
+              aparece seleccionada y la cuenta se crea al elegir «Crear cuenta y suscribirme».
+              Guardamos la fecha, el origen y el texto de la autorización. La suscripción se activa
+              al verificar el correo de la cuenta, sin una segunda confirmación de newsletter. El
               formulario independiente de newsletter mantiene su confirmación por correo.
             </p>
             <p>
@@ -58,8 +57,8 @@ export default async function PrivacidadPage() {
               límites de solicitudes. Turnstile comprueba señales técnicas del navegador; el
               servidor valida su resultado. Los contadores temporales usan identificadores mediante
               HMAC en lugar de guardar la dirección IP o el correo en claro, y se eliminan al
-              caducar mediante la tarea diaria. Estos controles se aplican también si no solicitas
-              la newsletter.
+              caducar mediante la tarea diaria. Estos controles protegen el registro y el reenvío de
+              la verificación.
             </p>
             <p>
               La prueba de autorización queda vinculada a la cuenta para gestionar y acreditar tu

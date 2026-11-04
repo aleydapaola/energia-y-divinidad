@@ -68,15 +68,15 @@ export default function SignUpPage() {
       setError("Debes aceptar los Términos y Condiciones y la Política de Privacidad");
       return false;
     }
+    if (!formData.newsletterOptIn) {
+      setError("El registro incluye la newsletter. Acepta la suscripción para crear tu cuenta.");
+      return false;
+    }
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent, newsletterChoice?: boolean) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newsletterRequested = newsletterChoice ?? formData.newsletterOptIn;
-    if (newsletterChoice === false) {
-      setFormData((prev) => ({ ...prev, newsletterOptIn: false }));
-    }
 
     if (!validateForm()) {
       return;
@@ -94,8 +94,8 @@ export default function SignUpPage() {
           email: formData.email,
           password: formData.password,
           acceptedTerms: formData.acceptedTerms,
-          newsletterOptIn: newsletterRequested,
-          newsletterConsentAction: newsletterRequested ? "subscribe" : "decline",
+          newsletterOptIn: formData.newsletterOptIn,
+          newsletterConsentAction: "subscribe",
           turnstileToken,
           website,
         }),
@@ -287,6 +287,7 @@ export default function SignUpPage() {
                   id="newsletterOptIn"
                   name="newsletterOptIn"
                   type="checkbox"
+                  required
                   checked={formData.newsletterOptIn}
                   onChange={handleChange}
                   disabled={isLoading}
@@ -331,7 +332,7 @@ export default function SignUpPage() {
             {/* Submit button */}
             <button
               type="submit"
-              disabled={isLoading || !turnstileToken}
+              disabled={isLoading || !turnstileToken || !formData.newsletterOptIn}
               className="w-full bg-[#4944a4] text-white py-3 rounded-lg font-dm-sans font-semibold hover:bg-[#3d3a8a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
@@ -339,22 +340,10 @@ export default function SignUpPage() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                   Creando cuenta...
                 </>
-              ) : formData.newsletterOptIn ? (
-                "Crear cuenta y suscribirme"
               ) : (
-                "Crear cuenta"
+                "Crear cuenta y suscribirme"
               )}
             </button>
-            {formData.newsletterOptIn && (
-              <button
-                type="button"
-                disabled={isLoading || !turnstileToken}
-                onClick={(event) => handleSubmit(event, false)}
-                className="w-full rounded-lg border border-[#8A4BAF]/25 px-4 py-3 text-sm font-medium text-[#654177] font-dm-sans hover:bg-[#f8f0f5] disabled:opacity-50"
-              >
-                Crear cuenta sin newsletter
-              </button>
-            )}
           </form>
 
           <div className="text-center text-sm font-dm-sans">

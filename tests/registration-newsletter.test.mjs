@@ -212,32 +212,28 @@ function registrationHarness({ failMail = false } = {}) {
   };
   return { state, route: loadMembership("app/api/auth/register/route.ts", deps) };
 }
-const validInput = { name: "Test", email, password: "synthetic-password", acceptedTerms: true };
+const validInput = {
+  name: "Test",
+  email,
+  password: "synthetic-password",
+  acceptedTerms: true,
+  newsletterOptIn: true,
+  newsletterConsentAction: "subscribe",
+};
 
-test("registration stores versioned consent only on explicit true and never calls Mailchimp", () =>
+test("registration records the required newsletter acceptance and waits for ownership verification", () =>
   environment(async () => {
     globalThis.fetch = async () => {
       throw Error("No provider call during registration");
     };
-    for (const newsletterOptIn of [undefined, false, true]) {
-      const { route, state } = registrationHarness();
-      const response = await route.POST(
-        request(undefined, {
-          ...validInput,
-          ...(newsletterOptIn === undefined ? {} : { newsletterOptIn }),
-          ...(newsletterOptIn === true ? { newsletterConsentAction: "subscribe" } : {}),
-        })
-      );
-      assert.equal(response.status, 201);
-      const consent = state.users[0].registrationNewsletter?.create;
-      assert.equal(!!consent, newsletterOptIn === true);
-      if (consent) {
-        assert.equal(consent.consentText, copy.REGISTRATION_NEWSLETTER_CONSENT_TEXT);
-        assert.equal(consent.consentVersion, copy.REGISTRATION_NEWSLETTER_VERSION);
-      }
-      assert.equal(state.users[0].emailVerified, null);
-      assert.equal(state.mails[0].newsletterOptIn, newsletterOptIn === true);
-    }
+    const { route, state } = registrationHarness();
+    const response = await route.POST(request(undefined, validInput));
+    assert.equal(response.status, 201);
+    const consent = state.users[0].registrationNewsletter.create;
+    assert.equal(consent.consentText, copy.REGISTRATION_NEWSLETTER_CONSENT_TEXT);
+    assert.equal(consent.consentVersion, copy.REGISTRATION_NEWSLETTER_VERSION);
+    assert.equal(state.users[0].emailVerified, null);
+    assert.equal(state.mails[0].newsletterOptIn, true);
   }));
 
 test("string values cannot consent and required terms remain mandatory", () =>
@@ -247,7 +243,9 @@ test("string values cannot consent and required terms remain mandatory", () =>
       { newsletterOptIn: "false" },
       { acceptedTerms: false },
       { acceptedTerms: "true" },
-      { newsletterOptIn: true },
+      { newsletterOptIn: undefined },
+      { newsletterConsentAction: undefined },
+      { newsletterOptIn: false },
       { newsletterOptIn: true, newsletterConsentAction: "decline" },
       { newsletterOptIn: false, newsletterConsentAction: "subscribe" },
     ]) {
@@ -463,7 +461,7 @@ test("paused registration integration makes no changes", () =>
     assert.equal(state.record.attempts, 0);
   }));
 
-test("registration checkbox is preselected, optional and accompanied by explicit subscribe and account-only buttons", () => {
+test("registration requires the preselected newsletter with a single explicit signup action", () => {
   const React = require("react");
   const { renderToStaticMarkup } = require("react-dom/server");
   const { default: Page } = loadMembership("app/auth/signup/page.tsx", {
@@ -475,9 +473,9 @@ test("registration checkbox is preselected, optional and accompanied by explicit
   const checkbox = html.match(/<input[^>]+id="newsletterOptIn"[^>]*>/)?.[0];
   assert.ok(checkbox);
   assert.match(checkbox, /\bchecked/);
-  assert.ok(!/\brequired/.test(checkbox));
+  assert.match(checkbox, /\brequired/);
   assert.match(html, /Crear cuenta y suscribirme/);
-  assert.match(html, /Crear cuenta sin newsletter/);
+  assert.ok(!html.includes("Crear cuenta sin newsletter"));
   const terms = html.match(/<input[^>]+id="acceptedTerms"[^>]*>/)?.[0];
   assert.ok(terms && !/\bchecked/.test(terms));
   assert.match(html, /meditación del Ángel de la Guarda/);
@@ -576,7 +574,7 @@ test("a temporarily invisible website tag retries delivery instead of inventing 
     );
   }));
 
-test("explicit subscribe, account-only button and unchecked checkbox send independent choices", () =>
+test("signup submits newsletter acceptance and blocks submission when it is unchecked", () =>
   environment(async () => {
     const React = require("react");
     function find(node, predicate) {
@@ -597,7 +595,7 @@ test("explicit subscribe, account-only button and unchecked checkbox send indepe
       }
       return find(node.props?.children, predicate);
     }
-    for (const scenario of ["subscribe", "account-only", "unchecked"]) {
+    for (const scenario of ["subscribe", "unchecked"]) {
       let submitted;
       globalThis.fetch = async (_url, options) => {
         submitted = JSON.parse(options.body);
@@ -626,25 +624,17 @@ test("explicit subscribe, account-only button and unchecked checkbox send indepe
       });
       const tree = Page();
       const event = { preventDefault() {} };
-      if (scenario === "account-only") {
-        const button = find(
-          tree,
-          (node) => node.type === "button" && node.props.children === "Crear cuenta sin newsletter"
-        );
-        assert.ok(button);
-        await button.props.onClick(event);
+      await find(tree, (node) => node.type === "form").props.onSubmit(event);
+      if (scenario === "unchecked") {
+        assert.equal(submitted, undefined);
       } else {
-        await find(tree, (node) => node.type === "form").props.onSubmit(event);
+        assert.equal(submitted.newsletterOptIn, true);
+        assert.equal(submitted.newsletterConsentAction, "subscribe");
       }
-      assert.equal(submitted.newsletterOptIn, scenario === "subscribe");
-      assert.equal(
-        submitted.newsletterConsentAction,
-        scenario === "subscribe" ? "subscribe" : "decline"
-      );
     }
   }));
 
-test("existing v1 consent remains processable after switching to explicit-submit v2", () =>
+test("existing optional consent remains processable after requiring newsletter on new registrations", () =>
   environment(async () => {
     const { service, state } = workerHarness();
     state.record.consentVersion = "registration-newsletter-2026-11-03-v1";

@@ -18,6 +18,21 @@ export function renderNewsletterGiftEmail(input: {
   preview: boolean;
   year: number;
 }) {
+  // Never render a newsletter gift without the real hosted unsubscribe form.
+  const unsubscribe = new URL(input.unsubscribeUrl);
+  if (
+    unsubscribe.protocol !== "https:" ||
+    !unsubscribe.hostname.endsWith(".list-manage.com") ||
+    unsubscribe.pathname !== "/unsubscribe" ||
+    unsubscribe.username ||
+    unsubscribe.password ||
+    unsubscribe.port ||
+    unsubscribe.hash ||
+    !unsubscribe.searchParams.get("u") ||
+    !unsubscribe.searchParams.get("id")
+  ) {
+    throw Error("Newsletter unsubscribe link unavailable");
+  }
   const giftUrl = newsletterGiftPageUrl(input.appUrl);
   const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${NEWSLETTER_GIFT_SUBJECT}</title></head>
 <body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f8f0f5">
