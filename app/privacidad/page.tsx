@@ -40,8 +40,9 @@ export default async function PrivacidadPage() {
               Newsletter y protección del registro
             </h2>
             <p>
-              Este formulario de alta requiere aceptar la suscripción a la newsletter. La opción
-              aparece seleccionada y la cuenta se crea al elegir «Crear cuenta y suscribirme».
+              Este formulario de alta requiere aceptar la suscripción a la newsletter junto con los
+              Términos y Condiciones y esta Política de Privacidad, mediante una única casilla que
+              aparece sin marcar. La cuenta se crea al elegir «Crear cuenta y suscribirme».
               Guardamos la fecha, el origen y el texto de la autorización. La suscripción se activa
               al verificar el correo de la cuenta, sin una segunda confirmación de newsletter. El
               formulario independiente de newsletter mantiene su confirmación por correo.

@@ -7,7 +7,8 @@ import { useState } from "react";
 
 import { TurnstileCheck, WebsiteTrap } from "@/components/auth/TurnstileCheck";
 import {
-  REGISTRATION_NEWSLETTER_TEXT,
+  REGISTRATION_COMMUNITY_TEXT,
+  REGISTRATION_NEWSLETTER_ACCEPTANCE,
   REGISTRATION_NEWSLETTER_HELP,
 } from "@/lib/registration-newsletter-copy";
 
@@ -29,7 +30,6 @@ export default function SignUpPage() {
     password: "",
     confirmPassword: "",
     acceptedTerms: false,
-    newsletterOptIn: true,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,11 +65,9 @@ export default function SignUpPage() {
       return false;
     }
     if (!formData.acceptedTerms) {
-      setError("Debes aceptar los Términos y Condiciones y la Política de Privacidad");
-      return false;
-    }
-    if (!formData.newsletterOptIn) {
-      setError("El registro incluye la newsletter. Acepta la suscripción para crear tu cuenta.");
+      setError(
+        "Debes aceptar los Términos y Condiciones, la Política de Privacidad y la suscripción a la newsletter para crear tu cuenta."
+      );
       return false;
     }
     return true;
@@ -94,7 +92,7 @@ export default function SignUpPage() {
           email: formData.email,
           password: formData.password,
           acceptedTerms: formData.acceptedTerms,
-          newsletterOptIn: formData.newsletterOptIn,
+          newsletterOptIn: formData.acceptedTerms,
           newsletterConsentAction: "subscribe",
           turnstileToken,
           website,
@@ -135,7 +133,7 @@ export default function SignUpPage() {
           <p className="text-[#654177] font-dm-sans">Crea tu cuenta para comenzar tu viaje</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6 border border-[#8A4BAF]/10">
+        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 space-y-6 border border-[#8A4BAF]/10">
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name */}
             <div>
@@ -247,16 +245,50 @@ export default function SignUpPage() {
               </div>
             </div>
 
-            {/* Terms acceptance checkbox */}
+            <section
+              aria-labelledby="community-title"
+              className="space-y-3 border-t border-[#8A4BAF]/15 pt-5 font-dm-sans"
+            >
+              <h2 id="community-title" className="text-lg font-semibold text-[#654177]">
+                Forma parte de nuestra comunidad
+              </h2>
+              <p className="text-sm leading-relaxed text-[#654177]">
+                {REGISTRATION_COMMUNITY_TEXT}
+              </p>
+              <p className="text-xs leading-relaxed text-gray-600">
+                Responsable: Aleyda Paola Vargas Galvis — Energía y Divinidad. Usamos tus datos para
+                gestionar tu cuenta, enviarte la newsletter y entregar tu regalo de bienvenida.
+                Puedes ejercer tus derechos escribiendo a{" "}
+                <a
+                  href="mailto:contacto@energiaydivinidad.com"
+                  className="break-words underline underline-offset-2"
+                >
+                  contacto@energiaydivinidad.com
+                </a>
+                . Consulta los detalles en nuestra{" "}
+                <Link
+                  href="/privacidad"
+                  target="_blank"
+                  className="text-[#8A4BAF] underline underline-offset-2"
+                >
+                  Política de Privacidad
+                </Link>
+                .
+              </p>
+            </section>
+
+            {/* One explicit acceptance for this registration */}
             <div className="flex items-start gap-3">
               <input
                 id="acceptedTerms"
                 name="acceptedTerms"
                 type="checkbox"
+                required
                 checked={formData.acceptedTerms}
                 onChange={handleChange}
                 disabled={isLoading}
-                className="mt-1 w-4 h-4 text-[#8A4BAF] border-gray-300 rounded focus:ring-[#8A4BAF]/20 focus:ring-2 cursor-pointer"
+                aria-describedby="newsletter-help"
+                className="mt-1 w-4 h-4 shrink-0 text-[#8A4BAF] border-gray-300 rounded focus:ring-[#8A4BAF]/20 focus:ring-2 cursor-pointer"
               />
               <label
                 htmlFor="acceptedTerms"
@@ -277,34 +309,13 @@ export default function SignUpPage() {
                   className="text-[#8A4BAF] hover:text-[#654177] underline"
                 >
                   Política de Privacidad
-                </Link>
+                </Link>{" "}
+                de Energía y Divinidad, {REGISTRATION_NEWSLETTER_ACCEPTANCE}
               </label>
             </div>
-
-            <div className="rounded-lg border border-[#8A4BAF]/15 bg-[#f8f0f5]/50 p-4">
-              <div className="flex items-start gap-3">
-                <input
-                  id="newsletterOptIn"
-                  name="newsletterOptIn"
-                  type="checkbox"
-                  required
-                  checked={formData.newsletterOptIn}
-                  onChange={handleChange}
-                  disabled={isLoading}
-                  aria-describedby="newsletter-help"
-                  className="mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-gray-300 text-[#8A4BAF] focus:ring-[#8A4BAF]/20"
-                />
-                <label
-                  htmlFor="newsletterOptIn"
-                  className="cursor-pointer text-sm text-[#654177] font-dm-sans"
-                >
-                  {REGISTRATION_NEWSLETTER_TEXT}
-                </label>
-              </div>
-              <p id="newsletter-help" className="mt-2 pl-7 text-xs text-gray-600 font-dm-sans">
-                {REGISTRATION_NEWSLETTER_HELP}
-              </p>
-            </div>
+            <p id="newsletter-help" className="text-xs leading-relaxed text-gray-600 font-dm-sans">
+              {REGISTRATION_NEWSLETTER_HELP}
+            </p>
             <WebsiteTrap value={website} onChange={setWebsite} />
             <TurnstileCheck
               action="register"
@@ -332,7 +343,7 @@ export default function SignUpPage() {
             {/* Submit button */}
             <button
               type="submit"
-              disabled={isLoading || !turnstileToken || !formData.newsletterOptIn}
+              disabled={isLoading || !turnstileToken || !formData.acceptedTerms}
               className="w-full bg-[#4944a4] text-white py-3 rounded-lg font-dm-sans font-semibold hover:bg-[#3d3a8a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (

@@ -461,7 +461,7 @@ test("paused registration integration makes no changes", () =>
     assert.equal(state.record.attempts, 0);
   }));
 
-test("registration requires the preselected newsletter with a single explicit signup action", () => {
+test("registration uses one unchecked required acceptance including newsletter", () => {
   const React = require("react");
   const { renderToStaticMarkup } = require("react-dom/server");
   const { default: Page } = loadMembership("app/auth/signup/page.tsx", {
@@ -470,17 +470,16 @@ test("registration requires the preselected newsletter with a single explicit si
     "@/lib/registration-newsletter-copy": copy,
   });
   const html = renderToStaticMarkup(React.createElement(Page));
-  const checkbox = html.match(/<input[^>]+id="newsletterOptIn"[^>]*>/)?.[0];
+  const checkbox = html.match(/<input[^>]+id="acceptedTerms"[^>]*>/)?.[0];
   assert.ok(checkbox);
-  assert.match(checkbox, /\bchecked/);
+  assert.ok(!/\bchecked/.test(checkbox));
   assert.match(checkbox, /\brequired/);
+  assert.equal((html.match(/type="checkbox"/g) || []).length, 1);
   assert.match(html, /Crear cuenta y suscribirme/);
   assert.ok(!html.includes("Crear cuenta sin newsletter"));
-  const terms = html.match(/<input[^>]+id="acceptedTerms"[^>]*>/)?.[0];
-  assert.ok(terms && !/\bchecked/.test(terms));
   assert.match(html, /meditación del Ángel de la Guarda/);
-  assert.match(html, /Al darme de alta en Energía y Divinidad, acepto suscribirme/);
-  assert.match(html, /Podré darme de baja mediante el enlace incluido en cada newsletter/);
+  assert.match(html, /y acepto suscribirme a su newsletter/);
+  assert.match(html, /puedes darte de baja mediante el enlace incluido en cada newsletter/i);
 });
 
 test("one-use account verification atomically enables newsletter work, and replay cannot send again", () =>
@@ -612,7 +611,7 @@ test("signup submits newsletter acceptance and blocks submission when it is unch
                 {
                   ...validInput,
                   confirmPassword: validInput.password,
-                  newsletterOptIn: scenario !== "unchecked",
+                  acceptedTerms: scenario !== "unchecked",
                 },
                 () => {},
               ];

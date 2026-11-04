@@ -1,9 +1,10 @@
 # Registro y newsletter — Preview, 03–04/11/2026
 
-Última instrucción expresa de Xavier (04/11/2026): este formulario de alta exige
-aceptar la newsletter. La casilla aparece marcada y, al desmarcarla, no permite
-crear la cuenta. Solo aparece «Crear cuenta y suscribirme». Esta decisión sustituye
-las variantes anteriores de casilla opcional y botón de cuenta sin newsletter.
+Última instrucción expresa de Xavier (04/11/2026): adaptar el ejemplo facilitado
+con una única casilla obligatoria, sin marcar, que mencione términos, privacidad
+y newsletter. Se explica antes la comunidad, el regalo y el uso de los datos.
+Solo aparece «Crear cuenta y suscribirme». Esta decisión sustituye las variantes
+anteriores de dos casillas, newsletter premarcada y cuenta sin newsletter.
 
 Toda modificación debe funcionar y verificarse primero en Preview. La aprobación
 del comportamiento de pruebas no autoriza publicar una versión en Production.
@@ -12,11 +13,13 @@ del comportamiento de pruebas no autoriza publicar una versión en Production.
 
 - La API exige newsletterOptIn=true y newsletterConsentAction=subscribe, además de
   términos aceptados y Turnstile válido. Valores ausentes, falsos o incoherentes
-  se rechazan antes de crear cuentas o enviar correos. Los términos no se premarcan.
-- Se guarda fecha, origen, versión v4 y texto que identifica que el registro incluye
-  newsletter y el botón elegido. La casilla explica «Al darme de alta en Energía y
-  Divinidad, acepto suscribirme a su newsletter» y menciona el enlace de baja de
-  cada newsletter. Los consentimientos v1/v2/v3 guardados se conservan
+  se rechazan antes de crear cuentas o enviar correos. La aceptación única no se
+  premarca y autoriza ambos valores desde una acción expresa del formulario.
+- Se guarda fecha, origen, versión v5 y texto que identifica que el registro incluye
+  newsletter y el botón elegido. La casilla explica «He leído y acepto los Términos
+  y Condiciones y la Política de Privacidad de Energía y Divinidad, y acepto
+  suscribirme a su newsletter». Se informa del enlace de baja de cada newsletter.
+  Los consentimientos v1/v2/v3/v4 guardados se conservan
   y siguen siendo procesables. No hay nueva migración ni cambio de cuentas antiguas.
 - La newsletter se activa solo después de verificar el email de la cuenta. No se
   envía otro correo para confirmar Mailchimp. La bienvenida y el regalo conservan
@@ -59,15 +62,16 @@ No se han modificado pagos, campañas, condiciones de compra ni datos de Product
 
 ## Pruebas y punto de continuación
 
-- 236 pruebas correctas; tipos correctos; lint sin errores, con avisos previos.
-  Cubren rechazo del alta sin newsletter, formulario marcado/obligatorio, términos
-  desmarcados, enlace de baja obligatorio, versiones antiguas, concurrencia y reintentos.
+- 236 pruebas previas correctas; 36 pruebas relacionadas repetidas tras cambiar a
+  aceptación única, todas correctas. Cubren rechazo del alta sin newsletter,
+  casilla única sin marcar/obligatoria, enlace de baja obligatorio, versiones
+  antiguas, concurrencia y reintentos. Tipos correctos; build del ajuste final pendiente.
 - Neon Preview real: 12 peticiones concurrentes, cinco permitidas y siete bloqueadas;
   ocho intentos de obtener el trabajo, una concesión. Sin proveedores/correos y
   fixtures propias retiradas. No repetir esas pruebas salvo cambios que las afecten.
-- Última versión remota verificada antes de este ajuste: c7dd90db, Preview
-  dpl_BjYvSHLupgh3TjCDWK5Rawg8zKb9 Ready. Ambos alias, HTTP y ADMIN health cotejados.
-  Esa versión todavía presenta el alta opcional y no acredita el ajuste obligatorio.
+- Versión intermedia c37cfdd6 Ready en dpl_BbSdKKnpAu89XxfhbmvDuSQdZFBY; la copia
+  posterior 32495717 se envió únicamente a Preview. Ninguna acredita todavía la
+  última adaptación a una única casilla; verificar el SHA y los alias finales.
 - Production verificada el 04/11/2026: 649e5c2a/dpl_GGDMGfFcFdUhQtiodDGFSZk2J7yu;
   metadatos de variables idénticos a la referencia previa.
 - Xavier autoriza temporalmente aleydapaola+registro20261103@proton.me para un alta
