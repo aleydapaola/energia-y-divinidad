@@ -13,8 +13,10 @@ del comportamiento de pruebas no autoriza publicar una versión en Production.
 - La API exige newsletterOptIn=true y newsletterConsentAction=subscribe, además de
   términos aceptados y Turnstile válido. Valores ausentes, falsos o incoherentes
   se rechazan antes de crear cuentas o enviar correos. Los términos no se premarcan.
-- Se guarda fecha, origen, versión v3 y texto que identifica que el registro incluye
-  newsletter y el botón elegido. Los consentimientos v1/v2 guardados se conservan
+- Se guarda fecha, origen, versión v4 y texto que identifica que el registro incluye
+  newsletter y el botón elegido. La casilla explica «Al darme de alta en Energía y
+  Divinidad, acepto suscribirme a su newsletter» y menciona el enlace de baja de
+  cada newsletter. Los consentimientos v1/v2/v3 guardados se conservan
   y siguen siendo procesables. No hay nueva migración ni cambio de cuentas antiguas.
 - La newsletter se activa solo después de verificar el email de la cuenta. No se
   envía otro correo para confirmar Mailchimp. La bienvenida y el regalo conservan

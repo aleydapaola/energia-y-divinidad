@@ -479,6 +479,8 @@ test("registration requires the preselected newsletter with a single explicit si
   const terms = html.match(/<input[^>]+id="acceptedTerms"[^>]*>/)?.[0];
   assert.ok(terms && !/\bchecked/.test(terms));
   assert.match(html, /meditación del Ángel de la Guarda/);
+  assert.match(html, /Al darme de alta en Energía y Divinidad, acepto suscribirme/);
+  assert.match(html, /Podré darme de baja mediante el enlace incluido en cada newsletter/);
 });
 
 test("one-use account verification atomically enables newsletter work, and replay cannot send again", () =>
@@ -634,11 +636,13 @@ test("signup submits newsletter acceptance and blocks submission when it is unch
     }
   }));
 
-test("existing optional consent remains processable after requiring newsletter on new registrations", () =>
+test("previous consent versions remain processable after updating the registration wording", () =>
   environment(async () => {
-    const { service, state } = workerHarness();
-    state.record.consentVersion = "registration-newsletter-2026-11-03-v1";
-    await service.processRegistrationNewsletter("test-user");
-    assert.equal(state.record.status, "ACTIVE");
-    assert.equal(state.gifts, 1);
+    for (const version of copy.REGISTRATION_NEWSLETTER_VERSIONS) {
+      const { service, state } = workerHarness();
+      state.record.consentVersion = version;
+      await service.processRegistrationNewsletter("test-user");
+      assert.equal(state.record.status, "ACTIVE", version);
+      assert.equal(state.gifts, 1, version);
+    }
   }));
