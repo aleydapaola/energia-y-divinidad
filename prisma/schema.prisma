@@ -96,6 +96,37 @@ model PublicFormLimit {
   @@map("public_form_limits")
 }
 
+// First-touch newsletter consent and confirmation. Address is represented only by HMAC.
+model NewsletterCapture {
+  id             String   @id
+  listId         String
+  source         String
+  variant        String
+  device         String
+  consentVersion String
+  consentText    String
+  status         String   @default("PENDING")
+  createdAt      DateTime @default(now())
+  confirmedAt    DateTime?
+
+  @@index([createdAt, source, variant])
+  @@map("newsletter_captures")
+}
+
+// Daily counters only, without visitor IDs, IPs, URLs or email addresses.
+model NewsletterMetric {
+  id      String   @id
+  day     DateTime
+  source  String
+  variant String
+  device  String
+  event   String
+  count   Int      @default(0)
+
+  @@index([day])
+  @@map("newsletter_metrics")
+}
+
 // NextAuth - Account (para OAuth providers)
 model Account {
   id                String  @id @default(cuid())

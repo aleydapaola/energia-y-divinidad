@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { deliverEmail, previewEmailRecipient } from "./email-delivery";
+import { confirmNewsletterCapture } from "./newsletter-capture";
 import { newsletterGiftConfiguration, NEWSLETTER_GIFT_VERSION } from "./newsletter-gift-config";
 import { NEWSLETTER_GIFT_SUBJECT, renderNewsletterGiftEmail } from "./newsletter-gift-email";
 import { prisma } from "./prisma";
@@ -219,6 +220,12 @@ async function deliverNewsletterGift(
   }
 
   const id = newsletterGiftLogId(event.listId, event.email);
+  // Attribution is auxiliary: an unavailable counter must never block the gift.
+  try {
+    await confirmNewsletterCapture(event.listId, event.email);
+  } catch {
+    console.warn("Newsletter capture confirmation unavailable");
+  }
   const content = renderNewsletterGiftEmail({
     unsubscribeUrl: audience.unsubscribeUrl,
     postalAddress: audience.postalAddress,

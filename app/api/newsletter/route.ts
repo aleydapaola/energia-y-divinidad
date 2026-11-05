@@ -4,6 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { previewEmailRecipient } from "@/lib/email-delivery";
+import { rememberNewsletterCapture, newsletterCaptureResult } from "@/lib/newsletter-capture";
+import {
+  CAPTURE_SOURCES,
+  CAPTURE_VARIANTS,
+  CAPTURE_DEVICES,
+  NEWSLETTER_CONSENT_VERSION,
+} from "@/lib/newsletter-capture-rules";
 import { isolatedMailchimpListId } from "@/lib/preview-safety";
 import {
   consumeFormLimit,
@@ -21,6 +28,13 @@ const emailSchema = z
   .email()
   .max(254)
   .transform((value) => value.toLowerCase());
+const captureSchema = z.object({
+  acceptedNewsletter: z.literal(true),
+  consentVersion: z.literal(NEWSLETTER_CONSENT_VERSION),
+  source: z.enum(CAPTURE_SOURCES),
+  variant: z.enum(CAPTURE_VARIANTS),
+  device: z.enum(CAPTURE_DEVICES),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +42,19 @@ export async function POST(request: NextRequest) {
     const parsedEmail = emailSchema.safeParse(input?.email);
     if (!parsedEmail.success) {
       return NextResponse.json({ error: "Email inválido" }, { status: 400 });
+    }
+
+    // Legacy clients keep the existing route during rollout. New capture forms
+    // must supply their explicit acceptance and a bounded attribution context.
+    const capture = input?.source === undefined ? null : captureSchema.safeParse(input);
+    if (capture && !capture.success) {
+      return NextResponse.json(
+        { error: "Acepta la suscripción a la newsletter antes de continuar." },
+        { status: 400 }
+      );
+    }
+    if (input?.website) {
+      return NextResponse.json({ error: "No se pudo validar el formulario." }, { status: 400 });
     }
 
     if (
@@ -57,6 +84,15 @@ export async function POST(request: NextRequest) {
       "Content-Type": "application/json",
     };
 
+    const captureId = capture?.success
+      ? await rememberNewsletterCapture(MAILCHIMP_LIST_ID, email, capture.data)
+      : null;
+    const result = async (status: "PENDING" | "EXISTING" | "INACTIVE" | "FAILED") => {
+      if (captureId) {
+        await newsletterCaptureResult(captureId, status);
+      }
+    };
+
     const response = await fetch(url, {
       method: "POST",
       headers,
@@ -80,16 +116,25 @@ export async function POST(request: NextRequest) {
       }
       const { status } = await member.json();
       if (status === "subscribed") {
-        return NextResponse.json({ message: "Ya estás en nuestra lista" }, { status: 200 });
+        await result("EXISTING");
+        return NextResponse.json(
+          { message: "Ya estás en nuestra lista", subscriptionStatus: "subscribed" },
+          { status: 200 }
+        );
       }
       if (status === "pending") {
+        await result("PENDING");
         return NextResponse.json(
-          { message: "Tu suscripción sigue pendiente. Revisa tu correo para confirmarla." },
+          {
+            message: "Tu suscripción sigue pendiente. Revisa tu correo para confirmarla.",
+            subscriptionStatus: "pending",
+          },
           { status: 200 }
         );
       }
       // A self-unsubscribed contact must opt in through Mailchimp's hosted form.
       // Never override an unsubscribe or mark it as an active subscription.
+      await result("INACTIVE");
       let signupUrl: string | undefined;
       const list = await fetch(`${listUrl}?fields=subscribe_url_long`, {
         headers,
@@ -123,6 +168,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!response.ok) {
+      await result("FAILED");
       console.error("Mailchimp API error:", response.status, data.title);
       return NextResponse.json(
         { error: "Error al suscribirse. Por favor, intenta de nuevo." },
@@ -130,8 +176,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await result("PENDING");
     return NextResponse.json(
-      { message: "¡Revisa tu correo para confirmar tu suscripción!" },
+      {
+        message:
+          "Te hemos enviado la confirmación. Abre ese correo y confirma tu suscripción para recibir la meditación. Si no lo encuentras, revisa Spam o Promociones.",
+        subscriptionStatus: "pending",
+      },
       { status: 201 }
     );
   } catch (error) {
