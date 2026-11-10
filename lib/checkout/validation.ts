@@ -19,7 +19,12 @@ export const checkoutSchema = z.object({
   paymentMethod: z.enum(["PAYPAL", "BANK_TRANSFER"]),
 
   // Cliente (requerido para guest checkout)
-  customerEmail: z.string().email().optional(),
+  customerEmail: z
+    .string()
+    .trim()
+    .email()
+    .transform((email) => email.toLowerCase())
+    .optional(),
   customerName: z.string().min(1).optional(),
   customerPhone: z.string().optional(),
 

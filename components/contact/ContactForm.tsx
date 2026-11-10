@@ -144,6 +144,12 @@ export function ContactForm() {
           </label>
           <input
             type="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            onBlur={(event) => {
+              const email = event.target.value.trim().toLowerCase()
+              setFormData((prev) => ({ ...prev, email }))
+            }}
             id="email"
             name="email"
             required

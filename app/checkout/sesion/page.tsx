@@ -502,6 +502,9 @@ function SessionCheckoutContent() {
                         </label>
                         <input
                           type="email"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          onBlur={(event) => setGuestEmail(event.target.value.trim().toLowerCase())}
                           value={guestEmail}
                           onChange={(e) => {
                             setGuestEmail(e.target.value);
