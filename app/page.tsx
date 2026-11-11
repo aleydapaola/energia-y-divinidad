@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import MeditationCard from "@/components/meditaciones/MeditationCard";
-import { NewsletterForm } from "@/components/newsletter";
+import { MeditationSignup } from "@/components/newsletter/MeditationSignup";
 import { auth } from "@/lib/auth";
 import { getFeaturedFreeContent, type FreeContent } from "@/lib/sanity/queries/freeContent";
 import { getRandomTestimonials, type Testimonial } from "@/lib/sanity/queries/testimonials";
@@ -221,6 +221,7 @@ export default async function HomePage() {
       </section>
 
       {/* ¿Te resuena esto? Section */}
+      <MeditationSignup source="home" />
       <section className="relative py-16 sm:py-20 md:py-24 lg:py-28 overflow-hidden">
         {/* Background gradient */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#f8f0f5] via-[#f5eaf2] to-[#f0e5ef]" />
@@ -1045,60 +1046,13 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* Newsletter Section */}
-      <section className="relative bg-gradient-to-b from-[#f8f0f5] via-[#efe8f2] to-[#e8e0eb] py-16 sm:py-20 md:py-24 overflow-hidden">
-        {/* Decorative blurred elements */}
-        <div className="absolute top-0 left-0 w-96 h-96 bg-[#8A4BAF]/10 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[#654177]/8 rounded-full blur-[120px] translate-x-1/3 translate-y-1/3" />
-        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-[#8A4BAF]/5 rounded-full blur-[80px] -translate-x-1/2 -translate-y-1/2" />
-        {/* Small sparkles */}
-        <div className="absolute top-1/4 left-1/5 w-1.5 h-1.5 bg-[#8A4BAF]/20 rounded-full blur-[1px]" />
-        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-[#654177]/15 rounded-full blur-[1px]" />
-        <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-[#8A4BAF]/15 rounded-full blur-[1px]" />
-
-        <div className="relative container mx-auto px-4">
-          <div className="max-w-2xl mx-auto text-center">
-            {/* Icon */}
-            <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 flex items-center justify-center bg-gradient-to-br from-[#8A4BAF]/10 to-[#654177]/10 rounded-full">
-                <svg
-                  className="w-8 h-8 text-[#8A4BAF]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            {/* Title */}
-            <h2 className="font-gazeta text-2xl sm:text-3xl md:text-4xl text-[#8A4BAF] mb-4">
-              Recibe una meditación gratis
-            </h2>
-
-            {/* Subtitle */}
-            <p className="font-dm-sans text-base sm:text-lg text-[#674c6a] mb-8 max-w-lg mx-auto">
-              Suscríbete y recibe una meditación guiada, contenido exclusivo y herramientas para tu
-              camino espiritual
-            </p>
-
-            {/* Form */}
-            <div className="max-w-sm mx-auto">
-              <NewsletterForm variant="inline" />
-            </div>
-
-            {/* Privacy note */}
-            <p className="font-dm-sans text-xs text-[#9a9a9a] mt-4">
-              Respetamos tu privacidad. Puedes darte de baja en cualquier momento.
-            </p>
-          </div>
-        </div>
+      <section className="px-5 py-10 text-center">
+        <Link
+          href="/meditacion-gratis"
+          className="inline-flex min-h-12 items-center rounded-full border border-[#8A4BAF]/30 px-6 py-3 text-sm font-semibold text-[#654177] hover:bg-[#f8f0f5]"
+        >
+          Descubre tu meditación gratuita →
+        </Link>
       </section>
 
       <Footer />

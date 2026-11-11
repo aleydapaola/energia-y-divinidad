@@ -69,6 +69,13 @@ export default async function PrivacidadPage() {
               legalmente exigible.
             </p>
             <p className="text-sm">
+              Los formularios independientes guardan el texto y la fecha de la aceptación, su
+              ubicación y el estado de confirmación con un identificador HMAC de la dirección, sin
+              otra copia del correo en ese registro. La medición de captación utiliza contadores
+              diarios agregados por ubicación, formato y tipo de pantalla, sin identificadores de
+              visitantes ni exportación a plataformas de analítica.
+            </p>
+            <p className="text-sm">
               <a
                 href="https://www.cloudflare.com/privacypolicy/"
                 className="underline"
