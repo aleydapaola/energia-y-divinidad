@@ -476,6 +476,11 @@ export function CheckoutForm({
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  onBlur={(event) =>
+                    handleInputChange("email", event.target.value.trim().toLowerCase())
+                  }
                   id="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}

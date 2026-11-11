@@ -46,7 +46,7 @@ function SignInForm() {
 
     try {
       const result = await signIn("credentials", {
-        email: formData.email,
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
         redirect: false,
       });
@@ -86,9 +86,17 @@ function SignInForm() {
             name="email"
             type="email"
             autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect="off"
             required
             value={formData.email}
             onChange={handleChange}
+            onBlur={(event) =>
+              setFormData((prev) => ({
+                ...prev,
+                email: event.target.value.trim().toLowerCase(),
+              }))
+            }
             disabled={isLoading}
             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8A4BAF]/20 focus:border-[#8A4BAF] font-dm-sans transition-colors disabled:opacity-50"
             placeholder="tu@email.com"

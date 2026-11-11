@@ -44,7 +44,7 @@ export function NewsletterForm({ variant = "footer", className = "" }: Newslette
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
 
       const data = await response.json();
@@ -105,6 +105,9 @@ export function NewsletterForm({ variant = "footer", className = "" }: Newslette
         <div className="flex flex-col gap-2">
           <input
             type="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            onBlur={(event) => setEmail(event.target.value.trim().toLowerCase())}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Tu email"
@@ -139,6 +142,9 @@ export function NewsletterForm({ variant = "footer", className = "" }: Newslette
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            onBlur={(event) => setEmail(event.target.value.trim().toLowerCase())}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Tu email"
@@ -182,6 +188,9 @@ export function NewsletterForm({ variant = "footer", className = "" }: Newslette
         <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            onBlur={(event) => setEmail(event.target.value.trim().toLowerCase())}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Tu email"

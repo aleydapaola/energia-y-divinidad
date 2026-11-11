@@ -20,7 +20,13 @@ import { getAppUrl } from "@/lib/utils";
 const inputSchema = z.object({
   productType: z.enum(["session", "pack", "event", "course", "product"]),
   productId: z.string().min(1).max(150),
-  guestEmail: z.string().email().max(254).optional(),
+  guestEmail: z
+    .string()
+    .trim()
+    .email()
+    .max(254)
+    .transform((email) => email.toLowerCase())
+    .optional(),
   guestName: z.string().max(120).optional(),
   guestPhone: z.string().max(40).optional(),
   scheduledAt: z.string().datetime().optional(),

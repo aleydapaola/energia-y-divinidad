@@ -52,7 +52,7 @@ export default function SignUpPage() {
       setError("El email es requerido");
       return false;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       setError("El email no es válido");
       return false;
     }
@@ -89,7 +89,7 @@ export default function SignUpPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: formData.name,
-          email: formData.email,
+          email: formData.email.trim().toLowerCase(),
           password: formData.password,
           acceptedTerms: formData.acceptedTerms,
           newsletterOptIn: formData.acceptedTerms,
@@ -114,7 +114,9 @@ export default function SignUpPage() {
       }
 
       // Redirect to verify email page
-      router.push(`/auth/verify-email?email=${encodeURIComponent(formData.email)}`);
+      router.push(
+        `/auth/verify-email?email=${encodeURIComponent(formData.email.trim().toLowerCase())}`
+      );
     } catch (err: any) {
       setError(err.message || "Error al crear la cuenta");
     } finally {
@@ -170,9 +172,17 @@ export default function SignUpPage() {
                 name="email"
                 type="email"
                 autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
                 required
                 value={formData.email}
                 onChange={handleChange}
+                onBlur={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    email: event.target.value.trim().toLowerCase(),
+                  }))
+                }
                 disabled={isLoading}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8A4BAF]/20 focus:border-[#8A4BAF] font-dm-sans transition-colors disabled:opacity-50"
                 placeholder="tu@email.com"

@@ -25,7 +25,7 @@ function ForgotPasswordForm() {
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       })
 
       const data = await response.json()
@@ -97,6 +97,9 @@ function ForgotPasswordForm() {
             name="email"
             type="email"
             autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            onBlur={(event) => setEmail(event.target.value.trim().toLowerCase())}
             required
             value={email}
             onChange={(e) => {

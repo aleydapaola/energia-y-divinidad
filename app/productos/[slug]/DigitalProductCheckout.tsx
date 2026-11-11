@@ -97,6 +97,9 @@ export function DigitalProductCheckout({
             <input
               required
               type="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              onBlur={(event) => setEmail(event.target.value.trim().toLowerCase())}
               className="block w-full border p-3 rounded-lg"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

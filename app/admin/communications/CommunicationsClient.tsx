@@ -575,6 +575,9 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
             </h2>
             <input
               type="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              onBlur={(event) => setTestEmail(event.target.value.trim().toLowerCase())}
               value={testEmail}
               onChange={(event) => setTestEmail(event.target.value)}
               placeholder="email@dominio.com"

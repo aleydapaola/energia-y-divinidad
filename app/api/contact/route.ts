@@ -5,7 +5,8 @@ import { sendContactEmail } from '@/lib/email'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, email, phone, subject, message } = body
+    const { name, phone, subject, message } = body
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
 
     // Validación básica
     if (!name || !email || !subject || !message) {
