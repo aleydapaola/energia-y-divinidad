@@ -38,7 +38,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Admin Header */}
       <header className="bg-[#654177] text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 py-3">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <Link
                 href="/"
@@ -48,10 +48,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <span className="text-sm">Volver al sitio</span>
               </Link>
               <div className="h-6 w-px bg-white/30" />
-              <h1 className="font-gazeta text-base sm:text-xl">Panel de Administración</h1>
+              <h1 className="font-gazeta text-xl">Panel de Administración</h1>
             </div>
             <div className="flex items-center gap-4">
-              <span className="break-all text-sm text-white/80">
+              <span className="text-sm text-white/80">
                 {session.user.name || session.user.email}
               </span>
             </div>
@@ -59,13 +59,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </header>
 
-      <div className="flex flex-col lg:flex-row">
+      <div className="flex">
         {/* Sidebar */}
-        <aside className="w-full min-w-0 shrink-0 border-b border-gray-200 bg-white shadow-sm lg:min-h-[calc(100vh-4rem)] lg:w-64 lg:border-b-0 lg:border-r">
-          <nav
-            aria-label="Administración"
-            className="flex gap-1 overflow-x-auto p-3 lg:block lg:space-y-1 lg:p-4 [&>a]:shrink-0"
-          >
+        <aside className="w-64 bg-white shadow-lg min-h-[calc(100vh-4rem)] border-r border-gray-200">
+          <nav className="p-4 space-y-1">
             <Link
               href="/admin"
               className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-[#f8f0f5] rounded-lg transition-colors"
@@ -133,7 +130,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </aside>
 
         {/* Main Content */}
-        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 p-8">{children}</main>
       </div>
     </div>
   );

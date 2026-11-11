@@ -1,4 +1,3 @@
-import { NewsletterCaptureAdmin } from "@/components/newsletter/NewsletterCaptureAdmin";
 import { RegistrationNewsletterAdmin } from "@/components/newsletter/RegistrationNewsletterAdmin";
 import { getCommunicationAudienceOptions } from "@/lib/email-audiences";
 import { prisma } from "@/lib/prisma";
@@ -21,7 +20,6 @@ export default async function AdminCommunicationsPage() {
   return (
     <>
       <RegistrationNewsletterAdmin />
-      <NewsletterCaptureAdmin />
       <CommunicationsClient
         options={options}
         initialCampaigns={campaigns.map((campaign) => ({

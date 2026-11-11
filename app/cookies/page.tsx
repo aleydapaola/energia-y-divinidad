@@ -35,19 +35,6 @@ export default async function CookiesPage() {
             lastUpdated={page.lastUpdated}
             version={page.version}
           />
-          <section className="mx-auto mt-8 max-w-4xl rounded-xl bg-white p-6 text-sm leading-relaxed text-gray-700 sm:p-8">
-            <h2 className="mb-3 text-xl font-semibold text-[#654177]">
-              Preferencias de la invitación a la newsletter
-            </h2>
-            <p>
-              Al cerrar la invitación guardamos una preferencia durante 14 días. Tras solicitar la
-              suscripción, la ocultamos durante 30 días; si la dirección ya está suscrita, durante
-              un año. No guardamos el correo en el navegador. La variante de presentación y los
-              avisos ya contados se conservan en el almacenamiento de la pestaña para no repetirlos
-              durante la sesión. Si este almacenamiento está bloqueado, la invitación automática no
-              aparece. Puedes borrar estas preferencias desde los ajustes del navegador.
-            </p>
-          </section>
         </div>
       </main>
       <Footer />

@@ -3,7 +3,6 @@ import localFont from "next/font/local";
 
 import "./globals.css";
 import { SessionProvider } from "@/components/auth/SessionProvider";
-import { NewsletterInvitation } from "@/components/newsletter/NewsletterInvitation";
 
 import type { Metadata, Viewport } from "next";
 
@@ -81,10 +80,7 @@ export default function RootLayout({
             reales.
           </div>
         )}
-        <SessionProvider>
-          {children}
-          <NewsletterInvitation />
-        </SessionProvider>
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );

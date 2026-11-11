@@ -1,7 +1,5 @@
 # Membresías y condiciones comerciales — solo Preview
 
-Estado actualizado el 02/11/2026: este título y los pendientes posteriores describen la preparación histórica. Las membresías mensuales con prueba y anuales con cobro inmediato se validaron y cancelaron en sandbox; sus accesos se conservaron hasta el final del período y Xavier confirmó los correos. La versión aprobada `ed83f288` está publicada con PayPal live y sus cuatro planes regulares verificados. No repetir esas compras, crear otros planes ni reiniciar pruebas usadas. Resultado y pendientes operativos en [Publicación de PayPal y Bre-B](publicacion-pagos-paypal-breb-2026-11-01.md#estado-actual--02112026). Una renovación futura real se supervisará cuando ocurra; no se ha hecho un cobro real como prueba.
-
 Autorización nueva de Xavier: elegir criterios habituales de sitios comparables para talleres/cursos/digitales e incluir las membresías recurrentes en el primer lanzamiento, preparando sus pruebas antes de publicar. No autoriza Production.
 
 ## Criterios elegidos

@@ -1,65 +1,62 @@
-import { BookOpen, Sparkles } from "lucide-react";
-import Link from "next/link";
+import { BookOpen, Sparkles } from 'lucide-react'
 
-import BlogCard from "@/components/blog/BlogCard";
-import { Footer } from "@/components/layout/Footer";
-import { Header } from "@/components/layout/Header";
-import { MeditationSignup } from "@/components/newsletter/MeditationSignup";
-import { auth } from "@/lib/auth";
-import { getBlogPosts, getFeaturedBlogPosts } from "@/lib/sanity/queries/blog";
+import BlogCard from '@/components/blog/BlogCard'
+import { Footer } from '@/components/layout/Footer'
+import { Header } from '@/components/layout/Header'
+import { auth } from '@/lib/auth'
+import { getBlogPosts, getFeaturedBlogPosts } from '@/lib/sanity/queries/blog'
 
-import type { Metadata } from "next";
+
+import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: "Blog | Energía y Divinidad",
-  description:
-    "Artículos sobre espiritualidad, canalización, chamanismo, meditación y desarrollo personal. Descubre contenido que nutre tu alma y expande tu consciencia.",
+  title: 'Blog | Energía y Divinidad',
+  description: 'Artículos sobre espiritualidad, canalización, chamanismo, meditación y desarrollo personal. Descubre contenido que nutre tu alma y expande tu consciencia.',
   keywords: [
-    "blog espiritual",
-    "artículos de espiritualidad",
-    "canalización",
-    "chamanismo",
-    "meditación",
-    "desarrollo personal",
-    "registros akáshicos",
-    "sanación espiritual",
+    'blog espiritual',
+    'artículos de espiritualidad',
+    'canalización',
+    'chamanismo',
+    'meditación',
+    'desarrollo personal',
+    'registros akáshicos',
+    'sanación espiritual',
   ],
   openGraph: {
-    title: "Blog | Energía y Divinidad",
-    description:
-      "Artículos sobre espiritualidad, canalización, chamanismo, meditación y desarrollo personal.",
-    type: "website",
+    title: 'Blog | Energía y Divinidad',
+    description: 'Artículos sobre espiritualidad, canalización, chamanismo, meditación y desarrollo personal.',
+    type: 'website',
   },
-};
+}
 
 // Mapeo de categorías
 const categoryLabels: Record<string, string> = {
-  canalizacion: "Canalización",
-  chamanismo: "Chamanismo",
-  espiritualidad: "Espiritualidad",
-  energia: "Energía",
-  sanacion: "Sanación",
-  meditacion: "Meditación",
-  "registros-akashicos": "Registros Akáshicos",
-  "desarrollo-personal": "Desarrollo Personal",
-  testimonios: "Testimonios",
-  noticias: "Noticias",
-};
+  'canalizacion': 'Canalización',
+  'chamanismo': 'Chamanismo',
+  'espiritualidad': 'Espiritualidad',
+  'energia': 'Energía',
+  'sanacion': 'Sanación',
+  'meditacion': 'Meditación',
+  'registros-akashicos': 'Registros Akáshicos',
+  'desarrollo-personal': 'Desarrollo Personal',
+  'testimonios': 'Testimonios',
+  'noticias': 'Noticias',
+}
 
 export default async function BlogPage() {
   const [session, posts, featuredPosts] = await Promise.all([
     auth(),
     getBlogPosts(),
     getFeaturedBlogPosts(),
-  ]);
+  ])
 
   // Filtrar posts destacados de la lista general para no repetirlos
-  const featuredIds = new Set(featuredPosts.map((p) => p._id));
-  const regularPosts = posts.filter((p) => !featuredIds.has(p._id));
+  const featuredIds = new Set(featuredPosts.map(p => p._id))
+  const regularPosts = posts.filter(p => !featuredIds.has(p._id))
 
   // Obtener categorías únicas de los posts
-  const allCategories = posts.flatMap((p) => p.categories || []);
-  const uniqueCategories = [...new Set(allCategories)];
+  const allCategories = posts.flatMap(p => p.categories || [])
+  const uniqueCategories = [...new Set(allCategories)]
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -83,8 +80,8 @@ export default async function BlogPage() {
 
             {/* Description */}
             <p className="font-dm-sans text-base md:text-lg lg:text-xl text-gray-700 leading-relaxed max-w-2xl mx-auto mb-6">
-              Reflexiones, enseñanzas y mensajes canalizados para nutrir tu alma y acompañarte en tu
-              camino de despertar espiritual.
+              Reflexiones, enseñanzas y mensajes canalizados para nutrir tu alma
+              y acompañarte en tu camino de despertar espiritual.
             </p>
 
             {/* Stats */}
@@ -94,7 +91,7 @@ export default async function BlogPage() {
                   {posts.length}
                 </div>
                 <div className="font-dm-sans text-sm text-gray-600 uppercase tracking-wide">
-                  {posts.length === 1 ? "Artículo" : "Artículos"}
+                  {posts.length === 1 ? 'Artículo' : 'Artículos'}
                 </div>
               </div>
               <div className="text-center">
@@ -102,7 +99,7 @@ export default async function BlogPage() {
                   {uniqueCategories.length}
                 </div>
                 <div className="font-dm-sans text-sm text-gray-600 uppercase tracking-wide">
-                  {uniqueCategories.length === 1 ? "Categoría" : "Categorías"}
+                  {uniqueCategories.length === 1 ? 'Categoría' : 'Categorías'}
                 </div>
               </div>
             </div>
@@ -111,7 +108,6 @@ export default async function BlogPage() {
       </section>
 
       {/* Featured Posts Section */}
-      <MeditationSignup source="blog" />
       {featuredPosts.length > 0 && (
         <section className="py-12 sm:py-16 bg-white">
           <div className="container mx-auto px-4">
@@ -186,8 +182,8 @@ export default async function BlogPage() {
                   Próximamente
                 </h3>
                 <p className="font-dm-sans text-base text-gray-600 max-w-md mx-auto">
-                  Estamos preparando artículos llenos de luz y sabiduría para ti. Suscríbete a
-                  nuestra newsletter para recibir notificaciones.
+                  Estamos preparando artículos llenos de luz y sabiduría para ti.
+                  Suscríbete a nuestra newsletter para recibir notificaciones.
                 </p>
               </div>
             ) : (
@@ -209,16 +205,16 @@ export default async function BlogPage() {
               ¿Quieres una experiencia más profunda?
             </h2>
             <p className="font-dm-sans text-base md:text-lg text-gray-700 leading-relaxed mb-6">
-              Agenda una sesión de canalización personalizada o únete a nuestra membresía para
-              acceso exclusivo a contenido premium, sesiones grupales y más.
+              Agenda una sesión de canalización personalizada o únete a nuestra membresía
+              para acceso exclusivo a contenido premium, sesiones grupales y más.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
+              <a
                 href="/sesiones"
                 className="inline-block px-8 py-4 bg-[#4944a4] text-white rounded-lg hover:bg-[#3d3a8a] transition-all transform hover:scale-105 font-dm-sans text-base font-medium shadow-lg"
               >
                 Ver Sesiones
-              </Link>
+              </a>
               <a
                 href="/membresia"
                 className="inline-block px-8 py-4 bg-white text-[#4944a4] border-2 border-[#4944a4] rounded-lg hover:bg-[#4944a4] hover:text-white transition-all transform hover:scale-105 font-dm-sans text-base font-medium"
@@ -232,5 +228,5 @@ export default async function BlogPage() {
 
       <Footer />
     </div>
-  );
+  )
 }

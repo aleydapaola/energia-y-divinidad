@@ -5,7 +5,6 @@ import { createRequire, Module } from "node:module";
 import { test } from "node:test";
 
 import { isolatedMailchimpListId } from "../lib/preview-safety.ts";
-import { loadMembership } from "./helpers/membership-loader.mjs";
 
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
@@ -13,15 +12,6 @@ function load() {
   const filename = new URL("../app/api/newsletter/route.ts", import.meta.url).pathname;
   const mod = new Module(filename);
   mod.require = (name) => {
-    if (name === "@/lib/newsletter-capture") {
-      return {
-        rememberNewsletterCapture: async () => "synthetic",
-        newsletterCaptureResult: async () => {},
-      };
-    }
-    if (name === "@/lib/newsletter-capture-rules") {
-      return loadMembership("lib/newsletter-capture-rules.ts");
-    }
     if (name === "@/lib/public-form-security") {
       return {
         consumeFormLimit: async () => {},
@@ -128,36 +118,6 @@ test("newsletter rejects malformed email values before calling Mailchimp", async
     }
   }));
 
-test("new capture forms reject missing or false acceptance, unknown sources and honeypots before provider calls", () =>
-  isolated(async () => {
-    configurePreview();
-    globalThis.fetch = async () => {
-      assert.fail("Invalid consent must not reach Mailchimp");
-    };
-    const input = {
-      email: "visitor@example.com",
-      source: "home",
-      variant: "control",
-      device: "mobile",
-      acceptedNewsletter: true,
-      consentVersion: "meditation-capture-v1",
-    };
-    for (const change of [
-      { acceptedNewsletter: false },
-      { acceptedNewsletter: undefined },
-      { acceptedNewsletter: "true" },
-      { consentVersion: "old" },
-      { source: "private@example.com" },
-      { variant: "foreign" },
-      { website: "spam" },
-    ]) {
-      assert.equal(
-        (await load().POST({ json: async () => ({ ...input, ...change }) })).status,
-        400
-      );
-    }
-  }));
-
 function configurePreview() {
   process.env.VERCEL_ENV = "preview";
   process.env.MAILCHIMP_API_KEY = "fake-test-key";
@@ -260,18 +220,10 @@ test("all newsletter form variants expose the re-confirmation link and existing 
     const filename = new URL("../components/newsletter/NewsletterForm.tsx", import.meta.url)
       .pathname;
     const mod = new Module(filename);
-    mod.require = (name) => {
-      if (name === "react") {
-        return { ...React, useState: () => [values[i++], () => {}], useEffect() {} };
-      }
-      if (name === "@/lib/newsletter-capture-client") {
-        return {};
-      }
-      if (name === "@/lib/newsletter-capture-rules") {
-        return loadMembership("lib/newsletter-capture-rules.ts");
-      }
-      return require(name);
-    };
+    mod.require = (name) =>
+      name === "react"
+        ? { ...React, useState: () => [values[i++], () => {}], useEffect() {} }
+        : require(name);
     mod._compile(
       ts.transpileModule(readFileSync(filename, "utf8"), {
         compilerOptions: {
@@ -282,7 +234,7 @@ test("all newsletter form variants expose the re-confirmation link and existing 
       }).outputText,
       filename
     );
-    return renderToStaticMarkup(React.createElement(mod.exports.NewsletterForm, { variant }));
+    return renderToStaticMarkup(mod.exports.NewsletterForm({ variant }));
   }
   for (const variant of ["footer", "inline", "card"]) {
     const html = render(

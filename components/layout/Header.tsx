@@ -178,14 +178,6 @@ export function Header({ session }: HeaderProps) {
       </div>
 
       {/* Cart Drawer */}
-      <div className="border-t border-[#8A4BAF]/10 bg-[#f8f0f5] px-4 text-center">
-        <Link
-          href="/meditacion-gratis"
-          className="inline-flex min-h-11 items-center py-2 text-sm text-[#654177] underline decoration-[#8A4BAF]/40 underline-offset-4"
-        >
-          Tu meditación gratis, un regalo de Aleyda →
-        </Link>
-      </div>
       <CartDrawer />
     </header>
   );

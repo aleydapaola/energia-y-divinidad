@@ -60,8 +60,6 @@ const keys = [
   "NEWSLETTER_WEBHOOK_SIGNING_SECRET",
   "PREVIEW_NEWSLETTER_WEBHOOK_SIGNING_SECRET",
   "PREVIEW_NEWSLETTER_CALLBACK_URL",
-  "REGISTRATION_NEWSLETTER_ENABLED",
-  "AUTH_RATE_LIMIT_SECRET",
 ];
 
 async function isolated(callbackFn) {
@@ -81,7 +79,6 @@ async function isolated(callbackFn) {
     PREVIEW_NEWSLETTER_GIFT_URL: giftUrl,
     PREVIEW_NEWSLETTER_WEBHOOK_SIGNING_SECRET: secret,
     PREVIEW_NEWSLETTER_CALLBACK_URL: callback,
-    AUTH_RATE_LIMIT_SECRET: "synthetic-capture-secret".padEnd(48, "x"),
   });
   try {
     return await callbackFn();
@@ -121,7 +118,7 @@ function request(raw = body(), headers = {}) {
   });
 }
 
-function setup({ crossFlow = false } = {}) {
+function setup() {
   const state = {
     logs: new Map(),
     sent: [],
@@ -138,10 +135,6 @@ function setup({ crossFlow = false } = {}) {
     session: { user: { id: "qa-admin" } },
     hookOverride: {},
     transactionCount: 0,
-    memberExists: true,
-    memberCreates: 0,
-    memberWrites: [],
-    captures: new Map(),
   };
   const emailLog = {
     async upsert({ where, create }) {
@@ -160,42 +153,7 @@ function setup({ crossFlow = false } = {}) {
   };
   let tail = Promise.resolve();
   const prisma = {
-    newsletterCapture: {
-      async upsert({ where, create }) {
-        if (!state.captures.has(where.id)) {
-          state.captures.set(where.id, { ...create, confirmedAt: null });
-        }
-        return state.captures.get(where.id);
-      },
-      async updateMany({ where, data }) {
-        const capture = state.captures.get(where.id);
-        if (!capture || capture.confirmedAt || (where.status && capture.status !== where.status)) {
-          return { count: 0 };
-        }
-        Object.assign(capture, data);
-        return { count: 1 };
-      },
-    },
-    registrationNewsletter: {
-      findUnique: async () => state.registration || null,
-      async updateMany({ where }) {
-        const record = state.registration;
-        if (
-          !record ||
-          !where.status.in.includes(record.status) ||
-          !record.verifiedAt ||
-          record.leaseUntil > new Date()
-        ) {
-          return { count: 0 };
-        }
-        record.leaseUntil = new Date(Date.now() + 120_000);
-        return { count: 1 };
-      },
-      async update({ data }) {
-        Object.assign(state.registration, data);
-        return state.registration;
-      },
-    },
+    registrationNewsletter: { findUnique: async () => state.registration || null },
     emailLog,
     user: {
       async findUnique() {
@@ -226,7 +184,7 @@ function setup({ crossFlow = false } = {}) {
       if (name === "@/lib/auth") {
         return { auth: async () => state.session };
       }
-      if (name === "./email-delivery" || name === "@/lib/email-delivery") {
+      if (name === "./email-delivery") {
         return {
           previewEmailRecipient: () => recipient,
           deliverEmail: async (payload, options) => {
@@ -237,13 +195,6 @@ function setup({ crossFlow = false } = {}) {
             }
             return { data: { id: "synthetic-resend-id" }, error: null };
           },
-        };
-      }
-      if (crossFlow && name === "@/lib/public-form-security") {
-        return {
-          consumeFormLimit: async () => {},
-          publicFormIP: () => "192.0.2.1",
-          PublicFormError: class extends Error {},
         };
       }
       if (name.startsWith("@/")) {
@@ -269,34 +220,7 @@ function setup({ crossFlow = false } = {}) {
   }
   globalThis.fetch = async (url, options) => {
     state.lookups.push(String(url));
-    const method = options.method || "GET";
-    if (!crossFlow) {
-      assert.equal(method, "GET", "never change a Mailchimp contact");
-    } else if (method !== "GET") {
-      const data = JSON.parse(options.body);
-      state.memberWrites.push({ method, url: String(url), data });
-      if (String(url).endsWith("/members") && method === "POST") {
-        assert.equal(data.email_address, recipient);
-        if (state.memberExists) {
-          return Response.json({ title: "Member Exists" }, { status: 400 });
-        }
-        state.memberExists = true;
-        state.memberCreates++;
-        state.memberStatus = data.status;
-        state.tags = data.tags.map((name) => ({ name }));
-      } else if (String(url).endsWith("/tags") && method === "POST") {
-        for (const tag of data.tags) {
-          if (!state.tags.some((existing) => existing.name === tag.name)) {
-            state.tags.push({ name: tag.name });
-          }
-        }
-      } else if (String(url).includes("/members/") && method === "PATCH") {
-        state.memberStatus = data.status;
-      } else {
-        assert.fail(`Unexpected provider write: ${method} ${url}`);
-      }
-      return Response.json({}, { status: 200 });
-    }
+    assert.equal(options.method || "GET", "GET", "never change a Mailchimp contact");
     if (state.lookupFails) {
       return { ok: false, status: 503 };
     }
@@ -318,9 +242,6 @@ function setup({ crossFlow = false } = {}) {
       };
     }
     if (String(url).includes("/members/")) {
-      if (!state.memberExists) {
-        return new Response(null, { status: 404 });
-      }
       return {
         ok: true,
         status: 200,
@@ -356,12 +277,6 @@ function setup({ crossFlow = false } = {}) {
     route: load("app/api/webhooks/newsletter/route.ts"),
     health: load("app/api/admin/newsletter/health/route.ts"),
     service: load("lib/newsletter-gift.ts"),
-    ...(crossFlow
-      ? {
-          newsletter: load("app/api/newsletter/route.ts"),
-          registration: load("lib/registration-newsletter.ts"),
-        }
-      : {}),
   };
 }
 
@@ -665,140 +580,3 @@ test("newsletter gift cannot render without a real Mailchimp unsubscribe link", 
     );
   }
 });
-
-function crossFlowSetup() {
-  // Exercise Production's email normalization, without Preview's recipient substitution.
-  // All provider calls, database operations and deliveries remain simulated by setup.
-  Object.assign(process.env, {
-    VERCEL_ENV: "production",
-    MAILCHIMP_LIST_ID: listId,
-    NEWSLETTER_GIFT_ENABLED: "true",
-    NEWSLETTER_GIFT_URL: giftUrl,
-    NEWSLETTER_WEBHOOK_SIGNING_SECRET: secret,
-    REGISTRATION_NEWSLETTER_ENABLED: "true",
-  });
-  const harness = setup({ crossFlow: true });
-  harness.state.listName = "Energía y Divinidad";
-  harness.state.memberExists = false;
-  harness.state.registration = {
-    userId: "qa",
-    source: "registration",
-    consentVersion: loadPure("lib/registration-newsletter-copy.ts").REGISTRATION_NEWSLETTER_VERSION,
-    verifiedAt: new Date(),
-    activatedAt: null,
-    status: "READY",
-    listId: null,
-    leaseUntil: null,
-    user: { email: recipient, emailVerified: new Date() },
-  };
-  return harness;
-}
-
-function newsletterRequest() {
-  // Whitespace and casing must still identify the same address as the account.
-  return new Request("https://www.energiaydivinidad.com/api/newsletter", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: `  ${recipient.toUpperCase()}  `,
-      source: "landing",
-      variant: "control",
-      device: "mobile",
-      acceptedNewsletter: true,
-      consentVersion: "meditation-capture-v1",
-    }),
-  });
-}
-
-function assertSingleSubscriberAndGift(state) {
-  assert.equal(state.memberCreates, 1);
-  assert.equal(state.memberStatus, "subscribed");
-  assert.equal(state.registration.status, "ACTIVE");
-  assert.equal(state.logs.size, 1);
-  assert.equal(state.sent.length, 1);
-  assert.equal([...state.logs.values()][0].status, "SENT");
-}
-
-test("newsletter first, then verified account reuses the subscriber and never sends a second gift", () =>
-  isolated(async () => {
-    const { state, newsletter, route, registration } = crossFlowSetup();
-    assert.equal((await newsletter.POST(newsletterRequest())).status, 201);
-    assert.equal(state.memberStatus, "pending");
-    state.memberStatus = "subscribed"; // The subscriber confirms Mailchimp's email.
-    assert.equal((await route.POST(request())).status, 200);
-    assert.equal(state.sent.length, 1);
-    const writesBeforeAccount = state.memberWrites.length;
-    await registration.processRegistrationNewsletter("qa");
-    assertSingleSubscriberAndGift(state);
-    assert.ok(
-      state.memberWrites.slice(writesBeforeAccount).every((write) => write.url.endsWith("/tags")),
-      "An existing subscriber only gains the account source tag"
-    );
-  }));
-
-test("verified account first, then newsletter form and duplicate webhook keep one subscriber and gift", () =>
-  isolated(async () => {
-    const { state, newsletter, route, registration } = crossFlowSetup();
-    await registration.processRegistrationNewsletter("qa");
-    assertSingleSubscriberAndGift(state);
-    const response = await newsletter.POST(newsletterRequest());
-    assert.equal(response.status, 200);
-    assert.equal((await response.json()).message, "Ya estás en nuestra lista");
-    assert.equal(
-      (await route.POST(request(body({ "data[email]": recipient.toUpperCase() })))).status,
-      200
-    );
-    assertSingleSubscriberAndGift(state);
-    assert.equal(
-      state.memberWrites.filter((write) => write.data.status === "pending").length,
-      1,
-      "The rejected duplicate create never changes the subscribed contact to pending"
-    );
-  }));
-
-test("pending newsletter followed by verified account activates the same contact and delivers once", () =>
-  isolated(async () => {
-    const { state, newsletter, route, registration } = crossFlowSetup();
-    assert.equal((await newsletter.POST(newsletterRequest())).status, 201);
-    assert.equal(state.sent.length, 0);
-    await registration.processRegistrationNewsletter("qa");
-    assertSingleSubscriberAndGift(state);
-    assert.equal(state.memberWrites.filter((write) => write.method === "PATCH").length, 1);
-    assert.equal((await route.POST(request())).status, 200);
-    assertSingleSubscriberAndGift(state);
-  }));
-
-test("simultaneous newsletter and account activation, followed by concurrent callbacks, deliver only once", () =>
-  isolated(async () => {
-    const { state, newsletter, route, registration } = crossFlowSetup();
-    const [response] = await Promise.all([
-      newsletter.POST(newsletterRequest()),
-      registration.processRegistrationNewsletter("qa"),
-    ]);
-    assert.ok([200, 201].includes(response.status));
-    await Promise.all([route.POST(request()), route.POST(request())]);
-    assertSingleSubscriberAndGift(state);
-  }));
-
-test("newsletter unsubscribe survives later account activation and another newsletter request", () =>
-  isolated(async () => {
-    const { state, newsletter, route, registration } = crossFlowSetup();
-    await newsletter.POST(newsletterRequest());
-    state.memberStatus = "subscribed";
-    await route.POST(request());
-    state.memberStatus = "unsubscribed";
-    const before = state.memberWrites.length;
-    await registration.processRegistrationNewsletter("qa");
-    assert.equal(state.registration.status, "RESUBSCRIBE_REQUIRED");
-    assert.equal(state.memberWrites.length, before, "Account activation cannot resubscribe");
-    assert.equal((await newsletter.POST(newsletterRequest())).status, 409);
-    await route.POST(request());
-    assert.equal(state.memberStatus, "unsubscribed");
-    assert.equal(state.memberCreates, 1);
-    assert.equal(state.logs.size, 1);
-    assert.equal(state.sent.length, 1);
-    assert.ok(
-      state.registration.user.emailVerified,
-      "The account remains verified after unsubscribe"
-    );
-  }));

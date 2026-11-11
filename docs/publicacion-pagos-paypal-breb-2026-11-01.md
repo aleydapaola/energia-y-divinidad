@@ -1,20 +1,5 @@
 # Publicación de PayPal y Bre-B
 
-## Estado actual — 02/11/2026
-
-Publicación completada con aprobación expresa de Xavier para `ed83f2880b2f135c380482d4e2d5a6e82985400c`. Los apartados posteriores conservan el historial: sus pendientes de configuración, pruebas de membresía y autorización de publicación ya están cerrados por este resultado.
-
-- Producción: `dpl_5gFEXnYifRjjDZmbGsTrVn5tcxgg`, Ready; ambos dominios `energiaydivinidad.com` y `www.energiaydivinidad.com` cotejados con el mismo proyecto, equipo, repositorio y SHA aprobados.
-- Compras puntuales de sesiones, cursos, talleres/eventos y productos digitales: PayPal live o Bre-B. Membresías recurrentes: PayPal live. Bre-B conserva conciliación manual por ADMIN; no hay cobro recurrente ni confirmación bancaria automática mediante Global66 personal.
-- PayPal ADMIN devuelve `ready=true` en el candidato protegido y en el dominio público: credenciales live, cuatro planes regulares exactos sin TRIAL adicional y webhook con los once eventos previstos. Bre-B ADMIN devuelve `enabled=true`, `simulation=false` y QR configurado; escaneo bancario confirmado previamente por Xavier.
-- Contraseña ADMIN cambiada personalmente por Xavier antes de abrir pagos. Instantánea recuperable conservada; migración aditiva `checkout_holds` aplicada correctamente. Cuatro documentos legales publicados, con NIT únicamente en configuración privada y web, fuera de Git y del CMS.
-- Wompi, Nequi y Stripe retirados de los flujos activos; doce variables antiguas retiradas del ámbito Production, conservando los otros ámbitos y las referencias de recuperación. Los registros históricos no se borran ni se convierten automáticamente a PayPal/Bre-B. Retirar código no cancela acuerdos externos.
-- No se repitieron las compras y cancelaciones sandbox ya validadas ni se realizaron cobros reales. Evidencia privada: `.local-private/payment-retirement-qa/production-live-final-proof.json` y `approved-release-progress.json`.
-
-No queda una activación técnica pendiente de estos dos métodos. Quedan la operativa habitual de confirmar ingresos Bre-B, supervisar las ventas y renovaciones reales cuando ocurran, y la conciliación personal de pedidos/acuerdos históricos. No marcar pedidos antiguos como pagados, cancelarlos ni iniciar devoluciones sin comprobar cada caso.
-
-## Historial de preparación
-
 Instrucción de Xavier: PayPal y Bre-B · Global66 son los únicos sistemas de pago. Preparar y probar Preview cuanto antes; Production requiere aprobación explícita de la versión concreta. Este documento sustituye los pendientes históricos sobre conservar Wompi o Nequi.
 
 ## Candidato
