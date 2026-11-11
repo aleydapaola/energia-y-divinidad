@@ -19,6 +19,7 @@ function invitationScenario({ width = 375, height = 667 } = {}, run) {
   let open = false;
   let dialog = false;
   let editing = false;
+  let formVisible = false;
   let interval;
   let effect;
   let mounted = false;
@@ -49,6 +50,14 @@ function invitationScenario({ width = 375, height = 667 } = {}, run) {
     activeElement: { matches: () => editing },
     documentElement: { scrollHeight: height + 1000 },
     querySelector: () => (dialog ? {} : null),
+    querySelectorAll: () => [
+      {
+        getBoundingClientRect: () => ({
+          top: formVisible ? height - 100 : height + 100,
+          bottom: height + 300,
+        }),
+      },
+    ],
   };
   try {
     const { NewsletterInvitation } = loadMembership(
@@ -92,6 +101,9 @@ function invitationScenario({ width = 375, height = 667 } = {}, run) {
       tree: () => NewsletterInvitation(),
       dialog: (value) => {
         dialog = value;
+      },
+      formVisible: (value) => {
+        formVisible = value;
       },
       editing: (value) => {
         editing = value;
@@ -208,5 +220,23 @@ test("desktop also hides an invitation when a dialog opens later", () => {
     ui.dialog(true);
     ui.tick();
     assert.equal(ui.tree(), null);
+  });
+});
+
+test("375px a visible signup form prevents the invitation and hides one shown before scrolling to it", () => {
+  invitationScenario({ height: 500 }, (ui) => {
+    ui.formVisible(true);
+    ui.tick(15000);
+    assert.equal(ui.tree(), null);
+    ui.formVisible(false);
+    ui.tick();
+    assert.equal(ui.tree().type, "aside");
+    ui.formVisible(true);
+    ui.tick();
+    assert.equal(ui.tree(), null);
+    ui.formVisible(false);
+    ui.tick(60000);
+    assert.equal(ui.tree(), null);
+    assert.equal(ui.events.filter(({ event }) => event === "invitation").length, 1);
   });
 });

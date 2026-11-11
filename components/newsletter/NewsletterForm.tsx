@@ -121,7 +121,7 @@ export function NewsletterForm({
       {variant === "card" && (
         <h3 className="mb-4 font-gazeta text-2xl text-[#654177]">Un regalo de Aleyda para ti</h3>
       )}
-      <form ref={form} onSubmit={handleSubmit} className="space-y-4">
+      <form ref={form} data-newsletter-form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor={`${id}-email`} className="mb-2 block text-sm font-medium text-[#654177]">
             Tu correo electrónico

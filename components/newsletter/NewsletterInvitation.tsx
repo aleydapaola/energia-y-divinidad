@@ -46,7 +46,15 @@ export function NewsletterInvitation() {
       }
       const focused = document.activeElement;
       const editing = focused?.matches("input, textarea, select, [contenteditable=true]") || false;
-      const busy = cartOpen || editing || !!document.querySelector('[role="dialog"]');
+      // An invitation adds no value while the direct signup is already visible.
+      const signupVisible = Array.from(document.querySelectorAll("[data-newsletter-form]")).some(
+        (element) => {
+          const bounds = element.getBoundingClientRect();
+          return bounds.top < window.innerHeight && bounds.bottom > 0;
+        }
+      );
+      const busy =
+        cartOpen || editing || signupVisible || !!document.querySelector('[role="dialog"]');
       if (busy) {
         setOpen(false);
       }
@@ -78,10 +86,14 @@ export function NewsletterInvitation() {
       }
     }
     const timer = window.setInterval(check, 1000);
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("focusin", check);
     const hide = () => setOpen(false);
     window.addEventListener("eyd-newsletter-requested", hide);
     return () => {
       clearInterval(timer);
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("focusin", check);
       window.removeEventListener("eyd-newsletter-requested", hide);
     };
   }, [path, status, cartOpen]);
