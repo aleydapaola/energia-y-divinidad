@@ -1,16 +1,18 @@
-import { DEFAULT_MAX_PRODUCT_FILE_BYTES } from "./files";
+import { DEFAULT_PREVIEW_MAX_PRODUCT_FILE_BYTES } from "./files";
 
 /** Deliberately no fallback from Preview to a Production store. */
 export function productStorageConfig() {
   const production = process.env.VERCEL_ENV === "production";
   const token = production
     ? process.env.DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN
-    : process.env.PREVIEW_DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN;
+    : process.env.PREVIEW_DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN ||
+      process.env.BLOB_READ_WRITE_TOKEN;
   const configuredLimit = Number(process.env.DIGITAL_PRODUCTS_MAX_FILE_BYTES);
-  const maximumSizeInBytes =
-    Number.isSafeInteger(configuredLimit) && configuredLimit > 0
-      ? configuredLimit
-      : DEFAULT_MAX_PRODUCT_FILE_BYTES;
+  const validLimit = Number.isSafeInteger(configuredLimit) && configuredLimit > 0;
+  if (production && !validLimit) {
+    throw new Error("Falta fijar el tamaño máximo de los archivos de producción.");
+  }
+  const maximumSizeInBytes = validLimit ? configuredLimit : DEFAULT_PREVIEW_MAX_PRODUCT_FILE_BYTES;
   const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET;
   if (
     !dataset ||

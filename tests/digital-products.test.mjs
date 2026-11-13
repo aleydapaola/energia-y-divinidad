@@ -38,7 +38,7 @@ const prices = load("lib/digital-products/prices.ts");
 const config = {
   token: "synthetic-preview-only",
   dataset: "preview",
-  maximumSizeInBytes: 2 * 1024 ** 3,
+  maximumSizeInBytes: 500_000_000,
 };
 
 test("products with COP only, USD only or both expose exactly the payable methods", () => {
@@ -100,6 +100,7 @@ test("download filenames preserve arbitrary extensions and cannot inject headers
 test("Preview storage never falls back to a Production credential or dataset", () => {
   const keys = [
     "VERCEL_ENV",
+    "BLOB_READ_WRITE_TOKEN",
     "NEXT_PUBLIC_SANITY_DATASET",
     "PREVIEW_SANITY_DATASET",
     "DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN",
@@ -116,11 +117,16 @@ test("Preview storage never falls back to a Production credential or dataset", (
       DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN: "synthetic-production",
     });
     delete process.env.PREVIEW_DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN;
+    delete process.env.BLOB_READ_WRITE_TOKEN;
     assert.throws(productStorageConfig, /almacenamiento privado/);
     process.env.PREVIEW_DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN = "synthetic-production";
     assert.throws(productStorageConfig, /almacenamiento privado/);
     process.env.PREVIEW_DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN = "synthetic-preview";
     assert.equal(productStorageConfig().token, "synthetic-preview");
+    delete process.env.PREVIEW_DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN;
+    process.env.BLOB_READ_WRITE_TOKEN = "synthetic-preview-only";
+    assert.equal(productStorageConfig().token, "synthetic-preview-only");
+    assert.equal(productStorageConfig().maximumSizeInBytes, 500_000_000);
     process.env.NEXT_PUBLIC_SANITY_DATASET = "production";
     assert.throws(productStorageConfig, /dataset aislado/);
   } finally {
@@ -282,7 +288,7 @@ function uploadApi({ canEdit = true, draftType = "product" } = {}) {
           body.payload.clientPayload,
           true
         );
-        assert.equal(settings.maximumSizeInBytes, 2 * 1024 ** 3);
+        assert.equal(settings.maximumSizeInBytes, 500_000_000);
         assert.equal(settings.allowOverwrite, false);
         assert.equal(settings.allowedContentTypes, undefined);
         minted = true;

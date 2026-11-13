@@ -59,7 +59,7 @@ export function PrivateProductFileInput(props: ObjectInputProps) {
       {props.value?.originalFilename && <p>{props.value.originalFilename} · {(Number(props.value.size || 0) / 1024 / 1024).toFixed(1)} MB</p>}
       {!storage && <p role="status">Comprobando almacenamiento…</p>}
       {storage?.ready === false && <p role="alert">Falta configurar el almacenamiento privado. Utiliza el Studio integrado en la web de este entorno y contacta con administración.</p>}
-      {storage?.ready && <p>Máximo por archivo: {(Number(storage.maximumSizeInBytes) / 1024 ** 3).toFixed(1)} GB.</p>}
+      {storage?.ready && <p>Máximo por archivo: {(Number(storage.maximumSizeInBytes) / 1_000_000).toLocaleString("es-CO")} MB.</p>}
       <label>
         {props.value?.pathname ? "Reemplazar archivo" : "Subir archivo"}
         <input type="file" disabled={busy || !storage?.ready || props.readOnly} style={{ display: "block", maxWidth: "100%", padding: "12px 0" }} onChange={(event) => {

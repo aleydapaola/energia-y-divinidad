@@ -1,5 +1,5 @@
 /** Shared metadata only. Private storage credentials never belong in Studio. */
-export const DEFAULT_MAX_PRODUCT_FILE_BYTES = 2 * 1024 * 1024 * 1024;
+export const DEFAULT_PREVIEW_MAX_PRODUCT_FILE_BYTES = 500_000_000;
 export const PRODUCT_FILE_PREFIX = "digital-products/";
 
 export type PrivateProductFile = {

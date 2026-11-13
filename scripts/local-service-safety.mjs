@@ -2,6 +2,7 @@
 // calendars and payments are exercised on Vercel Preview with dedicated keys.
 const disabledCredentials = [
   "RESEND_API_KEY",
+  "BLOB_READ_WRITE_TOKEN",
   "DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN",
   "PREVIEW_DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN",
   "MAILCHIMP_API_KEY",
