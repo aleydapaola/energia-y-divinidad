@@ -36,11 +36,9 @@ export async function GET(
   if (!access) {
     return unavailable();
   }
-  const product = await client
-    .withConfig({ useCdn: false })
-    .fetch<{
-      privateDigitalFiles?: PrivateProductFile[];
-    } | null>('*[_type == "product" && _id == $id][0]{privateDigitalFiles[]{_key,pathname,originalFilename}}', { id }, { cache: "no-store" });
+  const product = await client.withConfig({ useCdn: false }).fetch<{
+    privateDigitalFiles?: PrivateProductFile[];
+  } | null>('*[_type == "product" && _id == $id][0]{privateDigitalFiles[]{_key,pathname,originalFilename}}', { id }, { cache: "no-store" });
   const file = product?.privateDigitalFiles?.find((item) => item._key === key);
   if (!file?.pathname) {
     return unavailable();
