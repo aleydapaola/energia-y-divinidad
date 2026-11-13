@@ -27,6 +27,8 @@ test("local configuration accepts only isolated contents and local URLs", () => 
 test("inherited external secrets cannot silently activate services locally", () => {
   for (const key of [
     "RESEND_API_KEY",
+    "DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN",
+    "PREVIEW_DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN",
     "SANITY_API_TOKEN",
     "MAILCHIMP_API_KEY",
     "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY",

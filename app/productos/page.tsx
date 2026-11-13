@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { Footer } from "@/components/layout/Footer";
@@ -13,11 +14,13 @@ export default async function Products() {
       title: string;
       slug: { current: string };
       shortDescription?: string;
+      coverUrl?: string;
+      coverAlt?: string;
       price?: number;
       priceUSD?: number;
     }[]
   >(
-    `*[_type == "product" && published == true && status == "active" && productType in ["digital","ebook","audio","course"]]{_id,title,slug,shortDescription,${pricingProjection}}`
+    `*[_type == "product" && published == true && status == "active" && productType in ["digital","ebook","audio","course"]]{_id,title,slug,shortDescription,"coverUrl": images[0].asset->url,"coverAlt": images[0].alt,${pricingProjection}}`
   );
   return (
     <>
@@ -31,6 +34,15 @@ export default async function Products() {
         <div className="grid sm:grid-cols-2 gap-5">
           {products.map((p) => (
             <article key={p._id} className="p-6 rounded-2xl border space-y-4">
+              {p.coverUrl && (
+                <Image
+                  src={p.coverUrl}
+                  alt={p.coverAlt || p.title}
+                  width={720}
+                  height={480}
+                  className="w-full h-auto rounded-xl"
+                />
+              )}
               <h2 className="text-2xl">{p.title}</h2>
               <p>{p.shortDescription}</p>
               <p>{p.price ? `${p.price.toLocaleString("es-CO")} COP · Bre-B / Global66` : ""}</p>

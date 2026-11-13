@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useState } from "react";
 
 import { PurchasePolicy } from "@/components/checkout/PurchasePolicy";
+import { productPaymentMethods } from "@/lib/digital-products/prices";
 import { purchaseMethods } from "@/lib/purchase-methods";
 export function DigitalProductCheckout({
   product,
@@ -12,7 +13,9 @@ export function DigitalProductCheckout({
 }) {
   const { data: session } = useSession();
   const router = useRouter();
-  const [method, setMethod] = useState("paypal_direct");
+  const available = productPaymentMethods(product);
+  const [selectedMethod, setMethod] = useState<string>(available[0] || "");
+  const method = available.find((value) => value === selectedMethod) || available[0] || "";
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,6 +24,9 @@ export function DigitalProductCheckout({
   const amount = currency === "COP" ? product.price : product.priceUSD;
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!method) {
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -53,31 +59,38 @@ export function DigitalProductCheckout({
       setBusy(false);
     }
   }
+  const paymentLabel = method === "breb_manual" ? "Continuar con Bre-B" : "Continuar con PayPal";
   return (
-    <form onSubmit={submit} className="bg-white p-6 rounded-2xl space-y-5">
+    <form onSubmit={submit} className="bg-white p-6 rounded-2xl space-y-5 min-w-0 break-words">
       <h2 className="text-2xl">Comprar {product.title}</h2>
-      <fieldset className="space-y-3">
+      <fieldset className="space-y-3 min-w-0">
         <legend className="mb-2">Método de pago</legend>
-        {purchaseMethods("colombia").map((option) => (
-          <label key={option.method} className="flex items-start gap-3 p-4 rounded-xl border">
-            <input
-              type="radio"
-              name="payment"
-              value={option.method}
-              checked={method === option.method}
-              onChange={() => setMethod(option.method)}
-            />
-            <span>
-              <strong>{option.label}</strong>
-              <span className="block text-sm">{option.description}</span>
-            </span>
-          </label>
-        ))}
+        {purchaseMethods("colombia")
+          .filter((option) => available.some((method) => method === option.method))
+          .map((option) => (
+            <label
+              key={option.method}
+              className="flex items-start gap-3 p-4 rounded-xl border min-w-0"
+            >
+              <input
+                className="shrink-0 mt-1"
+                type="radio"
+                name="payment"
+                value={option.method}
+                checked={method === option.method}
+                onChange={() => setMethod(option.method)}
+              />
+              <span className="min-w-0 break-words">
+                <strong>{option.label}</strong>
+                <span className="block text-sm">{option.description}</span>
+              </span>
+            </label>
+          ))}
       </fieldset>
       <p className="text-2xl font-semibold">
         {amount
           ? `${amount.toLocaleString("es-CO")} ${currency}`
-          : `Precio en ${currency} no disponible`}
+          : "Este producto todavía no tiene un precio de venta configurado."}
       </p>
       {!session?.user?.email && (
         <>
@@ -119,14 +132,10 @@ export function DigitalProductCheckout({
         </p>
       )}
       <button
-        disabled={busy || !amount}
+        disabled={busy || !method || !amount}
         className="w-full py-3 rounded-xl bg-[#4944a4] text-white disabled:opacity-50"
       >
-        {busy
-          ? "Preparando pedido…"
-          : method === "breb_manual"
-            ? "Continuar con Bre-B"
-            : "Continuar con PayPal"}
+        {busy ? "Preparando pedido…" : paymentLabel}
       </button>
     </form>
   );

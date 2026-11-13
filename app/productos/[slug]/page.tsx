@@ -1,4 +1,5 @@
 import { PortableText } from "@portabletext/react";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function Product({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await client.fetch(
-    `*[_type == "product" && (slug.current == $slug || _id == $slug) && published == true && status == "active" && productType in ["digital","ebook","audio","course"]][0]{_id,title,shortDescription,description,${pricingProjection},whatYouGet}`,
+    `*[_type == "product" && (slug.current == $slug || _id == $slug) && published == true && status == "active" && productType in ["digital","ebook","audio","course"]][0]{_id,title,shortDescription,description,"coverUrl": images[0].asset->url,"coverAlt": images[0].alt,${pricingProjection},whatYouGet}`,
     { slug }
   );
   if (!product) {
@@ -23,6 +24,15 @@ export default async function Product({ params }: { params: Promise<{ slug: stri
           ← Productos digitales
         </Link>
         <section className="bg-white p-6 rounded-2xl space-y-4">
+          {product.coverUrl && (
+            <Image
+              src={product.coverUrl}
+              alt={product.coverAlt || product.title}
+              width={960}
+              height={640}
+              className="w-full h-auto rounded-xl"
+            />
+          )}
           <h1 className="font-gazeta text-3xl text-[#654177]">{product.title}</h1>
           <p>{product.shortDescription}</p>
           {product.description && <PortableText value={product.description} />}

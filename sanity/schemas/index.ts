@@ -1,4 +1,5 @@
 // Objetos reutilizables
+import privateProductFile from './objects/privateProductFile'
 import seo from './objects/seo'
 import pricing from './objects/pricing'
 import membershipAccess from './objects/membershipAccess'
@@ -28,6 +29,7 @@ import testimonial from './testimonial'
 
 export const schemaTypes = [
   // Objetos reutilizables (deben ir primero)
+  privateProductFile,
   seo,
   pricing,
   membershipAccess,

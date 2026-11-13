@@ -2,10 +2,19 @@ import { defineType, defineField } from 'sanity'
 
 export default defineType({
   name: 'product',
-  title: 'Productos',
+  title: 'Productos digitales',
   type: 'document',
   icon: () => '🛍️',
+  initialValue: { productType: 'digital', status: 'active', published: true, digitalDeliveryVersion: 1 },
+  validation: (Rule) => Rule.custom((doc) => {
+    if (!doc || doc.status !== 'active' || !['digital', 'ebook', 'audio', 'course'].includes(String(doc.productType))) { return true }
+    const pricing = doc.pricing as { price?: number; priceUSD?: number; isFree?: boolean } | undefined
+    const prices = [pricing?.price ?? doc.price, pricing?.priceUSD ?? doc.priceUSD]
+    return !pricing?.isFree && prices.some((value) => typeof value === 'number' && Number.isFinite(value) && value > 0)
+      ? true : 'Configura al menos un precio mayor que cero en COP o USD.'
+  }),
   fields: [
+    defineField({ name: 'digitalDeliveryVersion', type: 'number', hidden: true, readOnly: true }),
     defineField({
       name: 'title',
       title: 'Nombre del Producto',
@@ -28,7 +37,7 @@ export default defineType({
       type: 'string',
       options: {
         list: [
-          { title: 'Producto Digital (PDF, Audio, Video)', value: 'digital' },
+          { title: 'Producto digital · cualquier formato', value: 'digital' },
           { title: 'Producto Físico', value: 'physical' },
           { title: 'Curso Online', value: 'course' },
           { title: 'Paquete de Sesiones', value: 'session_bundle' },
@@ -88,13 +97,14 @@ export default defineType({
     defineField({
       name: 'price',
       title: 'Precio (COP)',
+      description: 'Bre-B. Puedes configurar COP, USD o ambas monedas.',
       type: 'number',
-      validation: (Rule) => Rule.required().min(0),
+      validation: (Rule) => Rule.min(0),
     }),
     defineField({
       name: 'priceUSD',
       title: 'Precio (USD)',
-      description: 'Para pagos internacionales',
+      description: 'PayPal. Puedes configurar COP, USD o ambas monedas.',
       type: 'number',
       validation: (Rule) => Rule.min(0),
     }),
@@ -148,8 +158,19 @@ export default defineType({
       ],
     }),
     defineField({
+      name: 'privateDigitalFiles',
+      title: 'Archivos para el comprador',
+      type: 'array',
+      of: [{ type: 'privateProductFile' }],
+      hidden: ({ parent }) => !['digital', 'ebook', 'audio', 'course'].includes(parent?.productType),
+      description: 'Añade uno o varios archivos, mezclando formatos si lo necesitas. No requiere módulos ni lecciones.',
+      validation: (Rule) => Rule.custom((files, context) =>
+        context.document?.digitalDeliveryVersion === 1 && (!Array.isArray(files) || files.length === 0)
+          ? 'Sube al menos un archivo para publicar el producto.' : true),
+    }),
+    defineField({
       name: 'digitalFiles',
-      title: 'Archivos Digitales',
+      title: 'Archivos históricos (públicos)',
       type: 'array',
       of: [
         {
@@ -169,11 +190,13 @@ export default defineType({
         },
       ],
       hidden: ({ parent }) =>
-        parent?.productType !== 'digital' &&
+        parent?.digitalDeliveryVersion === 1 ||
+        (parent?.productType !== 'digital' &&
         parent?.productType !== 'course' &&
         parent?.productType !== 'ebook' &&
-        parent?.productType !== 'audio',
-      description: 'Archivos que recibirá el comprador',
+        parent?.productType !== 'audio'),
+      description: 'Accesos anteriores conservados. Usa Archivos para el comprador para las nuevas cargas privadas.',
+      readOnly: true,
     }),
     defineField({
       name: 'courseContent',
@@ -351,20 +374,21 @@ export default defineType({
       name: 'published',
       title: 'Publicado',
       type: 'boolean',
-      initialValue: false,
+      description: 'Control de visibilidad. Los productos nuevos quedan activados al publicar; desactívalo para retirarlos del catálogo.',
     }),
   ],
   preview: {
     select: {
       title: 'title',
       price: 'price',
+      priceUSD: 'priceUSD',
       productType: 'productType',
       media: 'images.0',
       status: 'status',
       featured: 'featured',
     },
     prepare(selection) {
-      const { title, price, productType, status, featured } = selection
+      const { title, price, priceUSD, productType, status, featured } = selection
       const productTypeLabels: Record<string, string> = {
         digital: 'Digital',
         physical: 'Físico',
@@ -381,7 +405,7 @@ export default defineType({
       }
       return {
         title: `${featured ? '⭐ ' : ''}${statusEmoji[status] || ''} ${title}`,
-        subtitle: `${productTypeLabels[productType]} - $${price?.toLocaleString('es-CO')} COP`,
+        subtitle: `${productTypeLabels[productType]} · ${[typeof price === 'number' && price > 0 ? `${price.toLocaleString('es-CO')} COP` : '', typeof priceUSD === 'number' && priceUSD > 0 ? `${priceUSD} USD` : ''].filter(Boolean).join(' · ') || 'Precio pendiente'}`,
         media: selection.media,
       }
     },
