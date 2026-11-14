@@ -1,18 +1,12 @@
 import { upload } from "@vercel/blob/client";
 import { useEffect, useState } from "react";
-import { PatchEvent, set, useClient, useFormValue, useSource, type ObjectInputProps } from "sanity";
+import { PatchEvent, set, useClient, useFormValue, type ObjectInputProps } from "sanity";
 
 import { productFilePrefix, safeFilename } from "../../lib/digital-products/files";
 
 /** Embedded Studio: reuse the editor's Sanity identity, never the site's ADMIN role. */
 export function PrivateProductFileInput(props: ObjectInputProps) {
   const client = useClient({ apiVersion: "2024-01-01" });
-  const { auth } = useSource();
-  const [editorToken, setEditorToken] = useState<string | null>(null);
-  useEffect(() => {
-    const subscription = auth.token?.subscribe(setEditorToken);
-    return () => subscription?.unsubscribe();
-  }, [auth]);
   const documentId = useFormValue(["_id"]) as string;
   const [storage, setStorage] = useState<{ ready: boolean; maximumSizeInBytes?: number }>();
   const [busy, setBusy] = useState(false);
@@ -28,8 +22,7 @@ export function PrivateProductFileInput(props: ObjectInputProps) {
   }, []);
   async function select(file: File) {
     setError("");
-    const { dataset, token: configuredToken } = client.config();
-    const token = editorToken || configuredToken;
+    const { token, dataset } = client.config();
     if (!token || !dataset || !documentId) {
       setError("Inicia sesión en Sanity y espera a que se guarde el borrador.");
       return;
