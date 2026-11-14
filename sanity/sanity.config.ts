@@ -13,10 +13,11 @@ export default defineConfig({
     appUrl: process.env.NEXT_PUBLIC_APP_URL,
   }),
   basePath: "/studio",
-  // Private-upload QA: only the embedded Studio connected to EYD Preview.
+  // Private uploads: token auth only for the embedded EYD Preview/Production Studio.
   auth:
     process.env.NEXT_PUBLIC_SANITY_PROJECT_ID === "81jpalr2" &&
-    process.env.NEXT_PUBLIC_SANITY_DATASET === "preview"
+    (process.env.NEXT_PUBLIC_SANITY_DATASET === "preview" ||
+      process.env.NEXT_PUBLIC_SANITY_DATASET === "production")
       ? { loginMethod: "token" }
       : undefined,
   plugins: [structureTool(), visionTool()],
