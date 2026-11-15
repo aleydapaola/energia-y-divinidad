@@ -66,6 +66,7 @@ export async function POST(
       amount: Number(order.amount),
       currency: order.currency as 'COP' | 'USD' | 'EUR',
       paymentMethod: order.paymentMethod || 'N/A',
+      driveDelivery: order.orderType === 'PRODUCT' && (order.metadata as Record<string, unknown>)?.deliveryProvider === 'GOOGLE_DRIVE',
       transactionId: (order.metadata as Record<string, unknown>)?.transactionId as string | undefined,
     })
 

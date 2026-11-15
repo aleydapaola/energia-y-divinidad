@@ -97,6 +97,7 @@ export async function GET(
         isGuestCheckout: !!metadata?.isGuestCheckout,
         convertedFromGuest: !!metadata?.convertedFromGuest,
         userWasCreated: !!metadata?.userWasCreated,
+        ...(metadata?.deliveryProvider === "GOOGLE_DRIVE" ? { deliveryProvider: "GOOGLE_DRIVE" } : {}),
       },
       ...(breb
         ? {

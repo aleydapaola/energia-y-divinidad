@@ -21,13 +21,15 @@ export async function quoteCatalogItem(input: {
     price?: number;
     priceUSD?: number;
     productType?: string;
+    digitalDeliveryVersion?: number;
+    privateDigitalFiles?: { internalFileRef?: string }[];
     earlyBirdPrice?: number;
     earlyBirdDeadline?: string;
     eventDate?: string;
     maxPerBooking?: number;
     capacity?: number;
     visibility?: string;
-  } | null>(`*[_type == $type && published == true && !(status in ["paused", "sold_out", "discontinued", "coming_soon", "inactive"]) && !(_id in path("drafts.**")) && ($type == "sessionConfig" || _id == $id)][0]{_id,title,${pricingProjection},productType,earlyBirdPrice,earlyBirdDeadline,eventDate,maxPerBooking,capacity,visibility}`, { type, id: productId });
+  } | null>(`*[_type == $type && published == true && !(status in ["paused", "sold_out", "discontinued", "coming_soon", "inactive"]) && !(_id in path("drafts.**")) && ($type == "sessionConfig" || _id == $id)][0]{_id,title,${pricingProjection},productType,digitalDeliveryVersion,privateDigitalFiles[]{internalFileRef},earlyBirdPrice,earlyBirdDeadline,eventDate,maxPerBooking,capacity,visibility}`, { type, id: productId });
   if (!doc || doc.visibility === "private") {
     throw new Error("Producto no disponible.");
   }
@@ -74,7 +76,12 @@ export async function quoteCatalogItem(input: {
   if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
     throw new Error(`Precio en ${currency} no configurado.`);
   }
+  // Load the private delivery service only for new Drive products. Legacy checkout stays unchanged.
+  const driveDelivery = productType === "product" && doc.digitalDeliveryVersion === 2
+    ? await (await import("@/lib/digital-products/drive-delivery")).driveCheckoutSnapshot(doc._id, (doc.privateDigitalFiles || []).map((file) => file.internalFileRef || ""))
+    : undefined;
   return {
+    driveDelivery,
     amount,
     capacity: doc.capacity,
     productId: doc._id,
@@ -83,6 +90,7 @@ export async function quoteCatalogItem(input: {
       ? "SESSION"
       : productType.toUpperCase()) as "SESSION" | "EVENT" | "PRODUCT" | "COURSE",
     metadata: {
+      ...(driveDelivery ? { deliveryProvider: "GOOGLE_DRIVE" } : {}),
       productType,
       scheduledAt,
       seats,

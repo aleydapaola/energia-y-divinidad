@@ -1,6 +1,10 @@
 // The local profile uses Neon Preview and public test content. External sending,
 // calendars and payments are exercised on Vercel Preview with dedicated keys.
 const disabledCredentials = [
+  "PREVIEW_DIGITAL_PRODUCTS_DRIVE_CLIENT_SECRET",
+  "PREVIEW_DIGITAL_PRODUCTS_DRIVE_ENCRYPTION_KEY",
+  "DIGITAL_PRODUCTS_DRIVE_CLIENT_SECRET",
+  "DIGITAL_PRODUCTS_DRIVE_ENCRYPTION_KEY",
   "RESEND_API_KEY",
   "BLOB_READ_WRITE_TOKEN",
   "DIGITAL_PRODUCTS_BLOB_READ_WRITE_TOKEN",

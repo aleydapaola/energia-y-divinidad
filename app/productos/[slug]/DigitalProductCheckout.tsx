@@ -8,8 +8,10 @@ import { productPaymentMethods } from "@/lib/digital-products/prices";
 import { purchaseMethods } from "@/lib/purchase-methods";
 export function DigitalProductCheckout({
   product,
+  driveDelivery = false,
 }: {
   product: { id: string; title: string; price?: number; priceUSD?: number };
+  driveDelivery?: boolean;
 }) {
   const { data: session } = useSession();
   const router = useRouter();
@@ -122,7 +124,7 @@ export function DigitalProductCheckout({
         </>
       )}
       <p>
-        Después de verificar el pago encontrarás los archivos y las instrucciones en Mis compras.
+        {driveDelivery ? "Después de verificar el pago, el acceso quedará pendiente hasta que Aleyda comparta contigo la carpeta privada de Google Drive y registre la entrega. El nombre del producto en Mis compras abrirá la carpeta cuando el acceso esté concedido." : "Después de verificar el pago encontrarás los archivos y las instrucciones en Mis compras."}
         Recibirás un correo con el acceso a tu cuenta.
       </p>
       <PurchasePolicy kind="product" />

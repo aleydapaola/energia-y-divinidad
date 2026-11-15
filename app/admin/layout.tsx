@@ -80,6 +80,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <ShoppingCart className="w-5 h-5 text-[#8A4BAF]" />
               <span className="font-dm-sans">Ventas</span>
             </Link>
+            <Link href="/admin/product-drive" className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-[#f8f0f5] rounded-lg transition-colors">
+              <ShoppingCart className="w-5 h-5 text-[#8A4BAF]" />
+              <span className="font-dm-sans">Archivos de productos</span>
+            </Link>
             <Link
               href="/admin/bookings"
               className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-[#f8f0f5] rounded-lg transition-colors"

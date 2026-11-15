@@ -5,7 +5,7 @@ export default defineType({
   title: 'Productos digitales',
   type: 'document',
   icon: () => '🛍️',
-  initialValue: { productType: 'digital', status: 'active', published: true, digitalDeliveryVersion: 1 },
+  initialValue: { productType: 'digital', status: 'active', published: true, digitalDeliveryVersion: 2 },
   validation: (Rule) => Rule.custom((doc) => {
     if (!doc || doc.status !== 'active' || !['digital', 'ebook', 'audio', 'course'].includes(String(doc.productType))) { return true }
     const pricing = doc.pricing as { price?: number; priceUSD?: number; isFree?: boolean } | undefined
@@ -165,7 +165,7 @@ export default defineType({
       hidden: ({ parent }) => !['digital', 'ebook', 'audio', 'course'].includes(parent?.productType),
       description: 'Añade uno o varios archivos, mezclando formatos si lo necesitas. No requiere módulos ni lecciones.',
       validation: (Rule) => Rule.custom((files, context) =>
-        context.document?.digitalDeliveryVersion === 1 && (!Array.isArray(files) || files.length === 0)
+        [1, 2].includes(Number(context.document?.digitalDeliveryVersion)) && (!Array.isArray(files) || files.length === 0)
           ? 'Sube al menos un archivo para publicar el producto.' : true),
     }),
     defineField({
@@ -190,7 +190,7 @@ export default defineType({
         },
       ],
       hidden: ({ parent }) =>
-        parent?.digitalDeliveryVersion === 1 ||
+        [1, 2].includes(Number(parent?.digitalDeliveryVersion)) ||
         (parent?.productType !== 'digital' &&
         parent?.productType !== 'course' &&
         parent?.productType !== 'ebook' &&

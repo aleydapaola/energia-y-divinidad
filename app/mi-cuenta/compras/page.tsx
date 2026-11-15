@@ -2,7 +2,9 @@ import { ShoppingBag, Calendar, Receipt } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { DriveRecipientForm } from "@/components/checkout/DriveDeliveryControls";
 import { auth } from "@/lib/auth";
+import { driveEnvironment } from "@/lib/digital-products/drive-config";
 import { prisma } from "@/lib/prisma";
 
 export default async function MisComprasPage() {
@@ -15,7 +17,11 @@ export default async function MisComprasPage() {
   // Obtener todas las órdenes del usuario
   const orders = await prisma.order.findMany({
     where: { userId: session.user.id },
-    include: { manualPayment: { select: { referenceNumber: true } } },
+    include: {
+      manualPayment: { select: { referenceNumber: true } },
+      driveDelivery: { select: { status: true, recipientEmail: true, pendingRecipientEmail: true, environment: true } },
+      entitlements: { where: { type: "PRODUCT", revoked: false, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { resourceId: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -182,7 +188,11 @@ export default async function MisComprasPage() {
 
         {orders.length > 0 ? (
           <div className="space-y-4">
-            {orders.map((order) => (
+            {orders.map((order) => {
+              const drive = order.driveDelivery;
+              const canOpenDrive = !!drive && drive.environment === driveEnvironment() && drive.status === "GRANTED" &&
+                order.paymentStatus === "COMPLETED" && order.entitlements.some((entitlement) => entitlement.resourceId === order.itemId);
+              return (
               <div
                 key={order.id}
                 className="border border-gray-100 rounded-lg p-4 hover:border-[#8A4BAF]/20 transition-colors"
@@ -191,7 +201,7 @@ export default async function MisComprasPage() {
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-semibold text-[#654177] font-dm-sans">
-                        {order.itemName}
+                        {canOpenDrive ? <a className="inline-block py-3 underline" href={`/api/mi-cuenta/pedidos/${encodeURIComponent(order.id)}/drive`} target="_blank" rel="noopener noreferrer">{order.itemName}</a> : order.itemName}
                       </h3>
                       <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-dm-sans">
                         {getOrderTypeLabel(order.orderType)}
@@ -243,7 +253,8 @@ export default async function MisComprasPage() {
                           {order.orderType === "MEMBERSHIP" ? "Retomar autorización" : "Ver estado"}
                         </Link>
                       )}
-                    {order.paymentStatus === "COMPLETED" && (
+                    {drive && !canOpenDrive && <span className="text-sm">{drive.status === "REVOKED" || order.paymentStatus === "REFUNDED" ? "Acceso retirado" : "Acceso pendiente"}</span>}
+                    {order.paymentStatus === "COMPLETED" && !drive && (
                       <Link
                         className="underline text-[#654177] py-3"
                         href={
@@ -263,8 +274,10 @@ export default async function MisComprasPage() {
                     )}
                   </div>
                 </div>
+                {drive && <DriveRecipientForm orderId={order.id} email={drive.recipientEmail} pendingEmail={drive.pendingRecipientEmail} status={drive.status} />}
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12">

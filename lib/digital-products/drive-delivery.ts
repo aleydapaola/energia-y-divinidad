@@ -1,0 +1,103 @@
+import { prisma } from "@/lib/prisma";
+
+import { assertPrivateFolder, connectedDrive, driveFolderUrl } from "./drive-api";
+import { driveConfig, driveEnvironment } from "./drive-config";
+
+import type { Prisma } from "@prisma/client";
+
+export const activeProductEntitlement = (userId: string, productId: string) => ({
+  userId, type: "PRODUCT" as const, resourceId: productId, revoked: false,
+  OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+});
+
+/** Snapshot once at checkout, before either payment method. Never expose these fields publicly. */
+export async function driveCheckoutSnapshot(productId: string, refs: string[]) {
+  const { environment } = driveConfig();
+  if (!refs.length || refs.length > 100 || refs.some((ref) => !/^[a-f0-9-]{36}$/.test(ref)) || new Set(refs).size !== refs.length) {
+    throw new Error("Este producto aún no tiene sus archivos privados preparados.");
+  }
+  const folder = await prisma.productDriveFolder.findUnique({
+    where: { environment_productId: { environment, productId } },
+    include: { uploads: { where: { id: { in: refs }, verifiedAt: { not: null } }, select: { id: true } } },
+  });
+  if (!folder || folder.uploads.length !== refs.length) { throw new Error("Los archivos de este producto requieren revisión antes de cobrar."); }
+  return { environment, folderId: folder.folderId };
+}
+
+export async function ownedDriveAccess(orderId: string, userId: string) {
+  const order = await prisma.order.findFirst({ where: { id: orderId, userId, orderType: "PRODUCT", paymentStatus: "COMPLETED" },
+    include: { driveDelivery: true } });
+  if (!order?.driveDelivery || order.driveDelivery.environment !== driveEnvironment() || order.driveDelivery.status !== "GRANTED") { return null; }
+  const entitlement = await prisma.entitlement.findFirst({ where: { ...activeProductEntitlement(userId, order.itemId), orderId } });
+  return entitlement ? driveFolderUrl(order.driveDelivery.folderId) : null;
+}
+
+export function changeDriveRecipient(orderId: string, userId: string, email: string) {
+  const environment = driveEnvironment();
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`drive-delivery:${orderId}`}))`;
+    const order = await tx.order.findFirst({ where: { id: orderId, userId, orderType: "PRODUCT", paymentStatus: { in: ["PENDING", "PROCESSING", "COMPLETED"] } }, include: { driveDelivery: true } });
+    const delivery = order?.driveDelivery;
+    if (!delivery || delivery.environment !== environment || ["REVOKED", "PENDING_REVOCATION"].includes(delivery.status)) { throw new Error("La entrega requiere revisión de Aleyda."); }
+    if (delivery.recipientEmail === email) { return; }
+    const data = delivery.status === "GRANTED"
+      ? { pendingRecipientEmail: email, status: "PENDING_REVOCATION" as const }
+      : { recipientEmail: email };
+    await tx.driveProductDelivery.update({ where: { orderId }, data: { ...data, revision: { increment: 1 } } });
+    await tx.auditLog.create({ data: { actorId: userId, actorEmail: email, entityType: "order", entityId: orderId,
+      action: "drive_recipient_change", before: { recipientEmail: delivery.recipientEmail, status: delivery.status }, after: data } });
+  });
+}
+
+export async function administerDriveDelivery(orderId: string, actor: { id: string; email: string }, input: {
+  action: "grant" | "refund" | "revoke"; revision: number; reference?: string;
+}) {
+  const environment = driveEnvironment();
+  const snapshot = await prisma.order.findUnique({ where: { id: orderId }, include: { driveDelivery: true } });
+  const delivery = snapshot?.driveDelivery;
+  if (!snapshot || !delivery || delivery.environment !== environment || snapshot.orderType !== "PRODUCT" || delivery.revision !== input.revision) {
+    throw new Error("El pedido ha cambiado. Recarga antes de continuar.");
+  }
+  if (input.action !== "refund") {
+    const drive = await connectedDrive();
+    await assertPrivateFolder(drive.connection.rootFolderId, drive, true);
+    const permissions = await assertPrivateFolder(delivery.folderId, drive);
+    const hasReader = permissions.some((p) => p.type === "user" && p.role === "reader" && p.emailAddress?.toLowerCase() === delivery.recipientEmail);
+    if (input.action === "grant" && !hasReader) { throw new Error("Comparte primero la carpeta con la cuenta indicada como Lector y mantén el acceso general Restringido."); }
+    if (input.action === "revoke" && hasReader) {
+      const anotherPurchase = await prisma.driveProductDelivery.findFirst({ where: {
+        environment, folderId: delivery.folderId, recipientEmail: delivery.recipientEmail, orderId: { not: orderId }, status: "GRANTED",
+        order: { paymentStatus: "COMPLETED", entitlements: { some: { revoked: false, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } } },
+      } });
+      if (!anotherPurchase) { throw new Error("Retira primero el permiso de esta cuenta en Drive. Ocultar el enlace en la web no revoca el permiso."); }
+    }
+  }
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`drive-delivery:${orderId}`}))`;
+    const order = await tx.order.findUnique({ where: { id: orderId }, include: { driveDelivery: true } });
+    const current = order?.driveDelivery;
+    if (!order || !current || current.revision !== input.revision) { throw new Error("El pedido ha cambiado. Recarga antes de continuar."); }
+    let change: Prisma.DriveProductDeliveryUpdateInput;
+    if (input.action === "grant") {
+      if (order.paymentStatus !== "COMPLETED" || current.status !== "PENDING_ACCESS" || !order.userId ||
+          !await tx.entitlement.findFirst({ where: { ...activeProductEntitlement(order.userId, order.itemId), orderId } })) {
+        throw new Error("Es necesario confirmar el pago y tener el permiso de compra vigente antes de entregar.");
+      }
+      change = { status: "GRANTED", grantedAt: new Date(), grantedBy: actor.id };
+    } else if (input.action === "refund") {
+      if (order.paymentStatus !== "COMPLETED" || !input.reference) { throw new Error("Registra solo un reembolso total ya realizado y verificado, con su referencia."); }
+      await tx.order.update({ where: { id: orderId }, data: { paymentStatus: "REFUNDED" } });
+      await tx.entitlement.updateMany({ where: { orderId, type: "PRODUCT" }, data: { revoked: true, revokedAt: new Date(), revokedReason: "Reembolso total verificado por administración" } });
+      change = { status: "PENDING_REVOCATION", pendingRecipientEmail: null };
+    } else {
+      if (current.status !== "PENDING_REVOCATION") { throw new Error("No hay una retirada pendiente de comprobar."); }
+      change = order.paymentStatus === "COMPLETED" && current.pendingRecipientEmail
+        ? { recipientEmail: current.pendingRecipientEmail, pendingRecipientEmail: null, status: "PENDING_ACCESS", grantedAt: null, grantedBy: null }
+        : { status: "REVOKED", pendingRecipientEmail: null };
+    }
+    await tx.driveProductDelivery.update({ where: { orderId }, data: { ...change, revision: { increment: 1 } } });
+    await tx.auditLog.create({ data: { actorId: actor.id, actorEmail: actor.email, entityType: "order", entityId: orderId,
+      action: `drive_${input.action}`, before: { status: current.status, recipientEmail: current.recipientEmail, paymentStatus: order.paymentStatus },
+      after: { action: input.action }, reason: input.reference || null } });
+  });
+}

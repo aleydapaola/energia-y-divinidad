@@ -570,6 +570,7 @@ async function sendConfirmationEmail(
           ? new Date(metadata.scheduledAt as string)
           : undefined,
       meetingLink,
+      driveDelivery: order.orderType === "PRODUCT" && metadata.deliveryProvider === "GOOGLE_DRIVE",
     });
     console.log(`[PAYMENT-PROCESSOR] Email de confirmación enviado a ${customerEmail}`);
   } catch (error) {

@@ -3,23 +3,25 @@ import { useEffect, useState } from "react";
 import { PatchEvent, set, useClient, useFormValue, type ObjectInputProps } from "sanity";
 
 import { productFilePrefix, safeFilename } from "../../lib/digital-products/files";
+import { uploadProductDrive } from "../lib/upload-product-drive";
 
 /** Embedded Studio: reuse the editor's Sanity identity, never the site's ADMIN role. */
 export function PrivateProductFileInput(props: ObjectInputProps) {
   const client = useClient({ apiVersion: "2024-01-01" });
   const documentId = useFormValue(["_id"]) as string;
+  const drive = useFormValue(["digitalDeliveryVersion"]) === 2;
   const [storage, setStorage] = useState<{ ready: boolean; maximumSizeInBytes?: number }>();
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
-  const endpoint = "/api/studio/product-files";
+  const endpoint = drive ? "/api/studio/product-drive" : "/api/studio/product-files";
   useEffect(() => {
     let active = true;
     fetch(endpoint).then((response) => response.json()).then((data) => {
       if (active) { setStorage(data); }
     }).catch(() => { if (active) { setStorage({ ready: false }); } });
     return () => { active = false; };
-  }, []);
+  }, [endpoint]);
   async function select(file: File) {
     setError("");
     const { token, dataset } = client.config();
@@ -34,6 +36,17 @@ export function PrivateProductFileInput(props: ObjectInputProps) {
     setBusy(true);
     setProgress(0);
     try {
+      if (drive) {
+        if (!props.value?._key) { throw new Error("Guarda primero el archivo en el borrador."); }
+        const result = await uploadProductDrive(file, documentId, props.value._key, token, setProgress);
+        props.onChange(PatchEvent.from([
+          set(result.internalFileRef, ['internalFileRef']),
+          set(result.originalFilename, ['originalFilename']),
+          set(result.contentType, ['contentType']),
+          set(result.size, ['size']),
+        ]));
+        return;
+      }
       const pathname = `${productFilePrefix(dataset, documentId)}${crypto.randomUUID()}/${encodeURIComponent(safeFilename(file.name))}`;
       const result = await upload(pathname, file, {
         access: "private", multipart: true, handleUploadUrl: endpoint,
@@ -55,13 +68,13 @@ export function PrivateProductFileInput(props: ObjectInputProps) {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       {props.renderDefault(props)}
-      <p>Archivo privado: cualquier formato admitido por el almacenamiento. La compra permite descargarlo aunque el navegador no pueda abrirlo.</p>
+      <p>{drive ? "Los archivos de este producto se guardan juntos en su carpeta privada de Google Drive. La entrega requiere pago confirmado y permiso de lector concedido por Aleyda." : "Archivo privado: cualquier formato admitido por el almacenamiento. La compra permite descargarlo aunque el navegador no pueda abrirlo."}</p>
       {props.value?.originalFilename && <p>{props.value.originalFilename} · {(Number(props.value.size || 0) / 1024 / 1024).toFixed(1)} MB</p>}
       {!storage && <p role="status">Comprobando almacenamiento…</p>}
       {storage?.ready === false && <p role="alert">Falta configurar el almacenamiento privado. Utiliza el Studio integrado en la web de este entorno y contacta con administración.</p>}
       {storage?.ready && <p>Máximo por archivo: {(Number(storage.maximumSizeInBytes) / 1_000_000).toLocaleString("es-CO")} MB.</p>}
       <label>
-        {props.value?.pathname ? "Reemplazar archivo" : "Subir archivo"}
+        {props.value?.pathname || props.value?.internalFileRef ? "Reemplazar archivo" : "Subir archivo"}
         <input type="file" disabled={busy || !storage?.ready || props.readOnly} style={{ display: "block", maxWidth: "100%", padding: "12px 0" }} onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) { void select(file); }

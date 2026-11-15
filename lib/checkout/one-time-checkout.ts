@@ -117,6 +117,7 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
         paymentMethod:
           discount.finalAmount === 0 ? "FREE" : method === "breb" ? "BREB_MANUAL" : "PAYPAL_DIRECT",
         paymentStatus: discount.finalAmount === 0 ? "COMPLETED" : "PENDING",
+        ...(quote.driveDelivery ? { driveDelivery: { create: { ...quote.driveDelivery, recipientEmail: email.trim().toLowerCase() } } } : {}),
         metadata: {
           ...quote.metadata,
           isGuestCheckout: !session?.user?.id,

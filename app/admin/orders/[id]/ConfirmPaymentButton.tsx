@@ -12,6 +12,7 @@ interface ConfirmPaymentButtonProps {
   simulation?: boolean;
   expectedAmount?: number;
   currency?: string;
+  driveDelivery?: boolean;
 }
 
 export function ConfirmPaymentButton({
@@ -22,6 +23,7 @@ export function ConfirmPaymentButton({
   simulation = false,
   expectedAmount,
   currency = "COP",
+  driveDelivery = false,
 }: ConfirmPaymentButtonProps) {
   const router = useRouter();
   const [isConfirming, setIsConfirming] = useState(false);
@@ -115,7 +117,7 @@ export function ConfirmPaymentButton({
             <div className="p-6 space-y-4">
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <p className="text-sm text-yellow-800 font-dm-sans">
-                  {simulation
+                  {driveDelivery ? "Confirma solo el ingreso verificado (simulado en Preview). El pedido quedará pagado y pendiente de acceso en Drive; tendrás que compartir la carpeta como Lector y registrar la entrega por separado." : simulation
                     ? "PRUEBA — NO REAL. Esta confirmación simula el ingreso, activa el acceso de prueba y envía el correo de Preview. No se recibe ni se mueve dinero."
                     : "Confirma solo si has verificado que el pago fue recibido correctamente. Esta acción activará el acceso del cliente y enviará el email de confirmación."}
                 </p>

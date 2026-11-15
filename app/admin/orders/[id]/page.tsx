@@ -12,7 +12,9 @@ import {
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AdminDriveDeliveryControls } from "@/components/checkout/DriveDeliveryControls";
 import { BOOKING_TIME_ZONE } from "@/lib/booking-time";
+import { driveFolderUrl } from "@/lib/digital-products/drive-api";
 import { prisma } from "@/lib/prisma";
 
 import { ConfirmPaymentButton } from "./ConfirmPaymentButton";
@@ -30,6 +32,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
     include: {
       manualPayment: true,
       checkoutHold: true,
+      driveDelivery: true,
       user: {
         select: {
           id: true,
@@ -169,9 +172,16 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
   };
 
   const statusConfig = getStatusConfig(order.paymentStatus);
+  const delivery = order.driveDelivery;
+  const retainReader = !!delivery && !!await prisma.driveProductDelivery.findFirst({ where: {
+    environment: delivery.environment, folderId: delivery.folderId, recipientEmail: delivery.recipientEmail, orderId: { not: id }, status: "GRANTED",
+    order: { paymentStatus: "COMPLETED", entitlements: { some: { revoked: false, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } } },
+  } });
 
   return (
     <div className="space-y-6">
+      {delivery && <AdminDriveDeliveryControls orderId={id} revision={delivery.revision} status={delivery.status} paymentStatus={order.paymentStatus}
+        recipientEmail={delivery.recipientEmail} pendingEmail={delivery.pendingRecipientEmail} folderUrl={driveFolderUrl(delivery.folderId)} retainReader={retainReader} />}
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link
@@ -231,6 +241,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                 simulation={simulation}
                 expectedAmount={Number(order.amount)}
                 currency={order.currency}
+                driveDelivery={!!delivery}
               />
             </div>
             {order.checkoutHold &&

@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function Product({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await client.fetch(
-    `*[_type == "product" && (slug.current == $slug || _id == $slug) && published == true && status == "active" && productType in ["digital","ebook","audio","course"]][0]{_id,title,shortDescription,description,"coverUrl": images[0].asset->url,"coverAlt": images[0].alt,${pricingProjection},whatYouGet}`,
+    `*[_type == "product" && (slug.current == $slug || _id == $slug) && published == true && status == "active" && productType in ["digital","ebook","audio","course"]][0]{_id,title,shortDescription,description,digitalDeliveryVersion,"coverUrl": images[0].asset->url,"coverAlt": images[0].alt,${pricingProjection},whatYouGet}`,
     { slug }
   );
   if (!product) {
@@ -45,6 +45,7 @@ export default async function Product({ params }: { params: Promise<{ slug: stri
           )}
         </section>
         <DigitalProductCheckout
+          driveDelivery={product.digitalDeliveryVersion === 2}
           product={{
             id: product._id,
             title: product.title,

@@ -257,12 +257,78 @@ model Order {
   stripePayment StripePayment?
   entitlements  Entitlement[]
   checkoutHold  CheckoutHold?
+  driveDelivery DriveProductDelivery?
 
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("orders")
+}
+
+// Private delivery references never belong in the public Sanity dataset.
+model ProductDriveConnection {
+  environment           String   @id
+  ownerEmail            String
+  ownerPermissionId     String
+  encryptedRefreshToken String
+  rootFolderId          String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model ProductDriveFolder {
+  id          String   @id @default(cuid())
+  environment String
+  productId   String
+  folderId    String   @unique
+  createdAt   DateTime @default(now())
+  uploads     ProductDriveUpload[]
+
+  @@unique([environment, productId])
+}
+
+model ProductDriveUpload {
+  id               String   @id
+  folderRecordId   String
+  folder           ProductDriveFolder @relation(fields: [folderRecordId], references: [id])
+  fileKey          String
+  sha256           String
+  fileId           String   @unique
+  filename         String
+  contentType      String
+  size             Int
+  encryptedSession String?
+  verifiedAt       DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([folderRecordId, fileKey, sha256])
+}
+
+enum DriveDeliveryStatus {
+  PENDING_ACCESS
+  GRANTED
+  PENDING_REVOCATION
+  REVOKED
+}
+
+model DriveProductDelivery {
+  id             String @id @default(cuid())
+  orderId        String @unique
+  order          Order @relation(fields: [orderId], references: [id])
+  environment    String
+  folderId       String
+  recipientEmail String
+  pendingRecipientEmail String?
+  status         DriveDeliveryStatus @default(PENDING_ACCESS)
+  grantedAt      DateTime?
+  grantedBy      String?
+  revision       Int @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([environment, folderId, recipientEmail, status])
 }
 
 // Inventory only: this is never evidence that money was received.

@@ -25,11 +25,14 @@ export default async function OwnedProduct({ params }: { params: Promise<{ id: s
     notFound();
   }
   const product = await client.fetch(
-    `*[_type == "product" && _id == $id][0]{title,digitalFiles[]{_key,title,description,asset->{url,originalFilename}},privateDigitalFiles[]{_key,title,description,originalFilename,size}}`,
+    `*[_type == "product" && _id == $id][0]{title,digitalDeliveryVersion,digitalFiles[]{_key,title,description,asset->{url,originalFilename}},privateDigitalFiles[]{_key,title,description,originalFilename,size}}`,
     { id }
   );
   if (!product) {
     notFound();
+  }
+  if (product.digitalDeliveryVersion === 2) {
+    redirect("/mi-cuenta/compras");
   }
   return (
     <section className="bg-white p-6 rounded-2xl space-y-5">

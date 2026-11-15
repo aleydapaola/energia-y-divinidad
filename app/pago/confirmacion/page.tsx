@@ -227,7 +227,7 @@ function ConfirmacionContent() {
               )}
               {orderData?.orderType === "PRODUCT" && (
                 <p className="font-dm-sans text-sm text-gray-600 mb-6">
-                  Tu producto digital está disponible en Mis Compras.
+                  {orderData?.metadata?.deliveryProvider === "GOOGLE_DRIVE" ? "Pago confirmado. El acceso a la carpeta privada se habilita cuando Aleyda concede el permiso de lector y registra la entrega. Consulta su estado en Mis Compras." : "Tu producto digital está disponible en Mis Compras."}
                 </p>
               )}
             </>
@@ -370,9 +370,9 @@ function ConfirmacionContent() {
             {status === "success" && orderData?.orderType === "PRODUCT" && !isGuestCheckout && (
               <Link
                 className="block underline p-3"
-                href={`/mi-cuenta/productos/${encodeURIComponent(orderData.itemId)}`}
+                href={orderData?.metadata?.deliveryProvider === "GOOGLE_DRIVE" ? "/mi-cuenta/compras" : `/mi-cuenta/productos/${encodeURIComponent(orderData.itemId)}`}
               >
-                Acceder a mi producto digital
+                Ver mi producto en Mis compras
               </Link>
             )}
             {status === "pending" && paymentMethod === "BREB_MANUAL" && (

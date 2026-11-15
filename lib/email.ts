@@ -2138,6 +2138,7 @@ export async function sendBookingConfirmationEmail(params: SendBookingConfirmati
 // ============================================
 
 interface SendPaymentConfirmationEmailParams {
+  driveDelivery?: boolean;
   email: string;
   name: string;
   orderNumber: string;
@@ -2253,6 +2254,14 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
       productTypeText = "Curso";
       ctaText = "Ir a mis cursos";
       ctaLink = productLink || `${APP_URL}/mi-cuenta/cursos`;
+      break;
+    case "PRODUCT":
+      productTypeText = "Producto digital";
+      ctaText = "Ver Mis compras";
+      ctaLink = productLink || `${APP_URL}/mi-cuenta/compras`;
+      if (params.driveDelivery) {
+        additionalInfo = '<tr><td style="padding:12px 0;font-size:14px;color:#654177;">Pago confirmado. El acceso privado en Google Drive requiere que Aleyda comparta la carpeta con tu cuenta de Google y registre la entrega. Consulta el estado en Mis compras.</td></tr>';
+      }
       break;
     default:
       productTypeText = "Producto";
