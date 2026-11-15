@@ -15,6 +15,7 @@ export function Footer() {
       ...(features.events ? [{ label: "Eventos", href: "/eventos" }] : []),
       { label: "Sobre mí", href: "/sobre-mi" },
       { label: "Blog", href: "/blog" },
+      { label: "Testimonios", href: "/testimonios" },
     ],
     servicios: [
       { label: "Membresía", href: "/membresia" },

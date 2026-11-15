@@ -4,24 +4,16 @@ import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { auth } from "@/lib/auth";
+import {
+  PRODUCT_CATALOG_QUERY,
+  type CatalogProduct,
+  productHref,
+  productPrices,
+} from "@/lib/digital-products/catalog";
 import { client } from "@/sanity/lib/client";
-import { pricingProjection } from "@/sanity/lib/projections";
 export const dynamic = "force-dynamic";
 export default async function Products() {
-  const products = await client.fetch<
-    {
-      _id: string;
-      title: string;
-      slug: { current: string };
-      shortDescription?: string;
-      coverUrl?: string;
-      coverAlt?: string;
-      price?: number;
-      priceUSD?: number;
-    }[]
-  >(
-    `*[_type == "product" && published == true && status == "active" && productType in ["digital","ebook","audio","course"]]{_id,title,slug,shortDescription,"coverUrl": images[0].asset->url,"coverAlt": images[0].alt,${pricingProjection}}`
-  );
+  const products = await client.fetch<CatalogProduct[]>(PRODUCT_CATALOG_QUERY);
   return (
     <>
       <Header session={await auth()} />
@@ -45,11 +37,12 @@ export default async function Products() {
               )}
               <h2 className="text-2xl">{p.title}</h2>
               <p>{p.shortDescription}</p>
-              <p>{p.price ? `${p.price.toLocaleString("es-CO")} COP · Bre-B / Global66` : ""}</p>
-              <p>{p.priceUSD ? `${p.priceUSD} USD · PayPal` : ""}</p>
+              {productPrices(p).map((price) => (
+                <p key={price}>{price}</p>
+              ))}
               <Link
                 className="inline-block bg-[#4944a4] text-white rounded-xl py-3 px-5"
-                href={`/productos/${encodeURIComponent(p.slug?.current || p._id)}`}
+                href={productHref(p)}
               >
                 Ver producto y opciones de pago
               </Link>

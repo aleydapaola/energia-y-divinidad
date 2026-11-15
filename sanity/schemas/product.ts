@@ -336,6 +336,13 @@ export default defineType({
       initialValue: false,
     }),
     defineField({
+      name: 'displayOrder',
+      title: 'Orden en portada',
+      type: 'number',
+      description: 'Los destacados aparecen primero. Dentro de cada grupo, los números menores van antes; sin número se ordenan por título.',
+      validation: (Rule) => Rule.integer().min(0),
+    }),
+    defineField({
       name: 'status',
       title: 'Estado',
       type: 'string',

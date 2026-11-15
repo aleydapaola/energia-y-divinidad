@@ -1,4 +1,5 @@
 import { groq } from 'next-sanity'
+import { HOME_PRODUCTS_QUERY } from '../../lib/digital-products/catalog'
 import {
   pricingProjection,
   membershipAccessProjection,
@@ -69,12 +70,7 @@ export const PRODUCT_BY_SLUG_QUERY = groq`*[_type == "product" && slug.current =
   }
 }`
 
-export const FEATURED_PRODUCTS_QUERY = groq`*[
-  _type == "product" &&
-  published == true &&
-  status == "active" &&
-  featured == true
-] | order(displayOrder asc)[0...4]`
+export const FEATURED_PRODUCTS_QUERY = HOME_PRODUCTS_QUERY
 
 // Contenido Premium
 export const PREMIUM_CONTENT_QUERY = groq`*[_type == "premiumContent" && published == true] | order(releaseDate desc)`

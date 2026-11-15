@@ -5,9 +5,12 @@ import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import MeditationCard from "@/components/meditaciones/MeditationCard";
 import { MeditationSignup } from "@/components/newsletter/MeditationSignup";
+import { HomeProducts } from "@/components/products/HomeProducts";
 import { auth } from "@/lib/auth";
+import { HOME_PRODUCTS_QUERY, type CatalogProduct } from "@/lib/digital-products/catalog";
 import { getFeaturedFreeContent, type FreeContent } from "@/lib/sanity/queries/freeContent";
 import { getRandomTestimonials, type Testimonial } from "@/lib/sanity/queries/testimonials";
+import { client } from "@/sanity/lib/client";
 
 const FALLBACK_TESTIMONIALS: Testimonial[] = [
   {
@@ -50,6 +53,13 @@ const FALLBACK_TESTIMONIALS: Testimonial[] = [
 export default async function HomePage() {
   // Get user session
   const session = await auth();
+
+  let products: CatalogProduct[] = [];
+  try {
+    products = await client.fetch<CatalogProduct[]>(HOME_PRODUCTS_QUERY);
+  } catch (_error) {
+    // Keep the rest of the home available if the product catalog is unavailable.
+  }
 
   // Try to fetch featured meditations, fallback to empty array if Sanity not configured
   let featuredMeditations: FreeContent[] = [];
@@ -217,16 +227,6 @@ export default async function HomePage() {
             {/* Right Side - Empty space for image that's positioned absolutely */}
             <div className="hidden lg:block" />
           </div>
-        </div>
-      </section>
-
-      <section aria-labelledby="productos-home" className="bg-[#f8f0f5] px-4 py-10 sm:py-14">
-        <div className="mx-auto max-w-5xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-          <div className="max-w-2xl">
-            <h2 id="productos-home" className="font-gazeta text-3xl text-[#654177]">Productos digitales</h2>
-            <p className="mt-3 text-[#674c6a]">Explora las guías y los audios de Aleyda para acompañarte a tu ritmo.</p>
-          </div>
-          <Link href="/productos" className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[#654177] px-6 py-3 text-white hover:bg-[#8A4BAF] transition-colors">Ver productos</Link>
         </div>
       </section>
 
@@ -704,6 +704,8 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      <HomeProducts products={products} />
 
       {/* Sobre mí Section */}
       <section className="relative bg-gradient-to-b from-[#f8f0f5] via-[#f5eaf2] to-white py-16 sm:py-20 md:py-24 lg:py-28 overflow-hidden">

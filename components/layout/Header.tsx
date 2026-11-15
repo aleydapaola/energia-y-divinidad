@@ -17,7 +17,6 @@ export function Header({ session }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { label: "Inicio", href: "/" },
     { label: "Sesiones", href: "/sesiones" },
     { label: "Academia", href: "/academia" },
     { label: "Productos", href: "/productos" },
@@ -25,7 +24,6 @@ export function Header({ session }: HeaderProps) {
     { label: "Membresía", href: "/membresia" },
     { label: "Blog", href: "/blog" },
     { label: "Sobre mí", href: "/sobre-mi" },
-    { label: "Testimonios", href: "/testimonios" },
     { label: "Contacto", href: "/contacto" },
   ];
 
