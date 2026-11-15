@@ -227,7 +227,7 @@ function ConfirmacionContent() {
               )}
               {orderData?.orderType === "PRODUCT" && (
                 <p className="font-dm-sans text-sm text-gray-600 mb-6">
-                  {orderData?.metadata?.deliveryProvider === "GOOGLE_DRIVE" ? "Pago confirmado. El acceso a la carpeta privada se habilita cuando Aleyda concede el permiso de lector y registra la entrega. Consulta su estado en Mis Compras." : "Tu producto digital está disponible en Mis Compras."}
+                  {orderData?.metadata?.deliveryProvider === "GOOGLE_DRIVE" ? "Pago confirmado. El servidor concede acceso de lector a tu correo verificado. Consulta Mis Compras; si la entrega está pendiente, reintenta solo la entrega, sin volver a pagar." : "Tu producto digital está disponible en Mis Compras."}
                 </p>
               )}
             </>

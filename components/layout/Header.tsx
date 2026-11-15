@@ -20,6 +20,7 @@ export function Header({ session }: HeaderProps) {
     { label: "Inicio", href: "/" },
     { label: "Sesiones", href: "/sesiones" },
     { label: "Academia", href: "/academia" },
+    { label: "Productos", href: "/productos" },
     ...(features.events ? [{ label: "Eventos", href: "/eventos" }] : []),
     { label: "Membresía", href: "/membresia" },
     { label: "Blog", href: "/blog" },
@@ -32,7 +33,7 @@ export function Header({ session }: HeaderProps) {
     <header className="bg-white border-b border-gray-200 relative">
       <div className="container mx-auto px-4">
         {/* Desktop Navigation */}
-        <div className="hidden lg:flex items-center justify-between h-16">
+        <div className="hidden xl:flex items-center justify-between h-16 gap-3">
           {/* Logo - Left Side */}
           <Link href="/" className="flex items-center group">
             <Image
@@ -47,12 +48,12 @@ export function Header({ session }: HeaderProps) {
 
           {/* Navigation Menu - Center */}
           <nav className="flex-1 flex justify-center">
-            <ul className="flex items-center gap-8">
+            <ul className="flex items-center gap-3 2xl:gap-6">
               {navItems.map((item) => (
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className="text-gray-700 hover:text-[#6B4C9A] transition-colors font-normal text-base"
+                    className="text-gray-700 hover:text-[#6B4C9A] transition-colors font-normal text-sm 2xl:text-base whitespace-nowrap"
                   >
                     {item.label}
                   </Link>
@@ -97,7 +98,7 @@ export function Header({ session }: HeaderProps) {
         </div>
 
         {/* Mobile Navigation */}
-        <div className="lg:hidden py-4">
+        <div className="xl:hidden py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center">
               <Image
@@ -115,7 +116,7 @@ export function Header({ session }: HeaderProps) {
               {session && <UserMenu />}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="text-[#6B4C9A]"
+                className="text-[#6B4C9A] min-h-11 min-w-11 flex items-center justify-center"
                 aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
                 aria-expanded={mobileMenuOpen}
               >
@@ -127,12 +128,12 @@ export function Header({ session }: HeaderProps) {
           {/* Mobile Menu */}
           {mobileMenuOpen && (
             <div className="mt-4 pb-4 border-t border-gray-200">
-              <ul className="space-y-3 mt-4">
+              <ul className="mt-4">
                 {navItems.map((item) => (
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className="block text-gray-700 hover:text-[#6B4C9A] transition-colors font-normal"
+                      className="flex min-h-11 items-center text-gray-700 hover:text-[#6B4C9A] transition-colors font-normal"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       {item.label}

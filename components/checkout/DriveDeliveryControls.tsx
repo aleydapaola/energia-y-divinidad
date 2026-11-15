@@ -3,34 +3,23 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function DriveRecipientForm({ orderId, email, pendingEmail, status }: { orderId: string; email: string; pendingEmail: string | null; status: string }) {
+export function DriveBuyerDeliveryControls({ orderId, email, status, paid, verified }: { orderId: string; email: string; status: string; paid: boolean; verified: boolean }) {
   const router = useRouter();
-  const [recipient, setRecipient] = useState(email);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return <div className="space-y-2 text-sm break-words">
-    <p>Cuenta de Google para el acceso: <strong>{email}</strong></p>
-    {pendingEmail && <p>Cuenta nueva solicitada: {pendingEmail}. Aleyda debe revisar los permisos anteriores.</p>}
-    {!["REVOKED", "PENDING_REVOCATION"].includes(status) && <details>
-      <summary className="cursor-pointer py-3 underline">Usar otra cuenta de Google</summary>
-      <form className="space-y-3 py-3" onSubmit={async (event) => {
-        event.preventDefault(); setBusy(true); setError("");
+    <p>El acceso en Drive es exclusivo de tu cuenta: <strong>{email}</strong>.</p>
+    {!verified && <p>Verifica el correo de tu cuenta para recibir el acceso. El pago confirmado se conserva.</p>}
+    {paid && status === "PENDING_ACCESS" && <button disabled={busy || !verified} className="min-h-11 rounded-lg border px-4 py-3 disabled:opacity-50" onClick={async () => {
+        setBusy(true); setError("");
         try {
-          const response = await fetch(`/api/mi-cuenta/pedidos/${encodeURIComponent(orderId)}/drive-email`, { method: "POST",
-            headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: recipient }) });
+          const response = await fetch(`/api/mi-cuenta/pedidos/${encodeURIComponent(orderId)}/drive-delivery`, { method: "POST" });
           const data = await response.json();
-          if (!response.ok) { throw new Error(data.error); }
+          if (!response.ok || !data.delivered) { throw new Error("Tu pago está confirmado. El acceso sigue pendiente; puedes reintentar solo la entrega o contactar con Aleyda."); }
           router.refresh();
-        } catch (failure) { setError(failure instanceof Error ? failure.message : "No se pudo cambiar la cuenta."); }
+        } catch (failure) { setError(failure instanceof Error ? failure.message : "No se pudo completar la entrega."); }
         finally { setBusy(false); }
-      }}>
-        <label className="block">Correo de tu cuenta de Google
-          <input required type="email" maxLength={254} autoCapitalize="none" autoCorrect="off" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="block w-full max-w-md rounded-lg border p-3" />
-        </label>
-        <p>Abre Drive con esta cuenta. Si ya tenías acceso, el enlace quedará pendiente mientras Aleyda revisa el cambio de permisos.</p>
-        <button disabled={busy} className="min-h-11 rounded-lg border px-4 py-3 disabled:opacity-50">{busy ? "Guardando…" : "Guardar cuenta de Google"}</button>
-      </form>
-    </details>}
+      }}>{busy ? "Comprobando entrega…" : "Reintentar entrega"}</button>}
     {error && <p role="alert">{error}</p>}
   </div>;
 }
@@ -45,13 +34,14 @@ export function AdminDriveDeliveryControls({ orderId, revision, status, paymentS
   const [reference, setReference] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  async function record(action: "grant" | "refund" | "revoke") {
+  async function record(action: "retry" | "refund" | "revoke") {
     setBusy(true); setError("");
     try {
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(orderId)}/drive-delivery`, { method: "POST",
-        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, revision, confirmed: action === "refund" ? refundConfirmed : confirmed, reference: reference || undefined }) });
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, revision, confirmed: action === "retry" || (action === "refund" ? refundConfirmed : confirmed), reference: reference || undefined }) });
       const data = await response.json();
       if (!response.ok) { throw new Error(data.error); }
+      if (action === "retry" && !data.delivered) { throw new Error("La entrega sigue pendiente. Revisa el correo verificado del titular, los archivos y la conexión Drive. No confirmes de nuevo el pago."); }
       setConfirmed(false); setRefundConfirmed(false); setReference(""); router.refresh();
     } catch (failure) { setError(failure instanceof Error ? failure.message : "No se pudo registrar."); }
     finally { setBusy(false); }
@@ -65,9 +55,8 @@ export function AdminDriveDeliveryControls({ orderId, revision, status, paymentS
     <a href={folderUrl} target="_blank" rel="noopener noreferrer" className="inline-block min-h-11 py-3 underline">Abrir carpeta privada</a>
     {status === "PENDING_ACCESS" && paymentStatus !== "COMPLETED" && <p>Confirma primero el pago. No concedas todavía acceso en Drive.</p>}
     {status === "PENDING_ACCESS" && paymentStatus === "COMPLETED" && <>
-      <p>En Drive: Compartir → añade esta cuenta como Lector → Enviar o Compartir. Mantén Acceso general: Restringido. Después registra la entrega aquí.</p>
-      <label className="flex items-start gap-3"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1" />He compartido esta carpeta con la cuenta indicada como Lector, con acceso general Restringido.</label>
-      <button disabled={busy || !confirmed} onClick={() => void record("grant")} className="min-h-11 rounded-lg bg-[#654177] px-4 py-3 text-white disabled:opacity-50">Marcar acceso concedido</button>
+      <p>El servidor concede acceso de lector únicamente al correo verificado del titular. Si falló Drive, reintenta la entrega; el pago no se vuelve a confirmar.</p>
+      <button disabled={busy} onClick={() => void record("retry")} className="min-h-11 rounded-lg bg-[#654177] px-4 py-3 text-white disabled:opacity-50">Reintentar entrega</button>
     </>}
     {status === "PENDING_REVOCATION" && <>
       <p>{retainReader ? "Otra compra vigente mantiene el permiso de esta cuenta. No lo retires de Drive." : "En Drive: Compartir → cuenta anterior → Quitar acceso → Guardar. La web por sí sola no retira ese permiso."}</p>

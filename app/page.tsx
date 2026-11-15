@@ -220,6 +220,16 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section aria-labelledby="productos-home" className="bg-[#f8f0f5] px-4 py-10 sm:py-14">
+        <div className="mx-auto max-w-5xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div className="max-w-2xl">
+            <h2 id="productos-home" className="font-gazeta text-3xl text-[#654177]">Productos digitales</h2>
+            <p className="mt-3 text-[#674c6a]">Explora las guías y los audios de Aleyda para acompañarte a tu ritmo.</p>
+          </div>
+          <Link href="/productos" className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[#654177] px-6 py-3 text-white hover:bg-[#8A4BAF] transition-colors">Ver productos</Link>
+        </div>
+      </section>
+
       {/* ¿Te resuena esto? Section */}
       <MeditationSignup source="home" />
       <section className="relative py-16 sm:py-20 md:py-24 lg:py-28 overflow-hidden">

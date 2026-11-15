@@ -167,5 +167,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       },
     });
   });
+  if ((order.metadata as { deliveryProvider?: string } | null)?.deliveryProvider === "GOOGLE_DRIVE") {
+    try {
+      const { deliverPaidDriveOrder } = await import("@/lib/digital-products/drive-auto-delivery");
+      await deliverPaidDriveOrder(order.id);
+    } catch { console.warn("Entrega Drive pendiente; no se vuelve a confirmar el cobro."); }
+  }
   return NextResponse.json({ success: true });
 }

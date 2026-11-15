@@ -88,7 +88,7 @@ export function PrivateProductFileInput(props: ObjectInputProps) {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       {props.renderDefault(props)}
-      <p>{drive ? "Los archivos de este producto se guardan juntos en su carpeta privada de Google Drive. La entrega requiere pago confirmado y permiso de lector concedido por Aleyda." : "Archivo privado: cualquier formato admitido por el almacenamiento. La compra permite descargarlo aunque el navegador no pueda abrirlo."}</p>
+      <p>{drive ? "Los archivos de este producto se guardan juntos en su carpeta privada de Google Drive. Tras confirmar el pago, el servidor concede acceso de lector solo al correo verificado del comprador." : "Archivo privado: cualquier formato admitido por el almacenamiento. La compra permite descargarlo aunque el navegador no pueda abrirlo."}</p>
       {props.value?.originalFilename && <p>{props.value.originalFilename} · {Number(props.value.size || 0) < 1024 ? `${props.value.size || 0} bytes` : `${(Number(props.value.size || 0) / 1024 / 1024).toFixed(1)} MB`}</p>}
       {drive && internalFileRef && <>
         {fileState === "checking" && <p role="status">Comprobando el archivo en Drive…</p>}

@@ -117,7 +117,7 @@ export function ConfirmPaymentButton({
             <div className="p-6 space-y-4">
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <p className="text-sm text-yellow-800 font-dm-sans">
-                  {driveDelivery ? "Confirma solo el ingreso verificado (simulado en Preview). El pedido quedará pagado y pendiente de acceso en Drive; tendrás que compartir la carpeta como Lector y registrar la entrega por separado." : simulation
+                  {driveDelivery ? "Confirma solo el ingreso verificado (simulado en Preview). El servidor intentará entregar acceso de lector en Drive al correo verificado del titular. Si falla, el pago se conserva y solo se reintenta la entrega." : simulation
                     ? "PRUEBA — NO REAL. Esta confirmación simula el ingreso, activa el acceso de prueba y envía el correo de Preview. No se recibe ni se mueve dinero."
                     : "Confirma solo si has verificado que el pago fue recibido correctamente. Esta acción activará el acceso del cliente y enviará el email de confirmación."}
                 </p>

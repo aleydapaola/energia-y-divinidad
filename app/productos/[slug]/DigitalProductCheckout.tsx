@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
@@ -62,6 +63,12 @@ export function DigitalProductCheckout({
     }
   }
   const paymentLabel = method === "breb_manual" ? "Continuar con Bre-B" : "Continuar con PayPal";
+  if (driveDelivery && !session?.user?.id) {
+    return <section className="bg-white p-6 rounded-2xl space-y-4">
+      <p>El acceso a Drive es exclusivo del titular. Inicia sesión con una cuenta de correo verificado y usa esa misma cuenta en Google Drive.</p>
+      <Link className="inline-block min-h-11 py-3 underline" href={`/auth/signin?callbackUrl=${encodeURIComponent(`/productos/${product.id}`)}`}>Iniciar sesión para comprar</Link>
+    </section>;
+  }
   return (
     <form onSubmit={submit} className="bg-white p-6 rounded-2xl space-y-5 min-w-0 break-words">
       <h2 className="text-2xl">Comprar {product.title}</h2>
@@ -124,7 +131,7 @@ export function DigitalProductCheckout({
         </>
       )}
       <p>
-        {driveDelivery ? "Después de verificar el pago, el acceso quedará pendiente hasta que Aleyda comparta contigo la carpeta privada de Google Drive y registre la entrega. El nombre del producto en Mis compras abrirá la carpeta cuando el acceso esté concedido." : "Después de verificar el pago encontrarás los archivos y las instrucciones en Mis compras."}
+        {driveDelivery ? "Después de verificar el pago, el servidor concede permiso de lector solo al correo verificado de tu cuenta. El nombre del producto en Mis compras abrirá la carpeta cuando Drive confirme el acceso. Si falla la entrega, puedes reintentarla sin volver a pagar." : "Después de verificar el pago encontrarás los archivos y las instrucciones en Mis compras."}
         Recibirás un correo con el acceso a tu cuenta.
       </p>
       <PurchasePolicy kind="product" />

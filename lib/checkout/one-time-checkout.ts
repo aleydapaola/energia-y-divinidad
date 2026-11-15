@@ -45,7 +45,7 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
   try {
     const session = await auth();
     const body = inputSchema.parse(await request.json());
-    const email = session?.user?.email || body.guestEmail;
+    let email = session?.user?.email || body.guestEmail;
     if (!email) {
       return NextResponse.json(
         { error: "Introduce tu correo para recibir el pedido." },
@@ -63,6 +63,13 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
     }
     const currency = method === "breb" ? "COP" : "USD";
     const quote = await quoteCatalogItem({ ...body, currency });
+    if (quote.driveDelivery) {
+      const buyer = session?.user?.id ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { email: true, emailVerified: true } }) : null;
+      if (!buyer?.email || !buyer.emailVerified) {
+        return NextResponse.json({ error: "Para comprar este producto, inicia sesión con una cuenta cuyo correo esté verificado. Drive dará acceso solo a ese correo." }, { status: 403 });
+      }
+      email = buyer.email.trim().toLowerCase();
+    }
     if (body.productType === "event") {
       await assertEventCapacity(
         prisma,

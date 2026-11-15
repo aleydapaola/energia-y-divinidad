@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 import { assertPrivateFolder, connectedDrive, driveFetch, drivePermissions, assertPrivatePermissions, type DriveFile } from "./drive-api";
 import { decryptDriveSecret, driveConfig, encryptDriveSecret, DRIVE_MAX_BYTES } from "./drive-config";
+import { applyDriveFilePolicy } from "./drive-file-policy";
 import { safeFilename, validProductId } from "./files";
 
 export async function authorizeDriveEditor(request: Request, productId: string, checkOnly = false) {
@@ -102,6 +103,8 @@ export async function verifyDriveUpload(uploadId: string, productId: string, dri
   }
   assertPrivatePermissions(await drivePermissions(upload.fileId, drive.accessToken), drive.connection.ownerPermissionId,
     readers.filter((p) => p.role === "reader").map((p) => (p.emailAddress || "").toLowerCase()));
+  // Paid files are viewable and downloadable by readers. Do not apply a folder-wide restriction.
+  await applyDriveFilePolicy(upload.fileId, upload.contentType, "PAID_DOWNLOAD", drive.accessToken);
   await prisma.productDriveUpload.update({ where: { id: upload.id }, data: { verifiedAt: new Date(), encryptedSession: null } });
   return { internalFileRef: upload.id, originalFilename: upload.filename, contentType: upload.contentType, size: upload.size };
 }

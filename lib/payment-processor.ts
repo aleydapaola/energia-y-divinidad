@@ -89,7 +89,7 @@ export async function processApprovedPayment(
     return { success: false, error: "El pago no está verificado" };
   }
   try {
-    return await prisma.$transaction(
+    const result = await prisma.$transaction(
       async (lock) => {
         await lock.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fulfillment:${order.id}`}))`;
         const fresh = await prisma.order.findUnique({
@@ -107,6 +107,13 @@ export async function processApprovedPayment(
       },
       { maxWait: 10000, timeout: 120000 }
     );
+    if (result.success && order.orderType === "PRODUCT" && order.metadata?.deliveryProvider === "GOOGLE_DRIVE") {
+      try {
+        const { deliverPaidDriveOrder } = await import("@/lib/digital-products/drive-auto-delivery");
+        await deliverPaidDriveOrder(order.id);
+      } catch { console.warn("Entrega Drive pendiente; el pago confirmado se conserva."); }
+    }
+    return result;
   } catch {
     return { success: false, error: "Entrega pendiente de revisión; no repitas el pago." };
   }

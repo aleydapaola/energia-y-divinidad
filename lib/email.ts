@@ -22,6 +22,20 @@ function resolveAppUrl(): string {
     process.env.NEXT_PUBLIC_SITE_URL,
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
   ];
+  if (process.env.VERCEL_ENV !== "production" || process.env.EMAIL_DELIVERY_MODE === "preview") {
+    for (const candidate of candidates) {
+      if (!candidate) { continue; }
+      try {
+        const url = new URL(candidate);
+        if (url.protocol === "https:" && !url.username && !url.password &&
+            (url.hostname === "preview.energiaydivinidad.com" ||
+              /^energia-y-divinidad-[a-z0-9-]+-aleyda-paola-vargas-projects\.vercel\.app$/.test(url.hostname))) {
+          return url.origin;
+        }
+      } catch { /* Ignore invalid origins; Preview never falls back to the real website. */ }
+    }
+    return "https://preview.energiaydivinidad.com";
+  }
   for (const url of candidates) {
     if (url && !url.includes("localhost") && !url.includes("127.0.0.1")) {
       return url.replace(/\/$/, "");
@@ -2260,7 +2274,7 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
       ctaText = "Ver Mis compras";
       ctaLink = productLink || `${APP_URL}/mi-cuenta/compras`;
       if (params.driveDelivery) {
-        additionalInfo = '<tr><td style="padding:12px 0;font-size:14px;color:#654177;">Pago confirmado. El acceso privado en Google Drive requiere que Aleyda comparta la carpeta con tu cuenta de Google y registre la entrega. Consulta el estado en Mis compras.</td></tr>';
+        additionalInfo = '<tr><td style="padding:12px 0;font-size:14px;color:#654177;">Pago confirmado. El acceso privado en Google Drive se concede al correo verificado de tu cuenta. Consulta el estado en Mis compras; si la entrega sigue pendiente, puedes reintentarla sin volver a pagar.</td></tr>';
       }
       break;
     default:

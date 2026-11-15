@@ -83,7 +83,7 @@ test("verification rejects an incomplete or moved file before recording completi
   const service = load("lib/digital-products/drive-upload.ts", {
     "@sanity/client": {}, "@/lib/prisma": { prisma: { productDriveUpload: {
       findFirst: async () => upload, update: async () => { marked++; },
-    } } }, "./drive-config": {}, "./files": {},
+    } } }, "./drive-config": {}, "./files": {}, "./drive-file-policy": {},
     "./drive-api": { assertPrivateFolder: async () => [],
       driveFetch: async () => ({ size: "10", sha256Checksum: upload.sha256, parents: [upload.folder.folderId], owners: [{ permissionId: "owner" }] }) },
   });
@@ -148,9 +148,10 @@ test("browser does not finalize a failed upload", async () => {
   } finally { globalThis.fetch = originalFetch; }
 });
 
-function deliveryFixture({ paid = true, granted = false, reader = true, entitled = true } = {}) {
+function deliveryFixture({ paid = true, granted = false, reader = true, entitled = true, anotherPurchase = false } = {}) {
   const changes = [];
   const order = { id: "order", userId: "buyer", itemId: "product", orderType: "PRODUCT", paymentStatus: paid ? "COMPLETED" : "PENDING",
+    user: { id: "buyer", email: "buyer@example.test", emailVerified: new Date() },
     driveDelivery: { orderId: "order", environment: "preview", folderId: "folder_1234567890", recipientEmail: "buyer@example.test",
       pendingRecipientEmail: null, revision: 0, status: granted ? "GRANTED" : "PENDING_ACCESS" } };
   const db = {
@@ -169,7 +170,11 @@ function deliveryFixture({ paid = true, granted = false, reader = true, entitled
       updateMany: async (args) => { changes.push(["entitlement", args]); return { count: 1 }; },
     },
     driveProductDelivery: {
-      findFirst: async () => null,
+      findFirst: async ({ where }) => {
+        assert.equal(where.order.entitlements.some.type, "PRODUCT");
+        assert.equal(where.order.entitlements.some.resourceId, "product");
+        return anotherPurchase ? { orderId: "another-paid-order" } : null;
+      },
       update: async (args) => { changes.push(["delivery", args]); Object.assign(order.driveDelivery, args.data, { revision: order.driveDelivery.revision + 1 }); return order.driveDelivery; },
     },
     auditLog: { create: async (args) => { changes.push(["audit", args]); return {}; } },
@@ -196,18 +201,15 @@ test("Drive access requires the actual owner, completed payment, grant and an ac
   assert.equal(await service.ownedDriveAccess("order", "buyer"), "https://drive.google.com/drive/folders/folder_1234567890");
 });
 
-test("recording a Drive grant requires payment and reader permission and never settles money", async () => {
+test("manual grants are disabled; delivery must confirm the verified owner through Drive API", async () => {
   for (const options of [{ paid: false }, { reader: false }]) {
     const { service, changes } = deliveryFixture(options);
     await assert.rejects(service.administerDriveDelivery("order", { id: "admin", email: "admin@example.test" }, { action: "grant", revision: 0 }));
     assert.equal(changes.length, 0);
   }
-  const { service, changes, order } = deliveryFixture();
-  await service.administerDriveDelivery("order", { id: "admin", email: "admin@example.test" }, { action: "grant", revision: 0 });
-  assert.equal(order.driveDelivery.status, "GRANTED");
-  assert.deepEqual(changes.map(([type]) => type), ["delivery", "audit"]);
-  await assert.rejects(service.administerDriveDelivery("order", { id: "admin", email: "admin@example.test" }, { action: "grant", revision: 0 }), /ha cambiado/);
-  assert.equal(changes.length, 2);
+  const { service, changes } = deliveryFixture();
+  await assert.rejects(service.administerDriveDelivery("order", { id: "admin", email: "admin@example.test" }, { action: "grant", revision: 0 }), /automáticamente/);
+  assert.equal(changes.length, 0);
 });
 
 test("a verified total refund revokes only this order's entitlement and leaves manual Drive removal pending", async () => {
@@ -221,16 +223,142 @@ test("a verified total refund revokes only this order's entitlement and leaves m
   assert.equal(await service.ownedDriveAccess("order", "buyer"), null);
 });
 
-test("changing Google account after delivery suspends the link without changing payment", async () => {
-  const { service, changes, order } = deliveryFixture({ granted: true });
-  await assert.rejects(service.changeDriveRecipient("order", "other-account", "new@example.test"));
-  assert.equal(changes.length, 0);
-  await service.changeDriveRecipient("order", "buyer", "new@example.test");
-  assert.equal(order.driveDelivery.status, "PENDING_REVOCATION");
-  assert.equal(order.driveDelivery.recipientEmail, "buyer@example.test");
-  assert.equal(order.driveDelivery.pendingRecipientEmail, "new@example.test");
+test("a changed or unverified account email cannot open an earlier Drive delivery", async () => {
+  for (const user of [{ email: "other@example.test", emailVerified: new Date() }, { email: "buyer@example.test", emailVerified: null }]) {
+    const { service, order } = deliveryFixture({ granted: true });
+    order.user = user;
+    assert.equal(await service.ownedDriveAccess("order", "buyer"), null);
+  }
+});
+
+test("refund completion requires removed reader permission unless another paid purchase preserves it", async () => {
+  for (const anotherPurchase of [false, true]) {
+    const { service, order } = deliveryFixture({ granted: true, anotherPurchase });
+    await service.administerDriveDelivery("order", { id: "admin", email: "admin@example.test" }, { action: "refund", revision: 0, reference: "synthetic-refund" });
+    const revoke = () => service.administerDriveDelivery("order", { id: "admin", email: "admin@example.test" }, { action: "revoke", revision: 1 });
+    if (anotherPurchase) { await revoke(); assert.equal(order.driveDelivery.status, "REVOKED"); }
+    else { await assert.rejects(revoke, /Retira primero el permiso/); assert.equal(order.driveDelivery.status, "PENDING_REVOCATION"); }
+  }
+});
+
+function automaticFixture() {
+  const calls = [];
+  const order = { id: "order", userId: "buyer", itemId: "product", orderType: "PRODUCT", paymentStatus: "COMPLETED",
+    user: { id: "buyer", email: "Buyer@example.test", emailVerified: new Date() },
+    driveDelivery: { environment: "preview", folderId: "folder_1234567890", recipientEmail: "buyer@example.test", status: "PENDING_ACCESS" } };
+  let permission;
+  let failConfirmation = false;
+  let failCommit = false;
+  let folderMatches = true;
+  let entitled = true;
+  let privateFolder = true;
+  const db = {
+    $executeRaw: async (_strings, key) => { calls.push(["lock", key]); },
+    $transaction: async (operation) => operation(db),
+    order: { findUnique: async () => order }, // No payment mutation adapter exists: retries cannot settle money.
+    entitlement: { findFirst: async ({ where }) => {
+      assert.equal(where.userId, "buyer"); assert.equal(where.orderId, "order"); assert.equal(where.resourceId, "product");
+      return entitled ? { id: "entitlement" } : null;
+    } },
+    productDriveFolder: { findFirst: async ({ where }) => {
+      assert.equal(where.productId, "product"); assert.equal(where.environment, "preview");
+      assert.equal(where.folderId, order.driveDelivery.folderId);
+      return folderMatches ? { id: "folder-record" } : null;
+    } },
+    productDriveUpload: { findMany: async () => [{ fileId: "file_1234567890", contentType: "application/pdf" }] },
+    driveProductDelivery: { update: async ({ data }) => {
+      if (failCommit) { throw new Error("Synthetic lost DB response"); }
+      calls.push(["delivery", data.status]); Object.assign(order.driveDelivery, data);
+    } },
+    auditLog: { create: async () => { calls.push(["audit"]); } },
+  };
+  const drive = { accessToken: "synthetic", ownerEmail: "owner@example.test", connection: { rootFolderId: "root_1234567890" } };
+  const service = load("lib/digital-products/drive-auto-delivery.ts", {
+    "@/lib/prisma": { prisma: db }, "./drive-config": { driveEnvironment: () => "preview" },
+    "./drive-delivery": { activeProductEntitlement: (userId, resourceId) => ({ userId, resourceId }) },
+    "./drive-file-policy": { applyDriveFilePolicy: async (id, mime, policy) => {
+      assert.equal(id, "file_1234567890"); assert.equal(mime, "application/pdf"); assert.equal(policy, "PAID_DOWNLOAD");
+    } },
+    "./drive-api": { validDriveId: api.validDriveId, connectedDrive: async () => drive, assertPrivatePermissions: () => {},
+      assertPrivateFolder: async () => { if (!privateFolder) { throw new Error("Public ACL"); } return []; },
+      drivePermissions: async () => permission ? [permission] : [],
+      driveFetch: async (path, _token, init) => {
+        assert.match(path, /^files\/folder_1234567890\/permissions/);
+        if (init?.method === "POST") {
+          assert.match(path, /sendNotificationEmail=false/);
+          assert.deepEqual(JSON.parse(init.body), { type: "user", role: "reader", emailAddress: "buyer@example.test" });
+          calls.push(["create"]); permission = { id: "reader-id", type: "user", role: "reader", emailAddress: "buyer@example.test" };
+          return permission;
+        }
+        calls.push(["confirm"]);
+        if (failConfirmation) { throw new Error("Synthetic Drive outage"); }
+        return permission;
+      },
+    },
+  });
+  return { order, service, calls, set: (options) => {
+    if ("permission" in options) { permission = options.permission; }
+    if ("failConfirmation" in options) { failConfirmation = options.failConfirmation; }
+    if ("failCommit" in options) { failCommit = options.failCommit; }
+    if ("folderMatches" in options) { folderMatches = options.folderMatches; }
+    if ("entitled" in options) { entitled = options.entitled; }
+    if ("privateFolder" in options) { privateFolder = options.privateFolder; }
+  } };
+}
+
+test("automatic delivery grants only the server's verified owner and product folder, then confirms reader", async () => {
+  const { order, service, calls } = automaticFixture();
+  assert.deepEqual(await service.deliverPaidDriveOrder("order", "buyer"), { delivered: true });
+  assert.equal(order.driveDelivery.status, "GRANTED");
   assert.equal(order.paymentStatus, "COMPLETED");
-  assert.equal(await service.ownedDriveAccess("order", "buyer"), null);
+  assert.deepEqual(calls.map(([operation]) => operation), ["lock", "create", "confirm", "delivery", "audit"]);
+  assert.equal(calls[0][1], "drive-folder-acl:folder_1234567890");
+  await service.deliverPaidDriveOrder("order", "buyer");
+  assert.equal(calls.filter(([operation]) => operation === "create").length, 1);
+  assert.equal(calls.filter(([operation]) => operation === "audit").length, 1);
+});
+
+test("automatic delivery rejects unpaid, unverified, unrelated or mismatched identities before creating permission", async () => {
+  for (const change of [
+    (f) => { f.order.paymentStatus = "PENDING"; },
+    (f) => { f.order.user.emailVerified = null; },
+    (f) => { f.order.user.email = "other@example.test"; },
+    (f) => { f.order.user.id = "other"; },
+    (f) => { f.order.driveDelivery.environment = "production"; },
+    (f) => { f.order.driveDelivery.status = "REVOKED"; },
+    (f) => { f.order.driveDelivery.folderId = "root_1234567890"; },
+    (f) => { f.set({ entitled: false }); },
+    (f) => { f.set({ folderMatches: false }); },
+    (f) => { f.set({ privateFolder: false }); },
+  ]) {
+    const fixture = automaticFixture(); change(fixture);
+    assert.equal((await fixture.service.deliverPaidDriveOrder("order", "buyer")).delivered, false);
+    assert.equal(fixture.calls.some(([operation]) => operation === "create"), false);
+  }
+  const fixture = automaticFixture();
+  assert.equal((await fixture.service.deliverPaidDriveOrder("order", "outsider")).reason, "NOT_FOUND");
+  assert.equal(fixture.calls.length, 0);
+});
+
+test("lost Drive confirmation or DB response preserves payment; retry reuses the existing permission", async () => {
+  for (const failure of ["failConfirmation", "failCommit"]) {
+    const { order, service, calls, set } = automaticFixture();
+    set({ [failure]: true });
+    assert.deepEqual(await service.deliverPaidDriveOrder("order", "buyer"), { delivered: false, reason: "DRIVE_UNAVAILABLE" });
+    assert.equal(order.paymentStatus, "COMPLETED");
+    assert.equal(order.driveDelivery.status, "PENDING_ACCESS");
+    set({ [failure]: false });
+    assert.equal((await service.deliverPaidDriveOrder("order", "buyer")).delivered, true);
+    assert.equal(calls.filter(([operation]) => operation === "create").length, 1);
+  }
+});
+
+test("a pre-existing writer permission cannot be recorded as buyer reader delivery", async () => {
+  const fixture = automaticFixture();
+  fixture.set({ permission: { id: "writer-id", type: "user", role: "writer", emailAddress: "buyer@example.test" } });
+  assert.equal((await fixture.service.deliverPaidDriveOrder("order", "buyer")).reason, "REVIEW_REQUIRED");
+  assert.equal(fixture.order.driveDelivery.status, "PENDING_ACCESS");
+  assert.equal(fixture.calls.some(([operation]) => operation === "create"), false);
 });
 
 test("anonymous Drive requests return no redirect before any delivery lookup", async () => {
@@ -246,7 +374,7 @@ test("anonymous Drive requests return no redirect before any delivery lookup", a
 
 test("Studio detects deletion, movement, or changed bytes without trusting the filename", () => {
   const service = load("lib/digital-products/drive-upload.ts", {
-    "@sanity/client": {}, "@/lib/prisma": {}, "./drive-config": {}, "./drive-api": {}, "./files": {},
+    "@sanity/client": {}, "@/lib/prisma": {}, "./drive-config": {}, "./drive-api": {}, "./files": {}, "./drive-file-policy": {},
   });
   const expected = { size: 609, sha256: "a".repeat(64), folderId: "product-folder", ownerId: "owner" };
   const file = { size: "609", sha256Checksum: expected.sha256, parents: [expected.folderId], owners: [{ permissionId: "owner" }] };
@@ -264,7 +392,7 @@ test("a missing Drive file invalidates only its verified reference and blocks la
     "@sanity/client": {}, "@/lib/prisma": { prisma: { productDriveUpload: {
       findFirst: async () => ({ id: "upload", fileId: "file_1234567890", folder: { folderId: "folder_1234567890" } }),
       update: async (args) => { update = args; },
-    } } }, "./drive-config": {}, "./files": {}, "./drive-api": { assertPrivateFolder: async () => [] },
+    } } }, "./drive-config": {}, "./files": {}, "./drive-file-policy": {}, "./drive-api": { assertPrivateFolder: async () => [] },
   });
   try {
     globalThis.fetch = async () => new Response(null, { status: 404 });
@@ -284,7 +412,7 @@ test("subsequent uploads of one product reuse its existing private folder", asyn
   } };
   const service = load("lib/digital-products/drive-upload.ts", {
     "@sanity/client": {}, "@/lib/prisma": { prisma: { $transaction: async (operation) => operation(db) } },
-    "./drive-config": {}, "./files": {}, "./drive-api": {
+    "./drive-config": {}, "./files": {}, "./drive-file-policy": {}, "./drive-api": {
       assertPrivateFolder: async () => [], driveFetch: async () => { throw new Error("Must not allocate a second folder ID"); },
     },
   });
@@ -295,4 +423,37 @@ test("subsequent uploads of one product reuse its existing private folder", asyn
     assert.equal((await service.productDriveFolder("product", drive)).folderId, folder.folderId);
     assert.equal(queries, 2);
   } finally { globalThis.fetch = originalFetch; }
+});
+
+test("file policy allows paid PDF and audio downloads, but blocks download only for a free PDF", async () => {
+  for (const [mimeType, policy, restricted] of [["application/pdf", "PAID_DOWNLOAD", false], ["audio/wav", "PAID_DOWNLOAD", false], ["application/pdf", "FREE_PDF_VIEW", true]]) {
+    let saved = !restricted;
+    let patches = 0;
+    const service = load("lib/digital-products/drive-file-policy.ts", { "./drive-api": {
+      validDriveId: api.validDriveId,
+      driveFetch: async (path, _token, init) => {
+        assert.match(path, /^files\/file_1234567890\?/);
+        if (init?.method === "PATCH") { saved = JSON.parse(init.body).copyRequiresWriterPermission; patches++; }
+        return { id: "file_1234567890", mimeType, copyRequiresWriterPermission: saved, parents: ["folder"], owners: [{ permissionId: "owner" }] };
+      },
+    } });
+    await service.applyDriveFilePolicy("file_1234567890", mimeType, policy, "synthetic", { folderId: "folder", ownerId: "owner" });
+    assert.equal(saved, restricted); assert.equal(patches, 1);
+    await service.applyDriveFilePolicy("file_1234567890", mimeType, policy, "synthetic", { folderId: "folder", ownerId: "owner" });
+    assert.equal(patches, 1);
+  }
+});
+
+test("a free audio is rejected before applying an unplayable restriction; a moved file is never modified", async () => {
+  let calls = 0;
+  const service = load("lib/digital-products/drive-file-policy.ts", { "./drive-api": {
+    validDriveId: api.validDriveId, driveFetch: async (_path, _token, init) => {
+      calls++; assert.equal(init, undefined);
+      return { id: "file_1234567890", mimeType: "application/pdf", parents: ["other-product"], owners: [{ permissionId: "owner" }] };
+    },
+  } });
+  await assert.rejects(service.applyDriveFilePolicy("file_1234567890", "audio/wav", "FREE_PDF_VIEW", "synthetic"), /audio gratuito queda pendiente/);
+  assert.equal(calls, 0);
+  await assert.rejects(service.applyDriveFilePolicy("file_1234567890", "application/pdf", "PAID_DOWNLOAD", "synthetic", { folderId: "folder", ownerId: "owner" }), /carpeta privada/);
+  assert.equal(calls, 1);
 });

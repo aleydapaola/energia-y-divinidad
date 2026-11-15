@@ -2,7 +2,7 @@ import { ShoppingBag, Calendar, Receipt } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { DriveRecipientForm } from "@/components/checkout/DriveDeliveryControls";
+import { DriveBuyerDeliveryControls } from "@/components/checkout/DriveDeliveryControls";
 import { auth } from "@/lib/auth";
 import { driveEnvironment } from "@/lib/digital-products/drive-config";
 import { prisma } from "@/lib/prisma";
@@ -19,6 +19,7 @@ export default async function MisComprasPage() {
     where: { userId: session.user.id },
     include: {
       manualPayment: { select: { referenceNumber: true } },
+      user: { select: { email: true, emailVerified: true } },
       driveDelivery: { select: { status: true, recipientEmail: true, pendingRecipientEmail: true, environment: true } },
       entitlements: { where: { type: "PRODUCT", revoked: false, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { resourceId: true } },
     },
@@ -191,6 +192,7 @@ export default async function MisComprasPage() {
             {orders.map((order) => {
               const drive = order.driveDelivery;
               const canOpenDrive = !!drive && drive.environment === driveEnvironment() && drive.status === "GRANTED" &&
+                !!order.user?.emailVerified && order.user.email?.trim().toLowerCase() === drive.recipientEmail &&
                 order.paymentStatus === "COMPLETED" && order.entitlements.some((entitlement) => entitlement.resourceId === order.itemId);
               return (
               <div
@@ -274,7 +276,7 @@ export default async function MisComprasPage() {
                     )}
                   </div>
                 </div>
-                {drive && <DriveRecipientForm orderId={order.id} email={drive.recipientEmail} pendingEmail={drive.pendingRecipientEmail} status={drive.status} />}
+                {drive && <DriveBuyerDeliveryControls orderId={order.id} email={order.user?.email || ""} status={drive.status} paid={order.paymentStatus === "COMPLETED"} verified={!!order.user?.emailVerified} />}
               </div>
               );
             })}

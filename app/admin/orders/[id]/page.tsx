@@ -174,8 +174,8 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
   const statusConfig = getStatusConfig(order.paymentStatus);
   const delivery = order.driveDelivery;
   const retainReader = !!delivery && !!await prisma.driveProductDelivery.findFirst({ where: {
-    environment: delivery.environment, folderId: delivery.folderId, recipientEmail: delivery.recipientEmail, orderId: { not: id }, status: "GRANTED",
-    order: { paymentStatus: "COMPLETED", entitlements: { some: { revoked: false, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } } },
+    environment: delivery.environment, folderId: delivery.folderId, recipientEmail: delivery.recipientEmail, orderId: { not: id }, status: { in: ["GRANTED", "PENDING_ACCESS"] },
+    order: { paymentStatus: "COMPLETED", entitlements: { some: { type: "PRODUCT", resourceId: order.itemId, revoked: false, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } } },
   } });
 
   return (
