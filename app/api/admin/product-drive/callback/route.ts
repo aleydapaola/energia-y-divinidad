@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     let rootFolderId = existing?.rootFolderId;
     if (!rootFolderId) {
       const root = await driveFetch("files?fields=id", token.access_token, { method: "POST", body: JSON.stringify({
-        name: `EYD Productos digitales ${config.environment === "preview" ? "PRUEBAS NO REAL" : "Production"}`,
+        name: config.environment === "preview" ? "EYD — Productos de prueba" : "EYD Productos digitales Production",
         mimeType: "application/vnd.google-apps.folder", appProperties: { eydEnvironment: config.environment },
       }) });
       rootFolderId = root.id as string;

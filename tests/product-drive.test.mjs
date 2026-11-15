@@ -243,3 +243,56 @@ test("anonymous Drive requests return no redirect before any delivery lookup", a
   const response = await route.GET(new Request("https://preview.example.test/drive"), { params: Promise.resolve({ id: "order" }) });
   assert.equal(response.status, 401); assert.equal(response.headers.get("Location"), null); assert.equal(lookup, false);
 });
+
+test("Studio detects deletion, movement, or changed bytes without trusting the filename", () => {
+  const service = load("lib/digital-products/drive-upload.ts", {
+    "@sanity/client": {}, "@/lib/prisma": {}, "./drive-config": {}, "./drive-api": {}, "./files": {},
+  });
+  const expected = { size: 609, sha256: "a".repeat(64), folderId: "product-folder", ownerId: "owner" };
+  const file = { size: "609", sha256Checksum: expected.sha256, parents: [expected.folderId], owners: [{ permissionId: "owner" }] };
+  assert.equal(service.driveFileIntegrity(file, expected), "valid");
+  assert.equal(service.driveFileIntegrity({ ...file, trashed: true }, expected), "missing");
+  assert.equal(service.driveFileIntegrity({ ...file, parents: ["another-product"] }, expected), "moved");
+  assert.equal(service.driveFileIntegrity({ ...file, size: "610" }, expected), "changed");
+  assert.equal(service.driveFileIntegrity({ ...file, sha256Checksum: "b".repeat(64) }, expected), "changed");
+});
+
+test("a missing Drive file invalidates only its verified reference and blocks later checkout", async () => {
+  const originalFetch = globalThis.fetch;
+  let update;
+  const service = load("lib/digital-products/drive-upload.ts", {
+    "@sanity/client": {}, "@/lib/prisma": { prisma: { productDriveUpload: {
+      findFirst: async () => ({ id: "upload", fileId: "file_1234567890", folder: { folderId: "folder_1234567890" } }),
+      update: async (args) => { update = args; },
+    } } }, "./drive-config": {}, "./files": {}, "./drive-api": { assertPrivateFolder: async () => [] },
+  });
+  try {
+    globalThis.fetch = async () => new Response(null, { status: 404 });
+    const result = await service.checkDriveUpload("upload", "product", { environment: "preview", connection: { rootFolderId: "root" } });
+    assert.deepEqual(result, { state: "missing" });
+    assert.deepEqual(update, { where: { id: "upload" }, data: { verifiedAt: null } });
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("subsequent uploads of one product reuse its existing private folder", async () => {
+  const originalFetch = globalThis.fetch;
+  const folder = { id: "folder-record", environment: "preview", productId: "product", folderId: "product_folder_123" };
+  let queries = 0;
+  const db = { $executeRaw: async () => 1, productDriveFolder: {
+    findUnique: async ({ where }) => { queries++; assert.deepEqual(where, { environment_productId: { environment: "preview", productId: "product" } }); return folder; },
+    create: async () => { throw new Error("Must not create a second product folder"); },
+  } };
+  const service = load("lib/digital-products/drive-upload.ts", {
+    "@sanity/client": {}, "@/lib/prisma": { prisma: { $transaction: async (operation) => operation(db) } },
+    "./drive-config": {}, "./files": {}, "./drive-api": {
+      assertPrivateFolder: async () => [], driveFetch: async () => { throw new Error("Must not allocate a second folder ID"); },
+    },
+  });
+  try {
+    globalThis.fetch = async () => new Response("{}", { status: 200 });
+    const drive = { environment: "preview", connection: { rootFolderId: "root" }, accessToken: "synthetic-only" };
+    assert.equal((await service.productDriveFolder("product", drive)).folderId, folder.folderId);
+    assert.equal((await service.productDriveFolder("product", drive)).folderId, folder.folderId);
+    assert.equal(queries, 2);
+  } finally { globalThis.fetch = originalFetch; }
+});

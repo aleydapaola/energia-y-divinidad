@@ -8,7 +8,7 @@ import { assertPrivateFolder, connectedDrive, driveFetch, drivePermissions, asse
 import { decryptDriveSecret, driveConfig, encryptDriveSecret, DRIVE_MAX_BYTES } from "./drive-config";
 import { safeFilename, validProductId } from "./files";
 
-export async function authorizeDriveEditor(request: Request, productId: string) {
+export async function authorizeDriveEditor(request: Request, productId: string, checkOnly = false) {
   const config = driveConfig();
   const authorization = request.headers.get("authorization") || "";
   if (!authorization.startsWith("Bearer ") || !validProductId(productId) || request.headers.get("origin") !== config.origin) {
@@ -17,9 +17,12 @@ export async function authorizeDriveEditor(request: Request, productId: string) 
   const id = productId.replace(/^drafts\./, "");
   const editor = createClient({ projectId: "81jpalr2", dataset: config.environment, apiVersion: "2024-01-01",
     useCdn: false, token: authorization.slice(7), perspective: "raw" });
-  const draft = await editor.getDocument<{ _type: string; digitalDeliveryVersion?: number }>(`drafts.${id}`);
-  if (draft?._type !== "product" || draft.digitalDeliveryVersion !== 2) { throw new Error("Guarda un borrador de producto nuevo para Drive."); }
-  await editor.patch(`drafts.${id}`).setIfMissing({ privateDigitalFiles: [] }).commit();
+  type Product = { _id: string; _type: string; digitalDeliveryVersion?: number };
+  const draft = await editor.getDocument<Product>(`drafts.${id}`);
+  const document = draft || (checkOnly ? await editor.getDocument<Product>(id) : undefined);
+  if (document?._type !== "product" || document.digitalDeliveryVersion !== 2) { throw new Error("Guarda un borrador de producto nuevo para Drive."); }
+  // dryRun proves write permission without changing a published product during a read check.
+  await editor.patch(document._id).setIfMissing({ privateDigitalFiles: [] }).commit({ dryRun: checkOnly });
   return id;
 }
 
@@ -53,6 +56,38 @@ export function validUploadSession(value: string) {
   if (url.origin !== "https://www.googleapis.com" || url.pathname !== "/upload/drive/v3/files" ||
       !url.searchParams.get("upload_id") || url.username || url.password) { throw new Error("Sesión de subida no válida."); }
   return url.toString();
+}
+
+export function driveFileIntegrity(file: DriveFile, expected: { size: number; sha256: string; folderId: string; ownerId: string }) {
+  if (file.trashed) { return "missing" as const; }
+  if (file.parents?.length !== 1 || file.parents[0] !== expected.folderId) { return "moved" as const; }
+  if (Number(file.size) !== expected.size || file.sha256Checksum !== expected.sha256 ||
+      !file.owners?.some((owner) => owner.permissionId === expected.ownerId)) { return "changed" as const; }
+  return "valid" as const;
+}
+
+/** Google is read-only here. Persist verification in Neon so a detected loss blocks new checkout. */
+export async function checkDriveUpload(uploadId: string, productId: string, drive: Awaited<ReturnType<typeof connectedDrive>>) {
+  const upload = await prisma.productDriveUpload.findFirst({ where: { id: uploadId, folder: { productId, environment: drive.environment } }, include: { folder: true } });
+  if (!upload) { throw new Error("Subida no encontrada."); }
+  await assertPrivateFolder(drive.connection.rootFolderId, drive, true);
+  const readers = await assertPrivateFolder(upload.folder.folderId, drive);
+  const response = await fetch(`https://www.googleapis.com/drive/v3/files/${upload.fileId}?fields=id,size,sha256Checksum,parents,trashed,owners(permissionId)`, {
+    headers: { Authorization: `Bearer ${drive.accessToken}` }, cache: "no-store",
+  });
+  let state: "valid" | "missing" | "moved" | "changed";
+  if (response.status === 404 || response.status === 410) { state = "missing"; }
+  else {
+    if (!response.ok) { throw new Error("No se pudo comprobar el archivo en Drive."); }
+    state = driveFileIntegrity(await response.json(), { size: upload.size, sha256: upload.sha256,
+      folderId: upload.folder.folderId, ownerId: drive.connection.ownerPermissionId });
+  }
+  if (state === "valid") {
+    assertPrivatePermissions(await drivePermissions(upload.fileId, drive.accessToken), drive.connection.ownerPermissionId,
+      readers.filter((p) => p.role === "reader").map((p) => (p.emailAddress || "").toLowerCase()));
+  }
+  await prisma.productDriveUpload.update({ where: { id: upload.id }, data: { verifiedAt: state === "valid" ? new Date() : null } });
+  return { state };
 }
 
 export async function verifyDriveUpload(uploadId: string, productId: string, drive: Awaited<ReturnType<typeof connectedDrive>>) {
