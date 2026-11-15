@@ -1,8 +1,11 @@
+/* eslint-disable require-await -- Fetch adapters return simulated responses without network access. */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire, Module } from "node:module";
 import path from "node:path";
 import { test } from "node:test";
+
+import { loadMembership } from "./helpers/membership-loader.mjs";
 
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
@@ -33,6 +36,22 @@ async function isolated(run) {
 const request = (url = "https://preview.energiaydivinidad.com/api/newsletter/meditacion", init) =>
   new Request(url, init);
 
+test("the free gift renders a playable audio control without download links or a download menu", () => {
+  const React = require("react");
+  const { renderToStaticMarkup } = require("react-dom/server");
+  const { MeditationGiftPlayer } = loadMembership(
+    "components/newsletter/MeditationGiftPlayer.tsx",
+    {
+      "@/lib/newsletter-gift-links": { NEWSLETTER_GIFT_AUDIO_PATH: "/api/newsletter/meditacion" },
+    }
+  );
+  const html = renderToStaticMarkup(React.createElement(MeditationGiftPlayer));
+  assert.match(html, /<audio[^>]*controls=""/);
+  assert.match(html, /controlsList="nodownload"/);
+  assert.match(html, /src="\/api\/newsletter\/meditacion"/);
+  assert.doesNotMatch(html, /<a\b|\?download|descargar|descarga/i);
+});
+
 test("audio fails closed before network access when disabled, missing or given a malformed/multiple range", () =>
   isolated(async ({ route, config }) => {
     globalThis.fetch = async () => {
@@ -44,14 +63,15 @@ test("audio fails closed before network access when disabled, missing or given a
     config.giftUrl = null;
     assert.equal((await route.GET(request())).status, 404);
     config.giftUrl = asset;
-    for (const range of ["bytes=0-10,20-30", "bad", "bytes=0-999999999999999999999"])
+    for (const range of ["bytes=0-10,20-30", "bad", "bytes=0-999999999999999999999"]) {
       assert.equal(
         (await route.GET(request(undefined, { headers: { Range: range } }))).status,
         416
       );
+    }
   }));
 
-test("audio streams the fixed configured asset with playable MIME and an explicit download filename", () =>
+test("audio streams the fixed configured asset inline with playable MIME", () =>
   isolated(async ({ route }) => {
     const calls = [];
     globalThis.fetch = async (url, opts) => {
@@ -85,10 +105,31 @@ test("audio streams the fixed configured asset with playable MIME and an explici
     assert.equal(calls[0].url, asset);
     assert.equal(calls[0].opts.redirect, "error");
     assert.equal(calls[0].opts.headers.Authorization, undefined);
-    const download = await route.GET(
-      request("https://preview.energiaydivinidad.com/api/newsletter/meditacion?download=1")
-    );
-    assert.match(download.headers.get("Content-Disposition"), /^attachment;/);
+  }));
+
+test("free gift download requests are denied before fetching audio, including HEAD and query variants", () =>
+  isolated(async ({ route }) => {
+    globalThis.fetch = async () => {
+      throw Error("download must not contact upstream");
+    };
+    for (const query of ["download=1", "download=true", "download=0", "download="]) {
+      for (const method of ["GET", "HEAD"]) {
+        const response = await route[method](
+          request(`https://preview.energiaydivinidad.com/api/newsletter/meditacion?${query}`, {
+            method,
+          })
+        );
+        assert.equal(response.status, 403);
+        assert.equal(response.headers.get("Cache-Control"), "no-store");
+        assert.equal(response.headers.get("Content-Disposition"), null);
+        assert.equal(response.headers.get("Location"), null);
+        if (method === "HEAD") {
+          assert.equal(await response.text(), "");
+        } else {
+          assert.match(await response.text(), /escucha en línea/);
+        }
+      }
+    }
   }));
 
 test("seeking preserves a valid single byte range and HEAD reports the same media headers without a body", () =>

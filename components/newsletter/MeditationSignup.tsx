@@ -36,7 +36,7 @@ export function MeditationSignup({ source = "home" }: { source?: CaptureSource }
             </li>
             <li className="flex gap-3">
               <Download className="h-5 w-5 shrink-0" aria-hidden="true" />
-              Reproduce el audio o descárgalo para otro momento
+              Escucha el audio en línea a tu ritmo
             </li>
           </ul>
         </div>

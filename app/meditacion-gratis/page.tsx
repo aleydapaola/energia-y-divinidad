@@ -64,8 +64,8 @@ export default async function FreeMeditationPage({
               Quiero recibir la meditación
             </Link>
             <p className="text-sm leading-relaxed">
-              Un audio de 18 minutos y 43 segundos que puedes escuchar a tu ritmo o descargar para
-              otro momento. Busca un lugar tranquilo y regálate este espacio.
+              Un audio de 18 minutos y 43 segundos que puedes escuchar en línea a tu ritmo. Busca un
+              lugar tranquilo y regálate este espacio.
             </p>
             <div className="flex items-center gap-4 border-t border-[#8A4BAF]/15 pt-5">
               <Image
@@ -109,7 +109,7 @@ export default async function FreeMeditationPage({
               </li>
               <li>
                 <strong className="mb-1 block text-[#8A4BAF]">3. Disfruta tu regalo</strong>
-                Recibirás el enlace al reproductor y la descarga. No necesitas una cuenta.
+                Recibirás el enlace para escucharla en línea. No necesitas una cuenta.
               </li>
             </ol>
             <p className="text-xs leading-relaxed">

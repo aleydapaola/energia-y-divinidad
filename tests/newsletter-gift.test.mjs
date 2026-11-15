@@ -620,6 +620,8 @@ test("renderer uses real unsubscribe links, escaped footer content and a plain-t
   assert.match(output.html, /Test &lt;address&gt; &amp; &quot;company&quot;/);
   assert.match(output.html, /\[PREVIEW\]/);
   assert.match(output.text, /Darme de baja:/);
+  assert.match(output.html, /Escuchar mi meditación en línea/);
+  assert.doesNotMatch(output.html + output.text, /descarg/i);
 });
 
 test("registration gift requires stored consent and verified ownership without weakening Mailchimp webhook checks", () =>

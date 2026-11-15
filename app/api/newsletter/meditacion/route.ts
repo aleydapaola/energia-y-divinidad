@@ -12,6 +12,15 @@ function unavailable(status = 503) {
 }
 
 async function audio(request: Request) {
+  if (new URL(request.url).searchParams.has("download")) {
+    return new Response(
+      request.method === "HEAD" ? null : "Esta meditación gratuita se escucha en línea.",
+      {
+        status: 403,
+        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+      }
+    );
+  }
   const config = newsletterGiftConfiguration();
   if (!config.enabled || !config.giftUrl) {
     return unavailable(404);
@@ -49,10 +58,9 @@ async function audio(request: Request) {
     }
     const mp3 = new URL(config.giftUrl).pathname.endsWith(".mp3");
     const extension = mp3 ? "mp3" : "m4a";
-    const download = new URL(request.url).searchParams.get("download") === "1";
     const headers = new Headers({
       "Content-Type": mp3 ? "audio/mpeg" : "audio/mp4",
-      "Content-Disposition": `${download ? "attachment" : "inline"}; filename="meditacion-angel-de-la-guarda.${extension}"`,
+      "Content-Disposition": `inline; filename="meditacion-angel-de-la-guarda.${extension}"`,
       "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff",
       "X-Robots-Tag": "noindex, nofollow",

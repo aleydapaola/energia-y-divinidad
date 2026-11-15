@@ -38,7 +38,7 @@ export default function MeditationGiftPage() {
           <>
             <p className="mb-6 leading-relaxed text-gray-600">
               Busca un lugar tranquilo, acomódate y regálate este momento para conectar contigo.
-              Puedes escuchar la meditación aquí o descargarla para otro momento.
+              Puedes escuchar la meditación en línea y volver a este enlace cuando quieras.
             </p>
             <p className="mb-6 text-sm text-gray-500">18 min 43 s · Audio M4A · 9,3 MB</p>
             <MeditationGiftPlayer />
