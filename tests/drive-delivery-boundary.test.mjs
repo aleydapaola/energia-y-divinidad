@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { deliverEmail } from "../lib/email-delivery.ts";
-
 import { loadMembership } from "./helpers/membership-loader.mjs";
 
 test("retired recipient endpoint ignores forged form email and folder without reading the body", async () => {
