@@ -1,10 +1,17 @@
+import { driveAdmin } from "@/lib/digital-products/drive-admin";
 import { driveConfig } from "@/lib/digital-products/drive-config";
+import { previewEmailRecipient } from "@/lib/email-delivery";
 import { prisma } from "@/lib/prisma";
 
 export default async function ProductDrivePage({ searchParams }: { searchParams: Promise<{ connection?: string }> }) {
   const result = await searchParams;
   let configured = false;
   let connected = false;
+  let qaRecipient: string | undefined;
+  if (process.env.VERCEL_ENV === "preview") {
+    await driveAdmin();
+    try { qaRecipient = previewEmailRecipient(); } catch { /* Show readiness, never credentials. */ }
+  }
   try {
     const config = driveConfig();
     configured = true;
@@ -13,6 +20,7 @@ export default async function ProductDrivePage({ searchParams }: { searchParams:
   return <section className="max-w-2xl rounded-xl bg-white p-5 space-y-5 break-words">
     <h1 className="text-2xl font-gazeta">Archivos de productos · Google Drive</h1>
     <p>{connected ? "Cuenta propietaria conectada." : "Conexión de la cuenta propietaria pendiente."}</p>
+    {process.env.VERCEL_ENV === "preview" && <p>Los correos de pruebas se reciben en: <strong>{qaRecipient || "Buzón QA sin configurar"}</strong>. Busca el asunto «[PREVIEW] Verifica tu email - Energía y Divinidad». El destinatario normal no recibe esos correos.</p>}
     {!configured && <p role="alert">Falta configurar el cliente OAuth de Drive de este entorno. No actives facturación ni reutilices las credenciales del inicio de sesión.</p>}
     {result.connection === "failed" && <p role="alert">No se completó la conexión. Comprueba la cuenta propietaria, el consentimiento y la configuración del callback.</p>}
     {result.connection === "ok" && <p role="status">Conexión de Google Drive completada.</p>}
