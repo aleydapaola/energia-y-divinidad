@@ -24,7 +24,7 @@ export function HomeProducts({ products }: { products: CatalogProduct[] }) {
             Guías, audios y recursos de Aleyda para acompañarte a tu ritmo.
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {products.map((product) => (
             <article
               key={product._id}
@@ -36,7 +36,7 @@ export function HomeProducts({ products }: { products: CatalogProduct[] }) {
                   alt={product.coverAlt || product.title}
                   width={720}
                   height={480}
-                  sizes="(min-width: 1024px) 360px, (min-width: 768px) 50vw, 100vw"
+                  sizes="(min-width: 1200px) 552px, (min-width: 768px) 50vw, 100vw"
                   className="aspect-[3/2] w-full bg-[#f8f0f5] object-contain"
                 />
               ) : (

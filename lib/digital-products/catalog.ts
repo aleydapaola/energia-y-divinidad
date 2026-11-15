@@ -28,10 +28,10 @@ const catalogProjection = `{
 
 export const PRODUCT_CATALOG_QUERY = `*[${catalogFilter}]${catalogProjection}`;
 
-// One query, no duplicates: editorial picks first, then fill available places.
-export const HOME_PRODUCTS_QUERY = `*[${catalogFilter}]
-  | order(coalesce(featured, false) desc, coalesce(displayOrder, 2147483647) asc, title asc, _id asc)
-  [0...3]${catalogProjection}`;
+// Only editorial picks, in the order chosen in Studio; no unselected fillers.
+export const HOME_PRODUCTS_QUERY = `*[${catalogFilter} && featured == true]
+  | order(coalesce(displayOrder, 2147483647) asc, title asc, _id asc)
+  [0...4]${catalogProjection}`;
 
 export function productHref(product: CatalogProduct): string {
   return `/productos/${encodeURIComponent(product.slug?.current || product._id)}`;

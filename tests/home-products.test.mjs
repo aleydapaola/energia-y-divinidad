@@ -22,6 +22,7 @@ const product = (id, fields = {}) => ({
   productType: "digital",
   published: true,
   status: "active",
+  featured: true,
   price: 80000,
   priceUSD: 20,
   slug: { current: id },
@@ -35,12 +36,14 @@ async function query(source, dataset) {
   return (await evaluate(parse(source), { dataset })).get();
 }
 
-test("home prioritizes editorial picks, orders them and fills at most three eligible products", async () => {
+test("home displays only eligible editorial picks, in Studio order, capped at four", async () => {
   const dataset = [
-    product("fallback"),
-    product("pick-later", { featured: true, displayOrder: 2 }),
+    product("unselected", { featured: false }),
+    product("pick-later", { featured: true, displayOrder: 3 }),
     product("pick-first", { featured: true, displayOrder: 1 }),
-    product("another-fallback"),
+    product("pick-fourth", { displayOrder: 4 }),
+    product("pick-second", { displayOrder: 2 }),
+    product("beyond-limit", { displayOrder: 5 }),
     product("hidden", { published: false, featured: true, displayOrder: 0 }),
     product("inactive", { status: "discontinued", featured: true }),
     product("physical", { productType: "physical", featured: true }),
@@ -48,15 +51,15 @@ test("home prioritizes editorial picks, orders them and fills at most three elig
   const results = await query(catalog.HOME_PRODUCTS_QUERY, dataset);
   assert.deepEqual(
     results.map((p) => p._id),
-    ["pick-first", "pick-later", "another-fallback"]
+    ["pick-first", "pick-second", "pick-later", "pick-fourth"]
   );
-  assert.equal(new Set(results.map((p) => p._id)).size, 3);
+  assert.equal(new Set(results.map((p) => p._id)).size, 4);
   assert.doesNotMatch(JSON.stringify(results), /private-ref|internalFileRef/);
   assert.equal(catalog.productFormat(results[0]), "PDF + Audio");
 });
 
-test("zero through three products hide or render the exact available number of cards and routes", async () => {
-  for (let count = 0; count <= 3; count++) {
+test("zero through four products hide or render the exact available number of cards and routes", async () => {
+  for (let count = 0; count <= 4; count++) {
     const products = await query(
       catalog.HOME_PRODUCTS_QUERY,
       Array.from({ length: count }, (_, i) => product(`product-${i}`))
