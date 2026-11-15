@@ -671,6 +671,9 @@ test("digital product pages display the same nested or legacy CMS price that che
     const deps = {
       "@/sanity/lib/client": { client: { fetch, withConfig: () => ({ fetch }) } },
       "@/sanity/lib/projections": load("sanity/lib/projections.ts"),
+      "@/lib/digital-products/catalog": load("lib/digital-products/catalog.ts", {
+        "@/sanity/lib/projections": load("sanity/lib/projections.ts"),
+      }),
       "next/navigation": {
         notFound() {
           throw new Error("Unexpected missing product");
