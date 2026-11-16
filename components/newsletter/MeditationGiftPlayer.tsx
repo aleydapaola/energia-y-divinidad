@@ -5,6 +5,16 @@ import { useState } from "react";
 import { NEWSLETTER_GIFT_AUDIO_PATH } from "@/lib/newsletter-gift-links";
 
 export function MeditationGiftPlayer() {
+  return (
+    <OnlineAudioPlayer
+      src={NEWSLETTER_GIFT_AUDIO_PATH}
+      label="Escuchar la Meditación del Ángel de la Guarda"
+    />
+  );
+}
+
+/** Shared with free products; the gift retains its source and existing controls. */
+export function OnlineAudioPlayer({ src, label }: { src: string; label: string }) {
   const [failed, setFailed] = useState(false);
   return (
     <div className="space-y-6">
@@ -13,8 +23,8 @@ export function MeditationGiftPlayer() {
         controls
         controlsList="nodownload"
         preload="metadata"
-        aria-label="Escuchar la Meditación del Ángel de la Guarda"
-        src={NEWSLETTER_GIFT_AUDIO_PATH}
+        aria-label={label}
+        src={src}
         onError={() => setFailed(true)}
         onCanPlay={() => setFailed(false)}
         onContextMenu={(event) => event.preventDefault()}

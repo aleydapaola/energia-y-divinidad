@@ -9,12 +9,18 @@ export default defineType({
   validation: (Rule) => Rule.custom((doc) => {
     if (!doc || doc.status !== 'active' || !['digital', 'ebook', 'audio', 'course'].includes(String(doc.productType))) { return true }
     const pricing = doc.pricing as { price?: number; priceUSD?: number; isFree?: boolean } | undefined
+    if (pricing?.isFree && doc.digitalDeliveryVersion !== 2) { return 'Publica el gratuito con una ficha nueva y archivos privados de Drive.' }
     const prices = [pricing?.price ?? doc.price, pricing?.priceUSD ?? doc.priceUSD]
-    return !pricing?.isFree && prices.some((value) => typeof value === 'number' && Number.isFinite(value) && value > 0)
+    return pricing?.isFree || prices.some((value) => typeof value === 'number' && Number.isFinite(value) && value > 0)
       ? true : 'Configura al menos un precio mayor que cero en COP o USD.'
   }),
   fields: [
     defineField({ name: 'digitalDeliveryVersion', type: 'number', hidden: true, readOnly: true }),
+    defineField({
+      name: 'pricing', title: 'Acceso gratuito', type: 'object',
+      description: 'Usa una ficha y archivos nuevos para publicar un gratuito. Se consulta en línea sin habilitar descargas; no conviertas una carpeta vendida en gratuita.',
+      fields: [{ name: 'isFree', title: 'Gratuito · solo en línea', type: 'boolean', initialValue: false }],
+    }),
     defineField({
       name: 'title',
       title: 'Nombre del Producto',

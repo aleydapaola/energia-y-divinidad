@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { FreeProductViewer } from "@/components/products/FreeProductViewer";
+import { freeProductFiles } from "@/lib/digital-products/free-product";
 import { client } from "@/sanity/lib/client";
 import { pricingProjection } from "@/sanity/lib/projections";
 
@@ -44,15 +46,19 @@ export default async function Product({ params }: { params: Promise<{ slug: stri
             </ul>
           )}
         </section>
-        <DigitalProductCheckout
-          driveDelivery={product.digitalDeliveryVersion === 2}
-          product={{
-            id: product._id,
-            title: product.title,
-            price: product.price,
-            priceUSD: product.priceUSD,
-          }}
-        />
+        {product.isFree ? (
+          <FreeProductViewer productId={product._id} files={await freeProductFiles(product._id)} />
+        ) : (
+          <DigitalProductCheckout
+            driveDelivery={product.digitalDeliveryVersion === 2}
+            product={{
+              id: product._id,
+              title: product.title,
+              price: product.price,
+              priceUSD: product.priceUSD,
+            }}
+          />
+        )}
       </div>
     </main>
   );
