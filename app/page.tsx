@@ -8,6 +8,8 @@ import { MeditationSignup } from "@/components/newsletter/MeditationSignup";
 import { HomeProducts } from "@/components/products/HomeProducts";
 import { auth } from "@/lib/auth";
 import { HOME_PRODUCTS_QUERY, type CatalogProduct } from "@/lib/digital-products/catalog";
+import { homeEmptyPreviewQa, homePreviewQaRequest } from "@/lib/digital-products/home-preview-qa";
+import { prisma } from "@/lib/prisma";
 import { getFeaturedFreeContent, type FreeContent } from "@/lib/sanity/queries/freeContent";
 import { getRandomTestimonials, type Testimonial } from "@/lib/sanity/queries/testimonials";
 import { client } from "@/sanity/lib/client";
@@ -50,13 +52,33 @@ const FALLBACK_TESTIMONIALS: Testimonial[] = [
   },
 ];
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   // Get user session
   const session = await auth();
+  const qaContext = {
+    mode: (await searchParams).qa,
+    environment: process.env.VERCEL_ENV,
+    projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
+    dataset: process.env.NEXT_PUBLIC_SANITY_DATASET,
+  };
+  let qaProductsEmpty = false;
+  if (homePreviewQaRequest(qaContext) && session?.user?.id) {
+    const actor = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+    qaProductsEmpty = homeEmptyPreviewQa({ ...qaContext, role: actor?.role });
+  }
 
   let products: CatalogProduct[] = [];
   try {
-    products = await client.fetch<CatalogProduct[]>(HOME_PRODUCTS_QUERY);
+    if (!qaProductsEmpty) {
+      products = await client.fetch<CatalogProduct[]>(HOME_PRODUCTS_QUERY);
+    }
   } catch (_error) {
     // Keep the rest of the home available if the product catalog is unavailable.
   }
@@ -82,6 +104,12 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header session={session} />
+      {qaProductsEmpty && (
+        <aside role="status" className="bg-amber-50 px-4 py-3 text-center text-sm text-amber-950">
+          QA aislada de Preview: cero productos destacados en esta visita. Sanity conserva sus
+          productos.
+        </aside>
+      )}
 
       {/* Hero Section with New Design */}
       <section className="relative min-h-[85vh] sm:min-h-[80vh] lg:min-h-[85vh] w-full overflow-hidden">

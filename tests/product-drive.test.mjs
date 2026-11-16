@@ -296,7 +296,7 @@ function automaticFixture() {
       },
     },
   });
-  return { order, service, calls, set: (options) => {
+  return { order, service, calls, db, set: (options) => {
     if ("permission" in options) { permission = options.permission; }
     if ("failConfirmation" in options) { failConfirmation = options.failConfirmation; }
     if ("failCommit" in options) { failCommit = options.failCommit; }
@@ -351,6 +351,64 @@ test("lost Drive confirmation or DB response preserves payment; retry reuses the
     assert.equal((await service.deliverPaidDriveOrder("order", "buyer")).delivered, true);
     assert.equal(calls.filter(([operation]) => operation === "create").length, 1);
   }
+});
+
+test("PayPal capture stays completed during a Drive outage and buyer retry delivers without a second capture", async () => {
+  const { order, service, calls, db, set } = automaticFixture();
+  Object.assign(order, { paymentStatus: "PENDING", paymentMethod: "PAYPAL_DIRECT", orderNumber: "PP-synthetic-drive",
+    amount: 20, currency: "USD", itemName: "Synthetic Drive QA", metadata: { paypalOrderId: "synthetic-provider-order", deliveryProvider: "GOOGLE_DRIVE" } });
+  let captures = 0;
+  let entitlements = 0;
+  let customerEmails = 0;
+  db.order.findFirst = async () => order;
+  db.order.update = async ({ data }) => { Object.assign(order, data); return order; };
+  db.entitlement.findFirst = async () => entitlements ? { id: "entitlement" } : null;
+  db.entitlement.create = async ({ data }) => {
+    assert.equal(data.orderId, order.id); entitlements++; return { id: "entitlement" };
+  };
+  const processor = load("lib/payment-processor.ts", {
+    "@/lib/prisma": { prisma: db }, "@/lib/checkout/hold-store": {}, "@/lib/course-access": {},
+    "@/lib/discount-codes": {}, "@/lib/events/capacity": {}, "@/lib/google-calendar": {},
+    "@/lib/sanity/queries/events": {}, "@/lib/sanity/queries/sessionConfig": {},
+    "@/lib/session-duration": {}, "@/lib/session-scheduling": {},
+    "@/lib/email": { sendPaymentConfirmationEmail: async () => { customerEmails++; }, sendAdminNotificationEmail: async () => {} },
+    "@/lib/digital-products/drive-auto-delivery": service,
+  });
+  const capture = load("app/api/checkout/paypal/capture/route.ts", {
+    "@/lib/prisma": { prisma: db }, "@/lib/payment-processor": processor,
+    "@/lib/order-access": { canAccessOrder: async () => true },
+    "@/lib/checkout/holds": { protectCheckoutPayment: async () => {}, CheckoutHoldError: class extends Error {} },
+    "@/lib/paypal": { isPayPalConfigured: () => true, capturePayPalOrder: async () => {
+      captures++; return { success: true, status: "COMPLETED", amount: 20, currency: "USD", captureId: "synthetic-capture" };
+    } },
+  });
+  set({ failConfirmation: true });
+  const request = () => new Request("https://preview.energiaydivinidad.com/api/checkout/paypal/capture", {
+    method: "POST", body: JSON.stringify({ paypalOrderId: "synthetic-provider-order", reference: order.orderNumber }),
+  });
+  assert.equal((await capture.POST(request())).status, 200);
+  assert.equal(order.paymentStatus, "COMPLETED");
+  assert.equal(order.metadata.paypalCaptureId, "synthetic-capture");
+  assert.equal(order.driveDelivery.status, "PENDING_ACCESS");
+  assert.equal(entitlements, 1);
+  assert.equal(customerEmails, 1);
+
+  // A repeated provider callback while Drive still fails does not charge or duplicate fulfillment.
+  assert.equal((await capture.POST(request())).status, 200);
+  assert.equal(captures, 1); assert.equal(entitlements, 1); assert.equal(customerEmails, 1);
+  set({ failConfirmation: false });
+  const retry = load("app/api/mi-cuenta/pedidos/[id]/drive-delivery/route.ts", {
+    "@/lib/auth": { auth: async () => ({ user: { id: "buyer" } }) },
+    "@/lib/digital-products/drive-auto-delivery": service,
+    "@/lib/digital-products/drive-admin": { assertDriveOrigin: () => {}, driveNoStore: {} },
+    "@/lib/rate-limit": { applyRateLimit: () => null },
+  });
+  assert.equal((await retry.POST(new Request("https://preview.energiaydivinidad.com/retry", { method: "POST" }),
+    { params: Promise.resolve({ id: order.id }) })).status, 200);
+  assert.equal(order.driveDelivery.status, "GRANTED");
+  assert.equal(order.paymentStatus, "COMPLETED");
+  assert.equal(captures, 1); assert.equal(entitlements, 1); assert.equal(customerEmails, 1);
+  assert.equal(calls.filter(([operation]) => operation === "create").length, 1);
 });
 
 test("a pre-existing writer permission cannot be recorded as buyer reader delivery", async () => {
