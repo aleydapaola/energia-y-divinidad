@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 import { loadMembership } from "./helpers/membership-loader.mjs";
 
-function fixture() {
+function fixture(contentType = "audio/wav") {
   const state = {
     published: true,
     sale: false,
@@ -15,7 +15,7 @@ function fixture() {
   };
   const upload = {
     id: "opaque-reference",
-    contentType: "audio/wav",
+    contentType,
     fileId: "file_1234567890",
     size: 4,
     sha256: "checksum",
@@ -34,7 +34,7 @@ function fixture() {
                     _key: "audio",
                     title: "Audio QA",
                     internalFileRef: upload.id,
-                    contentType: "audio/wav",
+                    contentType,
                   },
                 ],
               }
@@ -71,7 +71,7 @@ function fixture() {
         id: upload.fileId,
         size: "4",
         sha256Checksum: "checksum",
-        mimeType: "audio/wav",
+        mimeType: contentType,
         parents: [upload.folder.folderId],
         owners: [{ permissionId: "owner" }],
       }),
@@ -85,6 +85,34 @@ const request = (query = "", init) =>
     `https://preview.energiaydivinidad.com/api/productos/free-qa/gratis/audio${query}`,
     init
   );
+
+test("M4A reported by Chrome is published and streams inline while explicit download stays forbidden", async () => {
+  const { service, state } = fixture("audio/x-m4a");
+  assert.deepEqual(await service.freeProductFiles("free-qa"), [
+    { key: "audio", title: "Audio QA", contentType: "audio/x-m4a" },
+  ]);
+  const saved = globalThis.fetch;
+  let transfers = 0;
+  globalThis.fetch = async () => {
+    transfers += 1;
+    return new Response(new Uint8Array([1, 2, 3, 4]), { headers: { "Content-Length": "4" } });
+  };
+  try {
+    const response = await service.freeProductContent(request(), "free-qa", "audio");
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "audio/x-m4a");
+    assert.equal(response.headers.get("content-disposition"), "inline");
+    assert.equal((await response.arrayBuffer()).byteLength, 4);
+    assert.deepEqual(state.policy, ["FREE_ONLINE"]);
+    assert.equal(
+      (await service.freeProductContent(request("?download=1"), "free-qa", "audio")).status,
+      403
+    );
+    assert.equal(transfers, 1);
+  } finally {
+    globalThis.fetch = saved;
+  }
+});
 
 test("online-only policy restricts each free PDF, audio and video file without changing folder sharing", async () => {
   for (const mime of ["application/pdf", "audio/wav", "video/mp4"]) {

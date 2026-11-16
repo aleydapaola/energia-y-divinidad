@@ -26,6 +26,7 @@ const formats = new Set([
   "audio/x-wav",
   "audio/mpeg",
   "audio/mp4",
+  "audio/x-m4a", // Chrome/macOS reports this MIME for M4A uploads.
   "audio/ogg",
   "video/mp4",
   "video/webm",
