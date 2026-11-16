@@ -20,8 +20,9 @@ export default async function Products() {
       <main className="max-w-5xl mx-auto px-4 py-12">
         <h1 className="font-gazeta text-4xl text-[#654177] mb-4">Productos digitales</h1>
         <p className="mb-8">
-          Audios, vídeos, libros, guías y otros recursos digitales. Accede desde tu cuenta después
-          de confirmar el pago.
+          Audios, vídeos, libros, guías y otros recursos digitales. Los productos comprados se
+          descargan desde tu cuenta tras confirmar el pago. Los gratuitos se disfrutan en línea,
+          sin descarga habilitada.
         </p>
         <div className="grid sm:grid-cols-2 gap-5">
           {products.map((p) => (
@@ -44,7 +45,7 @@ export default async function Products() {
                 className="inline-block bg-[#4944a4] text-white rounded-xl py-3 px-5"
                 href={productHref(p)}
               >
-                Ver producto y opciones de pago
+                {p.isFree ? "Ver contenido gratuito" : "Ver producto y opciones de pago"}
               </Link>
             </article>
           ))}
