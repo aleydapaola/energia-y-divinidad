@@ -399,9 +399,10 @@ export default defineType({
       media: 'images.0',
       status: 'status',
       featured: 'featured',
+      isFree: 'pricing.isFree',
     },
     prepare(selection) {
-      const { title, price, priceUSD, productType, status, featured } = selection
+      const { title, price, priceUSD, productType, status, featured, isFree } = selection
       const productTypeLabels: Record<string, string> = {
         digital: 'Digital',
         physical: 'Físico',
@@ -418,7 +419,7 @@ export default defineType({
       }
       return {
         title: `${featured ? '⭐ ' : ''}${statusEmoji[status] || ''} ${title}`,
-        subtitle: `${productTypeLabels[productType]} · ${[typeof price === 'number' && price > 0 ? `${price.toLocaleString('es-CO')} COP` : '', typeof priceUSD === 'number' && priceUSD > 0 ? `${priceUSD} USD` : ''].filter(Boolean).join(' · ') || 'Precio pendiente'}`,
+        subtitle: `${productTypeLabels[productType]} · ${isFree ? 'Gratis · solo en línea' : [typeof price === 'number' && price > 0 ? `${price.toLocaleString('es-CO')} COP` : '', typeof priceUSD === 'number' && priceUSD > 0 ? `${priceUSD} USD` : ''].filter(Boolean).join(' · ') || 'Precio pendiente'}`,
         media: selection.media,
       }
     },
