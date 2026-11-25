@@ -95,12 +95,18 @@ export async function processRegistrationNewsletter(userId: string) {
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
     };
+    const mergeFields = {
+      ...(record.firstName ? { FNAME: record.firstName } : {}),
+      ...(record.lastName ? { LNAME: record.lastName } : {}),
+    };
     let response = await call(memberUrl);
     if (response.status === 404) {
       // POST never overwrites a concurrent unsubscribe, unlike an unconditional upsert.
       const created = await call(members, "POST", {
         email_address: email,
         status: "subscribed",
+        language: "es",
+        merge_fields: mergeFields,
         tags: ["website", "website_registration"],
       });
       if (!created.ok && created.status !== 400) {
@@ -121,7 +127,14 @@ export async function processRegistrationNewsletter(userId: string) {
     }
     if (member.status === "pending" && !record.activatedAt) {
       // New registration consent plus verified ownership permits activation without another email.
-      const activated = await call(memberUrl, "PATCH", { status: "subscribed" });
+      const missingNames = {
+        ...(mergeFields.FNAME && !member.merge_fields?.FNAME ? { FNAME: mergeFields.FNAME } : {}),
+        ...(mergeFields.LNAME && !member.merge_fields?.LNAME ? { LNAME: mergeFields.LNAME } : {}),
+      };
+      const activated = await call(memberUrl, "PATCH", {
+        status: "subscribed",
+        ...(Object.keys(missingNames).length ? { merge_fields: missingNames } : {}),
+      });
       if (!activated.ok) {
         throw Error("Activation unavailable");
       }

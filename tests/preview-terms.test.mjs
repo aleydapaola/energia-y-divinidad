@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { createRequire, Module } from "node:module";
 import { test } from "node:test";
 
+import { loadMembership } from "./helpers/membership-loader.mjs";
+
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
 function load(relative, dependencies = {}) {
@@ -144,6 +146,7 @@ test("Preview registration records the displayed terms version while Production 
         },
         "@/lib/registration-newsletter": { registrationNewsletterEnabled: () => true },
         "@/lib/registration-newsletter-copy": {},
+        "@/lib/newsletter-names": loadMembership("lib/newsletter-names.ts"),
         bcrypt: { default: { hash: async () => "test-only-hash" } },
         "@/lib/terms": {
           getTermsPage: async () => {
@@ -170,7 +173,8 @@ test("Preview registration records the displayed terms version while Production 
       });
       const response = await POST({
         json: async () => ({
-          name: "Test",
+          firstName: "María José",
+          lastName: "De la Peña García",
           email: "test@example.com",
           password: "test-only-password",
           acceptedTerms: true,

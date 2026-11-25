@@ -141,6 +141,7 @@ function setup({ crossFlow = false } = {}) {
     memberExists: true,
     memberCreates: 0,
     memberWrites: [],
+    mergeFields: {},
     captures: new Map(),
   };
   const emailLog = {
@@ -283,6 +284,7 @@ function setup({ crossFlow = false } = {}) {
         state.memberExists = true;
         state.memberCreates++;
         state.memberStatus = data.status;
+        state.mergeFields = data.merge_fields;
         state.tags = data.tags.map((name) => ({ name }));
       } else if (String(url).endsWith("/tags") && method === "POST") {
         for (const tag of data.tags) {
@@ -292,6 +294,7 @@ function setup({ crossFlow = false } = {}) {
         }
       } else if (String(url).includes("/members/") && method === "PATCH") {
         state.memberStatus = data.status;
+        state.mergeFields = { ...state.mergeFields, ...data.merge_fields };
       } else {
         assert.fail(`Unexpected provider write: ${method} ${url}`);
       }
@@ -332,6 +335,7 @@ function setup({ crossFlow = false } = {}) {
           status: state.memberStatus,
           tags: state.tags,
           timestamp_opt: state.opt,
+          merge_fields: state.mergeFields,
         }),
       };
     }
@@ -620,6 +624,8 @@ test("renderer uses real unsubscribe links, escaped footer content and a plain-t
   assert.match(output.html, /Test &lt;address&gt; &amp; &quot;company&quot;/);
   assert.match(output.html, /\[PREVIEW\]/);
   assert.match(output.text, /Darme de baja:/);
+  assert.match(output.html, /¡Hola!/);
+  assert.match(output.text, /¡Hola!/);
   assert.match(output.html, /Escuchar mi meditación en línea/);
   assert.doesNotMatch(output.html + output.text, /descarg/i);
 });
@@ -689,6 +695,8 @@ function crossFlowSetup() {
     verifiedAt: new Date(),
     activatedAt: null,
     status: "READY",
+    firstName: "Ana María",
+    lastName: "Vargas Galvis",
     listId: null,
     leaseUntil: null,
     user: { email: recipient, emailVerified: new Date() },
@@ -703,6 +711,8 @@ function newsletterRequest() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       email: `  ${recipient.toUpperCase()}  `,
+      firstName: " María José ",
+      lastName: " De la Peña García ",
       source: "landing",
       variant: "control",
       device: "mobile",
@@ -726,9 +736,12 @@ test("newsletter first, then verified account reuses the subscriber and never se
     const { state, newsletter, route, registration } = crossFlowSetup();
     assert.equal((await newsletter.POST(newsletterRequest())).status, 201);
     assert.equal(state.memberStatus, "pending");
+    assert.deepEqual(state.mergeFields, { FNAME: "María José", LNAME: "De la Peña García" });
     state.memberStatus = "subscribed"; // The subscriber confirms Mailchimp's email.
     assert.equal((await route.POST(request())).status, 200);
     assert.equal(state.sent.length, 1);
+    assert.match(state.sent[0].payload.html, /Hola, María José:/);
+    assert.match(state.sent[0].payload.text, /Hola, María José:/);
     const writesBeforeAccount = state.memberWrites.length;
     await registration.processRegistrationNewsletter("qa");
     assertSingleSubscriberAndGift(state);
@@ -743,6 +756,8 @@ test("verified account first, then newsletter form and duplicate webhook keep on
     const { state, newsletter, route, registration } = crossFlowSetup();
     await registration.processRegistrationNewsletter("qa");
     assertSingleSubscriberAndGift(state);
+    assert.deepEqual(state.mergeFields, { FNAME: "Ana María", LNAME: "Vargas Galvis" });
+    assert.match(state.sent[0].payload.html, /Hola, Ana María:/);
     const response = await newsletter.POST(newsletterRequest());
     assert.equal(response.status, 200);
     assert.equal((await response.json()).message, "Ya estás en nuestra lista");

@@ -40,6 +40,7 @@ const image = {
 const formDependencies = {
   "next/link": link,
   "@/lib/newsletter-capture-rules": rules,
+  "@/lib/newsletter-names": loadMembership("lib/newsletter-names.ts"),
   "@/lib/newsletter-capture-client": {
     captureContext() {
       throw new Error("No browser submission in static QA");
@@ -56,7 +57,15 @@ const { NewsletterForm } = loadMembership(
 // the real component's static layout, not hydration, delivery or persistence.
 const pendingMessage =
   "Te hemos enviado la confirmación. Abre ese correo y confirma tu suscripción para recibir la meditación. Si no lo encuentras, revisa Spam o Promociones.";
-const pendingState = ["", "success", pendingMessage, null, true, ""];
+const pendingState = [
+  "",
+  { firstName: "", lastName: "" },
+  "success",
+  pendingMessage,
+  null,
+  true,
+  "",
+];
 let pendingCursor = 0;
 const { NewsletterForm: PendingForm } = loadMembership("components/newsletter/NewsletterForm.tsx", {
   ...formDependencies,

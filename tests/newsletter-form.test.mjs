@@ -54,6 +54,7 @@ async function scenario(reply, run) {
       "lucide-react": { CheckCircle: "span", Loader2: "span" },
       "next/link": { default: "a" },
       "@/lib/newsletter-capture-rules": rules,
+      "@/lib/newsletter-names": loadMembership("lib/newsletter-names.ts"),
       "@/lib/newsletter-capture-client": {
         captureContext: (source) => ({ ...context, source }),
         captureMetric() {
@@ -75,6 +76,12 @@ async function scenario(reply, run) {
       requests,
       remembered,
       fill() {
+        find((node) => node.props.name === "firstName").props.onChange({
+          target: { value: " María José " },
+        });
+        find((node) => node.props.name === "lastName").props.onChange({
+          target: { value: " De la Peña García " },
+        });
         input("email").props.onChange({ target: { value: email } });
         input("checkbox").props.onChange({ target: { checked: true } });
       },
@@ -95,6 +102,13 @@ test("unchecked consent prevents even a direct form submission without a request
       assert.equal(field.props.type, "email");
       assert.equal(field.props.required, true);
       assert.ok(ui.find((node) => node.type === "label" && node.props.htmlFor === field.props.id));
+      for (const autoComplete of ["given-name", "family-name"]) {
+        const field = ui.find((node) => node.props.autoComplete === autoComplete);
+        assert.equal(field.props.required, true);
+        assert.ok(
+          ui.find((node) => node.type === "label" && node.props.htmlFor === field.props.id)
+        );
+      }
       const privacy = ui.find((node) => node.type === "a");
       assert.equal(privacy.props.href, "/privacidad");
       assert.equal(privacy.props.target, "_blank");
@@ -143,6 +157,8 @@ test("pending response keeps confirmation instructions through rerenders without
       await ui.submit();
       assert.deepEqual(ui.requests[0].body, {
         email,
+        firstName: "María José",
+        lastName: "De la Peña García",
         acceptedNewsletter: true,
         consentVersion: rules.NEWSLETTER_CONSENT_VERSION,
         ...context,

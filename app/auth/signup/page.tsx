@@ -7,6 +7,12 @@ import { useState } from "react";
 
 import { TurnstileCheck, WebsiteTrap } from "@/components/auth/TurnstileCheck";
 import {
+  isNewsletterName,
+  NEWSLETTER_NAME_FIELDS,
+  NEWSLETTER_NAME_MAX_LENGTH,
+  NEWSLETTER_NAMES_ERROR,
+} from "@/lib/newsletter-names";
+import {
   REGISTRATION_COMMUNITY_TEXT,
   REGISTRATION_NEWSLETTER_ACCEPTANCE,
   REGISTRATION_NEWSLETTER_HELP,
@@ -25,7 +31,8 @@ export default function SignUpPage() {
   const [website, setWebsite] = useState("");
 
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -44,8 +51,8 @@ export default function SignUpPage() {
   };
 
   const validateForm = () => {
-    if (!formData.name.trim()) {
-      setError("El nombre es requerido");
+    if (!isNewsletterName(formData.firstName) || !isNewsletterName(formData.lastName)) {
+      setError(NEWSLETTER_NAMES_ERROR);
       return false;
     }
     if (!formData.email.trim()) {
@@ -88,7 +95,8 @@ export default function SignUpPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: formData.name,
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
           email: formData.email.trim().toLowerCase(),
           password: formData.password,
           acceptedTerms: formData.acceptedTerms,
@@ -117,8 +125,8 @@ export default function SignUpPage() {
       router.push(
         `/auth/verify-email?email=${encodeURIComponent(formData.email.trim().toLowerCase())}`
       );
-    } catch (err: any) {
-      setError(err.message || "Error al crear la cuenta");
+    } catch {
+      setError("No hemos podido crear tu cuenta. Inténtalo de nuevo.");
     } finally {
       setIsLoading(false);
       setSecurityReset((value) => value + 1);
@@ -137,27 +145,28 @@ export default function SignUpPage() {
 
         <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 space-y-6 border border-[#8A4BAF]/10">
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Name */}
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-[#654177] mb-2 font-dm-sans"
-              >
-                Nombre completo
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                autoComplete="name"
-                required
-                value={formData.name}
-                onChange={handleChange}
-                disabled={isLoading}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8A4BAF]/20 focus:border-[#8A4BAF] font-dm-sans transition-colors disabled:opacity-50"
-                placeholder="Tu nombre"
-              />
-            </div>
+            {NEWSLETTER_NAME_FIELDS.map(({ name, label, autoComplete }) => (
+              <div key={name}>
+                <label
+                  htmlFor={name}
+                  className="block text-sm font-medium text-[#654177] mb-2 font-dm-sans"
+                >
+                  {label}
+                </label>
+                <input
+                  id={name}
+                  name={name}
+                  type="text"
+                  autoComplete={autoComplete}
+                  maxLength={NEWSLETTER_NAME_MAX_LENGTH}
+                  required
+                  value={formData[name]}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8A4BAF]/20 focus:border-[#8A4BAF] font-dm-sans transition-colors disabled:opacity-50"
+                />
+              </div>
+            ))}
 
             {/* Email */}
             <div>

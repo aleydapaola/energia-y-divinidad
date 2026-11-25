@@ -206,6 +206,7 @@ function registrationHarness({ failMail = false } = {}) {
       publicFormError: () => Response.json({}, { status: 503 }),
     },
     "@/lib/registration-newsletter": { registrationNewsletterEnabled: () => true },
+    "@/lib/newsletter-names": loadMembership("lib/newsletter-names.ts"),
     "@/lib/registration-newsletter-copy": copy,
     "@/lib/terms": { getTermsPage: async () => ({ version: "preview" }) },
     bcrypt: { default: { hash: async () => "hash" } },
@@ -213,7 +214,8 @@ function registrationHarness({ failMail = false } = {}) {
   return { state, route: loadMembership("app/api/auth/register/route.ts", deps) };
 }
 const validInput = {
-  name: "Test",
+  firstName: " María José ",
+  lastName: " De la Peña García ",
   email,
   password: "synthetic-password",
   acceptedTerms: true,
@@ -230,6 +232,10 @@ test("registration records the required newsletter acceptance and waits for owne
     const response = await route.POST(request(undefined, validInput));
     assert.equal(response.status, 201);
     const consent = state.users[0].registrationNewsletter.create;
+    assert.equal(state.users[0].name, "María José De la Peña García");
+    assert.equal(consent.firstName, "María José");
+    assert.equal(consent.lastName, "De la Peña García");
+    assert.equal(state.mails[0].name, "María José");
     assert.equal(consent.consentText, copy.REGISTRATION_NEWSLETTER_CONSENT_TEXT);
     assert.equal(consent.consentVersion, copy.REGISTRATION_NEWSLETTER_VERSION);
     assert.equal(state.users[0].emailVerified, null);
@@ -239,6 +245,8 @@ test("registration records the required newsletter acceptance and waits for owne
 test("string values cannot consent and required terms remain mandatory", () =>
   environment(async () => {
     for (const extra of [
+      { firstName: "" },
+      { lastName: null },
       { newsletterOptIn: "true" },
       { newsletterOptIn: "false" },
       { acceptedTerms: false },
@@ -465,6 +473,7 @@ test("registration uses one unchecked required acceptance including newsletter",
   const React = require("react");
   const { renderToStaticMarkup } = require("react-dom/server");
   const { default: Page } = loadMembership("app/auth/signup/page.tsx", {
+    "@/lib/newsletter-names": loadMembership("lib/newsletter-names.ts"),
     "next/navigation": { useRouter: () => ({ push() {} }) },
     "@/components/auth/TurnstileCheck": { TurnstileCheck: () => null, WebsiteTrap: () => null },
     "@/lib/registration-newsletter-copy": copy,
@@ -603,6 +612,7 @@ test("signup submits newsletter acceptance and blocks submission when it is unch
         return Response.json({ success: true }, { status: 201 });
       };
       const { default: Page } = loadMembership("app/auth/signup/page.tsx", {
+        "@/lib/newsletter-names": loadMembership("lib/newsletter-names.ts"),
         react: {
           ...React,
           useState(initial) {

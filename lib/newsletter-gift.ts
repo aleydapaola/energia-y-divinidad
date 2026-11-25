@@ -22,6 +22,7 @@ const memberSchema = z.object({
   unique_email_id: z.string(),
   status: z.string(),
   timestamp_opt: z.string().nullable().optional(),
+  merge_fields: z.object({ FNAME: z.unknown().optional() }).nullish(),
   tags: z.array(z.object({ name: z.string() })).default([]),
 });
 const listSchema = z.object({
@@ -181,7 +182,7 @@ async function deliverNewsletterGift(
   const subscriberHash = createHash("md5").update(event.email).digest("hex");
   const [response, audience] = await Promise.all([
     fetch(
-      `${config.listUrl}/members/${subscriberHash}?fields=id,list_id,email_address,unique_email_id,status,timestamp_opt,tags`,
+      `${config.listUrl}/members/${subscriberHash}?fields=id,list_id,email_address,unique_email_id,status,timestamp_opt,tags,merge_fields`,
       {
         headers: {
           Authorization: `Basic ${Buffer.from(`eyd:${config.apiKey}`).toString("base64")}`,
@@ -229,6 +230,7 @@ async function deliverNewsletterGift(
   const content = renderNewsletterGiftEmail({
     unsubscribeUrl: audience.unsubscribeUrl,
     postalAddress: audience.postalAddress,
+    firstName: member.merge_fields?.FNAME,
     appUrl: config.appUrl,
     preview: !config.production,
     year: new Date().getUTCFullYear(),

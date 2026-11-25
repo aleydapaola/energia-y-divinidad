@@ -71,6 +71,8 @@ model RegistrationNewsletter {
   consentAt        DateTime @default(now())
   consentVersion   String
   consentText      String
+  firstName        String?
+  lastName         String?
   source           String   @default("registration")
   verifiedAt       DateTime?
   listId           String?

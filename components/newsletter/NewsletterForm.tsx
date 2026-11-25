@@ -14,6 +14,12 @@ import {
   NEWSLETTER_CONSENT_VERSION,
   type CaptureSource,
 } from "@/lib/newsletter-capture-rules";
+import {
+  isNewsletterName,
+  NEWSLETTER_NAME_FIELDS,
+  NEWSLETTER_NAME_MAX_LENGTH,
+  NEWSLETTER_NAMES_ERROR,
+} from "@/lib/newsletter-names";
 
 interface NewsletterFormProps {
   variant?: "footer" | "inline" | "card";
@@ -27,6 +33,7 @@ export function NewsletterForm({
   className = "",
 }: NewsletterFormProps) {
   const [email, setEmail] = useState("");
+  const [names, setNames] = useState({ firstName: "", lastName: "" });
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [signupUrl, setSignupUrl] = useState<string | null>(null);
@@ -62,15 +69,22 @@ export function NewsletterForm({
       setMessage("Acepta la suscripción a la newsletter antes de continuar.");
       return;
     }
+    setSignupUrl(null);
+    if (!isNewsletterName(names.firstName) || !isNewsletterName(names.lastName)) {
+      setStatus("error");
+      setMessage(NEWSLETTER_NAMES_ERROR);
+      return;
+    }
     setStatus("loading");
     setMessage("");
-    setSignupUrl(null);
     try {
       const response = await fetch("/api/newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
+          firstName: names.firstName.trim(),
+          lastName: names.lastName.trim(),
           acceptedNewsletter: accepted,
           consentVersion: NEWSLETTER_CONSENT_VERSION,
           ...captureContext(source),
@@ -82,6 +96,7 @@ export function NewsletterForm({
         setStatus("success");
         setMessage(data.message);
         setEmail("");
+        setNames({ firstName: "", lastName: "" });
         rememberNewsletterRequest(data.subscriptionStatus === "subscribed");
       } else {
         setStatus("error");
@@ -122,6 +137,28 @@ export function NewsletterForm({
         <h3 className="mb-4 font-gazeta text-2xl text-[#654177]">Un regalo de Aleyda para ti</h3>
       )}
       <form ref={form} data-newsletter-form onSubmit={handleSubmit} className="space-y-4">
+        {NEWSLETTER_NAME_FIELDS.map(({ name, label, autoComplete }) => (
+          <div key={name}>
+            <label
+              htmlFor={`${id}-${name}`}
+              className="mb-2 block text-sm font-medium text-[#654177]"
+            >
+              {label}
+            </label>
+            <input
+              id={`${id}-${name}`}
+              name={name}
+              type="text"
+              autoComplete={autoComplete}
+              maxLength={NEWSLETTER_NAME_MAX_LENGTH}
+              value={names[name]}
+              onChange={(event) => setNames({ ...names, [name]: event.target.value })}
+              required
+              disabled={status === "loading"}
+              className="min-h-12 w-full min-w-0 rounded-xl border border-[#8A4BAF]/25 bg-white px-4 py-3 text-base text-[#654177] outline-none focus:border-[#8A4BAF] focus:ring-2 focus:ring-[#8A4BAF]/20 disabled:opacity-50"
+            />
+          </div>
+        ))}
         <div>
           <label htmlFor={`${id}-email`} className="mb-2 block text-sm font-medium text-[#654177]">
             Tu correo electrónico

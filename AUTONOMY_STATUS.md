@@ -1,3 +1,13 @@
+# Nombre y apellidos de la newsletter · 25/11/2026
+
+- Objetivo: recoger los dos campos en todas las altas nuevas y personalizar el correo de la meditación. Rama `preview` en la copia aislada `/private/tmp/eyd-newsletter-noms-20261125`, basada en `686dbd6ed590e5800951fc631010b25450929d78`. El Git remoto y el log de Vercel coinciden. [Preview de base Ready](https://preview.energiaydivinidad.com/meditacion-gratis), despliegue `dpl_HUtiojrszmB13N9gtt516Uzv8wTw`. Se conservan los cambios pendientes del checkout original.
+- Mailchimp conserva `FNAME` y `LNAME` y recibe el idioma `es`. En el registro, la migración añade dos columnas opcionales para sincronizar el nombre aportado tras verificar la cuenta. Los registros anteriores conservan sus datos. El regalo por correo saluda con el nombre confirmado por Mailchimp o con «¡Hola!».
+- Para las campañas existentes de Mailchimp, se puede usar `*|IF:FNAME|*Hola, *|FNAME|*:*|ELSE:|*¡Hola!*|END:IF|*`. Verificar en la audiencia de pruebas que ambos campos de texto existen, que el valor por defecto de FNAME está vacío y que el formulario y el correo alojados de confirmación están traducidos al castellano. La app solicita el idioma `es`; la plantilla gestionada por Mailchimp requiere comprobación en la cuenta de pruebas. [Campos de Mailchimp](https://mailchimp.com/developer/marketing/concepts/audiences/merge-fields/) · [Saludo condicional](https://mailchimp.com/help/use-conditional-merge-tag-blocks/)
+- Comprobaciones locales: 80/80 pruebas afectadas, TypeScript, ESLint, Prettier y diff correctos. Suite general 327/328; el test de precio digital carece de un adaptador para FreeProductViewer, fuera de este cambio. local:check detiene Next al faltar la conexión de Neon Preview. Se generaron solo tipos de Prisma, sin base de datos.
+- Punto de reanudación: comprobar Ready, migración y SHA tras el push de preview. Revisar a 375 px primero y después en escritorio. Sin cambios en main ni Production.
+
+---
+
 # QA final y candidato de activación · 16/11/2026
 
 - Petición vigente: cerrar portada con cero destacados y PDF multipágina/formatos populares en QA aislado; actualizar activación Drive/50 MB y retirada manual tras reembolso; incorporar test de Drive y documentación correspondiente. **Detener antes de Production/main/configuración real/gastos y esperar aprobación del SHA concreto.** Rama `feat/digital-products-drive-preview-20261115`, mismo worktree y cambios locales conservados.

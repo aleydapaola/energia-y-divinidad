@@ -9,6 +9,17 @@ import { loadMembership } from "./helpers/membership-loader.mjs";
 
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
+const names = loadMembership("lib/newsletter-names.ts");
+const input = {
+  email: "visitor@example.com",
+  firstName: "  María José ",
+  lastName: " De la Peña García ",
+  source: "home",
+  variant: "control",
+  device: "mobile",
+  acceptedNewsletter: true,
+  consentVersion: "meditation-capture-v1",
+};
 function load() {
   const filename = new URL("../app/api/newsletter/route.ts", import.meta.url).pathname;
   const mod = new Module(filename);
@@ -18,6 +29,9 @@ function load() {
         rememberNewsletterCapture: async () => "synthetic",
         newsletterCaptureResult: async () => {},
       };
+    }
+    if (name === "@/lib/newsletter-names") {
+      return names;
     }
     if (name === "@/lib/newsletter-capture-rules") {
       return loadMembership("lib/newsletter-capture-rules.ts");
@@ -76,7 +90,7 @@ test("unconfigured Preview newsletter fails closed with an actionable message an
     globalThis.fetch = async () => {
       throw new Error("External request must not happen");
     };
-    const response = await load().POST({ json: async () => ({ email: "visitor@example.com" }) });
+    const response = await load().POST({ json: async () => input });
     assert.equal(response.status, 503);
     assert.match((await response.json()).error, /newsletter de pruebas todavía no está disponible/);
   }));
@@ -94,7 +108,7 @@ test("newsletter uses a separate test audience, authorized recipient and double 
         sent = { url, body: JSON.parse(options.body), headers: options.headers };
         return { ok: true, status: 200, json: async () => ({}) };
       };
-      const response = await load().POST({ json: async () => ({ email: "visitor@example.com" }) });
+      const response = await load().POST({ json: async () => input });
       assert.equal(response.status, 201);
       assert.ok(sent.url.includes(env === "preview" ? "/isolated-list/" : "/original-list/"));
       assert.equal(
@@ -102,6 +116,8 @@ test("newsletter uses a separate test audience, authorized recipient and double 
         env === "preview" ? "allowed@example.com" : "visitor@example.com"
       );
       assert.equal(sent.body.status, "pending");
+      assert.equal(sent.body.language, "es");
+      assert.deepEqual(sent.body.merge_fields, { FNAME: "María José", LNAME: "De la Peña García" });
       assert.equal(
         sent.headers.Authorization,
         `Basic ${Buffer.from("eyd:fake-test-key").toString("base64")}`
@@ -112,10 +128,7 @@ test("newsletter uses a separate test audience, authorized recipient and double 
     globalThis.fetch = async () => {
       throw new Error("Original list must not be touched");
     };
-    assert.equal(
-      (await load().POST({ json: async () => ({ email: "visitor@example.com" }) })).status,
-      503
-    );
+    assert.equal((await load().POST({ json: async () => input })).status, 503);
   }));
 
 test("newsletter rejects malformed email values before calling Mailchimp", async () =>
@@ -134,15 +147,12 @@ test("new capture forms reject missing or false acceptance, unknown sources and 
     globalThis.fetch = async () => {
       assert.fail("Invalid consent must not reach Mailchimp");
     };
-    const input = {
-      email: "visitor@example.com",
-      source: "home",
-      variant: "control",
-      device: "mobile",
-      acceptedNewsletter: true,
-      consentVersion: "meditation-capture-v1",
-    };
     for (const change of [
+      { firstName: " " },
+      { lastName: undefined },
+      { firstName: "a".repeat(81) },
+      { lastName: "De\nla Peña" },
+      { source: undefined },
       { acceptedNewsletter: false },
       { acceptedNewsletter: undefined },
       { acceptedNewsletter: "true" },
@@ -189,7 +199,7 @@ test("an existing pending or unsubscribed contact is never described as subscrib
           }),
         };
       };
-      const response = await load().POST({ json: async () => ({ email: "visitor@example.com" }) });
+      const response = await load().POST({ json: async () => input });
       const data = await response.json();
       assert.equal(response.status, ["subscribed", "pending"].includes(status) ? 200 : 409);
       if (status === "subscribed") {
@@ -233,7 +243,7 @@ test("the re-subscription link is restricted to HTTPS Mailchimp signup hosts", a
               : { subscribe_url_long: signup },
         };
       };
-      const response = await load().POST({ json: async () => ({ email: "visitor@example.com" }) });
+      const response = await load().POST({ json: async () => input });
       assert.equal(response.status, 409);
       assert.equal((await response.json()).signupUrl, undefined);
     }
@@ -246,7 +256,7 @@ test("a failed existing-member lookup cannot produce a successful subscription m
       options.method === "POST"
         ? { ok: false, status: 400, json: async () => ({ title: "Member Exists" }) }
         : { ok: false, status: 503 };
-    const response = await load().POST({ json: async () => ({ email: "visitor@example.com" }) });
+    const response = await load().POST({ json: async () => input });
     assert.equal(response.status, 502);
     assert.equal((await response.json()).message, undefined);
   }));
@@ -256,7 +266,7 @@ test("all newsletter form variants expose the re-confirmation link and existing 
   const { renderToStaticMarkup } = require("react-dom/server");
   function render(status, message, signupUrl, variant) {
     let i = 0;
-    const values = ["", status, message, signupUrl];
+    const values = ["", { firstName: "", lastName: "" }, status, message, signupUrl];
     const filename = new URL("../components/newsletter/NewsletterForm.tsx", import.meta.url)
       .pathname;
     const mod = new Module(filename);
@@ -266,6 +276,9 @@ test("all newsletter form variants expose the re-confirmation link and existing 
       }
       if (name === "@/lib/newsletter-capture-client") {
         return {};
+      }
+      if (name === "@/lib/newsletter-names") {
+        return names;
       }
       if (name === "@/lib/newsletter-capture-rules") {
         return loadMembership("lib/newsletter-capture-rules.ts");

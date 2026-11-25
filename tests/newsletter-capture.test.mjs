@@ -304,7 +304,8 @@ test("shared form submits explicit consent and attribution, and never submits wh
           message: "Ya estás en nuestra lista",
         });
       };
-      const values = ["visitor@example.invalid", "idle", "", null, accepted, ""];
+      const names = { firstName: "María José", lastName: "De la Peña García" };
+      const values = ["visitor@example.invalid", names, "idle", "", null, accepted, ""];
       let index = 0;
       const component = loadMembership("components/newsletter/NewsletterForm.tsx", {
         react: {
@@ -315,6 +316,7 @@ test("shared form submits explicit consent and attribution, and never submits wh
           useEffect() {},
         },
         "@/lib/newsletter-capture-rules": rules,
+        "@/lib/newsletter-names": loadMembership("lib/newsletter-names.ts"),
         "@/lib/newsletter-capture-client": {
           captureContext: (source) => ({ ...context, source }),
           captureMetric() {},
@@ -331,6 +333,7 @@ test("shared form submits explicit consent and attribution, and never submits wh
       }
       assert.deepEqual(payload, {
         email: "visitor@example.invalid",
+        ...names,
         ...context,
         acceptedNewsletter: true,
         consentVersion: rules.NEWSLETTER_CONSENT_VERSION,

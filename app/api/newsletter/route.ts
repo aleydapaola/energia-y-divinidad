@@ -11,6 +11,7 @@ import {
   CAPTURE_DEVICES,
   NEWSLETTER_CONSENT_VERSION,
 } from "@/lib/newsletter-capture-rules";
+import { isNewsletterName, NEWSLETTER_NAMES_ERROR } from "@/lib/newsletter-names";
 import { isolatedMailchimpListId } from "@/lib/preview-safety";
 import {
   consumeFormLimit,
@@ -28,6 +29,10 @@ const emailSchema = z
   .email()
   .max(254)
   .transform((value) => value.toLowerCase());
+const namesSchema = z.object({
+  firstName: z.string().trim().refine(isNewsletterName),
+  lastName: z.string().trim().refine(isNewsletterName),
+});
 const captureSchema = z.object({
   acceptedNewsletter: z.literal(true),
   consentVersion: z.literal(NEWSLETTER_CONSENT_VERSION),
@@ -44,10 +49,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email inválido" }, { status: 400 });
     }
 
-    // Legacy clients keep the existing route during rollout. New capture forms
-    // must supply their explicit acceptance and a bounded attribution context.
-    const capture = input?.source === undefined ? null : captureSchema.safeParse(input);
-    if (capture && !capture.success) {
+    const names = namesSchema.safeParse(input);
+    if (!names.success) {
+      return NextResponse.json({ error: NEWSLETTER_NAMES_ERROR }, { status: 400 });
+    }
+
+    const capture = captureSchema.safeParse(input);
+    if (!capture.success) {
       return NextResponse.json(
         { error: "Acepta la suscripción a la newsletter antes de continuar." },
         { status: 400 }
@@ -84,9 +92,7 @@ export async function POST(request: NextRequest) {
       "Content-Type": "application/json",
     };
 
-    const captureId = capture?.success
-      ? await rememberNewsletterCapture(MAILCHIMP_LIST_ID, email, capture.data)
-      : null;
+    const captureId = await rememberNewsletterCapture(MAILCHIMP_LIST_ID, email, capture.data);
     const result = async (status: "PENDING" | "EXISTING" | "INACTIVE" | "FAILED") => {
       if (captureId) {
         await newsletterCaptureResult(captureId, status);
@@ -99,6 +105,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         email_address: email,
         status: "pending", // Double opt-in: requires email confirmation
+        language: "es",
+        merge_fields: { FNAME: names.data.firstName, LNAME: names.data.lastName },
         tags: ["website"],
       }),
     });

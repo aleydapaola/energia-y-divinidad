@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { sendVerificationEmail } from "@/lib/email";
+import { isNewsletterName, NEWSLETTER_NAMES_ERROR } from "@/lib/newsletter-names";
 import { prisma } from "@/lib/prisma";
 import {
   limitVerificationEmail,
@@ -20,7 +21,8 @@ import { getTermsPage } from "@/lib/terms";
 
 export const maxDuration = 30;
 const registrationInput = z.object({
-  name: z.string().trim().min(1).max(150),
+  firstName: z.string().trim().refine(isNewsletterName),
+  lastName: z.string().trim().refine(isNewsletterName),
   email: z
     .string()
     .trim()
@@ -39,6 +41,11 @@ export async function POST(request: NextRequest) {
   try {
     const parsed = registrationInput.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
+      if (
+        parsed.error.issues.some(({ path }) => path[0] === "firstName" || path[0] === "lastName")
+      ) {
+        return NextResponse.json({ error: NEWSLETTER_NAMES_ERROR }, { status: 400 });
+      }
       return NextResponse.json(
         {
           error:
@@ -75,7 +82,7 @@ export async function POST(request: NextRequest) {
     const user = await prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
         data: {
-          name: input.name,
+          name: `${input.firstName} ${input.lastName}`,
           email: input.email,
           password,
           emailVerified: null,
@@ -87,6 +94,8 @@ export async function POST(request: NextRequest) {
                   create: {
                     consentVersion: REGISTRATION_NEWSLETTER_VERSION,
                     consentText: REGISTRATION_NEWSLETTER_CONSENT_TEXT,
+                    firstName: input.firstName,
+                    lastName: input.lastName,
                   },
                 },
               }
@@ -101,7 +110,7 @@ export async function POST(request: NextRequest) {
     try {
       await sendVerificationEmail({
         email: user.email,
-        name: user.name || "Usuario",
+        name: input.firstName,
         token,
         newsletterOptIn: input.newsletterOptIn,
       });

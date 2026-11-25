@@ -1,4 +1,5 @@
 import { newsletterGiftPageUrl } from "./newsletter-gift-links";
+import { isNewsletterName } from "./newsletter-names";
 
 function escape(value: string) {
   return value.replace(
@@ -14,6 +15,7 @@ export const EYD_EMAIL_LOGO = "https://www.energiaydivinidad.com/images/logoNoBa
 export function renderNewsletterGiftEmail(input: {
   unsubscribeUrl: string;
   postalAddress: string;
+  firstName?: unknown;
   appUrl: string;
   preview: boolean;
   year: number;
@@ -34,6 +36,10 @@ export function renderNewsletterGiftEmail(input: {
     throw Error("Newsletter unsubscribe link unavailable");
   }
   const giftUrl = newsletterGiftPageUrl(input.appUrl);
+  const greeting =
+    typeof input.firstName === "string" && isNewsletterName(input.firstName)
+      ? `Hola, ${input.firstName.trim()}:`
+      : "¡Hola!";
   const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${NEWSLETTER_GIFT_SUBJECT}</title></head>
 <body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background-color:#f8f0f5">
 <table role="presentation" style="width:100%;border-collapse:collapse;background-color:#f8f0f5"><tr><td align="center" style="padding:40px 20px">
@@ -41,6 +47,7 @@ export function renderNewsletterGiftEmail(input: {
 <tr><td align="center" style="padding:30px 0"><a href="${escape(input.appUrl)}" style="text-decoration:none"><img src="${EYD_EMAIL_LOGO}" alt="Energía y Divinidad" width="200" style="display:block;max-width:200px;width:100%;height:auto;border:0"></a></td></tr>
 <tr><td style="background-color:#ffffff;border-radius:16px;padding:40px;box-shadow:0 4px 6px rgba(138,75,175,0.1)">
 <h2 style="margin:0 0 20px;font-size:24px;color:#654177;font-weight:600">${NEWSLETTER_GIFT_SUBJECT}</h2>
+<p style="margin:0 0 20px;font-size:16px;color:#666666;line-height:1.6">${escape(greeting)}</p>
 <p style="margin:0 0 20px;font-size:16px;color:#666666;line-height:1.6">Gracias por confirmar tu suscripción. Te doy la bienvenida a este espacio para conectar contigo y acompañar tu camino espiritual.</p>
 <p style="margin:0 0 20px;font-size:16px;color:#666666;line-height:1.6">Como regalo de bienvenida, aquí tienes la <strong>Meditación del Ángel de la Guarda</strong>. Puedes escucharla en línea y volver a este enlace cuando quieras.</p>
 <table role="presentation" style="width:100%;border-collapse:collapse"><tr><td align="center" style="padding:30px 0"><a href="${escape(giftUrl)}" style="display:inline-block;padding:16px 40px;background-color:#8A4BAF;color:#ffffff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600">Escuchar mi meditación en línea</a></td></tr></table>
@@ -52,6 +59,6 @@ ${input.preview ? '<p style="margin:0 0 12px;font-size:12px;color:#999999">[PREV
 <p style="margin:0 0 12px;font-size:12px;color:#999999"><a href="${escape(input.unsubscribeUrl)}" style="color:#654177">Darme de baja</a> · <a href="mailto:contacto@energiaydivinidad.com" style="color:#654177">Contactar con Aleyda</a></p>
 <p style="margin:0;font-size:12px;color:#999999">${escape(input.postalAddress)}</p></td></tr>
 </table></td></tr></table></body></html>`;
-  const text = `${NEWSLETTER_GIFT_SUBJECT}\n\nGracias por confirmar tu suscripción a Energía y Divinidad.\n\nEscuchar en línea tu regalo de bienvenida: ${giftUrl}\nAudio M4A · 18 min 43 s · 9,3 MB\n\nCon amor y luz,\nAleyda Paola\n\n${input.preview ? "[PREVIEW] Mensaje exclusivo de pruebas.\n" : ""}Darme de baja: ${input.unsubscribeUrl}\nContacto: contacto@energiaydivinidad.com\n${input.postalAddress}`;
+  const text = `${NEWSLETTER_GIFT_SUBJECT}\n\n${greeting}\n\nGracias por confirmar tu suscripción a Energía y Divinidad.\n\nEscuchar en línea tu regalo de bienvenida: ${giftUrl}\nAudio M4A · 18 min 43 s · 9,3 MB\n\nCon amor y luz,\nAleyda Paola\n\n${input.preview ? "[PREVIEW] Mensaje exclusivo de pruebas.\n" : ""}Darme de baja: ${input.unsubscribeUrl}\nContacto: contacto@energiaydivinidad.com\n${input.postalAddress}`;
   return { html, text };
 }
