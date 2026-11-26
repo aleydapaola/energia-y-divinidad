@@ -248,6 +248,8 @@ export default async function EventDetailPage({ params }: EventPageProps) {
                       </p>
                     )}
                   </div>
+                ) : event.isFree ? (
+                  <p className="text-3xl font-bold text-[#8A4BAF]">Gratis</p>
                 ) : event.price ? (
                   <div>
                     {earlyBird && event.earlyBirdPrice ? (

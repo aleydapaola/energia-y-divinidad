@@ -102,7 +102,7 @@ test("event capacity counts legacy bookings, allocations and multi-seat purchase
   await capacity.assertEventCapacity(db, { _id: "event" }, 100);
 });
 
-test("the actual event checkout displays Colombia time and follows the PayPal approval URL", async () => {
+test("event checkout displays Colombia time and redirects paid and free reservations correctly", async () => {
   const previousWindow = globalThis.window,
     previousFetch = globalThis.fetch,
     previousZone = process.env.TZ;
@@ -121,69 +121,86 @@ test("the actual event checkout displays Colombia time and follows the PayPal ap
     maxPerBooking: 1,
   };
   let submitted;
+  let redirect;
   try {
     globalThis.window = { location: { href: "" } };
     globalThis.fetch = async (_url, options) => {
       submitted = JSON.parse(options.body);
       return {
         ok: true,
-        json: async () => ({ approvalUrl: "https://www.sandbox.paypal.com/checkoutnow?test-only" }),
+        json: async () =>
+          submitted.amount === 0
+            ? { redirectUrl: "/pago/confirmacion?ref=FREE-TEST" }
+            : { approvalUrl: "https://www.sandbox.paypal.com/checkoutnow?test-only" },
       };
     };
     for (const zone of ["UTC", "Europe/Madrid", "Asia/Tokyo"]) {
       process.env.TZ = zone;
-      let i = 0;
-      const values = [
-        event,
-        false,
-        false,
-        null,
-        1,
-        "Test",
-        "test@example.com",
-        "0000000",
-        "international",
-        "paypal_direct",
-        "",
-        true,
-        "",
-        false,
-        null,
-        null,
-      ];
-      const { default: Checkout } = load("app/eventos/[slug]/checkout/page.tsx", {
-        react: { ...React, useState: () => [values[i++], () => {}], useEffect() {} },
-        "next/navigation": {
-          useRouter: () => ({
-            push() {
-              throw new Error("Wrong redirect");
-            },
-          }),
-        },
-        "next-auth/react": {
-          useSession: () => ({ data: { user: { email: "test@example.com" } } }),
-        },
-        "next/link": {
-          default: ({ children, ...props }) => React.createElement("a", props, children),
-        },
-        "next/image": { default: () => null },
-        "@/components/checkout/CheckoutHeader": { CheckoutHeader: () => null },
-        "@/lib/purchase-methods": load("lib/purchase-methods.ts"),
-      });
-      const tree = Checkout({ params: Promise.resolve({ slug: "test" }) });
-      const html = renderToStaticMarkup(tree);
-      assert.match(html, /10:00.*hora de Colombia, UTC−5/);
-      assert.match(html, /19/);
-      await nodes(tree)
-        .find((n) => n.type === "form")
-        .props.onSubmit({ preventDefault() {} });
-      assert.equal(
-        globalThis.window.location.href,
-        "https://www.sandbox.paypal.com/checkoutnow?test-only"
-      );
-      assert.equal(submitted.productType, "event");
-      assert.equal(submitted.amount, 20);
-      assert.equal(submitted.currency, "USD");
+      for (const isFree of [false, true]) {
+        globalThis.window.location.href = "";
+        redirect = undefined;
+        let i = 0;
+        const values = [
+          { ...event, isFree },
+          false,
+          false,
+          null,
+          1,
+          "Test",
+          "test@example.com",
+          "0000000",
+          "international",
+          "paypal_direct",
+          "",
+          true,
+          "",
+          false,
+          null,
+          null,
+        ];
+        const { default: Checkout } = load("app/eventos/[slug]/checkout/page.tsx", {
+          react: { ...React, useState: () => [values[i++], () => {}], useEffect() {} },
+          "next/navigation": {
+            useRouter: () => ({
+              push(url) {
+                redirect = url;
+              },
+            }),
+          },
+          "next-auth/react": {
+            useSession: () => ({ data: { user: { email: "test@example.com" } } }),
+          },
+          "next/link": {
+            default: ({ children, ...props }) => React.createElement("a", props, children),
+          },
+          "next/image": { default: () => null },
+          "@/components/checkout/CheckoutHeader": { CheckoutHeader: () => null },
+          "@/lib/purchase-methods": load("lib/purchase-methods.ts"),
+        });
+        const tree = Checkout({ params: Promise.resolve({ slug: "test" }) });
+        const html = renderToStaticMarkup(tree);
+        assert.match(html, /10:00.*hora de Colombia, UTC−5/);
+        assert.match(html, /19/);
+        await nodes(tree)
+          .find((n) => n.type === "form")
+          .props.onSubmit({ preventDefault() {} });
+        if (isFree) {
+          assert.match(html, /Confirmar reserva gratuita/);
+          assert.doesNotMatch(html, /Método de pago|durante 20 minutos|Código de descuento/);
+          assert.equal(globalThis.window.location.href, "");
+          assert.equal(redirect, "/pago/confirmacion?ref=FREE-TEST");
+        } else {
+          assert.match(html, /Método de pago/);
+          assert.equal(
+            globalThis.window.location.href,
+            "https://www.sandbox.paypal.com/checkoutnow?test-only"
+          );
+          assert.equal(redirect, undefined);
+        }
+        assert.equal(submitted.productType, "event");
+        assert.equal(submitted.amount, isFree ? 0 : 20);
+        assert.equal(submitted.currency, "USD");
+      }
     }
   } finally {
     globalThis.window = previousWindow;
@@ -194,6 +211,107 @@ test("the actual event checkout displays Colombia time and follows the PayPal ap
       process.env.TZ = previousZone;
     }
   }
+});
+
+test("a published free event reserves seats at zero even with obsolete prices and inactive payment providers", async () => {
+  const { parse, evaluate } = require("groq-js");
+  let doc = {
+    _id: "free-event",
+    _type: "event",
+    title: "Evento gratuito de prueba",
+    published: true,
+    status: "upcoming",
+    eventDate: "2099-01-01T15:00:00Z",
+    capacity: 3,
+    maxPerBooking: 2,
+    price: 80000,
+    priceUSD: 20,
+    earlyBirdPrice: 35000,
+    earlyBirdDeadline: "2098-12-01T15:00:00Z",
+    pricing: { isFree: true },
+  };
+  const catalog = load("lib/checkout/catalog-quote.ts", {
+    "@/sanity/lib/projections": load("sanity/lib/projections.ts"),
+    "@/sanity/lib/client": {
+      client: {
+        withConfig: () => ({
+          fetch: async (query, params) =>
+            (await evaluate(parse(query), { dataset: [doc], params })).get(),
+        }),
+      },
+    },
+  });
+  const orders = [];
+  const fulfilled = [];
+  const providerCall = () => assert.fail("Payment provider was called for a free event");
+  const { oneTimeCheckout } = load("lib/checkout/one-time-checkout.ts", {
+    "@/lib/auth": { auth: async () => null },
+    "@/lib/breb": { getBrebConfiguration: providerCall },
+    "@/lib/checkout/catalog-quote": catalog,
+    "@/lib/checkout/discounts": load("lib/checkout/discounts.ts", {
+      "@/lib/discount-codes": { validateDiscountCode: providerCall },
+    }),
+    "@/lib/order-access": { allowOrderInBrowser: async () => {} },
+    "@/lib/payment-processor": {
+      processApprovedPayment: async (order) => {
+        fulfilled.push(order);
+        return { success: true };
+      },
+    },
+    "@/lib/paypal": { isPayPalConfigured: () => !doc.pricing.isFree, createPayPalOrder: providerCall },
+    "@/lib/prisma": {
+      prisma: {
+        checkoutHold: { findMany: async () => [] },
+        booking: { findMany: async () => [] },
+        seatAllocation: { findMany: async () => [] },
+        order: { create: async ({ data }) => (orders.push(data), data) },
+      },
+    },
+    "@/lib/rate-limit": { applyRateLimit: () => null },
+    "@/lib/session-scheduling": {},
+    "@/lib/utils": {},
+  });
+
+  const request = {
+    json: async () => ({
+      productType: "event",
+      productId: doc._id,
+      guestEmail: "qa@example.com",
+      seats: 2,
+      amount: 0,
+    }),
+  };
+  for (const method of ["paypal", "breb"]) {
+    const response = await oneTimeCheckout(request, method);
+    assert.equal(response.status, 200);
+    const data = await response.json();
+    assert.equal(data.freeOrder, true);
+    assert.match(data.redirectUrl, /^\/pago\/confirmacion\?ref=FREE-/);
+    const order = orders.at(-1);
+    assert.equal(order.amount, 0);
+    assert.equal(order.metadata.seats, 2);
+    assert.equal(order.paymentMethod, "FREE");
+    assert.equal(order.paymentStatus, "COMPLETED");
+    assert.equal(order.guestEmail, "qa@example.com");
+    assert.equal(fulfilled.at(-1), order);
+  }
+
+  doc = { ...doc, status: "cancelled" };
+  const cancelled = await oneTimeCheckout(request, "paypal");
+  assert.equal(cancelled.status, 400);
+  assert.match((await cancelled.json()).error, /ya no admite reservas/);
+
+  doc = { ...doc, status: "upcoming", pricing: { isFree: false } };
+  const paid = await oneTimeCheckout(request, "paypal");
+  assert.equal(paid.status, 400);
+  assert.match((await paid.json()).error, /El precio ha cambiado/);
+
+  doc = { ...doc, priceUSD: 0 };
+  const missing = await oneTimeCheckout(request, "paypal");
+  assert.equal(missing.status, 400);
+  assert.match((await missing.json()).error, /Precio en USD no configurado/);
+  assert.equal(orders.length, 2);
+  assert.equal(fulfilled.length, 2);
 });
 
 test("sold-out event is rejected before an order or provider payment is created", async () => {

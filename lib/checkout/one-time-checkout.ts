@@ -34,7 +34,7 @@ const inputSchema = z.object({
   notes: z.string().max(2000).optional(),
   discountCode: z.string().max(100).optional(),
   currency: z.enum(["COP", "USD"]).optional(),
-  amount: z.number().positive().finite().optional(),
+  amount: z.number().nonnegative().finite().optional(),
 });
 
 export async function oneTimeCheckout(request: NextRequest, method: "breb" | "paypal") {
@@ -52,17 +52,19 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
         { status: 400 }
       );
     }
-    if (method === "breb" && !getBrebConfiguration().enabled) {
+    const currency = method === "breb" ? "COP" : "USD";
+    const quote = await quoteCatalogItem({ ...body, currency });
+    const isFreeEvent = body.productType === "event" && quote.amount === 0;
+    const breb = !isFreeEvent && method === "breb" ? getBrebConfiguration() : null;
+    if (breb && !breb.enabled) {
       return NextResponse.json(
         { error: "Bre-B aún no está disponible. Puedes pagar con PayPal." },
         { status: 503 }
       );
     }
-    if (method === "paypal" && !isPayPalConfigured()) {
+    if (!isFreeEvent && method === "paypal" && !isPayPalConfigured()) {
       return NextResponse.json({ error: "PayPal no está disponible." }, { status: 503 });
     }
-    const currency = method === "breb" ? "COP" : "USD";
-    const quote = await quoteCatalogItem({ ...body, currency });
     if (quote.driveDelivery) {
       const buyer = session?.user?.id ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { email: true, emailVerified: true } }) : null;
       if (!buyer?.email || !buyer.emailVerified) {
@@ -97,14 +99,15 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
       throw new Error("Los descuentos de este producto aún no están habilitados.");
     }
     const discount = await applyCheckoutDiscount({
-      discountCode: body.discountCode,
+      discountCode: isFreeEvent ? undefined : body.discountCode,
       userId: session?.user?.id,
       productType: body.productType === "product" ? "course" : body.productType,
       amount: quote.amount,
       currency,
       courseIds: body.productType === "course" ? [quote.productId] : [],
     });
-    const reference = `${method === "breb" ? "BREB" : "PP"}-${randomUUID()}`;
+    const prefix = isFreeEvent ? "FREE" : method === "breb" ? "BREB" : "PP";
+    const reference = `${prefix}-${randomUUID()}`;
     await allowOrderInBrowser(reference);
     const order = await createHeldCheckoutOrder(
       {
@@ -132,7 +135,7 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
           customerName: session?.user?.name || body.guestName || null,
           customerPhone: body.guestPhone || null,
           notes: body.notes || null,
-          brebSimulation: method === "breb" && getBrebConfiguration().simulation,
+          brebSimulation: breb?.simulation ?? false,
         },
       },
       quote.capacity ?? null

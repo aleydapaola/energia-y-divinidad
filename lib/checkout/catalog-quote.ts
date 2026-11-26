@@ -18,6 +18,8 @@ export async function quoteCatalogItem(input: {
   const doc = await client.withConfig({ useCdn: false }).fetch<{
     _id: string;
     title: string;
+    status?: string;
+    isFree?: boolean;
     price?: number;
     priceUSD?: number;
     productType?: string;
@@ -29,7 +31,7 @@ export async function quoteCatalogItem(input: {
     maxPerBooking?: number;
     capacity?: number;
     visibility?: string;
-  } | null>(`*[_type == $type && published == true && !(status in ["paused", "sold_out", "discontinued", "coming_soon", "inactive"]) && !(_id in path("drafts.**")) && ($type == "sessionConfig" || _id == $id)][0]{_id,title,${pricingProjection},productType,digitalDeliveryVersion,privateDigitalFiles[]{internalFileRef},earlyBirdPrice,earlyBirdDeadline,eventDate,maxPerBooking,capacity,visibility}`, { type, id: productId });
+  } | null>(`*[_type == $type && published == true && !(status in ["paused", "sold_out", "discontinued", "coming_soon", "inactive"]) && !(_id in path("drafts.**")) && ($type == "sessionConfig" || _id == $id)][0]{_id,title,status,${pricingProjection},productType,digitalDeliveryVersion,privateDigitalFiles[]{internalFileRef},earlyBirdPrice,earlyBirdDeadline,eventDate,maxPerBooking,capacity,visibility}`, { type, id: productId });
   if (!doc || doc.visibility === "private") {
     throw new Error("Producto no disponible.");
   }
@@ -45,6 +47,7 @@ export async function quoteCatalogItem(input: {
       : currency === "COP"
         ? doc.price
         : doc.priceUSD;
+  const isFreeEvent = productType === "event" && doc.isFree === true;
   let scheduledAt = productType === "pack" ? null : input.scheduledAt || null;
   let seats = 1;
   if (productType === "event") {
@@ -52,11 +55,20 @@ export async function quoteCatalogItem(input: {
     if (!Number.isInteger(seats) || seats < 1 || seats > (doc.maxPerBooking || 10)) {
       throw new Error("Número de plazas inválido.");
     }
-    if (!doc.eventDate || Date.parse(doc.eventDate) <= Date.now()) {
-      throw new Error("Este evento ya no admite compras.");
+    const eventTime = Date.parse(doc.eventDate ?? "");
+    if (
+      !doc.eventDate ||
+      !Number.isFinite(eventTime) ||
+      eventTime <= Date.now() ||
+      doc.status === "cancelled" ||
+      doc.status === "completed"
+    ) {
+      throw new Error("Este evento ya no admite reservas.");
     }
     scheduledAt = doc.eventDate;
-    if (
+    if (isFreeEvent) {
+      amount = 0;
+    } else if (
       currency === "COP" &&
       doc.earlyBirdPrice != null &&
       doc.earlyBirdDeadline &&
@@ -73,7 +85,7 @@ export async function quoteCatalogItem(input: {
   ) {
     throw new Error("Selecciona una fecha futura válida.");
   }
-  if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) {
+  if (typeof amount !== "number" || !Number.isFinite(amount) || (!isFreeEvent && amount <= 0)) {
     throw new Error(`Precio en ${currency} no configurado.`);
   }
   // Load the private delivery service only for new Drive products. Legacy checkout stays unchanged.

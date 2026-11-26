@@ -171,6 +171,8 @@ function ConfirmacionContent() {
     );
   }
 
+  const isFreeEvent = orderData?.orderType === "EVENT" && paymentMethod === "FREE";
+
   return (
     <div className="min-h-screen bg-[#f8f0f5] py-12 px-4">
       <div className="max-w-lg mx-auto">
@@ -181,15 +183,19 @@ function ConfirmacionContent() {
                 <CheckCircle className="w-12 h-12 text-green-600" />
               </div>
               <h1 className="font-gazeta text-3xl text-[#654177] mb-4">
-                {orderData?.membership?.isTrialActivation
-                  ? "Prueba de membresía activada"
-                  : "¡Pago Exitoso!"}
+                {isFreeEvent
+                  ? "¡Reserva confirmada!"
+                  : orderData?.membership?.isTrialActivation
+                    ? "Prueba de membresía activada"
+                    : "¡Pago Exitoso!"}
               </h1>
-              <p className="font-dm-sans text-gray-600 mb-6">
-                {orderData?.membership?.isTrialActivation
-                  ? "No se ha realizado un cobro hoy. Tu autorización de renovación ha sido verificada. Recibirás el resumen de la prueba y del primer cobro por correo."
-                  : "Tu pago ha sido procesado correctamente. Recibirás un correo de confirmación con los detalles de tu compra."}
-              </p>
+              {!isFreeEvent && (
+                <p className="font-dm-sans text-gray-600 mb-6">
+                  {orderData?.membership?.isTrialActivation
+                    ? "No se ha realizado un cobro hoy. Tu autorización de renovación ha sido verificada. Recibirás el resumen de la prueba y del primer cobro por correo."
+                    : "Tu pago ha sido procesado correctamente. Recibirás un correo de confirmación con los detalles de tu compra."}
+                </p>
+              )}
               {orderData && (
                 <div className="bg-[#eef1fa] rounded-lg p-4 mb-6 text-left">
                   <p className="font-dm-sans text-sm text-gray-600">
@@ -200,11 +206,13 @@ function ConfirmacionContent() {
                   </p>
                   <p className="font-dm-sans text-sm text-gray-600 mt-1">
                     <span className="font-semibold">Monto:</span>{" "}
-                    {new Intl.NumberFormat(orderData.currency === "COP" ? "es-CO" : "en-US", {
-                      style: "currency",
-                      currency: orderData.currency,
-                      minimumFractionDigits: 0,
-                    }).format(orderData.amount)}
+                    {isFreeEvent
+                      ? "Gratis"
+                      : new Intl.NumberFormat(orderData.currency === "COP" ? "es-CO" : "en-US", {
+                          style: "currency",
+                          currency: orderData.currency,
+                          minimumFractionDigits: 0,
+                        }).format(orderData.amount)}
                   </p>
                 </div>
               )}
@@ -216,8 +224,9 @@ function ConfirmacionContent() {
               )}
               {orderData?.orderType === "EVENT" && (
                 <p className="font-dm-sans text-sm text-gray-600 mb-6">
-                  Tu plaza está confirmada. Consulta Mis Eventos y el correo de confirmación para
-                  las instrucciones de participación.
+                  {!isFreeEvent && "Tu plaza está confirmada. "}
+                  Consulta Mis Eventos y el correo de confirmación para las instrucciones de
+                  participación.
                 </p>
               )}
               {orderData?.orderType === "COURSE" && (

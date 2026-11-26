@@ -38,6 +38,7 @@ interface Event {
   venue?: { name?: string; city?: string; address?: string };
   price?: number;
   priceUSD?: number;
+  isFree?: boolean;
   earlyBirdPrice?: number;
   earlyBirdDeadline?: string;
   capacity?: number;
@@ -105,13 +106,15 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
   }, [params, session]);
 
   // Calcular precio
+  const isFree = event?.isFree === true;
   const isEarlyBird =
+    !isFree &&
     event?.earlyBirdPrice &&
     event?.earlyBirdDeadline &&
     new Date() <= new Date(event.earlyBirdDeadline);
 
   const getUnitPrice = () => {
-    if (!event) {
+    if (!event || isFree) {
       return 0;
     }
     if (getCurrency() === "USD") {
@@ -358,7 +361,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-600">Precio por persona</span>
                     <span className="font-semibold">
-                      {formatPrice(unitPrice, getCurrency())}
+                      {isFree ? "Gratis" : formatPrice(unitPrice, getCurrency())}
                       {isEarlyBird && (
                         <span className="ml-2 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">
                           Early Bird
@@ -374,7 +377,7 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                   </div>
                   <div className="flex justify-between items-center text-lg font-bold text-[#654177]">
                     <span>Total</span>
-                    <span>{formatPrice(finalTotalPrice, getCurrency())}</span>
+                    <span>{isFree ? "Gratis" : formatPrice(finalTotalPrice, getCurrency())}</span>
                   </div>
                   {appliedDiscount && (
                     <div className="flex justify-between items-center text-sm text-green-600 mt-1">
@@ -473,144 +476,148 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                   />
                 </div>
 
-                {/* Country */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">País</label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="country"
-                        value="colombia"
-                        checked={country === "colombia"}
-                        onChange={() => {
-                          setCountry("colombia");
-                          setPaymentMethod("paypal_direct");
-                          setAppliedDiscount(null);
-                          setDiscountInput("");
-                          setDiscountError(null);
-                        }}
-                        className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
-                      />
-                      <span>🇨🇴 Colombia</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="country"
-                        value="international"
-                        checked={country === "international"}
-                        onChange={() => {
-                          setCountry("international");
-                          setPaymentMethod("paypal_direct");
-                          setAppliedDiscount(null);
-                          setDiscountInput("");
-                          setDiscountError(null);
-                        }}
-                        className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
-                      />
-                      <span>🌍 Internacional</span>
-                    </label>
-                  </div>
-                </div>
+                {!isFree && (
+                  <>
+                    {/* Country */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">País</label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="country"
+                            value="colombia"
+                            checked={country === "colombia"}
+                            onChange={() => {
+                              setCountry("colombia");
+                              setPaymentMethod("paypal_direct");
+                              setAppliedDiscount(null);
+                              setDiscountInput("");
+                              setDiscountError(null);
+                            }}
+                            className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
+                          />
+                          <span>🇨🇴 Colombia</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="country"
+                            value="international"
+                            checked={country === "international"}
+                            onChange={() => {
+                              setCountry("international");
+                              setPaymentMethod("paypal_direct");
+                              setAppliedDiscount(null);
+                              setDiscountInput("");
+                              setDiscountError(null);
+                            }}
+                            className="text-[#8A4BAF] focus:ring-[#8A4BAF]"
+                          />
+                          <span>🌍 Internacional</span>
+                        </label>
+                      </div>
+                    </div>
 
-                {/* Payment method */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Método de pago
-                  </label>
-                  <div className="space-y-3">
-                    {purchaseMethods(country).map((option) => (
-                      <label
-                        key={option.method}
-                        className="flex items-start gap-3 p-4 border rounded-lg cursor-pointer"
-                      >
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          checked={paymentMethod === option.method}
-                          onChange={() => handlePaymentMethodChange(option.method)}
-                          className="mt-1"
-                        />
-                        <span>
-                          <strong>{option.label}</strong>
-                          <span className="block text-sm text-gray-600">{option.description}</span>
-                        </span>
+                    {/* Payment method */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Método de pago
                       </label>
-                    ))}
-                  </div>
-                  <p className="mt-3 text-xs text-gray-500 text-center">
-                    {paymentMethod === "breb_manual"
-                      ? "Transferencia a Global66 pendiente de verificación"
-                      : "Pago procesado de forma segura por PayPal"}
-                  </p>
-                </div>
+                      <div className="space-y-3">
+                        {purchaseMethods(country).map((option) => (
+                          <label
+                            key={option.method}
+                            className="flex items-start gap-3 p-4 border rounded-lg cursor-pointer"
+                          >
+                            <input
+                              type="radio"
+                              name="paymentMethod"
+                              checked={paymentMethod === option.method}
+                              onChange={() => handlePaymentMethodChange(option.method)}
+                              className="mt-1"
+                            />
+                            <span>
+                              <strong>{option.label}</strong>
+                              <span className="block text-sm text-gray-600">{option.description}</span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      <p className="mt-3 text-xs text-gray-500 text-center">
+                        {paymentMethod === "breb_manual"
+                          ? "Transferencia a Global66 pendiente de verificación"
+                          : "Pago procesado de forma segura por PayPal"}
+                      </p>
+                    </div>
 
-                {/* Discount Code */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Código de descuento
-                  </label>
-                  {appliedDiscount ? (
-                    <div className="flex items-center justify-between rounded-lg bg-green-50 border border-green-200 p-3">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                        <span className="text-sm font-semibold text-green-700">
-                          {appliedDiscount.code}
-                        </span>
-                        <span className="text-sm text-green-600">
-                          -{appliedDiscount.formattedDiscount}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAppliedDiscount(null);
-                          setDiscountInput("");
-                          setDiscountError(null);
-                        }}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        <XCircle className="w-5 h-5" />
-                      </button>
+                    {/* Discount Code */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Código de descuento
+                      </label>
+                      {appliedDiscount ? (
+                        <div className="flex items-center justify-between rounded-lg bg-green-50 border border-green-200 p-3">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                            <span className="text-sm font-semibold text-green-700">
+                              {appliedDiscount.code}
+                            </span>
+                            <span className="text-sm text-green-600">
+                              -{appliedDiscount.formattedDiscount}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAppliedDiscount(null);
+                              setDiscountInput("");
+                              setDiscountError(null);
+                            }}
+                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            <XCircle className="w-5 h-5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                              type="text"
+                              value={discountInput}
+                              onChange={(e) => {
+                                setDiscountInput(e.target.value.toUpperCase());
+                                setDiscountError(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleApplyDiscount();
+                                }
+                              }}
+                              placeholder="CÓDIGO"
+                              className="w-full pl-9 pr-4 py-3 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-[#8A4BAF] focus:border-transparent"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleApplyDiscount}
+                            disabled={!discountInput.trim() || isValidatingDiscount}
+                            className="px-4 py-3 rounded-lg border-2 border-[#4944a4] text-[#4944a4] text-sm font-semibold hover:bg-[#4944a4] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isValidatingDiscount ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Aplicar"
+                            )}
+                          </button>
+                        </div>
+                      )}
+                      {discountError && <p className="mt-2 text-sm text-red-500">{discountError}</p>}
                     </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                          type="text"
-                          value={discountInput}
-                          onChange={(e) => {
-                            setDiscountInput(e.target.value.toUpperCase());
-                            setDiscountError(null);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleApplyDiscount();
-                            }
-                          }}
-                          placeholder="CÓDIGO"
-                          className="w-full pl-9 pr-4 py-3 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-[#8A4BAF] focus:border-transparent"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleApplyDiscount}
-                        disabled={!discountInput.trim() || isValidatingDiscount}
-                        className="px-4 py-3 rounded-lg border-2 border-[#4944a4] text-[#4944a4] text-sm font-semibold hover:bg-[#4944a4] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isValidatingDiscount ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          "Aplicar"
-                        )}
-                      </button>
-                    </div>
-                  )}
-                  {discountError && <p className="mt-2 text-sm text-red-500">{discountError}</p>}
-                </div>
+                  </>
+                )}
 
                 {/* Notes */}
                 <div>
@@ -656,10 +663,12 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                 )}
 
                 {/* Submit button */}
-                <p className="text-sm text-[#654177]">
-                  Al continuar, guardamos tus plazas durante 20 minutos para completar el pago. Si
-                  pagas por Bre-B, comunica la transferencia dentro de ese plazo.
-                </p>
+                {!isFree && (
+                  <p className="text-sm text-[#654177]">
+                    Al continuar, guardamos tus plazas durante 20 minutos para completar el pago. Si
+                    pagas por Bre-B, comunica la transferencia dentro de ese plazo.
+                  </p>
+                )}
                 <button
                   type="submit"
                   disabled={submitting || !acceptTerms}
@@ -670,6 +679,8 @@ export default function EventCheckoutPage({ params }: CheckoutPageProps) {
                       <Loader2 className="w-5 h-5 animate-spin" />
                       Procesando...
                     </>
+                  ) : isFree ? (
+                    "Confirmar reserva gratuita"
                   ) : (
                     <>Confirmar reserva - {formatPrice(finalTotalPrice, getCurrency())}</>
                   )}
