@@ -5,20 +5,22 @@ import { useSession } from "next-auth/react";
 import { useRef, useState } from "react";
 
 import { PurchasePolicy } from "@/components/checkout/PurchasePolicy";
-import { digitalCartPaymentMethods } from "@/lib/digital-products/prices";
+import { digitalCartPaymentMethods, productPaymentMethods } from "@/lib/digital-products/prices";
 import { purchaseMethods } from "@/lib/purchase-methods";
 type Product = { id: string; title: string; price?: number; priceUSD?: number };
 
 export function DigitalProductCheckout({
   products,
-  cart = false,
+  removeItem,
   driveDelivery = false,
 }: {
   products: Product[];
-  cart?: boolean;
+  removeItem?: (id: string) => void;
   driveDelivery?: boolean;
 }) {
   const { data: session } = useSession();
+  const cart = !!removeItem;
+  const needsSignIn = driveDelivery && !session?.user?.id;
   const router = useRouter();
   const available = digitalCartPaymentMethods(products);
   const [selectedMethod, setMethod] = useState<string>(available[0] || "");
@@ -32,10 +34,10 @@ export function DigitalProductCheckout({
   const amount = products.reduce((total, product) => total + Math.round((price(product) ?? 0) * 100), 0) / 100;
   const submitting = useRef(false);
   const guestCheckoutKey = useRef("");
-  const formatAmount = (value: number) => new Intl.NumberFormat("es-CO", { style: "currency", currency, currencyDisplay: "code" }).format(value);
+  const formatAmount = (value: number, code = currency) => new Intl.NumberFormat("es-CO", { style: "currency", currency: code, currencyDisplay: "code" }).format(value);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!method || submitting.current) {
+    if (!method || needsSignIn || submitting.current) {
       return;
     }
     submitting.current = true;
@@ -82,12 +84,6 @@ export function DigitalProductCheckout({
     }
   }
   const paymentLabel = method === "breb_manual" ? "Continuar con Bre-B" : "Continuar con PayPal";
-  if (driveDelivery && !session?.user?.id) {
-    return <section className="bg-white p-6 rounded-2xl space-y-4">
-      <p>El acceso a Drive es exclusivo del titular. Inicia sesión con una cuenta de correo verificado y usa esa misma cuenta en Google Drive.</p>
-      <Link className="inline-block min-h-11 py-3 underline" href={`/auth/signin?callbackUrl=${encodeURIComponent(cart ? "/productos/carrito" : `/productos/${products[0].id}`)}`}>Iniciar sesión para comprar</Link>
-    </section>;
-  }
   return (
     <form onSubmit={submit} className="bg-white p-6 rounded-2xl space-y-5 min-w-0 break-words">
       <h2 className="text-2xl">{cart ? "Completar pedido" : `Comprar ${products[0].title}`}</h2>
@@ -115,9 +111,16 @@ export function DigitalProductCheckout({
             </label>
           ))}
       </fieldset>
-      {cart && method && <ul className="space-y-2">
-        {products.map((product) => <li key={product.id} className="flex flex-wrap justify-between gap-x-3">
-          <span>{product.title}</span><span>{formatAmount(price(product) ?? 0)}</span>
+      {removeItem && <ul className="divide-y">
+        {products.map((product) => <li key={product.id} className="flex flex-wrap items-center justify-between gap-x-3 py-2">
+          <div className="min-w-0 break-words">
+            <p>{product.title}</p>
+            {method ? <p>{formatAmount(price(product) ?? 0)}</p> : productPaymentMethods(product).map((option) => (
+              <p key={option}>{option === "breb_manual" ? formatAmount(product.price ?? 0, "COP") : formatAmount(product.priceUSD ?? 0, "USD")}</p>
+            ))}
+          </div>
+          <button type="button" className="min-h-11 px-2 underline" disabled={busy}
+            aria-label={`Quitar ${product.title}`} onClick={() => removeItem(product.id)}>Quitar</button>
         </li>)}
       </ul>}
       <p className="text-2xl font-semibold">
@@ -125,7 +128,11 @@ export function DigitalProductCheckout({
           : cart ? "Los productos del carrito no comparten una moneda de pago."
           : "Este producto todavía no tiene un precio de venta configurado."}
       </p>
-      {!session?.user?.email && (
+      {needsSignIn && <div className="space-y-2">
+        <p>El acceso a Drive es exclusivo del titular. Inicia sesión con un correo verificado y usa esa misma cuenta en Google Drive.</p>
+        <Link className="inline-block min-h-11 py-3 underline" href={`/auth/signin?callbackUrl=${encodeURIComponent(cart ? "/productos/carrito" : `/productos/${products[0].id}`)}`}>Iniciar sesión para comprar</Link>
+      </div>}
+      {!needsSignIn && !session?.user?.email && (
         <>
           <label className="block">
             Nombre
@@ -164,12 +171,12 @@ export function DigitalProductCheckout({
           {error}
         </p>
       )}
-      <button
+      {!needsSignIn && <button
         disabled={busy || !method || !amount}
         className="w-full py-3 rounded-xl bg-[#4944a4] text-white disabled:opacity-50"
       >
         {busy ? "Preparando pedido…" : paymentLabel}
-      </button>
+      </button>}
     </form>
   );
 }

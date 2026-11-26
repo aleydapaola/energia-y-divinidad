@@ -404,3 +404,25 @@ test("product form starts with an available method and submits the matching curr
     assert.equal(sent.body.amount, scenario.currency === "COP" ? 80000 : 20);
   }
 });
+
+test("Drive carts show line amounts and total before requiring verified sign-in", () => {
+  const { renderToStaticMarkup } = require("react-dom/server");
+  const { DigitalProductCheckout } = load("app/productos/[slug]/DigitalProductCheckout.tsx", {
+    react: { ...require("react"), useState: (value) => [value, () => {}], useRef: (current) => ({ current }) },
+    "next/navigation": { useRouter: () => ({}) },
+    "next-auth/react": { useSession: () => ({ data: null }) },
+    "@/lib/digital-products/prices": prices,
+    "@/lib/purchase-methods": load("lib/purchase-methods.ts"),
+    "@/components/checkout/PurchasePolicy": { PurchasePolicy: () => null },
+  });
+  const html = renderToStaticMarkup(DigitalProductCheckout({
+    products: [{ id: "audio", title: "Audio", priceUSD: 10 }, { id: "guide", title: "Guía", priceUSD: 20 }],
+    driveDelivery: true,
+    removeItem: () => {},
+  }));
+  assert.match(html, /Audio/);
+  assert.match(html, /Guía/);
+  assert.match(html, /Total:.*30/);
+  assert.match(html, /Iniciar sesión para comprar/);
+  assert.doesNotMatch(html, /Continuar con PayPal/);
+});
