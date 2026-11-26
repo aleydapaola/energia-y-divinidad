@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function DriveBuyerDeliveryControls({ orderId, email, status, paid, verified }: { orderId: string; email: string; status: string; paid: boolean; verified: boolean }) {
+export function DriveBuyerDeliveryControls({ orderId, productId, email, status, paid, verified }: { orderId: string; productId?: string; email: string; status: string; paid: boolean; verified: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -13,7 +13,7 @@ export function DriveBuyerDeliveryControls({ orderId, email, status, paid, verif
     {paid && status === "PENDING_ACCESS" && <button disabled={busy || !verified} className="min-h-11 rounded-lg border px-4 py-3 disabled:opacity-50" onClick={async () => {
         setBusy(true); setError("");
         try {
-          const response = await fetch(`/api/mi-cuenta/pedidos/${encodeURIComponent(orderId)}/drive-delivery`, { method: "POST" });
+          const response = await fetch(`/api/mi-cuenta/pedidos/${encodeURIComponent(orderId)}/drive-delivery${productId ? `?producto=${encodeURIComponent(productId)}` : ""}`, { method: "POST" });
           const data = await response.json();
           if (!response.ok || !data.delivered) { throw new Error("Tu pago está confirmado. El acceso sigue pendiente; puedes reintentar solo la entrega o contactar con Aleyda."); }
           router.refresh();
@@ -24,8 +24,8 @@ export function DriveBuyerDeliveryControls({ orderId, email, status, paid, verif
   </div>;
 }
 
-export function AdminDriveDeliveryControls({ orderId, revision, status, paymentStatus, recipientEmail, pendingEmail, folderUrl, retainReader }: {
-  orderId: string; revision: number; status: string; paymentStatus: string; recipientEmail: string;
+export function AdminDriveDeliveryControls({ orderId, productId, title, revision, status, paymentStatus, recipientEmail, pendingEmail, folderUrl, retainReader }: {
+  orderId: string; productId?: string; title?: string; revision: number; status: string; paymentStatus: string; recipientEmail: string;
   pendingEmail: string | null; folderUrl: string; retainReader: boolean;
 }) {
   const router = useRouter();
@@ -38,7 +38,7 @@ export function AdminDriveDeliveryControls({ orderId, revision, status, paymentS
     setBusy(true); setError("");
     try {
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(orderId)}/drive-delivery`, { method: "POST",
-        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, revision, confirmed: action === "retry" || (action === "refund" ? refundConfirmed : confirmed), reference: reference || undefined }) });
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, productId, revision, confirmed: action === "retry" || (action === "refund" ? refundConfirmed : confirmed), reference: reference || undefined }) });
       const data = await response.json();
       if (!response.ok) { throw new Error(data.error); }
       if (action === "retry" && !data.delivered) { throw new Error("La entrega sigue pendiente. Revisa el correo verificado del titular, los archivos y la conexión Drive. No confirmes de nuevo el pago."); }
@@ -48,7 +48,7 @@ export function AdminDriveDeliveryControls({ orderId, revision, status, paymentS
   }
   const statusLabel = { GRANTED: "Acceso concedido", REVOKED: "Acceso retirado" }[status as "GRANTED" | "REVOKED"] || "Acceso pendiente";
   return <section className="rounded-xl border bg-white p-5 space-y-4 break-words">
-    <h2 className="text-xl font-gazeta">Entrega privada en Google Drive</h2>
+    <h2 className="text-xl font-gazeta">Entrega privada en Google Drive{title && ` · ${title}`}</h2>
     <p>Cuenta de Google para el acceso: <strong>{recipientEmail}</strong></p>
     {pendingEmail && <p>Nueva cuenta solicitada: <strong>{pendingEmail}</strong></p>}
     <p>{statusLabel}</p>

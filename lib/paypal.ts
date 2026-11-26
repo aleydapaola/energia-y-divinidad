@@ -162,7 +162,7 @@ export function isPayPalConfigured(): boolean {
 /**
  * Create a PayPal order
  */
-export async function createPayPalOrder(params: PayPalOrderParams): Promise<PayPalOrderResult> {
+export async function createPayPalOrder(params: PayPalOrderParams, requestId?: string): Promise<PayPalOrderResult> {
   try {
     const client = getPayPalClient();
     const ordersController = new OrdersController(client);
@@ -190,6 +190,7 @@ export async function createPayPalOrder(params: PayPalOrderParams): Promise<PayP
 
     const response = await ordersController.createOrder({
       body: orderRequest,
+      paypalRequestId: requestId,
       prefer: "return=representation",
     });
 

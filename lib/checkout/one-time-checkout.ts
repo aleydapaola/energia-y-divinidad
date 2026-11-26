@@ -19,7 +19,12 @@ import { getAppUrl } from "@/lib/utils";
 
 const inputSchema = z.object({
   productType: z.enum(["session", "pack", "event", "course", "product"]),
-  productId: z.string().min(1).max(150),
+  productId: z.string().min(1).max(150).optional(),
+  products: z.array(z.object({
+    id: z.string().min(1).max(150),
+    amount: z.number().positive().finite(),
+  })).min(1).max(20).optional(),
+  checkoutKey: z.string().uuid().optional(),
   guestEmail: z
     .string()
     .trim()
@@ -45,7 +50,7 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
   try {
     const session = await auth();
     const body = inputSchema.parse(await request.json());
-    let email = session?.user?.email || body.guestEmail;
+    const email = session?.user?.email || body.guestEmail;
     if (!email) {
       return NextResponse.json(
         { error: "Introduce tu correo para recibir el pedido." },
@@ -53,7 +58,16 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
       );
     }
     const currency = method === "breb" ? "COP" : "USD";
-    const quote = await quoteCatalogItem({ ...body, currency });
+    if (body.productType === "product") {
+      const { checkoutDigitalProducts } = await import("@/lib/checkout/digital-products");
+      return await checkoutDigitalProducts({
+        method, currency, body, email, userId: session?.user?.id, name: session?.user?.name ?? undefined,
+      });
+    }
+    if (!body.productId || body.products || body.checkoutKey) {
+      throw new Error("Revisa los datos de la compra.");
+    }
+    const quote = await quoteCatalogItem({ ...body, productId: body.productId, currency });
     const isFreeEvent = body.productType === "event" && quote.amount === 0;
     const breb = !isFreeEvent && method === "breb" ? getBrebConfiguration() : null;
     if (breb && !breb.enabled) {
@@ -64,13 +78,6 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
     }
     if (!isFreeEvent && method === "paypal" && !isPayPalConfigured()) {
       return NextResponse.json({ error: "PayPal no está disponible." }, { status: 503 });
-    }
-    if (quote.driveDelivery) {
-      const buyer = session?.user?.id ? await prisma.user.findUnique({ where: { id: session.user.id }, select: { email: true, emailVerified: true } }) : null;
-      if (!buyer?.email || !buyer.emailVerified) {
-        return NextResponse.json({ error: "Para comprar este producto, inicia sesión con una cuenta cuyo correo esté verificado. Drive dará acceso solo a ese correo." }, { status: 403 });
-      }
-      email = buyer.email.trim().toLowerCase();
     }
     if (body.productType === "event") {
       await assertEventCapacity(
@@ -95,13 +102,10 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
         "El precio ha cambiado. Recarga la página para revisar el importe antes de pagar."
       );
     }
-    if (body.productType === "product" && body.discountCode) {
-      throw new Error("Los descuentos de este producto aún no están habilitados.");
-    }
     const discount = await applyCheckoutDiscount({
       discountCode: isFreeEvent ? undefined : body.discountCode,
       userId: session?.user?.id,
-      productType: body.productType === "product" ? "course" : body.productType,
+      productType: body.productType,
       amount: quote.amount,
       currency,
       courseIds: body.productType === "course" ? [quote.productId] : [],
@@ -127,7 +131,6 @@ export async function oneTimeCheckout(request: NextRequest, method: "breb" | "pa
         paymentMethod:
           discount.finalAmount === 0 ? "FREE" : method === "breb" ? "BREB_MANUAL" : "PAYPAL_DIRECT",
         paymentStatus: discount.finalAmount === 0 ? "COMPLETED" : "PENDING",
-        ...(quote.driveDelivery ? { driveDelivery: { create: { ...quote.driveDelivery, recipientEmail: email.trim().toLowerCase() } } } : {}),
         metadata: {
           ...quote.metadata,
           isGuestCheckout: !session?.user?.id,

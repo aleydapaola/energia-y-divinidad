@@ -89,12 +89,13 @@ export async function processApprovedPayment(
     return { success: false, error: "El pago no está verificado" };
   }
   try {
+    let digitalConfirmation: { order: OrderWithUser; userId: string; setPasswordToken?: string } | undefined;
     const result = await prisma.$transaction(
       async (lock) => {
         await lock.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fulfillment:${order.id}`}))`;
         const fresh = await prisma.order.findUnique({
           where: { id: order.id },
-          include: { user: true },
+          include: { user: true, digitalProducts: { select: { productId: true, title: true } } },
         });
         if (
           !fresh ||
@@ -103,14 +104,53 @@ export async function processApprovedPayment(
         ) {
           return { success: false, error: "El pago no está verificado" };
         }
+        if (fresh.orderType === "PRODUCT" && fresh.digitalProducts?.length) {
+          if (fresh.paymentStatus !== "COMPLETED") {
+            return { success: false, error: "El pago no está verificado" };
+          }
+          let userId = fresh.userId;
+          let setPasswordToken: string | undefined;
+          if (!userId && fresh.guestEmail) {
+            const guestEmail = fresh.guestEmail.toLowerCase();
+            await lock.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`digital-checkout:${guestEmail}`}))`;
+            ({ userId, setPasswordToken } = await findOrCreateUserForGuest(guestEmail, fresh.guestName, lock));
+            await lock.order.update({ where: { id: fresh.id }, data: { userId } });
+          }
+          if (!userId) {
+            return { success: false, error: "No se pudo determinar el usuario" };
+          }
+          const granted = await lock.entitlement.findMany({
+            where: { orderId: fresh.id, userId, type: "PRODUCT" }, select: { resourceId: true },
+          });
+          const missing = fresh.digitalProducts.filter(({ productId }) =>
+            !granted.some(({ resourceId }) => resourceId === productId));
+          if (missing.length) {
+            await lock.entitlement.createMany({ data: missing.map(({ productId, title }) => ({
+              userId, type: "PRODUCT", resourceId: productId, resourceName: title, orderId: fresh.id,
+            })) });
+            digitalConfirmation = { order: fresh, userId, setPasswordToken };
+          }
+          return { success: true, userId };
+        }
         return processApprovedPaymentUnlocked({ ...fresh, paymentStatus: "COMPLETED" }, options);
       },
       { maxWait: 10000, timeout: 120000 }
     );
+    if (digitalConfirmation) {
+      const confirmed = digitalConfirmation;
+      if (!options?.skipEmail) {
+        await sendConfirmationEmail(confirmed.order, confirmed.userId, options?.transactionId, confirmed.setPasswordToken);
+      }
+      try {
+        await sendAdminSaleNotification(confirmed.order, confirmed.userId, options?.transactionId);
+      } catch {
+        console.warn("La notificación de venta digital queda pendiente.");
+      }
+    }
     if (result.success && order.orderType === "PRODUCT" && order.metadata?.deliveryProvider === "GOOGLE_DRIVE") {
       try {
-        const { deliverPaidDriveOrder } = await import("@/lib/digital-products/drive-auto-delivery");
-        await deliverPaidDriveOrder(order.id);
+        const { deliverOrderDriveProducts } = await import("@/lib/digital-products/drive-auto-delivery");
+        await deliverOrderDriveProducts(order.id);
       } catch { console.warn("Entrega Drive pendiente; el pago confirmado se conserva."); }
     }
     return result;
@@ -600,10 +640,11 @@ interface FindOrCreateUserResult {
  */
 async function findOrCreateUserForGuest(
   email: string,
-  name?: string | null
+  name?: string | null,
+  db: Prisma.TransactionClient = prisma
 ): Promise<FindOrCreateUserResult> {
   // Buscar usuario existente por email
-  const existingUser = await prisma.user.findUnique({
+  const existingUser = await db.user.findUnique({
     where: { email: email.toLowerCase() },
   });
 
@@ -618,7 +659,7 @@ async function findOrCreateUserForGuest(
   const setPasswordToken = randomBytes(32).toString("hex");
   const setPasswordExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 días
 
-  const newUser = await prisma.user.create({
+  const newUser = await db.user.create({
     data: {
       email: email.toLowerCase(),
       name: name || null,
@@ -628,7 +669,7 @@ async function findOrCreateUserForGuest(
   });
 
   // Guardar token para establecer contraseña
-  await prisma.verificationToken.create({
+  await db.verificationToken.create({
     data: {
       identifier: email.toLowerCase(),
       token: setPasswordToken,

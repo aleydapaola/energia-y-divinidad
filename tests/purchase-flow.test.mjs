@@ -25,6 +25,9 @@ function load(relative, dependencies = {}) {
       return load("lib/commercial-policy.ts");
     }
 
+    if (name === "@/lib/checkout/digital-products") {
+      return load("lib/checkout/digital-products.ts", dependencies);
+    }
     if (name === "@/lib/checkout/hold-store") {
       return holdStore;
     }
@@ -81,13 +84,14 @@ const req = (body) =>
   });
 const base = {
   _id: "digital-1",
+  status: "active",
   title: "Audio de prueba",
   productType: "digital",
   price: 80000,
   priceUSD: 20,
 };
 function catalog(doc = base) {
-  const query = { fetch: async () => doc };
+  const query = { fetch: async (_query, { id }) => Array.isArray(doc) ? doc.find((product) => product._id === id) : doc };
   return load("lib/checkout/catalog-quote.ts", {
     "@/sanity/lib/client": { client: { withConfig: () => query } },
     "@/sanity/lib/projections": load("sanity/lib/projections.ts"),
@@ -264,9 +268,28 @@ test("Preview never exposes the real Bre-B key or QR; production fails closed wi
     }
   }
 });
-function checkoutHarness(scheduling = {}) {
+function checkoutHarness(scheduling = {}, { owns = false, products } = {}) {
   const orders = [];
   let delivered = 0;
+  const providerKeys = [];
+  const db = {
+    $executeRaw: async () => 1,
+    $transaction: async (run) => run(db),
+    user: { findUnique: async () => ({ email: "preview@example.com", emailVerified: new Date() }) },
+    entitlement: { findFirst: async () => owns ? { id: "owned" } : null },
+    order: {
+      findFirst: async ({ where }) => orders.find((order) =>
+        order.digitalProducts?.some((line) => where.digitalProducts.some.productId.in.includes(line.productId))) ?? null,
+      create: async ({ data }) => {
+        const order = { paymentStatus: "PENDING", ...data, id: "order-1", createdAt: new Date(),
+          ...(data.digitalProducts ? { digitalProducts: data.digitalProducts.create } : {}) };
+        orders.push(order);
+        return order;
+      },
+      update: async () => {},
+      updateMany: async ({ data }) => { Object.assign(orders[0], data); return { count: 1 }; },
+    },
+  };
   const checkout = load("lib/checkout/one-time-checkout.ts", {
     "@/lib/session-scheduling": scheduling,
     "@/lib/auth": {
@@ -276,7 +299,7 @@ function checkoutHarness(scheduling = {}) {
     "@/lib/checkout/discounts": {
       applyCheckoutDiscount: async ({ amount }) => ({ finalAmount: amount, discountAmount: 0 }),
     },
-    "@/lib/checkout/catalog-quote": catalog(),
+    "@/lib/checkout/catalog-quote": catalog(products),
     "@/lib/order-access": { allowOrderInBrowser: async () => {} },
     "@/lib/payment-processor": {
       processApprovedPayment: async () => {
@@ -286,28 +309,16 @@ function checkoutHarness(scheduling = {}) {
     },
     "@/lib/paypal": {
       isPayPalConfigured: () => true,
-      createPayPalOrder: async () => ({
-        success: true,
-        orderId: "pp-order",
-        approvalUrl: "https://sandbox.paypal.com/test",
-      }),
-    },
-    "@/lib/prisma": {
-      prisma: {
-        order: {
-          create: async ({ data }) => {
-            const o = { ...data, id: "order-1" };
-            orders.push(o);
-            return o;
-          },
-          update: async () => {},
-        },
+      createPayPalOrder: async (_data, requestId) => {
+        providerKeys.push(requestId);
+        return { success: true, orderId: "pp-order", approvalUrl: "https://sandbox.paypal.com/test" };
       },
     },
+    "@/lib/prisma": { prisma: db },
     "@/lib/rate-limit": { applyRateLimit: () => null },
     "@/lib/utils": { getAppUrl: () => "https://preview.test" },
   });
-  return { ...checkout, orders, delivered: () => delivered };
+  return { ...checkout, orders, providerKeys, delivered: () => delivered };
 }
 test("Bre-B creates one pending order at server price, without entitlement or booking", async () => {
   const h = checkoutHarness();
@@ -333,6 +344,51 @@ test("PayPal uses authoritative USD price and remains pending until provider con
   assert.equal(h.orders[0].amount, 20);
   assert.equal(h.delivered(), 0);
 });
+const cartSelection = {
+  productType: "product",
+  checkoutKey: "6d057cba-265f-485c-a20b-2ae4020cdad2",
+  products: [{ id: base._id, amount: 20 }, { id: "digital-2", amount: 12.25 }],
+};
+const twoDigitalProducts = [
+  base,
+  { ...base, _id: "digital-2", title: "Guía de prueba", priceUSD: 12.25, price: 40_000 },
+];
+test("both payment methods create one priced order with a snapshot per digital product", async () => {
+  for (const method of ["paypal", "breb"]) {
+    const h = checkoutHarness({}, { products: twoDigitalProducts });
+    const cart = method === "paypal" ? cartSelection : {
+      ...cartSelection,
+      products: [{ id: base._id, amount: 80_000 }, { id: "digital-2", amount: 40_000 }],
+    };
+    assert.equal((await h.oneTimeCheckout(req(cart), method)).status, 200);
+    assert.equal((await h.oneTimeCheckout(req(cart), method)).status, 200);
+    assert.equal(h.orders.length, 1);
+    assert.equal(h.delivered(), 0);
+    assert.equal(h.orders[0].amount, method === "paypal" ? 32.25 : 120_000);
+    assert.deepEqual(h.orders[0].digitalProducts.map(({ productId, currency }) => ({ productId, currency })),
+      cart.products.map(({ id }) => ({ productId: id, currency: method === "paypal" ? "USD" : "COP" })));
+    assert.deepEqual(h.providerKeys, method === "paypal" ? ["order-1"] : []);
+    assert.equal((await h.oneTimeCheckout(req(cart), method === "paypal" ? "breb" : "paypal")).status, 400);
+  }
+});
+
+test("a digital cart cannot charge with tampered totals, bad line prices, duplicates, ownership or removed products", async () => {
+  for (const { body = cartSelection, products = twoDigitalProducts, owns = false } of [
+    { body: { ...cartSelection, amount: 1 } },
+    { body: { ...cartSelection, products: [cartSelection.products[0], { id: "digital-2", amount: 1 }] } },
+    { body: { ...cartSelection, products: [cartSelection.products[0], cartSelection.products[0]] } },
+    { owns: true },
+    { products: [base] },
+    { products: [base, { ...twoDigitalProducts[1], status: "discontinued" }] },
+    { products: [base, { ...twoDigitalProducts[1], priceUSD: undefined }] },
+  ]) {
+    const h = checkoutHarness({}, { owns, products });
+    assert.equal((await h.oneTimeCheckout(req(body), "paypal")).status, 400);
+    assert.deepEqual(h.orders, []);
+    assert.deepEqual(h.providerKeys, []);
+  }
+});
+
 test("unsupported checkout kind is rejected before creating any order", async () => {
   const h = checkoutHarness();
   const response = await h.oneTimeCheckout(
@@ -685,6 +741,11 @@ test("digital product pages display the same nested or legacy CMS price that che
       "@/components/layout/Footer": { Footer: () => null },
       "@/lib/auth": { auth: async () => null },
       "./DigitalProductCheckout": { DigitalProductCheckout: () => null },
+      "@/components/products/FreeProductViewer": { FreeProductViewer: () => null },
+      "@/lib/digital-products/free-product": {},
+      "@/components/products/DigitalCartButton": { DigitalCartButton: () => null },
+      "@/lib/digital-products/drive-delivery": {},
+      "@/lib/prisma": { prisma: {} },
     };
     const quote = await load("lib/checkout/catalog-quote.ts", deps).quoteCatalogItem({
       productType: "product",
@@ -694,9 +755,10 @@ test("digital product pages display the same nested or legacy CMS price that che
     const detail = await load("app/productos/[slug]/page.tsx", deps).default({
       params: Promise.resolve({ slug: doc.slug.current }),
     });
-    const form = detail.props.children.props.children.find((n) => n?.props?.product);
-    assert.equal(form.props.product.priceUSD, quote.amount);
-    assert.equal(form.props.product.price, nested ? 120000 : 80000);
+    const form = detail.props.children.props.children.flatMap((node) => node?.props?.children || [])
+      .find((node) => node?.props?.products);
+    assert.equal(form.props.products[0].priceUSD, quote.amount);
+    assert.equal(form.props.products[0].price, nested ? 120000 : 80000);
     const listing = await load("app/productos/page.tsx", deps).default();
     const html = renderToStaticMarkup(listing);
     assert.match(html, nested ? /120\.000 COP/ : /80\.000 COP/);

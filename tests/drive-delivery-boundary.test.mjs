@@ -31,7 +31,7 @@ test("delivery retry passes only the path order and authenticated ID; forged for
   const response = await route.POST(new Request("https://preview.energiaydivinidad.com/retry", {
     method: "POST", body: JSON.stringify({ email: "outsider@example.test", folderId: "arbitrary-folder", userId: "admin" }),
   }), { params: Promise.resolve({ id: "another-order" }) });
-  assert.deepEqual(calls, [["another-order", "buyer"]]); assert.equal(response.status, 404);
+  assert.deepEqual(calls, [["another-order", "buyer", undefined]]); assert.equal(response.status, 404);
 });
 
 test("actual Drive payment email keeps recipients and links in Preview even with Production URL configuration", async () => {

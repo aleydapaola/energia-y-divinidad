@@ -2,28 +2,31 @@ import { prisma } from "@/lib/prisma";
 
 import { assertPrivateFolder, assertPrivatePermissions, connectedDrive, driveFetch, drivePermissions, validDriveId, type DrivePermission } from "./drive-api";
 import { driveEnvironment } from "./drive-config";
-import { activeProductEntitlement } from "./drive-delivery";
+import { activeProductEntitlement, driveDeliveryForProduct } from "./drive-delivery";
 import { applyDriveFilePolicy } from "./drive-file-policy";
 
 type DeliveryResult = { delivered: boolean; reason?: "PAYMENT_PENDING" | "IDENTITY_UNVERIFIED" | "REVIEW_REQUIRED" | "DRIVE_UNAVAILABLE" | "NOT_FOUND" };
 
 /** A delivery retry never captures, confirms or changes payment. No email/folder parameters. */
-export async function deliverPaidDriveOrder(orderId: string, requestingUserId?: string): Promise<DeliveryResult> {
+export async function deliverPaidDriveOrder(orderId: string, requestingUserId?: string, productId?: string): Promise<DeliveryResult> {
   try {
     const environment = driveEnvironment();
-    const candidate = await prisma.order.findUnique({ where: { id: orderId }, include: { driveDelivery: true } });
-    if (!candidate?.driveDelivery || candidate.orderType !== "PRODUCT" || candidate.driveDelivery.environment !== environment ||
+    const candidate = await prisma.order.findUnique({ where: { id: orderId } });
+    const pending = await driveDeliveryForProduct(prisma, orderId, productId);
+    if (!candidate || !pending || candidate.orderType !== "PRODUCT" || pending.environment !== environment ||
         (requestingUserId && candidate.userId !== requestingUserId)) { return { delivered: false, reason: "NOT_FOUND" }; }
     if (candidate.paymentStatus !== "COMPLETED") { return { delivered: false, reason: "PAYMENT_PENDING" }; }
-    const folderId = candidate.driveDelivery.folderId;
+    const folderId = pending.folderId;
+    const resourceId = productId ?? candidate.itemId;
     return await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fulfillment:${orderId}`}))`;
       // Drive does not support concurrent permission changes on one file. Serialize per folder,
       // including different paid orders for the same product, and list before every create.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`drive-folder-acl:${folderId}`}))`;
       const order = await tx.order.findUnique({ where: { id: orderId }, include: {
-        driveDelivery: true, user: { select: { id: true, email: true, emailVerified: true } },
+        user: { select: { id: true, email: true, emailVerified: true } },
       } });
-      const delivery = order?.driveDelivery;
+      const delivery = await driveDeliveryForProduct(tx, orderId, productId);
       if (!order || !delivery || !order.userId || (requestingUserId && order.userId !== requestingUserId) ||
           delivery.environment !== environment || delivery.folderId !== folderId) { return { delivered: false, reason: "NOT_FOUND" as const }; }
       if (order.paymentStatus !== "COMPLETED") { return { delivered: false, reason: "PAYMENT_PENDING" as const }; }
@@ -32,8 +35,8 @@ export async function deliverPaidDriveOrder(orderId: string, requestingUserId?: 
         return { delivered: false, reason: "IDENTITY_UNVERIFIED" as const };
       }
       if (!["PENDING_ACCESS", "GRANTED"].includes(delivery.status) || delivery.recipientEmail !== email ||
-          !await tx.entitlement.findFirst({ where: { ...activeProductEntitlement(order.userId, order.itemId), orderId } }) ||
-          !await tx.productDriveFolder.findFirst({ where: { environment, productId: order.itemId, folderId: delivery.folderId } })) {
+          !await tx.entitlement.findFirst({ where: { ...activeProductEntitlement(order.userId, resourceId), orderId } }) ||
+          !await tx.productDriveFolder.findFirst({ where: { environment, productId: resourceId, folderId: delivery.folderId } })) {
         return { delivered: false, reason: "REVIEW_REQUIRED" as const };
       }
       const drive = await connectedDrive();
@@ -43,7 +46,7 @@ export async function deliverPaidDriveOrder(orderId: string, requestingUserId?: 
       await assertPrivateFolder(drive.connection.rootFolderId, drive, true);
       const readers = await assertPrivateFolder(delivery.folderId, drive);
       const files = await tx.productDriveUpload.findMany({ where: { verifiedAt: { not: null },
-        folder: { environment, productId: order.itemId, folderId: delivery.folderId } }, select: { fileId: true, contentType: true } });
+        folder: { environment, productId: resourceId, folderId: delivery.folderId } }, select: { fileId: true, contentType: true } });
       if (!files.length) { return { delivered: false, reason: "REVIEW_REQUIRED" as const }; }
       for (const file of files) {
         assertPrivatePermissions(await drivePermissions(file.fileId, drive.accessToken), drive.connection.ownerPermissionId,
@@ -66,7 +69,7 @@ export async function deliverPaidDriveOrder(orderId: string, requestingUserId?: 
         throw new Error("Drive did not confirm this buyer's reader permission.");
       }
       if (delivery.status === "GRANTED") { return { delivered: true }; }
-      await tx.driveProductDelivery.update({ where: { orderId }, data: {
+      await tx.driveProductDelivery.update({ where: { id: delivery.id }, data: {
         status: "GRANTED", grantedAt: new Date(), grantedBy: "DRIVE_API", pendingRecipientEmail: null, revision: { increment: 1 },
       } });
       await tx.auditLog.create({ data: { actorId: order.userId, actorEmail: email, entityType: "order", entityId: orderId,
@@ -77,5 +80,17 @@ export async function deliverPaidDriveOrder(orderId: string, requestingUserId?: 
     // Permission may already exist if a response/DB commit was lost. Next retry lists first.
     // No payment update, provider call, raw OAuth error, token or folder URL here.
     return { delivered: false, reason: "DRIVE_UNAVAILABLE" };
+  }
+}
+
+export async function deliverOrderDriveProducts(orderId: string) {
+  const lines = await prisma.orderDigitalProduct.findMany({
+    where: { orderId, driveDelivery: { status: "PENDING_ACCESS" } }, select: { productId: true },
+  });
+  if (!lines.length) {
+    await deliverPaidDriveOrder(orderId);
+  }
+  for (const { productId } of lines) {
+    await deliverPaidDriveOrder(orderId, undefined, productId);
   }
 }

@@ -170,9 +170,11 @@ function deliveryFixture({ paid = true, granted = false, reader = true, entitled
       updateMany: async (args) => { changes.push(["entitlement", args]); return { count: 1 }; },
     },
     driveProductDelivery: {
+      findUnique: async () => order.driveDelivery,
+      updateMany: async (args) => { Object.assign(order.driveDelivery, args.data, { revision: order.driveDelivery.revision + 1 }); return { count: 1 }; },
       findFirst: async ({ where }) => {
-        assert.equal(where.order.entitlements.some.type, "PRODUCT");
-        assert.equal(where.order.entitlements.some.resourceId, "product");
+        assert.equal(where.OR[0].order.entitlements.some.type, "PRODUCT");
+        assert.equal(where.OR[0].order.entitlements.some.resourceId, "product");
         return anotherPurchase ? { orderId: "another-paid-order" } : null;
       },
       update: async (args) => { changes.push(["delivery", args]); Object.assign(order.driveDelivery, args.data, { revision: order.driveDelivery.revision + 1 }); return order.driveDelivery; },
@@ -266,7 +268,8 @@ function automaticFixture() {
       return folderMatches ? { id: "folder-record" } : null;
     } },
     productDriveUpload: { findMany: async () => [{ fileId: "file_1234567890", contentType: "application/pdf" }] },
-    driveProductDelivery: { update: async ({ data }) => {
+    orderDigitalProduct: { findMany: async () => [] },
+    driveProductDelivery: { findUnique: async () => order.driveDelivery, update: async ({ data }) => {
       if (failCommit) { throw new Error("Synthetic lost DB response"); }
       calls.push(["delivery", data.status]); Object.assign(order.driveDelivery, data);
     } },
@@ -275,7 +278,8 @@ function automaticFixture() {
   const drive = { accessToken: "synthetic", ownerEmail: "owner@example.test", connection: { rootFolderId: "root_1234567890" } };
   const service = load("lib/digital-products/drive-auto-delivery.ts", {
     "@/lib/prisma": { prisma: db }, "./drive-config": { driveEnvironment: () => "preview" },
-    "./drive-delivery": { activeProductEntitlement: (userId, resourceId) => ({ userId, resourceId }) },
+    "./drive-delivery": { activeProductEntitlement: (userId, resourceId) => ({ userId, resourceId }),
+      driveDeliveryForProduct: (client, orderId) => client.driveProductDelivery.findUnique({ where: { orderId } }) },
     "./drive-file-policy": { applyDriveFilePolicy: async (id, mime, policy) => {
       assert.equal(id, "file_1234567890"); assert.equal(mime, "application/pdf"); assert.equal(policy, "PAID_DOWNLOAD");
     } },
@@ -311,8 +315,8 @@ test("automatic delivery grants only the server's verified owner and product fol
   assert.deepEqual(await service.deliverPaidDriveOrder("order", "buyer"), { delivered: true });
   assert.equal(order.driveDelivery.status, "GRANTED");
   assert.equal(order.paymentStatus, "COMPLETED");
-  assert.deepEqual(calls.map(([operation]) => operation), ["lock", "create", "confirm", "delivery", "audit"]);
-  assert.equal(calls[0][1], "drive-folder-acl:folder_1234567890");
+  assert.deepEqual(calls.map(([operation]) => operation), ["lock", "lock", "create", "confirm", "delivery", "audit"]);
+  assert.equal(calls[1][1], "drive-folder-acl:folder_1234567890");
   await service.deliverPaidDriveOrder("order", "buyer");
   assert.equal(calls.filter(([operation]) => operation === "create").length, 1);
   assert.equal(calls.filter(([operation]) => operation === "audit").length, 1);
@@ -514,4 +518,58 @@ test("a free audio is rejected before applying an unplayable restriction; a move
   assert.equal(calls, 0);
   await assert.rejects(service.applyDriveFilePolicy("file_1234567890", "application/pdf", "PAID_DOWNLOAD", "synthetic", { folderId: "folder", ownerId: "owner" }), /carpeta privada/);
   assert.equal(calls, 1);
+});
+
+test("a paid cart grants both permanent rights once and retries failed Drive lines independently", async () => {
+  const lines = [{ productId: "audio", title: "Audio" }, { productId: "guide", title: "Guía" }];
+  const order = {
+    id: "cart-order", userId: "buyer", paymentStatus: "COMPLETED",
+    paymentMethod: "PAYPAL_DIRECT", orderType: "PRODUCT", digitalProducts: lines,
+    itemName: "Audio, Guía", amount: 20, currency: "USD", orderNumber: "QA-cart",
+    metadata: { deliveryProvider: "GOOGLE_DRIVE" },
+    user: { id: "buyer", email: "buyer@example.test", name: "QA" },
+  };
+  let transactionQueue = Promise.resolve();
+  const rights = [];
+  const email = [];
+  const deliveries = [];
+  const pending = new Set(lines.map(({ productId }) => productId));
+  let firstAttempt = true;
+  const db = {
+    $executeRaw: async () => 1,
+    $transaction: (run) => {
+      transactionQueue = transactionQueue.then(() => run(db));
+      return transactionQueue;
+    },
+    order: { findUnique: async () => order },
+    entitlement: {
+      findMany: async () => rights,
+      createMany: async ({ data }) => { rights.push(...data); return { count: data.length }; },
+    },
+  };
+  const processor = load("lib/payment-processor.ts", {
+    "@/lib/prisma": { prisma: db }, "@/lib/checkout/hold-store": {}, "@/lib/course-access": {},
+    "@/lib/discount-codes": {}, "@/lib/events/capacity": {}, "@/lib/google-calendar": {},
+    "@/lib/sanity/queries/events": {}, "@/lib/sanity/queries/sessionConfig": {},
+    "@/lib/session-duration": {}, "@/lib/session-scheduling": {},
+    "@/lib/email": { sendPaymentConfirmationEmail: async (confirmation) => { email.push(confirmation); },
+      sendAdminNotificationEmail: async () => {} },
+    "@/lib/digital-products/drive-auto-delivery": {
+      deliverOrderDriveProducts: async () => {
+        for (const productId of pending) {
+          deliveries.push(productId);
+          if (productId === "audio" || !firstAttempt) { pending.delete(productId); }
+        }
+        firstAttempt = false;
+      },
+    },
+  });
+  const results = await Promise.all([processor.processApprovedPayment(order), processor.processApprovedPayment(order)]);
+  assert.ok(results.every(({ success }) => success));
+  assert.deepEqual(rights.map(({ orderId, resourceId, expiresAt }) => ({ orderId, resourceId, expiresAt })),
+    lines.map(({ productId }) => ({ orderId: order.id, resourceId: productId, expiresAt: undefined })));
+  assert.deepEqual(deliveries, ["audio", "guide", "guide"]);
+  assert.equal(order.paymentStatus, "COMPLETED");
+  assert.equal(email.length, 1);
+  assert.equal(email[0].itemName, "Audio, Guía");
 });

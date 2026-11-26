@@ -12,8 +12,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (limited) { return limited; }
   try {
     assertDriveOrigin(request);
-    // The request carries only the order path; recipient and folder come from server records.
-    const result = await deliverPaidDriveOrder((await params).id, session.user.id);
+    // The order and optional product select a delivery; recipient and folder come from server records.
+    const result = await deliverPaidDriveOrder((await params).id, session.user.id, new URL(request.url).searchParams.get("producto") ?? undefined);
     return NextResponse.json(result, { status: result.reason === "NOT_FOUND" ? 404 : 200, headers: driveNoStore });
   } catch {
     return NextResponse.json({ delivered: false }, { status: 403, headers: driveNoStore });

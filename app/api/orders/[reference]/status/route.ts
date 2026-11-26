@@ -49,6 +49,7 @@ export async function GET(
         orderType: true,
         itemId: true,
         itemName: true,
+        digitalProducts: { select: { productId: true, title: true, amount: true } },
         amount: true,
         currency: true,
         paymentMethod: true,
@@ -91,6 +92,7 @@ export async function GET(
       orderType: order.orderType,
       itemName: order.itemName,
       itemId: order.itemId,
+      digitalProducts: order.digitalProducts?.map((line) => ({ ...line, amount: Number(line.amount) })) ?? [],
       currency: order.currency,
       paymentMethod: order.paymentMethod,
       metadata: {

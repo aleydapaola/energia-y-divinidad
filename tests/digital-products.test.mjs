@@ -153,21 +153,30 @@ function delivery({
     "@/lib/auth": { auth: async () => (userId ? { user: { id: userId } } : null) },
     "@/lib/digital-products/files": files,
     "@/lib/digital-products/storage": { productStorageConfig: () => config },
+    "@/lib/digital-products/owned-files": load("lib/digital-products/owned-files.ts", {
+      "@/lib/digital-products/drive-delivery": {
+        activeProductEntitlement: (userId, resourceId) => ({
+          userId, resourceId, type: "PRODUCT", revoked: false,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        }),
+      },
     "@/lib/prisma": {
       prisma: {
+        orderDigitalProduct: { findMany: async () => [] },
         entitlement: {
-          findFirst: async ({ where }) => {
+          findMany: async ({ where }) => {
             assert.equal(where.userId, userId);
             assert.equal(where.type, "PRODUCT");
             assert.equal(where.resourceId, "p1");
             assert.equal(where.revoked, false);
             assert.equal(where.OR[0].expiresAt, null);
             assert.ok(where.OR[1].expiresAt.gt instanceof Date);
-            return entitled ? { id: "entitlement" } : null;
+            return entitled ? [{ orderId: null }] : [];
           },
         },
       },
     },
+    }),
     "@/sanity/lib/client": {
       client: {
         withConfig: () => ({
@@ -362,7 +371,7 @@ test("product form starts with an available method and submits the matching curr
   ]) {
     let sent;
     const component = load("app/productos/[slug]/DigitalProductCheckout.tsx", {
-      react: { ...require("react"), useState: (value) => [value, () => {}] },
+      react: { ...require("react"), useState: (value) => [value, () => {}], useRef: (current) => ({ current }) },
       "next/navigation": { useRouter: () => ({ push: () => {} }) },
       "next-auth/react": {
         useSession: () => ({ data: { user: { email: "buyer@example.invalid" } } }),
@@ -372,7 +381,7 @@ test("product form starts with an available method and submits the matching curr
       "@/components/checkout/PurchasePolicy": { PurchasePolicy: () => null },
     });
     const form = component.DigitalProductCheckout({
-      product: { id: "p1", title: "Producto", ...scenario.product },
+      products: [{ id: "p1", title: "Producto", ...scenario.product }],
     });
     const html = renderToStaticMarkup(form);
     assert.match(html, new RegExp(scenario.label));

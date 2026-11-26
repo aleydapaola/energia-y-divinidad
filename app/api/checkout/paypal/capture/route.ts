@@ -69,6 +69,17 @@ export async function POST(request: NextRequest) {
     if (!["PENDING", "PROCESSING"].includes(order.paymentStatus)) {
       return NextResponse.json({ error: "Este pedido no admite cobros." }, { status: 409 });
     }
+    const digitalOrder = (order.metadata as { digitalProductOrder?: boolean } | null)?.digitalProductOrder;
+    if (digitalOrder && order.paymentStatus === "PENDING") {
+      // Cancellation competes for the same state transition. After capture starts,
+      // uncertain responses stay PROCESSING and reuse PayPal's capture key.
+      const claimed = await prisma.order.updateMany({
+        where: { id: order.id, paymentStatus: "PENDING" }, data: { paymentStatus: "PROCESSING" },
+      });
+      if (!claimed.count) {
+        return NextResponse.json({ error: "El pedido ha cambiado. Consulta su estado." }, { status: 409 });
+      }
+    }
     // Inventory becomes non-expiring before the external call. Keep it on an
     // uncertain response; a provider retry always uses the same idempotency key.
     await protectCheckoutPayment(order.id, "CAPTURING");
@@ -108,20 +119,25 @@ export async function POST(request: NextRequest) {
     console.log("[PAYPAL/CAPTURE] Capture verified:", captureResult.captureId);
 
     // Actualizar orden como completada
-    order = await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        paymentStatus: "COMPLETED",
-        metadata: {
-          ...(order.metadata as object),
-          paypalCaptureId: captureResult.captureId,
-          paypalCaptureStatus: captureResult.status,
-          paypalPayerEmail: captureResult.payerEmail,
-          capturedAt: new Date().toISOString(),
-        },
+    const paymentData = {
+      paymentStatus: "COMPLETED" as const,
+      metadata: {
+        ...(order.metadata as object),
+        paypalCaptureId: captureResult.captureId,
+        paypalCaptureStatus: captureResult.status,
+        ...(captureResult.payerEmail ? { paypalPayerEmail: captureResult.payerEmail } : {}),
+        capturedAt: new Date().toISOString(),
       },
-      include: { user: true },
-    });
+    };
+    if (digitalOrder) {
+      await prisma.order.updateMany({ where: { id: order.id, paymentStatus: "PROCESSING" }, data: paymentData });
+      order = await prisma.order.findUniqueOrThrow({ where: { id: order.id }, include: { user: true } });
+      if (order.paymentStatus !== "COMPLETED") {
+        return NextResponse.json({ error: "Consulta el estado del pedido antes de volver a pagar." }, { status: 409 });
+      }
+    } else {
+      order = await prisma.order.update({ where: { id: order.id }, data: paymentData, include: { user: true } });
+    }
 
     // Procesar el pago aprobado (crear membresía, booking, etc.)
     try {

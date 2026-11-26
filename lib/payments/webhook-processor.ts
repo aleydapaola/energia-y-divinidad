@@ -224,18 +224,32 @@ export async function processPaymentWebhook(
     // 6. Actualizar orden con estado del webhook
     const paymentStatus = mapToPaymentStatus(verificationResult.status || "PENDING");
 
-    await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        paymentStatus,
-        metadata: {
-          ...(order.metadata as object),
-          [`${gatewayName}TransactionId`]: verificationResult.transactionId,
-          [`${gatewayName}Status`]: verificationResult.status,
-          [`${gatewayName}UpdatedAt`]: new Date().toISOString(),
-        },
+    const data = {
+      paymentStatus,
+      metadata: {
+        ...(order.metadata as object),
+        [`${gatewayName}TransactionId`]: verificationResult.transactionId,
+        [`${gatewayName}Status`]: verificationResult.status,
+        [`${gatewayName}UpdatedAt`]: new Date().toISOString(),
       },
-    });
+    };
+    if ((order.metadata as { digitalProductOrder?: boolean } | null)?.digitalProductOrder) {
+      if (paymentStatus !== "PENDING") {
+        const changed = await prisma.order.updateMany({
+          where: {
+            id: order.id,
+            paymentStatus: paymentStatus === "COMPLETED" ? "PROCESSING" : { in: ["PENDING", "PROCESSING"] },
+          },
+          data,
+        });
+        if (!changed.count && !(paymentStatus === "COMPLETED" && order.paymentStatus === "COMPLETED")) {
+          await markEventProcessed(eventId);
+          return { success: true, processed: false, eventId };
+        }
+      }
+    } else {
+      await prisma.order.update({ where: { id: order.id }, data });
+    }
 
     // 7. Si el pago fue aprobado, procesar
     if (verificationResult.status === "APPROVED") {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { ownedProductFiles, type LegacyProductFiles } from "@/lib/digital-products/owned-files";
 import { client } from "@/sanity/lib/client";
 
 import type { PrivateProductFile } from "@/lib/digital-products/files";
@@ -12,22 +12,19 @@ export default async function OwnedProduct({ params }: { params: Promise<{ id: s
   if (!session?.user?.id) {
     redirect(`/auth/signin?callbackUrl=${encodeURIComponent(`/mi-cuenta/productos/${id}`)}`);
   }
-  const access = await prisma.entitlement.findFirst({
-    where: {
-      userId: session.user.id,
-      type: "PRODUCT",
-      resourceId: id,
-      revoked: false,
-      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-    },
-  });
+  const access = await ownedProductFiles(session.user.id, id);
   if (!access) {
     notFound();
   }
-  const product = await client.fetch(
-    `*[_type == "product" && _id == $id][0]{title,digitalDeliveryVersion,digitalFiles[]{_key,title,description,asset->{url,originalFilename}},privateDigitalFiles[]{_key,title,description,originalFilename,size}}`,
-    { id }
-  );
+  const snapshot = access.snapshots[0];
+  const product = snapshot ? { title: snapshot.title, digitalDeliveryVersion: 1, ...snapshot.files }
+    : access.allowCatalogFiles ? await client.fetch<LegacyProductFiles & { title: string; digitalDeliveryVersion?: number } | null>(
+      `*[_type == "product" && _id == $id][0]{title,digitalDeliveryVersion,digitalFiles[]{_key,title,description,asset->{url,originalFilename}},privateDigitalFiles[]{_key,title,description,originalFilename,size}}`,
+      { id }
+    ) : null;
+  if (!product && !access.allowCatalogFiles) {
+    redirect("/mi-cuenta/compras");
+  }
   if (!product) {
     notFound();
   }

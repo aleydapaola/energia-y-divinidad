@@ -17,7 +17,15 @@ export async function POST(
   if (input?.confirmNoPayment !== true) {
     return NextResponse.json({ error: "Confirma que no has realizado el pago." }, { status: 400 });
   }
+  const digital = order.paymentMethod === "PAYPAL_DIRECT" &&
+    (order.metadata as { digitalProductOrder?: boolean } | null)?.digitalProductOrder;
   const cancelled = await prisma.$transaction(async (tx) => {
+    if (digital) {
+      const changed = await tx.order.updateMany({
+        where: { id: order.id, paymentStatus: "PENDING" }, data: { paymentStatus: "CANCELLED" },
+      });
+      return changed.count === 1;
+    }
     await lockCheckoutInventory(tx, order);
     const hold = await tx.checkoutHold.findUnique({ where: { orderId: order.id } });
     if (

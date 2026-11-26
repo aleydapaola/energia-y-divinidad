@@ -2174,6 +2174,9 @@ interface SendPaymentConfirmationEmailParams {
 }
 
 export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmationEmailParams) {
+  const safeItemName = params.itemName.replace(/[&<>"]/g, (character) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;",
+  })[character] ?? character);
   const {
     email,
     name,
@@ -2385,7 +2388,7 @@ export async function sendPaymentConfirmationEmail(params: SendPaymentConfirmati
                           <tr>
                             <td style="padding: 25px;">
                               <h3 style="margin: 0 0 20px; font-size: 18px; color: #8A4BAF;">
-                                ${itemName}
+                                ${safeItemName}
                               </h3>
                               <table role="presentation" style="width: 100%; border-collapse: collapse;">
                                 <tr>

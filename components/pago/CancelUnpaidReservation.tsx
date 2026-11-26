@@ -5,8 +5,10 @@ import { useState } from "react";
 export function CancelUnpaidReservation({
   reference,
   onCancelled,
+  digital = false,
 }: {
   reference: string;
+  digital?: boolean;
   onCancelled?: () => void;
 }) {
   const [checked, setChecked] = useState(false),
@@ -40,7 +42,7 @@ export function CancelUnpaidReservation({
           if (!response.ok) {
             throw new Error(data.error);
           }
-          setMessage("Pedido sin pagar cancelado. La hora o plaza queda disponible de nuevo.");
+          setMessage(digital ? "Pedido sin pagar cancelado." : "Pedido sin pagar cancelado. La hora o plaza queda disponible de nuevo.");
           setDone(true);
           onCancelled?.();
         } catch (error) {
@@ -50,13 +52,13 @@ export function CancelUnpaidReservation({
         }
       }}
     >
-      <p>Si quieres elegir otra hora o plaza, puedes liberar esta reserva sin pagar.</p>
+      {!digital && <p>Si quieres elegir otra hora o plaza, puedes liberar esta reserva sin pagar.</p>}
       <label className="flex gap-2">
         <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
         No he realizado ninguna transferencia ni completado el pago de este pedido.
       </label>
       <button disabled={!checked || busy} className="underline disabled:opacity-50">
-        {busy ? "Liberando…" : "Cancelar pedido sin pagar y liberar reserva"}
+        {busy ? "Cancelando…" : digital ? "Cancelar pedido sin pagar" : "Cancelar pedido sin pagar y liberar reserva"}
       </button>
       {message && <p role="status">{message}</p>}
       <Link className="block underline" href="/contacto">

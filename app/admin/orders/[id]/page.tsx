@@ -15,6 +15,7 @@ import { notFound } from "next/navigation";
 import { AdminDriveDeliveryControls } from "@/components/checkout/DriveDeliveryControls";
 import { BOOKING_TIME_ZONE } from "@/lib/booking-time";
 import { driveFolderUrl } from "@/lib/digital-products/drive-api";
+import { retainedDriveReader } from "@/lib/digital-products/drive-delivery";
 import { prisma } from "@/lib/prisma";
 
 import { ConfirmPaymentButton } from "./ConfirmPaymentButton";
@@ -33,6 +34,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
       manualPayment: true,
       checkoutHold: true,
       driveDelivery: true,
+      digitalProducts: { include: { driveDelivery: true } },
       user: {
         select: {
           id: true,
@@ -173,15 +175,23 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
 
   const statusConfig = getStatusConfig(order.paymentStatus);
   const delivery = order.driveDelivery;
-  const retainReader = !!delivery && !!await prisma.driveProductDelivery.findFirst({ where: {
-    environment: delivery.environment, folderId: delivery.folderId, recipientEmail: delivery.recipientEmail, orderId: { not: id }, status: { in: ["GRANTED", "PENDING_ACCESS"] },
-    order: { paymentStatus: "COMPLETED", entitlements: { some: { type: "PRODUCT", resourceId: order.itemId, revoked: false, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } } },
-  } });
+  const retainReader = !!delivery && !!await retainedDriveReader(prisma, delivery, id, order.itemId);
+  const driveProducts = await Promise.all(order.digitalProducts.flatMap((product) => {
+    const line = product.driveDelivery;
+    return line ? [retainedDriveReader(prisma, line, id, product.productId).then((retained) => ({
+      product, line, retained: !!retained,
+    }))] : [];
+  }));
 
   return (
     <div className="space-y-6">
       {delivery && <AdminDriveDeliveryControls orderId={id} revision={delivery.revision} status={delivery.status} paymentStatus={order.paymentStatus}
         recipientEmail={delivery.recipientEmail} pendingEmail={delivery.pendingRecipientEmail} folderUrl={driveFolderUrl(delivery.folderId)} retainReader={retainReader} />}
+      {driveProducts.map(({ product, line, retained }) => <AdminDriveDeliveryControls key={product.id}
+        orderId={id} productId={product.productId} title={product.title} revision={line.revision}
+        status={line.status} paymentStatus={order.paymentStatus}
+        recipientEmail={line.recipientEmail} pendingEmail={line.pendingRecipientEmail}
+        folderUrl={driveFolderUrl(line.folderId)} retainReader={retained} />)}
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link
@@ -241,7 +251,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                 simulation={simulation}
                 expectedAmount={Number(order.amount)}
                 currency={order.currency}
-                driveDelivery={!!delivery}
+                driveDelivery={!!delivery || driveProducts.length > 0}
               />
             </div>
             {order.checkoutHold &&
@@ -289,6 +299,12 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                 </div>
               </div>
 
+              {order.digitalProducts.length > 0 && <ul className="space-y-2">
+                {order.digitalProducts.map((product) => <li key={product.id} className="flex flex-wrap justify-between gap-x-3 break-words">
+                  <span>{product.title}</span>
+                  <span>{formatAmount(Number(product.amount), product.currency)}</span>
+                </li>)}
+              </ul>}
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                 <div>
                   <p className="text-sm text-gray-500 font-dm-sans">Método de pago</p>

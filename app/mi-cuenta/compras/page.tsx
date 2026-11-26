@@ -21,6 +21,9 @@ export default async function MisComprasPage() {
       manualPayment: { select: { referenceNumber: true } },
       user: { select: { email: true, emailVerified: true } },
       driveDelivery: { select: { status: true, recipientEmail: true, pendingRecipientEmail: true, environment: true } },
+      digitalProducts: { select: { id: true, title: true, productId: true, amount: true, currency: true,
+        driveDelivery: { select: { status: true, recipientEmail: true, environment: true } },
+      } },
       entitlements: { where: { type: "PRODUCT", revoked: false, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }, select: { resourceId: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -203,7 +206,7 @@ export default async function MisComprasPage() {
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-semibold text-[#654177] font-dm-sans">
-                        {canOpenDrive ? <a className="inline-block py-3 underline" href={`/api/mi-cuenta/pedidos/${encodeURIComponent(order.id)}/drive`} target="_blank" rel="noopener noreferrer">{order.itemName}</a> : order.itemName}
+                        {canOpenDrive ? <a className="inline-block py-3 underline" href={`/api/mi-cuenta/pedidos/${encodeURIComponent(order.id)}/drive`} target="_blank" rel="noopener noreferrer">{order.itemName}</a> : order.digitalProducts.length > 1 ? "Productos digitales" : order.itemName}
                       </h3>
                       <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-dm-sans">
                         {getOrderTypeLabel(order.orderType)}
@@ -256,7 +259,7 @@ export default async function MisComprasPage() {
                         </Link>
                       )}
                     {drive && !canOpenDrive && <span className="text-sm">{drive.status === "REVOKED" || order.paymentStatus === "REFUNDED" ? "Acceso retirado" : "Acceso pendiente"}</span>}
-                    {order.paymentStatus === "COMPLETED" && !drive && (
+                    {order.paymentStatus === "COMPLETED" && !drive && !order.digitalProducts.length && (
                       <Link
                         className="underline text-[#654177] py-3"
                         href={
@@ -276,6 +279,28 @@ export default async function MisComprasPage() {
                     )}
                   </div>
                 </div>
+                {order.digitalProducts.length > 0 && <ul className="mt-3 space-y-3">
+                  {order.digitalProducts.map((product) => {
+                    const delivery = product.driveDelivery;
+                    const paid = order.paymentStatus === "COMPLETED";
+                    const owned = paid && order.entitlements.some(({ resourceId }) => resourceId === product.productId);
+                    const verified = !!order.user?.emailVerified;
+                    const driveUrl = delivery && owned && verified && delivery.environment === driveEnvironment() &&
+                      delivery.status === "GRANTED" && order.user?.email?.trim().toLowerCase() === delivery.recipientEmail
+                      ? `/api/mi-cuenta/pedidos/${encodeURIComponent(order.id)}/drive?producto=${encodeURIComponent(product.productId)}`
+                      : null;
+                    return <li key={product.id} className="space-y-1 border-t pt-2 break-words">
+                      <div className="flex flex-wrap items-center justify-between gap-x-3">
+                        <strong>{product.title}</strong>
+                        <span>{formatCurrency(product.amount, product.currency)}</span>
+                      </div>
+                      {driveUrl && <a className="inline-flex min-h-11 items-center underline" href={driveUrl} target="_blank" rel="noopener noreferrer">Abrir en Drive</a>}
+                      {owned && !delivery && <Link className="inline-flex min-h-11 items-center underline" href={`/mi-cuenta/productos/${encodeURIComponent(product.productId)}`}>Acceder a los archivos</Link>}
+                      {delivery && paid && !driveUrl && <DriveBuyerDeliveryControls orderId={order.id} productId={product.productId}
+                        email={order.user?.email || ""} status={delivery.status} paid={owned} verified={verified} />}
+                    </li>;
+                  })}
+                </ul>}
                 {drive && <DriveBuyerDeliveryControls orderId={order.id} email={order.user?.email || ""} status={drive.status} paid={order.paymentStatus === "COMPLETED"} verified={!!order.user?.emailVerified} />}
               </div>
               );

@@ -7,6 +7,7 @@ import { useState, useEffect, Suspense, useRef } from "react";
 
 import { pollPaymentStatus } from "@/lib/payment-status-poll";
 import { useCartStore } from "@/lib/stores/cart-store";
+import { useDigitalCartStore } from "@/lib/stores/digital-cart-store";
 
 type PaymentStatus = "success" | "pending" | "failed" | "loading";
 
@@ -38,6 +39,14 @@ function ConfirmacionContent() {
       console.log("[CONFIRMACION] Carrito limpiado después de compra exitosa de cursos");
     }
   }, [status, orderData, clearCart]);
+  useEffect(() => {
+    if (status === "success" && orderData?.orderType === "PRODUCT") {
+      const { removeItem } = useDigitalCartStore.getState();
+      for (const line of orderData.digitalProducts ?? []) {
+        removeItem(line.productId);
+      }
+    }
+  }, [status, orderData]);
 
   useEffect(() => {
     async function checkPaymentStatus() {
@@ -202,7 +211,7 @@ function ConfirmacionContent() {
                     <span className="font-semibold">Referencia:</span> {orderData.orderNumber}
                   </p>
                   <p className="font-dm-sans text-sm text-gray-600 mt-1">
-                    <span className="font-semibold">Producto:</span> {orderData.itemName}
+                    <span className="font-semibold">Producto:</span> {orderData.digitalProducts?.length > 1 ? orderData.digitalProducts.map((line: { title: string }) => line.title).join(", ") : orderData.itemName}
                   </p>
                   <p className="font-dm-sans text-sm text-gray-600 mt-1">
                     <span className="font-semibold">Monto:</span>{" "}
@@ -236,7 +245,7 @@ function ConfirmacionContent() {
               )}
               {orderData?.orderType === "PRODUCT" && (
                 <p className="font-dm-sans text-sm text-gray-600 mb-6">
-                  {orderData?.metadata?.deliveryProvider === "GOOGLE_DRIVE" ? "Pago confirmado. El servidor concede acceso de lector a tu correo verificado. Consulta Mis Compras; si la entrega está pendiente, reintenta solo la entrega, sin volver a pagar." : "Tu producto digital está disponible en Mis Compras."}
+                  {orderData?.metadata?.deliveryProvider === "GOOGLE_DRIVE" ? "Pago confirmado. El servidor concede acceso de lector a tu correo verificado. Consulta Mis Compras; si la entrega está pendiente, reintenta solo la entrega, sin volver a pagar." : "Consulta tus productos digitales en Mis compras."}
                 </p>
               )}
             </>
@@ -256,7 +265,7 @@ function ConfirmacionContent() {
                   </p>
                   {orderData?.itemName && (
                     <p className="font-dm-sans text-sm text-gray-600 mt-1">
-                      <span className="font-semibold">Producto:</span> {orderData.itemName}
+                      <span className="font-semibold">Producto:</span> {orderData.digitalProducts?.length > 1 ? orderData.digitalProducts.map((line: { title: string }) => line.title).join(", ") : orderData.itemName}
                     </p>
                   )}
                 </div>
@@ -379,7 +388,7 @@ function ConfirmacionContent() {
             {status === "success" && orderData?.orderType === "PRODUCT" && !isGuestCheckout && (
               <Link
                 className="block underline p-3"
-                href={orderData?.metadata?.deliveryProvider === "GOOGLE_DRIVE" ? "/mi-cuenta/compras" : `/mi-cuenta/productos/${encodeURIComponent(orderData.itemId)}`}
+                href={(orderData?.metadata?.deliveryProvider === "GOOGLE_DRIVE" || orderData?.digitalProducts?.length > 1) ? "/mi-cuenta/compras" : `/mi-cuenta/productos/${encodeURIComponent(orderData.itemId)}`}
               >
                 Ver mi producto en Mis compras
               </Link>

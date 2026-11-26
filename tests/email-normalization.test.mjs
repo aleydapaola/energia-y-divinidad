@@ -194,7 +194,7 @@ test("legacy checkout validation normalizes the guest email", () => {
 test("active guest checkout stores a normalized email without contacting payment or mail providers", async () => {
   const orders = [];
   const noEffect = () => assert.fail("Unexpected external effect");
-  const { oneTimeCheckout } = loadMembership("lib/checkout/one-time-checkout.ts", {
+  const deps = {
     "@/lib/auth": { auth: () => Promise.resolve(null) },
     "@/lib/breb": { getBrebConfiguration: () => ({ enabled: true, simulation: true }) },
     "@/lib/checkout/catalog-quote": {
@@ -203,6 +203,7 @@ test("active guest checkout stores a normalized email without contacting payment
           productId: "synthetic-product",
           productName: "Synthetic QA",
           orderType: "PRODUCT",
+          amount: 10,
           metadata: {},
         }),
     },
@@ -220,10 +221,20 @@ test("active guest checkout stores a normalized email without contacting payment
     "@/lib/order-access": { allowOrderInBrowser: () => Promise.resolve() },
     "@/lib/payment-processor": { processApprovedPayment: noEffect },
     "@/lib/paypal": { createPayPalOrder: noEffect },
-    "@/lib/prisma": { prisma: {} },
+    "@/lib/prisma": { prisma: {
+      $transaction: async (run) => run({
+        $executeRaw: async () => 1,
+        user: { findUnique: async () => null },
+        order: { findFirst: async () => null, create: async ({ data }) => { orders.push(data); return data; } },
+      }),
+    } },
     "@/lib/rate-limit": { applyRateLimit: () => null },
     "@/lib/session-scheduling": {},
     "@/lib/utils": {},
+  };
+  const { oneTimeCheckout } = loadMembership("lib/checkout/one-time-checkout.ts", {
+    ...deps,
+    "@/lib/checkout/digital-products": loadMembership("lib/checkout/digital-products.ts", deps),
   });
   const response = await oneTimeCheckout(
     {

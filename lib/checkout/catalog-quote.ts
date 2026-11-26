@@ -9,6 +9,7 @@ export async function quoteCatalogItem(input: {
   currency: "COP" | "USD";
   seats?: number;
   scheduledAt?: string;
+  snapshotProductFiles?: boolean;
 }) {
   const { productType, productId, currency } = input;
   if (!["session", "pack", "event", "product", "course"].includes(productType)) {
@@ -24,20 +25,21 @@ export async function quoteCatalogItem(input: {
     priceUSD?: number;
     productType?: string;
     digitalDeliveryVersion?: number;
-    privateDigitalFiles?: { internalFileRef?: string }[];
+    privateDigitalFiles?: { internalFileRef?: string; _key: string; title?: string; description?: string; pathname?: string; originalFilename?: string }[];
+    digitalFiles?: { _key: string; title?: string; description?: string; asset?: { url?: string; originalFilename?: string } }[];
     earlyBirdPrice?: number;
     earlyBirdDeadline?: string;
     eventDate?: string;
     maxPerBooking?: number;
     capacity?: number;
     visibility?: string;
-  } | null>(`*[_type == $type && published == true && !(status in ["paused", "sold_out", "discontinued", "coming_soon", "inactive"]) && !(_id in path("drafts.**")) && ($type == "sessionConfig" || _id == $id)][0]{_id,title,status,${pricingProjection},productType,digitalDeliveryVersion,privateDigitalFiles[]{internalFileRef},earlyBirdPrice,earlyBirdDeadline,eventDate,maxPerBooking,capacity,visibility}`, { type, id: productId });
+  } | null>(`*[_type == $type && published == true && !(status in ["paused", "sold_out", "discontinued", "coming_soon", "inactive"]) && !(_id in path("drafts.**")) && ($type == "sessionConfig" || _id == $id)][0]{_id,title,status,${pricingProjection},productType,digitalDeliveryVersion,privateDigitalFiles[]{internalFileRef${input.snapshotProductFiles ? ",_key,title,description,pathname,originalFilename" : ""}}${input.snapshotProductFiles ? ",digitalFiles[]{_key,title,description,asset->{url,originalFilename}}" : ""},earlyBirdPrice,earlyBirdDeadline,eventDate,maxPerBooking,capacity,visibility}`, { type, id: productId });
   if (!doc || doc.visibility === "private") {
     throw new Error("Producto no disponible.");
   }
   if (
     productType === "product" &&
-    !["digital", "ebook", "audio", "course"].includes(doc.productType || "")
+    (doc.status !== "active" || doc.isFree === true || !["digital", "ebook", "audio", "course"].includes(doc.productType || ""))
   ) {
     throw new Error("Este checkout es para productos digitales.");
   }
@@ -94,6 +96,12 @@ export async function quoteCatalogItem(input: {
     : undefined;
   return {
     driveDelivery,
+    legacyFiles: input.snapshotProductFiles && !driveDelivery ? {
+      privateDigitalFiles: (doc.privateDigitalFiles ?? []).map(({ _key, title, description, pathname, originalFilename }) => ({
+        _key, title: title ?? null, description: description ?? null, pathname: pathname ?? null, originalFilename: originalFilename ?? null,
+      })),
+      digitalFiles: doc.digitalFiles ?? [],
+    } : undefined,
     amount,
     capacity: doc.capacity,
     productId: doc._id,

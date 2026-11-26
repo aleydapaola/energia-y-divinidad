@@ -6,8 +6,8 @@ import {
   productFilePrefix,
   type PrivateProductFile,
 } from "@/lib/digital-products/files";
+import { ownedProductFiles } from "@/lib/digital-products/owned-files";
 import { productStorageConfig } from "@/lib/digital-products/storage";
-import { prisma } from "@/lib/prisma";
 import { client } from "@/sanity/lib/client";
 
 export const dynamic = "force-dynamic";
@@ -24,22 +24,17 @@ export async function GET(
     return unavailable();
   }
   const { id, key } = await context.params;
-  const access = await prisma.entitlement.findFirst({
-    where: {
-      userId: session.user.id,
-      type: "PRODUCT",
-      resourceId: id,
-      revoked: false,
-      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-    },
-  });
+  const access = await ownedProductFiles(session.user.id, id);
   if (!access) {
     return unavailable();
   }
-  const product = await client.withConfig({ useCdn: false }).fetch<{
-    privateDigitalFiles?: PrivateProductFile[];
-  } | null>('*[_type == "product" && _id == $id][0]{privateDigitalFiles[]{_key,pathname,originalFilename}}', { id }, { cache: "no-store" });
-  const file = product?.privateDigitalFiles?.find((item) => item._key === key);
+  let file = access.snapshots.flatMap(({ files }) => files.privateDigitalFiles ?? []).find((item) => item._key === key);
+  if (!file && access.allowCatalogFiles) {
+    const product = await client.withConfig({ useCdn: false }).fetch<{
+      privateDigitalFiles?: PrivateProductFile[];
+    } | null>('*[_type == "product" && _id == $id][0]{privateDigitalFiles[]{_key,pathname,originalFilename}}', { id }, { cache: "no-store" });
+    file = product?.privateDigitalFiles?.find((item) => item._key === key);
+  }
   if (!file?.pathname) {
     return unavailable();
   }

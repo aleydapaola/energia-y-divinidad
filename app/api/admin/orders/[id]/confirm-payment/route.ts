@@ -6,6 +6,8 @@ import { protectCheckoutPayment } from "@/lib/checkout/holds";
 import { processApprovedPayment } from "@/lib/payment-processor";
 import { prisma } from "@/lib/prisma";
 
+import type { Prisma } from "@prisma/client";
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -72,6 +74,58 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       { status: 409 }
     );
   }
+  const digitalOrder = (order.metadata as { digitalProductOrder?: boolean } | null)?.digitalProductOrder;
+  const transactionReference = body.data.transactionReference;
+  const operatorId = session.user.id;
+  const finalize = async (tx: Prisma.TransactionClient) => {
+    if (digitalOrder) {
+      const changed = await tx.order.updateMany({
+        where: { id, paymentStatus: "PROCESSING" }, data: { paymentStatus: "COMPLETED" },
+      });
+      if (!changed.count) {
+        return;
+      }
+    } else {
+      await tx.order.update({ where: { id }, data: { paymentStatus: "COMPLETED" } });
+    }
+    await tx.manualPayment.upsert({
+      where: { orderId: id },
+      create: {
+        orderId: id,
+        paymentMethod: order.paymentMethod,
+        referenceNumber: body.data.transactionReference,
+        approved: true,
+        approvedAt: new Date(),
+        approvedBy: operatorId,
+      },
+      update: { approved: true, approvedAt: new Date(), approvedBy: operatorId },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorId: operatorId,
+        actorEmail: actor.email || "",
+        entityType: "order",
+        entityId: id,
+        action: "MANUAL_PAYMENT_CONFIRMATION",
+        before: { paymentStatus: "PENDING" },
+        after: { paymentStatus: "COMPLETED" },
+        reason:
+          body.data.amountDiscrepancyReason ||
+          body.data.notes ||
+          (process.env.VERCEL_ENV !== "production" &&
+          (order.metadata as { brebSimulation?: boolean } | null)?.brebSimulation
+            ? "Simulación de Preview comprobada; no se ha recibido dinero real"
+            : "Ingreso comprobado en la cuenta receptora"),
+        metadata: {
+          transactionReference: body.data.transactionReference,
+          expectedAmount,
+          receivedAmount,
+          amountMatches,
+        },
+      },
+    });
+  };
+
   // Serialize settlement by transaction reference. A transfer cannot settle two orders.
   const claimed = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`manual-payment:${body.data.transactionReference}`}))`;
@@ -102,13 +156,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         },
       },
     });
-    return result.count === 1;
+    if (result.count || !digitalOrder) {
+      return result.count === 1;
+    }
+    return !!await tx.order.findFirst({ where: {
+      id, paymentStatus: { in: ["PROCESSING", "COMPLETED"] },
+      metadata: { path: ["transactionReference"], equals: transactionReference },
+    } });
   });
   if (!claimed) {
     return NextResponse.json(
       { error: "Pedido ya procesado o referencia utilizada en otro pedido." },
       { status: 409 }
     );
+  }
+  if (digitalOrder) {
+    await prisma.$transaction(finalize);
   }
   const claimedOrder = await prisma.order.findUniqueOrThrow({
     where: { id },
@@ -119,58 +182,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     { transactionId: body.data.transactionReference }
   );
   if (!result.success) {
-    await prisma.order.updateMany({
-      where: { id, paymentStatus: "PROCESSING" },
-      data: { paymentStatus: "PENDING" },
-    });
+    if (!digitalOrder) {
+      await prisma.order.updateMany({
+        where: { id, paymentStatus: "PROCESSING" }, data: { paymentStatus: "PENDING" },
+      });
+    }
     return NextResponse.json(
       { error: "El pago requiere revisión. No vuelvas a cobrar; puedes reintentar la entrega." },
       { status: 500 }
     );
   }
-  await prisma.$transaction(async (tx) => {
-    await tx.order.update({ where: { id }, data: { paymentStatus: "COMPLETED" } });
-    await tx.manualPayment.upsert({
-      where: { orderId: id },
-      create: {
-        orderId: id,
-        paymentMethod: order.paymentMethod,
-        referenceNumber: body.data.transactionReference,
-        approved: true,
-        approvedAt: new Date(),
-        approvedBy: session.user.id,
-      },
-      update: { approved: true, approvedAt: new Date(), approvedBy: session.user.id },
-    });
-    await tx.auditLog.create({
-      data: {
-        actorId: session.user.id,
-        actorEmail: actor.email || "",
-        entityType: "order",
-        entityId: id,
-        action: "MANUAL_PAYMENT_CONFIRMATION",
-        before: { paymentStatus: "PENDING" },
-        after: { paymentStatus: "COMPLETED" },
-        reason:
-          body.data.amountDiscrepancyReason ||
-          body.data.notes ||
-          (process.env.VERCEL_ENV !== "production" &&
-          (order.metadata as { brebSimulation?: boolean } | null)?.brebSimulation
-            ? "Simulación de Preview comprobada; no se ha recibido dinero real"
-            : "Ingreso comprobado en la cuenta receptora"),
-        metadata: {
-          transactionReference: body.data.transactionReference,
-          expectedAmount,
-          receivedAmount,
-          amountMatches,
-        },
-      },
-    });
-  });
-  if ((order.metadata as { deliveryProvider?: string } | null)?.deliveryProvider === "GOOGLE_DRIVE") {
+  if (!digitalOrder) {
+    await prisma.$transaction(finalize);
+  }
+  if (!digitalOrder && (order.metadata as { deliveryProvider?: string } | null)?.deliveryProvider === "GOOGLE_DRIVE") {
     try {
-      const { deliverPaidDriveOrder } = await import("@/lib/digital-products/drive-auto-delivery");
-      await deliverPaidDriveOrder(order.id);
+      const { deliverOrderDriveProducts } = await import("@/lib/digital-products/drive-auto-delivery");
+      await deliverOrderDriveProducts(order.id);
     } catch { console.warn("Entrega Drive pendiente; no se vuelve a confirmar el cobro."); }
   }
   return NextResponse.json({ success: true });

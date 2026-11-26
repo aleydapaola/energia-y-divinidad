@@ -5,10 +5,12 @@ import { Suspense, useEffect, useState } from "react";
 
 import { BrebPaymentInstructions } from "@/components/pago/BrebPaymentInstructions";
 import { CancelUnpaidReservation } from "@/components/pago/CancelUnpaidReservation";
+import { useDigitalCartStore } from "@/lib/stores/digital-cart-store";
 
 type Order = {
   orderNumber: string;
   itemName: string;
+  digitalProducts: { productId: string; title: string; amount: number }[];
   amount: number;
   currency: string;
   paymentStatus: string;
@@ -70,6 +72,14 @@ function Content() {
     const timer = setInterval(() => void refresh(), 30000);
     return () => clearInterval(timer);
   }, [order?.paymentStatus, reference]);
+  useEffect(() => {
+    if (order?.paymentStatus === "COMPLETED") {
+      const { removeItem } = useDigitalCartStore.getState();
+      for (const line of order.digitalProducts ?? []) {
+        removeItem(line.productId);
+      }
+    }
+  }, [order]);
   async function report(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -124,7 +134,11 @@ function Content() {
         {order.paymentStatus === "COMPLETED" ? (
           <section className="bg-white p-6 rounded-2xl space-y-4">
             <h1 className="text-2xl">Pago confirmado</h1>
-            <p>{order.itemName}</p>
+            {order.digitalProducts?.length > 1 ? <ul className="space-y-1">
+              {order.digitalProducts.map((line) => <li key={line.productId} className="flex flex-wrap justify-between gap-x-3">
+                <span>{line.title}</span><span>{line.amount.toLocaleString("es-CO")} {order.currency}</span>
+              </li>)}
+            </ul> : <p>{order.itemName}</p>}
             <p>
               La compra está verificada. Consulta tu correo y tu cuenta para acceder al contenido o
               gestionar la reserva.

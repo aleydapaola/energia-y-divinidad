@@ -385,6 +385,7 @@ test("Bre-B expiry removes payment instructions but keeps the late transfer repo
               React.createElement("div", null, "TEST-PAYMENT-INSTRUCTIONS"),
           },
           "@/components/pago/CancelUnpaidReservation": { CancelUnpaidReservation: () => null },
+          "@/lib/stores/digital-cart-store": {},
         },
       }
     );

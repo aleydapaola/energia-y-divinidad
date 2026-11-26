@@ -3,8 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { DigitalCartButton } from "@/components/products/DigitalCartButton";
 import { FreeProductViewer } from "@/components/products/FreeProductViewer";
+import { auth } from "@/lib/auth";
+import { activeProductEntitlement } from "@/lib/digital-products/drive-delivery";
 import { freeProductFiles } from "@/lib/digital-products/free-product";
+import { prisma } from "@/lib/prisma";
 import { client } from "@/sanity/lib/client";
 import { pricingProjection } from "@/sanity/lib/projections";
 
@@ -19,6 +23,14 @@ export default async function Product({ params }: { params: Promise<{ slug: stri
   if (!product) {
     notFound();
   }
+  const session = !product.isFree ? await auth() : null;
+  const owned = session?.user?.id && await prisma.entitlement.findFirst({
+    where: activeProductEntitlement(session.user.id, product._id), select: { id: true },
+  });
+  const cartItem = {
+    id: product._id, title: product.title, slug,
+    price: product.price, priceUSD: product.priceUSD, driveDelivery: product.digitalDeliveryVersion === 2,
+  };
   return (
     <main className="bg-[#f8f0f5] min-h-screen p-4 sm:p-10">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -48,16 +60,15 @@ export default async function Product({ params }: { params: Promise<{ slug: stri
         </section>
         {product.isFree ? (
           <FreeProductViewer productId={product._id} files={await freeProductFiles(product._id)} />
+        ) : owned ? (
+          <Link href="/mi-cuenta/compras" className="inline-block min-h-11 py-3 underline">
+            Ya tienes este producto en Mis compras
+          </Link>
         ) : (
-          <DigitalProductCheckout
-            driveDelivery={product.digitalDeliveryVersion === 2}
-            product={{
-              id: product._id,
-              title: product.title,
-              price: product.price,
-              priceUSD: product.priceUSD,
-            }}
-          />
+          <>
+            <DigitalCartButton product={cartItem} />
+            <DigitalProductCheckout driveDelivery={cartItem.driveDelivery} products={[cartItem]} />
+          </>
         )}
       </div>
     </main>

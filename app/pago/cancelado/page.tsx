@@ -13,12 +13,17 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ r
           userId: true,
           orderNumber: true,
           paymentStatus: true,
+          paymentMethod: true,
+          metadata: true,
           checkoutHold: { select: { state: true } },
           manualPayment: { select: { id: true } },
         },
       })
     : null;
   const allowed = order && (await canAccessOrder(order));
+  const digital = allowed && order.paymentMethod === "PAYPAL_DIRECT" &&
+    !!(order.metadata as { digitalProductOrder?: boolean } | null)?.digitalProductOrder;
+  const canCancel = digital && order.paymentStatus === "PENDING";
   const canRelease =
     allowed &&
     order.paymentStatus === "PENDING" &&
@@ -28,10 +33,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ r
     <main className="min-h-screen bg-[#f8f0f5] p-6">
       <div className="mx-auto max-w-xl space-y-5">
         <h1 className="text-2xl">Has vuelto del proceso de pago</h1>
-        <p>
+        {!digital && <p>
           Si no has completado el pago, puedes volver a consultar la disponibilidad. Una reserva
           temporal sin pagar se libera al terminar su plazo.
-        </p>
+        </p>}
+        {ref && canCancel && <CancelUnpaidReservation reference={ref} digital />}
         {ref && canRelease && <CancelUnpaidReservation reference={ref} />}
         {allowed &&
           (order.checkoutHold?.state === "CAPTURING" ||
@@ -41,6 +47,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ r
               pedido o contacta con Aleyda.
             </p>
           )}
+        {digital && <Link className="block underline" href="/productos/carrito">Volver al carrito digital</Link>}
         <Link className="block underline" href="/sesiones">
           Ver sesiones
         </Link>

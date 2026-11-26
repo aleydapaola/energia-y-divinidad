@@ -1,8 +1,10 @@
+
 import Image from "next/image";
 import Link from "next/link";
 
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
+import { DigitalCartButton } from "@/components/products/DigitalCartButton";
 import { auth } from "@/lib/auth";
 import {
   PRODUCT_CATALOG_QUERY,
@@ -19,6 +21,7 @@ export default async function Products() {
       <Header session={await auth()} />
       <main className="max-w-5xl mx-auto px-4 py-12">
         <h1 className="font-gazeta text-4xl text-[#654177] mb-4">Productos digitales</h1>
+        <DigitalCartButton />
         <p className="mb-8">
           Audios, vídeos, libros, guías y otros recursos digitales. Los productos comprados se
           descargan desde tu cuenta tras confirmar el pago. Los gratuitos se disfrutan en línea,

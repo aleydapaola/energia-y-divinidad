@@ -260,6 +260,7 @@ model Order {
   entitlements  Entitlement[]
   checkoutHold  CheckoutHold?
   driveDelivery DriveProductDelivery?
+  digitalProducts OrderDigitalProduct[]
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -315,10 +316,28 @@ enum DriveDeliveryStatus {
   REVOKED
 }
 
+model OrderDigitalProduct {
+  id             String @id @default(cuid())
+  orderId        String
+  order          Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  productId      String
+  title          String
+  amount         Decimal @db.Decimal(10, 2)
+  currency       String
+  legacyFiles    Json?
+  driveDelivery  DriveProductDelivery?
+
+  @@unique([orderId, productId])
+  @@index([productId])
+  @@map("order_digital_products")
+}
+
 model DriveProductDelivery {
   id             String @id @default(cuid())
-  orderId        String @unique
-  order          Order @relation(fields: [orderId], references: [id])
+  orderId        String? @unique
+  order          Order? @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  orderProductId String? @unique
+  orderProduct   OrderDigitalProduct? @relation(fields: [orderProductId], references: [id], onDelete: Restrict)
   environment    String
   folderId       String
   recipientEmail String
