@@ -1,9 +1,12 @@
-import { EmailCampaignAudienceType } from "@prisma/client";
+import { createHash } from "node:crypto";
+
 import { groq } from "next-sanity";
 
 import { parseManualEmails } from "@/lib/email-recipients";
 import { prisma } from "@/lib/prisma";
 import { client } from "@/sanity/lib/client";
+
+import type { CampaignAudienceInput } from "@/lib/campaign-audience-input";
 
 export interface EmailRecipientCandidate {
   userId: string | null;
@@ -23,11 +26,11 @@ export interface CommunicationAudienceOptions {
   events: AudienceOption[];
 }
 
-export interface ResolveAudienceInput {
-  audienceType: EmailCampaignAudienceType;
-  audienceId?: string | null;
-  userIds?: string[];
-  manualEmails?: string;
+type ResolveAudienceInput = CampaignAudienceInput;
+
+export function emailAudienceFingerprint(recipients: EmailRecipientCandidate[]) {
+  const emailSet = [...new Set(recipients.map(({ email }) => email.trim().toLowerCase()))].sort();
+  return createHash("sha256").update(JSON.stringify(emailSet)).digest("hex");
 }
 
 const allowsOperationalEmailWhere = {
@@ -135,6 +138,16 @@ export async function getAudienceName(input: ResolveAudienceInput) {
   }
 
   const options = await getCommunicationAudienceOptions();
+  if (input.audienceType === "COMBINED") {
+    const groupedOptions = { COURSE: options.courses, MEMBERSHIP: options.membershipTiers, EVENT: options.events };
+    const names = (input.groups ?? []).map(({ type, id }) =>
+      groupedOptions[type].find((option) => option.id === id)?.name ?? id
+    );
+    if (input.userIds?.length) {
+      names.push("Usuarios seleccionados");
+    }
+    return names.join(" · ");
+  }
 
   if (input.audienceType === "COURSE") {
     return options.courses.find((course) => course.id === input.audienceId)?.name ?? "Curso";
@@ -154,6 +167,21 @@ export async function getAudienceName(input: ResolveAudienceInput) {
 export async function resolveEmailAudience(
   input: ResolveAudienceInput
 ): Promise<EmailRecipientCandidate[]> {
+  if (input.audienceType === "COMBINED") {
+    const groups = new Map((input.groups ?? []).map((group) => [`${group.type}:${group.id}`, group]));
+    const selections: ResolveAudienceInput[] = Array.from(groups.values(), ({ type, id }) => ({
+      audienceType: type,
+      audienceId: id,
+    }));
+    if (input.userIds?.length) {
+      selections.unshift({ audienceType: "SELECTED_USERS", userIds: input.userIds });
+    }
+    const recipients: EmailRecipientCandidate[] = [];
+    for (const selection of selections) {
+      recipients.push(...await resolveEmailAudience(selection));
+    }
+    return dedupeRecipients(recipients);
+  }
   if (input.audienceType === "MANUAL_EMAILS") {
     const emails = parseManualEmails(input.manualEmails ?? "");
     const users = await prisma.user.findMany({

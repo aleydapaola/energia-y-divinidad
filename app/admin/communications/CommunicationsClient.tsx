@@ -3,6 +3,7 @@
 import { Eye, Loader2, Mail, Play, RefreshCw, Search, Send, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import type { CampaignBlock } from "@/lib/campaign-content";
 import type { CommunicationAudienceOptions, EmailRecipientCandidate } from "@/lib/email-audiences";
 
 type AudienceType =
@@ -11,7 +12,10 @@ type AudienceType =
   | "MEMBERSHIP"
   | "EVENT"
   | "SELECTED_USERS"
-  | "MANUAL_EMAILS";
+  | "MANUAL_EMAILS"
+  | "COMBINED";
+
+type Group = { type: "COURSE" | "MEMBERSHIP" | "EVENT"; id: string; name: string };
 
 interface SelectableUser {
   id: string;
@@ -38,6 +42,7 @@ interface CampaignRow {
 }
 
 interface PreviewState {
+  fingerprint: string;
   count: number;
   recipients: EmailRecipientCandidate[];
 }
@@ -48,6 +53,7 @@ interface CommunicationsClientProps {
 }
 
 const audienceLabels: Record<AudienceType, string> = {
+  COMBINED: "Grupos y usuarios",
   ALL_USERS: "Todos los usuarios",
   COURSE: "Alumnos de un curso",
   MEMBERSHIP: "Miembros de un plan",
@@ -58,11 +64,17 @@ const audienceLabels: Record<AudienceType, string> = {
 
 export function CommunicationsClient({ options, initialCampaigns }: CommunicationsClientProps) {
   const [campaigns, setCampaigns] = useState(initialCampaigns);
-  const [audienceType, setAudienceType] = useState<AudienceType>("COURSE");
+  const [audienceType, setAudienceType] = useState<AudienceType>("COMBINED");
   const [audienceId, setAudienceId] = useState("");
+  const [groupChoice, setGroupChoice] = useState("");
+  const [groups, setGroups] = useState<Group[]>([]);
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [blocks, setBlocks] = useState<CampaignBlock[]>([]);
+  const [draft, setDraft] = useState<{ id: string; updatedAt: string } | null>(null);
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [messagePreview, setMessagePreview] = useState<string | null>(null);
   const [testEmail, setTestEmail] = useState("");
   const [userSearch, setUserSearch] = useState("");
   const [userResults, setUserResults] = useState<SelectableUser[]>([]);
@@ -90,11 +102,36 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
     return [];
   }, [audienceType, options]);
 
-  const isSelectedUsersAudience = audienceType === "SELECTED_USERS";
+  const isCombined = audienceType === "COMBINED";
+  const isSelectedUsersAudience = audienceType === "SELECTED_USERS" || isCombined;
+  const availableGroups: Group[] = [
+    ...options.courses.map(({ id, name }) => ({
+      type: "COURSE" as const,
+      id,
+      name: `Curso · ${name}`,
+    })),
+    ...options.membershipTiers.map(({ id, name }) => ({
+      type: "MEMBERSHIP" as const,
+      id,
+      name: `Membresía · ${name}`,
+    })),
+    ...options.events.map(({ id, name }) => ({
+      type: "EVENT" as const,
+      id,
+      name: `Evento · ${name}`,
+    })),
+  ];
   const isManualEmailsAudience = audienceType === "MANUAL_EMAILS";
   const requiresAudienceId =
     audienceType !== "ALL_USERS" && !isSelectedUsersAudience && !isManualEmailsAudience;
   const selectedUserIds = selectedUsers.map((user) => user.id);
+  const audienceSelection = {
+    audienceType,
+    audienceId: requiresAudienceId ? audienceId : null,
+    userIds: isSelectedUsersAudience ? selectedUserIds : undefined,
+    manualEmails: isManualEmailsAudience ? manualEmails : undefined,
+    groups: isCombined ? groups.map(({ type, id }) => ({ type, id })) : undefined,
+  };
 
   async function refreshCampaigns() {
     const res = await fetch("/api/admin/communications/campaigns");
@@ -102,6 +139,87 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       return;
     }
     setCampaigns(await res.json());
+  }
+
+  async function saveDraft() {
+    setDraftBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch(
+        draft ? `/api/admin/communications/drafts/${draft.id}` : "/api/admin/communications/drafts",
+        {
+          method: draft ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, subject, body, blocks, updatedAt: draft?.updatedAt }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "No se pudo guardar el borrador");
+      }
+      setDraft({ id: data.id, updatedAt: data.updatedAt });
+      setMessage("Borrador guardado");
+      await refreshCampaigns();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "No se pudo guardar el borrador");
+    } finally {
+      setDraftBusy(false);
+    }
+  }
+
+  async function openDraft(id: string) {
+    setDraftBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/admin/communications/drafts/${id}`, { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "No se pudo abrir el borrador");
+      }
+      setDraft({ id: data.id, updatedAt: data.updatedAt });
+      setTitle(data.title);
+      setSubject(data.subject);
+      setBody(data.body);
+      setBlocks(data.contentBlocks ?? []);
+      setAudienceType("COMBINED");
+      setAudienceId("");
+      setGroupChoice("");
+      setGroups([]);
+      setSelectedUsers([]);
+      setManualEmails("");
+      setMessagePreview(null);
+      setPreview(null);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "No se pudo abrir el borrador");
+    } finally {
+      setDraftBusy(false);
+    }
+  }
+
+  async function previewMessage() {
+    setError(null);
+    setMessagePreview(null);
+    try {
+      const res = await fetch("/api/admin/communications/message-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject, body, blocks }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "No se pudo previsualizar el correo");
+      }
+      setMessagePreview(data.html);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "No se pudo previsualizar el correo");
+    }
+  }
+
+  function changeBlock(index: number, block: CampaignBlock) {
+    setBlocks((current) => current.map((item, position) => (position === index ? block : item)));
+    setMessagePreview(null);
   }
 
   async function handlePreview() {
@@ -113,12 +231,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       const res = await fetch("/api/admin/communications/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          audienceType,
-          audienceId: requiresAudienceId ? audienceId : null,
-          userIds: isSelectedUsersAudience ? selectedUserIds : undefined,
-          manualEmails: isManualEmailsAudience ? manualEmails : undefined,
-        }),
+        body: JSON.stringify(audienceSelection),
       });
       const data = await res.json();
 
@@ -187,7 +300,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       const res = await fetch("/api/admin/communications/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: testEmail, subject, body }),
+        body: JSON.stringify({ to: testEmail, subject, body, blocks }),
       });
       const data = await res.json();
 
@@ -203,7 +316,10 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
   }
 
   async function handleCreateCampaign() {
-    if (!confirm("¿Crear la campaña y dejarla en cola de envío?")) {
+    if (
+      !preview?.count ||
+      !confirm(`¿Poner en cola el correo para los ${preview.count} destinatarios confirmados?`)
+    ) {
       return;
     }
 
@@ -219,15 +335,18 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
           title,
           subject,
           body,
-          audienceType,
-          audienceId: requiresAudienceId ? audienceId : null,
-          userIds: isSelectedUsersAudience ? selectedUserIds : undefined,
-          manualEmails: isManualEmailsAudience ? manualEmails : undefined,
+          blocks,
+          draft,
+          ...audienceSelection,
+          audienceFingerprint: preview.fingerprint,
         }),
       });
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 409) {
+          setPreview(null);
+        }
         setError(data.error ?? "No se pudo crear la campaña");
         return;
       }
@@ -236,6 +355,11 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       setTitle("");
       setSubject("");
       setBody("");
+      setBlocks([]);
+      setDraft(null);
+      setGroups([]);
+      setGroupChoice("");
+      setMessagePreview(null);
       setPreview(null);
       if (isManualEmailsAudience) {
         setManualEmails("");
@@ -274,9 +398,10 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
 
   const canPreview =
     (!requiresAudienceId || Boolean(audienceId)) &&
-    (!isSelectedUsersAudience || selectedUsers.length > 0) &&
+    (!isSelectedUsersAudience || selectedUsers.length > 0 || (isCombined && groups.length > 0)) &&
     (!isManualEmailsAudience || Boolean(manualEmails.trim()));
-  const canCreate = title.trim() && subject.trim() && body.trim() && canPreview;
+  const canCreate =
+    title.trim() && subject.trim() && body.trim() && canPreview && Boolean(preview?.count);
 
   return (
     <div className="space-y-6">
@@ -311,10 +436,10 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       )}
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
+        <div className="min-w-0 xl:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="font-gazeta text-xl text-[#654177] flex items-center gap-2 mb-5">
             <Send className="h-5 w-5" />
-            Nueva campaña
+            {draft ? "Editar borrador" : "Nueva campaña"}
           </h2>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -325,6 +450,8 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
                 onChange={(event) => {
                   setAudienceType(event.target.value as AudienceType);
                   setAudienceId("");
+                  setGroups([]);
+                  setGroupChoice("");
                   setSelectedUsers([]);
                   setUserResults([]);
                   setUserSearch("");
@@ -362,6 +489,72 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
               </label>
             )}
           </div>
+
+          {isCombined && (
+            <div className="mt-4 space-y-2">
+              <label className="block text-sm">
+                Añadir grupo
+                <select
+                  className="mt-1 block min-h-11 w-full rounded-lg border px-3"
+                  value={groupChoice}
+                  onChange={(event) => setGroupChoice(event.target.value)}
+                >
+                  <option value="">Seleccionar grupo</option>
+                  {availableGroups.map((group) => {
+                    const key = `${group.type}:${group.id}`;
+                    return (
+                      <option key={key} value={key}>
+                        {group.name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="min-h-11 rounded-lg border px-3 text-sm"
+                disabled={!groupChoice || groups.length >= 50}
+                onClick={() => {
+                  const group = availableGroups.find(
+                    (item) => `${item.type}:${item.id}` === groupChoice
+                  );
+                  if (
+                    group &&
+                    !groups.some((item) => item.type === group.type && item.id === group.id)
+                  ) {
+                    setGroups((current) => [...current, group]);
+                    setPreview(null);
+                  }
+                  setGroupChoice("");
+                }}
+              >
+                Añadir grupo
+              </button>
+              <ul className="space-y-1">
+                {groups.map((group) => (
+                  <li
+                    key={`${group.type}:${group.id}`}
+                    className="flex items-center gap-2 break-words text-sm"
+                  >
+                    <span>{group.name}</span>
+                    <button
+                      type="button"
+                      aria-label={`Quitar ${group.name}`}
+                      className="min-h-11 shrink-0 px-2 text-[#654177]"
+                      onClick={() => {
+                        setGroups((current) =>
+                          current.filter((item) => item.type !== group.type || item.id !== group.id)
+                        );
+                        setPreview(null);
+                      }}
+                    >
+                      Quitar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {isManualEmailsAudience && (
             <label className="mt-4 block">
@@ -503,7 +696,10 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
               <span className="text-sm text-gray-600 font-dm-sans">Asunto</span>
               <input
                 value={subject}
-                onChange={(event) => setSubject(event.target.value)}
+                onChange={(event) => {
+                  setSubject(event.target.value);
+                  setMessagePreview(null);
+                }}
                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-dm-sans focus:outline-none focus:ring-2 focus:ring-[#8A4BAF]"
               />
             </label>
@@ -513,11 +709,122 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
             <span className="text-sm text-gray-600 font-dm-sans">Mensaje</span>
             <textarea
               value={body}
-              onChange={(event) => setBody(event.target.value)}
+              onChange={(event) => {
+                setBody(event.target.value);
+                setMessagePreview(null);
+              }}
               rows={9}
               className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-dm-sans focus:outline-none focus:ring-2 focus:ring-[#8A4BAF]"
             />
           </label>
+
+          {blocks.map((block, index) => (
+            <fieldset key={index} className="mt-4 min-w-0 rounded-lg border p-3">
+              <legend className="px-1 text-sm font-medium">
+                {block.type === "link" ? "Enlace" : "Imagen de Sanity"} {index + 1}
+              </legend>
+              <label className="block text-sm">
+                {block.type === "link" ? "Texto del enlace" : "Texto alternativo"}
+                <input
+                  value={block.type === "link" ? block.label : block.alt}
+                  onChange={(event) =>
+                    changeBlock(
+                      index,
+                      block.type === "link"
+                        ? { ...block, label: event.target.value }
+                        : { ...block, alt: event.target.value }
+                    )
+                  }
+                  className="mt-1 block min-h-11 w-full rounded-lg border px-3"
+                />
+              </label>
+              <label className="mt-2 block text-sm">
+                {block.type === "link" ? "URL del enlace" : "URL pública de Sanity"}
+                <input
+                  type="url"
+                  value={block.url}
+                  onChange={(event) => changeBlock(index, { ...block, url: event.target.value })}
+                  className="mt-1 block min-h-11 w-full rounded-lg border px-3"
+                />
+              </label>
+              <button
+                type="button"
+                className="min-h-11 text-sm font-semibold text-[#654177]"
+                onClick={() => {
+                  setBlocks((current) => current.filter((_, position) => position !== index));
+                  setMessagePreview(null);
+                }}
+              >
+                Quitar {block.type === "link" ? "enlace" : "imagen"}
+              </button>
+            </fieldset>
+          ))}
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="min-h-11 rounded-lg border px-3 text-sm"
+              disabled={blocks.length >= 20}
+              onClick={() => {
+                setBlocks((current) => [...current, { type: "link", label: "", url: "" }]);
+                setMessagePreview(null);
+              }}
+            >
+              Añadir enlace
+            </button>
+            <button
+              type="button"
+              className="min-h-11 rounded-lg border px-3 text-sm"
+              disabled={blocks.length >= 20}
+              onClick={() => {
+                setBlocks((current) => [...current, { type: "image", alt: "", url: "" }]);
+                setMessagePreview(null);
+              }}
+            >
+              Añadir imagen
+            </button>
+            <button
+              type="button"
+              className="min-h-11 rounded-lg border px-3 text-sm"
+              disabled={draftBusy || creating}
+              onClick={saveDraft}
+            >
+              Guardar borrador
+            </button>
+            {draft && (
+              <button
+                type="button"
+                className="min-h-11 rounded-lg border px-3 text-sm"
+                disabled={draftBusy || creating}
+                onClick={() => {
+                  setDraft(null);
+                  setTitle("");
+                  setSubject("");
+                  setBody("");
+                  setBlocks([]);
+                  setMessagePreview(null);
+                }}
+              >
+                Nuevo borrador
+              </button>
+            )}
+            <button
+              type="button"
+              className="min-h-11 rounded-lg border px-3 text-sm"
+              disabled={!subject.trim() || !body.trim()}
+              onClick={previewMessage}
+            >
+              Vista previa móvil
+            </button>
+          </div>
+          {messagePreview && (
+            <iframe
+              title="Vista previa móvil del correo"
+              sandbox=""
+              srcDoc={messagePreview}
+              className="mt-4 h-[560px] w-full max-w-[375px] rounded-lg border"
+            />
+          )}
 
           <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center">
             <button
@@ -536,7 +843,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
             <button
               type="button"
               onClick={handleCreateCampaign}
-              disabled={!canCreate || creating}
+              disabled={!canCreate || creating || draftBusy}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#654177] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#563666] disabled:opacity-50"
             >
               {creating ? (
@@ -549,7 +856,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="font-gazeta text-xl text-[#654177] flex items-center gap-2 mb-4">
               <Users className="h-5 w-5" />
@@ -627,7 +934,18 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
               {campaigns.map((campaign) => (
                 <tr key={campaign.id}>
                   <td className="px-4 py-4">
-                    <p className="font-medium text-gray-900">{campaign.title}</p>
+                    {campaign.status === "DRAFT" ? (
+                      <button
+                        type="button"
+                        disabled={draftBusy || creating}
+                        className="min-h-11 text-left font-semibold text-[#654177]"
+                        onClick={() => openDraft(campaign.id)}
+                      >
+                        Abrir borrador · {campaign.title || campaign.subject || "Sin título"}
+                      </button>
+                    ) : (
+                      <p className="font-medium text-gray-900">{campaign.title}</p>
+                    )}
                     <p className="text-sm text-gray-500">{campaign.subject}</p>
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-700">{campaign.audienceName}</td>

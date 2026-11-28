@@ -1238,6 +1238,7 @@ enum EmailCampaignAudienceType {
   EVENT
   SELECTED_USERS
   MANUAL_EMAILS
+  COMBINED
 }
 
 enum EmailRecipientStatus {
@@ -1255,6 +1256,7 @@ model EmailCampaign {
   title        String
   subject      String
   body         String                    @db.Text
+  contentBlocks Json?
   status       EmailCampaignStatus       @default(DRAFT)
   audienceType EmailCampaignAudienceType
   audienceId   String?

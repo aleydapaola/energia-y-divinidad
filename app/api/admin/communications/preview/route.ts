@@ -1,7 +1,7 @@
-import { EmailCampaignAudienceType } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/admin-auth";
+import { campaignAudienceInput } from "@/lib/campaign-audience-input";
 import { previewCampaignAudience } from "@/lib/services/email-campaigns";
 
 export async function POST(request: NextRequest) {
@@ -10,21 +10,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  const body = await request.json();
-  const audienceType = body.audienceType as EmailCampaignAudienceType;
-
-  if (!audienceType) {
-    return NextResponse.json({ error: "Audiencia requerida" }, { status: 400 });
+  const audience = campaignAudienceInput.safeParse(await request.json().catch(() => null));
+  if (!audience.success) {
+    return NextResponse.json({ error: "Selección de audiencia inválida" }, { status: 400 });
   }
 
   try {
-    const preview = await previewCampaignAudience({
-      audienceType,
-      audienceId: body.audienceId,
-      userIds: Array.isArray(body.userIds) ? body.userIds : undefined,
-      manualEmails: typeof body.manualEmails === "string" ? body.manualEmails : undefined,
-    });
-
+    const preview = await previewCampaignAudience(audience.data);
     return NextResponse.json(preview);
   } catch (error) {
     return NextResponse.json(

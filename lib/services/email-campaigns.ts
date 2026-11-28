@@ -5,13 +5,17 @@ import {
   Prisma,
 } from "@prisma/client";
 
+import { campaignBlocks, type CampaignBlock } from "@/lib/campaign-content";
 import { sendEmailWithLogging } from "@/lib/email";
 import {
+  emailAudienceFingerprint,
   getAudienceName,
   resolveEmailAudience,
   type EmailRecipientCandidate,
 } from "@/lib/email-audiences";
 import { prisma } from "@/lib/prisma";
+
+import type { CampaignAudienceInput } from "@/lib/campaign-audience-input";
 
 const DEFAULT_BATCH_SIZE = 25;
 const APP_URL =
@@ -22,16 +26,15 @@ const APP_URL =
 const LOGO_URL = "https://energia-y-divinidad.vercel.app/images/logoNoBackground.png";
 const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "contacto@energiaydivinidad.com";
 
-export interface CreateEmailCampaignInput {
+export interface CreateEmailCampaignInput extends CampaignAudienceInput {
   createdById: string;
   createdByEmail: string;
   title: string;
   subject: string;
   body: string;
-  audienceType: EmailCampaignAudienceType;
-  audienceId?: string | null;
-  userIds?: string[];
-  manualEmails?: string;
+  blocks?: CampaignBlock[];
+  draft?: { id: string; updatedAt: string };
+  audienceFingerprint: string;
 }
 
 function escapeHtml(value: string) {
@@ -99,10 +102,18 @@ export function renderCampaignHtml(params: {
   subject: string;
   body: string;
   previewName?: string | null;
+  blocks?: CampaignBlock[];
 }) {
   const safeSubject = escapeHtml(params.subject);
   const greeting = params.previewName ? `Hola ${escapeHtml(params.previewName)},` : "Hola,";
-  const messageBlocks = renderMessageBlocks(params.body);
+  const extraBlocks = (params.blocks ?? []).map((block) => {
+    const url = escapeHtml(block.url);
+    if (block.type === "link") {
+      return `<p style="margin:0 0 20px;overflow-wrap:anywhere"><a href="${url}" style="color:#4944a4">${escapeHtml(block.label)}</a></p>`;
+    }
+    return `<p style="margin:0 0 20px"><img src="${url}" alt="${escapeHtml(block.alt)}" style="display:block;width:100%;max-width:560px;height:auto" /></p>`;
+  });
+  const messageBlocks = renderMessageBlocks(params.body) + extraBlocks.join("");
   const year = new Date().getFullYear();
 
   return `
@@ -139,7 +150,7 @@ export function renderCampaignHtml(params: {
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding:38px 38px 34px;">
+                        <td style="padding:30px 22px;overflow-wrap:anywhere;">
                           <p style="margin:0 0 20px;font-size:18px;line-height:1.6;color:#654177;font-weight:600;">
                             ${greeting}
                           </p>
@@ -196,76 +207,88 @@ function validateCampaignInput(input: CreateEmailCampaignInput) {
     input.audienceType !== "ALL_USERS" &&
     input.audienceType !== "SELECTED_USERS" &&
     input.audienceType !== "MANUAL_EMAILS" &&
+    input.audienceType !== "COMBINED" &&
     !input.audienceId
   ) {
     throw new Error("Selecciona una audiencia");
   }
 }
 
-export async function previewCampaignAudience(params: {
-  audienceType: EmailCampaignAudienceType;
-  audienceId?: string | null;
-  userIds?: string[];
-  manualEmails?: string;
-}) {
+export async function previewCampaignAudience(params: CampaignAudienceInput) {
   const recipients = await resolveEmailAudience(params);
   return {
     count: recipients.length,
+    fingerprint: emailAudienceFingerprint(recipients),
     recipients: recipients.slice(0, 25),
   };
+}
+
+export class CampaignAudienceChanged extends Error {
+  constructor() {
+    super("La audiencia cambió. Previsualízala y confirma de nuevo.");
+  }
 }
 
 export async function createEmailCampaign(input: CreateEmailCampaignInput) {
   validateCampaignInput(input);
 
-  const recipients = await resolveEmailAudience({
-    audienceType: input.audienceType,
-    audienceId: input.audienceId,
-    userIds: input.userIds,
-    manualEmails: input.manualEmails,
-  });
-
-  if (recipients.length === 0) {
+  const recipients = await resolveEmailAudience(input);
+  if (input.audienceFingerprint !== emailAudienceFingerprint(recipients)) {
+    throw new CampaignAudienceChanged();
+  }
+  if (!recipients.length) {
     throw new Error("La audiencia no tiene destinatarios");
   }
+  const audienceName = await getAudienceName(input);
 
-  const audienceName = await getAudienceName({
+  const data = {
+    title: input.title.trim(),
+    subject: input.subject.trim(),
+    body: input.body.trim(),
+    contentBlocks: input.blocks ?? [],
+    status: EmailCampaignStatus.QUEUED,
     audienceType: input.audienceType,
     audienceId: input.audienceId,
-    userIds: input.userIds,
-  });
+    audienceName,
+    audienceMeta:
+      (input.audienceType === "SELECTED_USERS" || input.audienceType === "COMBINED")
+        ? ({ userIds: input.userIds ?? [], groups: input.groups ?? [] } satisfies Prisma.InputJsonValue)
+        : undefined,
+    queuedAt: new Date(),
+  };
+  const recipientRows = recipients.map((recipient) => ({
+    userId: recipient.userId,
+    email: recipient.email,
+    name: recipient.name,
+    status: EmailRecipientStatus.QUEUED,
+  }));
+  const include = { _count: { select: { recipients: true } } } as const;
+  const draft = input.draft;
+
+  if (draft) {
+    return prisma.$transaction(async (tx) => {
+      const updated = await tx.emailCampaign.updateMany({
+        where: { id: draft.id, status: "DRAFT", updatedAt: new Date(draft.updatedAt) },
+        data,
+      });
+      if (!updated.count) {
+        throw new Error("El borrador cambió. Vuelve a abrirlo antes de crear la campaña.");
+      }
+      await tx.emailCampaignRecipient.createMany({
+        data: recipientRows.map((recipient) => ({ ...recipient, campaignId: draft.id })),
+      });
+      return tx.emailCampaign.findUniqueOrThrow({ where: { id: draft.id }, include });
+    });
+  }
 
   return prisma.emailCampaign.create({
     data: {
+      ...data,
       createdById: input.createdById,
       createdByEmail: input.createdByEmail,
-      title: input.title.trim(),
-      subject: input.subject.trim(),
-      body: input.body.trim(),
-      status: "QUEUED",
-      audienceType: input.audienceType,
-      audienceId: input.audienceId,
-      audienceName,
-      audienceMeta:
-        input.audienceType === "SELECTED_USERS"
-          ? ({ userIds: input.userIds ?? [] } satisfies Prisma.InputJsonValue)
-          : undefined,
-      queuedAt: new Date(),
-      recipients: {
-        createMany: {
-          data: recipients.map((recipient) => ({
-            userId: recipient.userId,
-            email: recipient.email,
-            name: recipient.name,
-            status: "QUEUED",
-          })),
-          skipDuplicates: true,
-        },
-      },
+      recipients: { createMany: { data: recipientRows } },
     },
-    include: {
-      _count: { select: { recipients: true } },
-    },
+    include,
   });
 }
 
@@ -274,11 +297,13 @@ export async function sendCampaignTestEmail(params: {
   subject: string;
   body: string;
   campaignId?: string;
+  blocks?: CampaignBlock[];
 }) {
   const html = renderCampaignHtml({
     subject: `[Prueba] ${params.subject}`,
     body: params.body,
     previewName: "Aleyda",
+    blocks: params.blocks,
   });
 
   const result = await sendEmailWithLogging({
@@ -292,7 +317,7 @@ export async function sendCampaignTestEmail(params: {
   });
 
   if (params.campaignId && result.success) {
-    await prisma.emailCampaign.update({
+    await prisma.emailCampaign.updateMany({
       where: { id: params.campaignId },
       data: { testSentAt: new Date() },
     });
@@ -306,6 +331,7 @@ function sendRecipientEmail(params: {
     id: string;
     subject: string;
     body: string;
+    contentBlocks: Prisma.JsonValue;
     audienceType: EmailCampaignAudienceType;
     audienceId: string | null;
   };
@@ -315,6 +341,7 @@ function sendRecipientEmail(params: {
     subject: params.campaign.subject,
     body: params.campaign.body,
     previewName: params.recipient.name,
+    blocks: campaignBlocks.parse(params.campaign.contentBlocks ?? undefined),
   });
 
   return sendEmailWithLogging({
