@@ -22,11 +22,15 @@ export async function POST(request: NextRequest) {
   if (!to || !to.includes("@")) {
     return NextResponse.json({ error: "Email de prueba inválido" }, { status: 400 });
   }
-  const result = await sendCampaignTestEmail({ to, ...parsed.data });
+  try {
+    const result = await sendCampaignTestEmail({ to, ...parsed.data });
 
-  if (!result.success) {
-    return NextResponse.json({ error: "No se pudo enviar la prueba" }, { status: 500 });
+    if (!result.success) {
+      return NextResponse.json({ error: "No se pudo enviar la prueba" }, { status: 502 });
+    }
+
+    return NextResponse.json({ ok: true, messageId: result.messageId });
+  } catch {
+    return NextResponse.json({ error: "No se pudo preparar el correo de prueba" }, { status: 503 });
   }
-
-  return NextResponse.json({ ok: true, messageId: result.messageId });
 }

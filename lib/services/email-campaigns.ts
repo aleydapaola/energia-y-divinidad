@@ -5,7 +5,7 @@ import {
   Prisma,
 } from "@prisma/client";
 
-import { campaignBlocks, type CampaignBlock } from "@/lib/campaign-content";
+import { campaignBlocks, type CampaignBlock, type CampaignKind } from "@/lib/campaign-content";
 import { sendEmailWithLogging } from "@/lib/email";
 import {
   emailAudienceFingerprint,
@@ -14,10 +14,16 @@ import {
   type EmailRecipientCandidate,
 } from "@/lib/email-audiences";
 import { prisma } from "@/lib/prisma";
+import {
+  campaignNewsletterSettings,
+  campaignRecipientEligibility,
+} from "@/lib/services/campaign-consent";
 
 import type { CampaignAudienceInput } from "@/lib/campaign-audience-input";
 
 const DEFAULT_BATCH_SIZE = 25;
+const PREFERENCES_RETRY_MS = 60_000;
+type NewsletterSettings = Awaited<ReturnType<typeof campaignNewsletterSettings>>;
 const APP_URL =
   process.env.NEXTAUTH_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
@@ -33,6 +39,7 @@ export interface CreateEmailCampaignInput extends CampaignAudienceInput {
   subject: string;
   body: string;
   blocks?: CampaignBlock[];
+  kind: CampaignKind;
   draft?: { id: string; updatedAt: string };
   audienceFingerprint: string;
 }
@@ -102,6 +109,7 @@ export function renderCampaignHtml(params: {
   subject: string;
   body: string;
   previewName?: string | null;
+  newsletterFooter?: NewsletterSettings["footer"];
   blocks?: CampaignBlock[];
 }) {
   const safeSubject = escapeHtml(params.subject);
@@ -115,6 +123,11 @@ export function renderCampaignHtml(params: {
   });
   const messageBlocks = renderMessageBlocks(params.body) + extraBlocks.join("");
   const year = new Date().getFullYear();
+  const footer = params.newsletterFooter;
+  const footerContent = footer
+    ? `Recibes este newsletter porque estás en nuestra lista de suscripción.<br />${escapeHtml(footer.postalAddress)}<br />
+      <a href="${escapeHtml(footer.unsubscribeUrl)}" style="color:#654177">Darme de baja</a>`
+    : "Este correo se envía porque tienes una relación activa con la web.";
 
   return `
     <!DOCTYPE html>
@@ -178,7 +191,7 @@ export function renderCampaignHtml(params: {
                       © ${year} Energía y Divinidad. Todos los derechos reservados.
                     </p>
                     <p style="margin:0;font-size:12px;line-height:1.6;color:#999999;">
-                      Este correo se envía porque tienes una relación activa con la web.
+                      ${footerContent}
                       <br />
                       ¿Preguntas? <a href="mailto:${CONTACT_EMAIL}" style="color:#8A4BAF;text-decoration:none;">${CONTACT_EMAIL}</a>
                     </p>
@@ -246,13 +259,17 @@ export async function createEmailCampaign(input: CreateEmailCampaignInput) {
     subject: input.subject.trim(),
     body: input.body.trim(),
     contentBlocks: input.blocks ?? [],
+    kind: input.kind,
     status: EmailCampaignStatus.QUEUED,
     audienceType: input.audienceType,
     audienceId: input.audienceId,
     audienceName,
     audienceMeta:
-      (input.audienceType === "SELECTED_USERS" || input.audienceType === "COMBINED")
-        ? ({ userIds: input.userIds ?? [], groups: input.groups ?? [] } satisfies Prisma.InputJsonValue)
+      input.audienceType === "SELECTED_USERS" || input.audienceType === "COMBINED"
+        ? ({
+            userIds: input.userIds ?? [],
+            groups: input.groups ?? [],
+          } satisfies Prisma.InputJsonValue)
         : undefined,
     queuedAt: new Date(),
   };
@@ -292,8 +309,13 @@ export async function createEmailCampaign(input: CreateEmailCampaignInput) {
   });
 }
 
+export async function resolveCampaignFooter(kind: CampaignKind) {
+  return kind === "NEWSLETTER" ? (await campaignNewsletterSettings()).footer : undefined;
+}
+
 export async function sendCampaignTestEmail(params: {
   to: string;
+  kind: CampaignKind;
   subject: string;
   body: string;
   campaignId?: string;
@@ -303,6 +325,7 @@ export async function sendCampaignTestEmail(params: {
     subject: `[Prueba] ${params.subject}`,
     body: params.body,
     previewName: "Aleyda",
+    newsletterFooter: await resolveCampaignFooter(params.kind),
     blocks: params.blocks,
   });
 
@@ -336,11 +359,13 @@ function sendRecipientEmail(params: {
     audienceId: string | null;
   };
   recipient: EmailRecipientCandidate & { id: string };
+  newsletterFooter?: NewsletterSettings["footer"];
 }) {
   const html = renderCampaignHtml({
     subject: params.campaign.subject,
     body: params.campaign.body,
     previewName: params.recipient.name,
+    newsletterFooter: params.newsletterFooter,
     blocks: campaignBlocks.parse(params.campaign.contentBlocks ?? undefined),
   });
 
@@ -360,15 +385,19 @@ function sendRecipientEmail(params: {
 }
 
 export async function processEmailCampaignBatch(batchSize = DEFAULT_BATCH_SIZE) {
+  const available = {
+    status: EmailRecipientStatus.QUEUED,
+    OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: new Date() } }],
+  };
   const campaign = await prisma.emailCampaign.findFirst({
     where: {
       status: { in: [EmailCampaignStatus.QUEUED, EmailCampaignStatus.SENDING] },
-      recipients: { some: { status: EmailRecipientStatus.QUEUED } },
+      recipients: { some: available },
     },
     orderBy: { queuedAt: "asc" },
     include: {
       recipients: {
-        where: { status: EmailRecipientStatus.QUEUED },
+        where: available,
         orderBy: { createdAt: "asc" },
         take: batchSize,
       },
@@ -376,7 +405,30 @@ export async function processEmailCampaignBatch(batchSize = DEFAULT_BATCH_SIZE) 
   });
 
   if (!campaign) {
-    return { processed: 0, successful: 0, failed: 0, campaignId: null };
+    return { processed: 0, successful: 0, failed: 0, skipped: 0, deferred: 0, campaignId: null };
+  }
+
+  let newsletter: NewsletterSettings | undefined;
+  if (campaign.kind === "NEWSLETTER") {
+    try {
+      newsletter = await campaignNewsletterSettings();
+    } catch {
+      await prisma.emailCampaignRecipient.updateMany({
+        where: { campaignId: campaign.id, ...available },
+        data: {
+          errorMessage: "No se pudo verificar la audiencia de Mailchimp",
+          nextAttemptAt: new Date(Date.now() + PREFERENCES_RETRY_MS),
+        },
+      });
+      return {
+        processed: 0,
+        successful: 0,
+        failed: 0,
+        skipped: 0,
+        deferred: campaign.recipients.length,
+        campaignId: campaign.id,
+      };
+    }
   }
 
   await prisma.emailCampaign.update({
@@ -386,10 +438,31 @@ export async function processEmailCampaignBatch(batchSize = DEFAULT_BATCH_SIZE) 
 
   let successful = 0;
   let failed = 0;
+  let skipped = 0;
+  let deferred = 0;
 
   for (const recipient of campaign.recipients) {
+    const eligibility = await campaignRecipientEligibility(recipient, newsletter?.config);
+    if (eligibility.action !== "send") {
+      if (eligibility.action === "skip") {
+        skipped++;
+      } else {
+        deferred++;
+      }
+      await prisma.emailCampaignRecipient.updateMany({
+        where: { id: recipient.id, ...available },
+        data: {
+          status: eligibility.action === "skip" ? "SKIPPED" : "QUEUED",
+          errorMessage: eligibility.reason,
+          nextAttemptAt:
+            eligibility.action === "defer" ? new Date(Date.now() + PREFERENCES_RETRY_MS) : null,
+        },
+      });
+      continue;
+    }
     const result = await sendRecipientEmail({
       campaign,
+      newsletterFooter: newsletter?.footer,
       recipient: {
         id: recipient.id,
         userId: recipient.userId,
@@ -407,6 +480,8 @@ export async function processEmailCampaignBatch(batchSize = DEFAULT_BATCH_SIZE) 
           providerMessageId: result.messageId,
           emailLogId: result.emailLogId,
           sentAt: new Date(),
+          errorMessage: null,
+          nextAttemptAt: null,
         },
       });
     } else {
@@ -415,6 +490,7 @@ export async function processEmailCampaignBatch(batchSize = DEFAULT_BATCH_SIZE) 
         where: { id: recipient.id },
         data: {
           status: "FAILED",
+          nextAttemptAt: null,
           emailLogId: result.emailLogId,
           errorMessage:
             result.error instanceof Error ? result.error.message : "Error enviando email",
@@ -446,6 +522,8 @@ export async function processEmailCampaignBatch(batchSize = DEFAULT_BATCH_SIZE) 
     processed: campaign.recipients.length,
     successful,
     failed,
+    skipped,
+    deferred,
     campaignId: campaign.id,
   };
 }

@@ -45,13 +45,18 @@ const contentBlock = z.discriminatedUnion("type", [
 export const campaignBlocks = z.array(contentBlock).max(20).default([]);
 export type CampaignBlock = z.infer<typeof contentBlock>;
 
+export const campaignKind = z.enum(["NEWSLETTER", "OPERATIONAL"]);
+export type CampaignKind = z.infer<typeof campaignKind>;
+
 export const campaignMessage = z.object({
+  kind: campaignKind,
   subject: z.string().trim().min(1).max(200),
   body: z.string().trim().min(1).max(30000),
   blocks: campaignBlocks,
 });
 
 export const campaignDraft = z.object({
+  kind: campaignKind.nullish(),
   title: z.string().trim().max(200),
   subject: z.string().trim().max(200),
   body: z.string().trim().max(30000),

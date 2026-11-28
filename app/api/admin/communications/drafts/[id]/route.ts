@@ -22,6 +22,7 @@ export async function GET(_request: Request, context: RouteContext) {
       subject: true,
       body: true,
       contentBlocks: true,
+      kind: true,
     },
   });
   if (!draft) {

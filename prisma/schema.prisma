@@ -1222,6 +1222,11 @@ model EmailLog {
 // BOUNDED CONTEXT: Admin Communications
 // ============================================
 
+enum EmailCampaignKind {
+  NEWSLETTER
+  OPERATIONAL
+}
+
 enum EmailCampaignStatus {
   DRAFT
   QUEUED
@@ -1257,6 +1262,7 @@ model EmailCampaign {
   subject      String
   body         String                    @db.Text
   contentBlocks Json?
+  kind          EmailCampaignKind?
   status       EmailCampaignStatus       @default(DRAFT)
   audienceType EmailCampaignAudienceType
   audienceId   String?
@@ -1291,6 +1297,7 @@ model EmailCampaignRecipient {
   status           EmailRecipientStatus @default(QUEUED)
   providerMessageId String?
   emailLogId       String?
+  nextAttemptAt    DateTime?
   errorMessage     String?              @db.Text
   sentAt           DateTime?
 
@@ -1302,6 +1309,7 @@ model EmailCampaignRecipient {
 
   @@unique([campaignId, email])
   @@index([campaignId, status])
+  @@index([campaignId, status, nextAttemptAt])
   @@index([email])
   @@index([userId])
   @@map("email_campaign_recipients")

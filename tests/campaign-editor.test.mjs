@@ -34,6 +34,7 @@ test("combined audience deduplicates and refuses confirmation when a hidden addr
   });
   const campaigns = load("lib/services/email-campaigns.ts", {
     "@/lib/campaign-content": content,
+    "@/lib/services/campaign-consent": {},
     "@/lib/email": { sendEmailWithLogging: () => assert.fail("No test email expected") },
     "@/lib/email-audiences": audience,
     "@/lib/prisma": { prisma },
@@ -46,6 +47,7 @@ test("combined audience deduplicates and refuses confirmation when a hidden addr
   assert.deepEqual(first.recipients, changed.recipients);
   const campaign = {
     title: "Test",
+    kind: "OPERATIONAL",
     subject: "Test",
     body: "Test",
     createdById: "admin",
@@ -81,11 +83,13 @@ test("preview and delivery template renders labels and alt text safely", () => {
   process.env.NEXT_PUBLIC_SANITY_DATASET = "preview";
   const campaigns = load("lib/services/email-campaigns.ts", {
     "@/lib/campaign-content": content,
+    "@/lib/services/campaign-consent": {},
     "@/lib/email": {},
     "@/lib/email-audiences": {},
     "@/lib/prisma": {},
   });
   const message = content.campaignMessage.parse({
+    kind: "OPERATIONAL",
     subject: "Mensaje <nuevo>",
     body: "Texto antiguo https://example.test/view",
     blocks: [

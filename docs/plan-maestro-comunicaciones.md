@@ -86,7 +86,7 @@ Completar cada fila con el cambio mínimo que satisfaga su prueba. Registrar ID,
 | B1 | A1, 0.2 | Cargar PDF al seleccionarlo. Mostrar progreso, retirada, errores y reintentos. | Una carga interrumpida se puede reintentar sin dejar un duplicado vinculado. Si se agota el espacio gratuito, el panel informa y detiene la subida. |
 | B2 | B1, A2 | Añadir enlace directo, aviso de acceso público, comprobación de permisos y referencias estables. | El PDF del correo de prueba se descarga a 375 px sin sesión. El enlace anterior sigue funcionando tras reemplazar el archivo y desplegar otra versión de Preview. |
 | C1 | 0.1 | Combinar grupos y usuarios. Vincular la confirmación al conjunto completo y guardar la lista exacta. | El solapamiento produce una fila por correo. Cambiar una dirección fuera de las primeras 25 exige reconfirmación aunque se conserve el total. |
-| C2 | C1, 0.3 | Implementar la comprobación de consentimiento que consume D1. | Con respuestas controladas, una baja excluye y un timeout aplaza. D1 verifica que ninguna de esas filas llega a Resend. |
+| C2 | C1, 0.3 | Guardar el tipo de correo y aplicar la comprobación de consentimiento o preferencias que consume D1. | En newsletter, una baja excluye y un timeout aplaza. En aviso operativo, se respetan las preferencias vigentes. D1 verifica que las filas excluidas o aplazadas no llegan a Resend. |
 | D1 | A2, B2, C2 | Conectar **Enviar ahora** a la cola con verificación de adjuntos y bajas, reserva atómica y registro de intentos. | Dos procesos y un timeout tras aceptación no duplican un correo. Un fallo parcial conserva éxitos y reintenta únicamente filas elegibles. Revocar acceso al PDF o perder la comprobación de bajas impide el despacho afectado. |
 | D2 | D1, 0.3 | Añadir programación, reprogramación y cancelación con el disparador validado. | Resend acepta el envío automático dentro de la tolerancia. Reprogramar invalida la fecha anterior. Probar cancelación antes y después de autorizar un intento y comprobar qué ocurre con las filas restantes. |
 | E1 | D2 | Exponer historial, contenido congelado y estados individuales en el panel administrador. | El detalle abre campañas nuevas y antiguas, y deniega el acceso sin rol. |
@@ -101,7 +101,11 @@ Completar cada fila con el cambio mínimo que satisfaga su prueba. Registrar ID,
 
 ## Aprobación y validación
 
-**Antes de aprobar.** Aleyda confirma si los grupos existentes cubren la primera entrega y qué envíos están sujetos al consentimiento vigente. Xavier confirma la tolerancia de despacho, el margen de operación del disparador que se puede probar y el alcance de su uso en Preview. La fase 0 comprueba su viabilidad en el entorno real.
+**Alcance de la primera entrega.** Se pueden combinar los grupos existentes de curso, membresía y evento con usuarios seleccionados individualmente. Los grupos personalizados se valorarán cuando haya un caso concreto que esos grupos no puedan representar.
+
+**Tipos de correo confirmados.** Aleyda puede enviar newsletters y avisos operativos. La selección del tipo debe ser explícita. El newsletter requiere suscripción activa en la audiencia autorizada de Mailchimp al despachar y debe incluir el enlace de baja vigente. Los avisos operativos se limitan a información del servicio para el grupo afectado, como cambios de horario o acceso. Se aplican las preferencias de correo y las reglas vigentes de la web. El contenido promocional se trata como newsletter, incluso cuando también informa de un servicio.
+
+**Tolerancia de despacho.** Objetivo de hasta cinco minutos desde la hora programada hasta la aceptación por Resend de cada destinatario elegible. La campaña solo podrá despacharse desde la hora programada. La llegada al buzón se registra por separado. En 0.3 se validará un disparador con cadencia objetivo de un minuto para dejar margen al procesamiento, y en D2 se medirá el despacho completo en Preview.
 
 **Durante la ejecución.** Aleyda confirma el tamaño máximo de los PDF tras la prueba de 0.2 y la permanencia de los enlaces antes de cerrar B2. El SHA activo, la descarga anónima, el disparador y la recepción del webhook se acreditan en sus tareas respectivas. Usar exclusivamente los servicios y datos de prueba autorizados, incluida la audiencia aislada de Mailchimp. Registrar versión y evidencia en AUTONOMY_STATUS.md.
 

@@ -3,7 +3,7 @@
 import { Eye, Loader2, Mail, Play, RefreshCw, Search, Send, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import type { CampaignBlock } from "@/lib/campaign-content";
+import type { CampaignBlock, CampaignKind } from "@/lib/campaign-content";
 import type { CommunicationAudienceOptions, EmailRecipientCandidate } from "@/lib/email-audiences";
 
 type AudienceType =
@@ -71,6 +71,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [kind, setKind] = useState<CampaignKind | "">("");
   const [blocks, setBlocks] = useState<CampaignBlock[]>([]);
   const [draft, setDraft] = useState<{ id: string; updatedAt: string } | null>(null);
   const [draftBusy, setDraftBusy] = useState(false);
@@ -151,7 +152,14 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
         {
           method: draft ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, subject, body, blocks, updatedAt: draft?.updatedAt }),
+          body: JSON.stringify({
+            title,
+            subject,
+            body,
+            blocks,
+            kind: kind || null,
+            updatedAt: draft?.updatedAt,
+          }),
         }
       );
       const data = await res.json();
@@ -182,6 +190,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       setTitle(data.title);
       setSubject(data.subject);
       setBody(data.body);
+      setKind(data.kind ?? "");
       setBlocks(data.contentBlocks ?? []);
       setAudienceType("COMBINED");
       setAudienceId("");
@@ -205,7 +214,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       const res = await fetch("/api/admin/communications/message-preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, body, blocks }),
+        body: JSON.stringify({ kind, subject, body, blocks }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -300,7 +309,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       const res = await fetch("/api/admin/communications/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: testEmail, subject, body, blocks }),
+        body: JSON.stringify({ to: testEmail, kind, subject, body, blocks }),
       });
       const data = await res.json();
 
@@ -333,6 +342,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
+          kind,
           subject,
           body,
           blocks,
@@ -355,6 +365,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       setTitle("");
       setSubject("");
       setBody("");
+      setKind("");
       setBlocks([]);
       setDraft(null);
       setGroups([]);
@@ -389,7 +400,9 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
         return;
       }
 
-      setMessage(`Lote procesado: ${data.successful} enviados, ${data.failed} fallidos`);
+      setMessage(
+        `Lote procesado: ${data.successful} aceptados, ${data.failed} fallidos, ${data.skipped} omitidos y ${data.deferred} aplazados`
+      );
       await refreshCampaigns();
     } finally {
       setProcessing(false);
@@ -401,7 +414,12 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
     (!isSelectedUsersAudience || selectedUsers.length > 0 || (isCombined && groups.length > 0)) &&
     (!isManualEmailsAudience || Boolean(manualEmails.trim()));
   const canCreate =
-    title.trim() && subject.trim() && body.trim() && canPreview && Boolean(preview?.count);
+    Boolean(kind) &&
+    title.trim() &&
+    subject.trim() &&
+    body.trim() &&
+    canPreview &&
+    Boolean(preview?.count);
 
   return (
     <div className="space-y-6">
@@ -441,6 +459,22 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
             <Send className="h-5 w-5" />
             {draft ? "Editar borrador" : "Nueva campaña"}
           </h2>
+
+          <label className="mb-4 block text-sm text-gray-600">
+            Tipo de correo
+            <select
+              value={kind}
+              onChange={(event) => {
+                setKind(event.target.value as CampaignKind | "");
+                setMessagePreview(null);
+              }}
+              className="mt-1 block min-h-11 w-full rounded-lg border border-gray-300 px-3"
+            >
+              <option value="">Seleccionar tipo</option>
+              <option value="NEWSLETTER">Newsletter</option>
+              <option value="OPERATIONAL">Aviso operativo</option>
+            </select>
+          </label>
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block">
@@ -801,6 +835,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
                   setTitle("");
                   setSubject("");
                   setBody("");
+                  setKind("");
                   setBlocks([]);
                   setMessagePreview(null);
                 }}
@@ -811,7 +846,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
             <button
               type="button"
               className="min-h-11 rounded-lg border px-3 text-sm"
-              disabled={!subject.trim() || !body.trim()}
+              disabled={!kind || !subject.trim() || !body.trim()}
               onClick={previewMessage}
             >
               Vista previa móvil
@@ -893,7 +928,9 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
             <button
               type="button"
               onClick={handleSendTest}
-              disabled={!subject.trim() || !body.trim() || !testEmail.trim() || sendingTest}
+              disabled={
+                !kind || !subject.trim() || !body.trim() || !testEmail.trim() || sendingTest
+              }
               className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#4944a4] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#3d3a8a] disabled:opacity-50"
             >
               {sendingTest ? (
