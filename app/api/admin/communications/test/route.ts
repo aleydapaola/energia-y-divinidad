@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdminSession } from "@/lib/admin-auth";
 import { campaignMessage } from "@/lib/campaign-content";
+import { campaignDownloads } from "@/lib/services/campaign-drive";
 import { sendCampaignTestEmail } from "@/lib/services/email-campaigns";
 
 export async function POST(request: NextRequest) {
@@ -23,7 +24,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Email de prueba inválido" }, { status: 400 });
   }
   try {
-    const result = await sendCampaignTestEmail({ to, ...parsed.data });
+    const { draftId, ...message } = parsed.data;
+    const attachments = draftId ? await campaignDownloads(draftId) : [];
+    const result = await sendCampaignTestEmail({ to, ...message, attachments });
 
     if (!result.success) {
       return NextResponse.json({ error: "No se pudo enviar la prueba" }, { status: 502 });

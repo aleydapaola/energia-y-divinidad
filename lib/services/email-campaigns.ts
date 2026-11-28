@@ -18,11 +18,13 @@ import {
   campaignNewsletterSettings,
   campaignRecipientEligibility,
 } from "@/lib/services/campaign-consent";
+import { campaignDownloads } from "@/lib/services/campaign-drive";
 
 import type { CampaignAudienceInput } from "@/lib/campaign-audience-input";
 
 const DEFAULT_BATCH_SIZE = 25;
 const PREFERENCES_RETRY_MS = 60_000;
+type CampaignDownloads = Awaited<ReturnType<typeof campaignDownloads>>;
 type NewsletterSettings = Awaited<ReturnType<typeof campaignNewsletterSettings>>;
 const APP_URL =
   process.env.NEXTAUTH_URL ||
@@ -110,6 +112,7 @@ export function renderCampaignHtml(params: {
   body: string;
   previewName?: string | null;
   newsletterFooter?: NewsletterSettings["footer"];
+  attachments?: CampaignDownloads;
   blocks?: CampaignBlock[];
 }) {
   const safeSubject = escapeHtml(params.subject);
@@ -121,7 +124,12 @@ export function renderCampaignHtml(params: {
     }
     return `<p style="margin:0 0 20px"><img src="${url}" alt="${escapeHtml(block.alt)}" style="display:block;width:100%;max-width:560px;height:auto" /></p>`;
   });
-  const messageBlocks = renderMessageBlocks(params.body) + extraBlocks.join("");
+  const downloads = (params.attachments ?? []).map(
+    ({ filename, downloadUrl }) =>
+      `<p style="margin:0 0 20px"><strong>${escapeHtml(filename)}</strong><br /><a href="${escapeHtml(downloadUrl)}" style="color:#4944a4">Descargar</a></p>`
+  );
+  const messageBlocks =
+    renderMessageBlocks(params.body) + extraBlocks.join("") + downloads.join("");
   const year = new Date().getFullYear();
   const footer = params.newsletterFooter;
   const footerContent = footer
@@ -283,6 +291,7 @@ export async function createEmailCampaign(input: CreateEmailCampaignInput) {
   const draft = input.draft;
 
   if (draft) {
+    const attachments = await campaignDownloads(draft.id);
     return prisma.$transaction(async (tx) => {
       const updated = await tx.emailCampaign.updateMany({
         where: { id: draft.id, status: "DRAFT", updatedAt: new Date(draft.updatedAt) },
@@ -290,6 +299,21 @@ export async function createEmailCampaign(input: CreateEmailCampaignInput) {
       });
       if (!updated.count) {
         throw new Error("El borrador cambió. Vuelve a abrirlo antes de crear la campaña.");
+      }
+      const currentAttachments = await tx.campaignAttachment.findMany({
+        where: { campaignId: draft.id, removedAt: null },
+        select: { id: true, downloadUrl: true },
+      });
+      if (
+        currentAttachments.length !== attachments.length ||
+        currentAttachments.some(
+          (item) =>
+            !attachments.some(
+              (verified) => verified.id === item.id && verified.downloadUrl === item.downloadUrl
+            )
+        )
+      ) {
+        throw new Error("Los PDF del borrador cambiaron. Revisa los adjuntos antes de confirmar.");
       }
       await tx.emailCampaignRecipient.createMany({
         data: recipientRows.map((recipient) => ({ ...recipient, campaignId: draft.id })),
@@ -319,6 +343,7 @@ export async function sendCampaignTestEmail(params: {
   subject: string;
   body: string;
   campaignId?: string;
+  attachments?: CampaignDownloads;
   blocks?: CampaignBlock[];
 }) {
   const html = renderCampaignHtml({
@@ -326,6 +351,7 @@ export async function sendCampaignTestEmail(params: {
     body: params.body,
     previewName: "Aleyda",
     newsletterFooter: await resolveCampaignFooter(params.kind),
+    attachments: params.attachments,
     blocks: params.blocks,
   });
 
@@ -360,12 +386,14 @@ function sendRecipientEmail(params: {
   };
   recipient: EmailRecipientCandidate & { id: string };
   newsletterFooter?: NewsletterSettings["footer"];
+  attachments: CampaignDownloads;
 }) {
   const html = renderCampaignHtml({
     subject: params.campaign.subject,
     body: params.campaign.body,
     previewName: params.recipient.name,
     newsletterFooter: params.newsletterFooter,
+    attachments: params.attachments,
     blocks: campaignBlocks.parse(params.campaign.contentBlocks ?? undefined),
   });
 
@@ -406,6 +434,27 @@ export async function processEmailCampaignBatch(batchSize = DEFAULT_BATCH_SIZE) 
 
   if (!campaign) {
     return { processed: 0, successful: 0, failed: 0, skipped: 0, deferred: 0, campaignId: null };
+  }
+
+  let attachments: CampaignDownloads;
+  try {
+    attachments = await campaignDownloads(campaign.id);
+  } catch {
+    await prisma.emailCampaignRecipient.updateMany({
+      where: { campaignId: campaign.id, ...available },
+      data: {
+        errorMessage: "No se pudo verificar la descarga de los PDF en Google Drive",
+        nextAttemptAt: new Date(Date.now() + PREFERENCES_RETRY_MS),
+      },
+    });
+    return {
+      processed: 0,
+      successful: 0,
+      failed: 0,
+      skipped: 0,
+      deferred: campaign.recipients.length,
+      campaignId: campaign.id,
+    };
   }
 
   let newsletter: NewsletterSettings | undefined;
@@ -463,6 +512,7 @@ export async function processEmailCampaignBatch(batchSize = DEFAULT_BATCH_SIZE) 
     const result = await sendRecipientEmail({
       campaign,
       newsletterFooter: newsletter?.footer,
+      attachments,
       recipient: {
         id: recipient.id,
         userId: recipient.userId,

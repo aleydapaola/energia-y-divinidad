@@ -33,6 +33,7 @@ test("combined audience deduplicates and refuses confirmation when a hidden addr
     "@/sanity/lib/client": { client: { fetch: async () => [] } },
   });
   const campaigns = load("lib/services/email-campaigns.ts", {
+    "@/lib/services/campaign-drive": { campaignDownloads: async () => [] },
     "@/lib/campaign-content": content,
     "@/lib/services/campaign-consent": {},
     "@/lib/email": { sendEmailWithLogging: () => assert.fail("No test email expected") },
@@ -82,6 +83,7 @@ test("preview and delivery template renders labels and alt text safely", () => {
   process.env.NEXT_PUBLIC_SANITY_PROJECT_ID = "synthetic";
   process.env.NEXT_PUBLIC_SANITY_DATASET = "preview";
   const campaigns = load("lib/services/email-campaigns.ts", {
+    "@/lib/services/campaign-drive": { campaignDownloads: async () => [] },
     "@/lib/campaign-content": content,
     "@/lib/services/campaign-consent": {},
     "@/lib/email": {},
@@ -145,6 +147,7 @@ test("draft updates preserve draft status and reject a stale edit or a queued ca
     "@/lib/admin-auth": {
       requireAdminSession: async () => (admin ? { user: { id: "admin" } } : null),
     },
+    "@/lib/services/campaign-drive": { campaignDownloads: async () => [] },
     "@/lib/campaign-content": content,
     "@/lib/prisma": {
       prisma: {

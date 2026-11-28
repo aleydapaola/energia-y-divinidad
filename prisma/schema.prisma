@@ -1277,6 +1277,7 @@ model EmailCampaign {
   errorMessage String?                   @db.Text
 
   recipients   EmailCampaignRecipient[]
+  attachments  CampaignAttachment[]
 
   createdAt    DateTime                  @default(now())
   updatedAt    DateTime                  @updatedAt
@@ -1285,6 +1286,33 @@ model EmailCampaign {
   @@index([audienceType, audienceId])
   @@index([createdAt])
   @@map("email_campaigns")
+}
+
+model CampaignDriveFolder {
+  environment String @id
+  fileId      String @unique
+
+  @@map("campaign_drive_folders")
+}
+
+model CampaignAttachment {
+  id               String   @id @default(cuid())
+  campaignId       String
+  fileId           String   @unique
+  folderId         String
+  filename         String
+  sha256           String
+  size             Int
+  encryptedSession String?
+  downloadUrl      String?
+  removedAt        DateTime?
+  createdAt        DateTime @default(now())
+
+  campaign EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+
+  @@unique([campaignId, sha256, filename])
+  @@index([campaignId, removedAt])
+  @@map("campaign_attachments")
 }
 
 model EmailCampaignRecipient {

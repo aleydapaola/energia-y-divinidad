@@ -102,6 +102,7 @@ test("the batch sends only eligible recipients and preserves deferred rows", asy
     },
   };
   const campaigns = load("lib/services/email-campaigns.ts", {
+    "@/lib/services/campaign-drive": { campaignDownloads: async () => [] },
     "@/lib/campaign-content": load("lib/campaign-content.ts"),
     "@/lib/email": {
       sendEmailWithLogging: async (message) => {

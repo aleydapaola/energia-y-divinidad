@@ -50,6 +50,7 @@ export type CampaignKind = z.infer<typeof campaignKind>;
 
 export const campaignMessage = z.object({
   kind: campaignKind,
+  draftId: z.string().min(1).max(100).optional(),
   subject: z.string().trim().min(1).max(200),
   body: z.string().trim().min(1).max(30000),
   blocks: campaignBlocks,

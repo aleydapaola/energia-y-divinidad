@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdminSession } from "@/lib/admin-auth";
 import { campaignDraft } from "@/lib/campaign-content";
 import { prisma } from "@/lib/prisma";
+import { campaignAttachmentSelect } from "@/lib/services/campaign-drive";
 
 type RouteContext = { params: Promise<{ id: string }> };
 const updateDraft = campaignDraft.extend({ updatedAt: z.iso.datetime() });
@@ -23,6 +24,11 @@ export async function GET(_request: Request, context: RouteContext) {
       body: true,
       contentBlocks: true,
       kind: true,
+      attachments: {
+        where: { removedAt: null },
+        orderBy: { createdAt: "asc" },
+        select: campaignAttachmentSelect,
+      },
     },
   });
   if (!draft) {

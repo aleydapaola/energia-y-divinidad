@@ -3,8 +3,12 @@
 import { Eye, Loader2, Mail, Play, RefreshCw, Search, Send, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { CampaignAttachments } from "./CampaignAttachments";
+
+import type { CampaignAttachmentView } from "@/lib/campaign-attachment";
 import type { CampaignBlock, CampaignKind } from "@/lib/campaign-content";
 import type { CommunicationAudienceOptions, EmailRecipientCandidate } from "@/lib/email-audiences";
+
 
 type AudienceType =
   | "ALL_USERS"
@@ -75,6 +79,8 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
   const [blocks, setBlocks] = useState<CampaignBlock[]>([]);
   const [draft, setDraft] = useState<{ id: string; updatedAt: string } | null>(null);
   const [draftBusy, setDraftBusy] = useState(false);
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [attachments, setAttachments] = useState<CampaignAttachmentView[]>([]);
   const [messagePreview, setMessagePreview] = useState<string | null>(null);
   const [testEmail, setTestEmail] = useState("");
   const [userSearch, setUserSearch] = useState("");
@@ -191,6 +197,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       setSubject(data.subject);
       setBody(data.body);
       setKind(data.kind ?? "");
+      setAttachments(data.attachments ?? []);
       setBlocks(data.contentBlocks ?? []);
       setAudienceType("COMBINED");
       setAudienceId("");
@@ -214,7 +221,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       const res = await fetch("/api/admin/communications/message-preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, subject, body, blocks }),
+        body: JSON.stringify({ kind, subject, body, blocks, draftId: draft?.id }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -309,7 +316,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       const res = await fetch("/api/admin/communications/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: testEmail, kind, subject, body, blocks }),
+        body: JSON.stringify({ to: testEmail, kind, subject, body, blocks, draftId: draft?.id }),
       });
       const data = await res.json();
 
@@ -368,6 +375,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
       setKind("");
       setBlocks([]);
       setDraft(null);
+      setAttachments([]);
       setGroups([]);
       setGroupChoice("");
       setMessagePreview(null);
@@ -794,6 +802,17 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
             </fieldset>
           ))}
 
+          <CampaignAttachments
+            key={draft?.id ?? "new"}
+            draftId={draft?.id}
+            attachments={attachments}
+            onChange={(value) => {
+              setAttachments(value);
+              setMessagePreview(null);
+            }}
+            onBusy={setAttachmentBusy}
+          />
+
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
@@ -820,7 +839,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
             <button
               type="button"
               className="min-h-11 rounded-lg border px-3 text-sm"
-              disabled={draftBusy || creating}
+              disabled={draftBusy || creating || attachmentBusy}
               onClick={saveDraft}
             >
               Guardar borrador
@@ -829,9 +848,10 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
               <button
                 type="button"
                 className="min-h-11 rounded-lg border px-3 text-sm"
-                disabled={draftBusy || creating}
+                disabled={draftBusy || creating || attachmentBusy}
                 onClick={() => {
                   setDraft(null);
+                  setAttachments([]);
                   setTitle("");
                   setSubject("");
                   setBody("");
@@ -846,7 +866,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
             <button
               type="button"
               className="min-h-11 rounded-lg border px-3 text-sm"
-              disabled={!kind || !subject.trim() || !body.trim()}
+              disabled={!kind || !subject.trim() || !body.trim() || attachmentBusy}
               onClick={previewMessage}
             >
               Vista previa móvil
@@ -878,7 +898,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
             <button
               type="button"
               onClick={handleCreateCampaign}
-              disabled={!canCreate || creating || draftBusy}
+              disabled={!canCreate || creating || draftBusy || attachmentBusy}
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#654177] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#563666] disabled:opacity-50"
             >
               {creating ? (
@@ -929,7 +949,12 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
               type="button"
               onClick={handleSendTest}
               disabled={
-                !kind || !subject.trim() || !body.trim() || !testEmail.trim() || sendingTest
+                !kind ||
+                !subject.trim() ||
+                !body.trim() ||
+                !testEmail.trim() ||
+                sendingTest ||
+                attachmentBusy
               }
               className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#4944a4] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#3d3a8a] disabled:opacity-50"
             >
@@ -974,7 +999,7 @@ export function CommunicationsClient({ options, initialCampaigns }: Communicatio
                     {campaign.status === "DRAFT" ? (
                       <button
                         type="button"
-                        disabled={draftBusy || creating}
+                        disabled={draftBusy || creating || attachmentBusy}
                         className="min-h-11 text-left font-semibold text-[#654177]"
                         onClick={() => openDraft(campaign.id)}
                       >
